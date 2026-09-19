@@ -38,7 +38,12 @@ export const LANDMARKS = {
   head: { bone: "head", local: [0, 0.06, 0] },
   face: { bone: "head", local: [0, 0.045, 0.045] },
   mouth: { bone: "head", local: [0, 0.028, 0.05] },
-  hand: { bone: "wrist_@", local: [0, -0.05, 0.004], mirror: true },
+  // On `hand_@`, not on the wrist. `supportLowestY` only looks at volumes
+  // whose bone *is* the landmark's bone, so while this named the wrist it
+  // could not see the hand at all - `all_fours` seated the wrist on the floor
+  // and left the palm 52mm through it. The local offset is the middle of the
+  // palm, between the two rails that make it.
+  hand: { bone: "hand_@", local: [0, 0.005, 0], mirror: true },
   forearm: { bone: "elbow_@", local: [0, -0.07, 0], mirror: true },
   elbow: { bone: "elbow_@", local: [0, 0, 0], mirror: true },
   upperArm: { bone: "shoulder_@", local: [0, -0.1, 0], mirror: true },

@@ -206,7 +206,7 @@ const KEY = v3normalize([2.4, 3.2, 2.0]);
 const FILL = v3normalize([-3, 1.6, 1.4]);
 const RIM = v3normalize([-1.2, 2.2, -3.2]);
 
-const SHADOW_SIZE = 1024;
+const SHADOW_SIZE = 2048;
 const shadowRadius = extent * 1.15 + 0.4;
 const shadowEye = focus.map((c, axis) => c + KEY[axis] * (extent * 2.5 + 2));
 const shadowView = mat4InvertRigid(mat4LookAt(shadowEye, focus));
@@ -347,17 +347,35 @@ rasterise(shadowMatrix, SHADOW_SIZE, SHADOW_SIZE, shadowDepth, null);
  * across it and the stored depth is wrong by most of that span. Setting a flat
  * bias large enough for that detaches every shadow in the picture from the
  * thing casting it.
+ *
+ * Bias alone still loses, though, and it lost visibly: a standing figure came
+ * out with a jagged dark band down one flank and through the crotch, which is
+ * acne, not shading. So the sample *point* is pushed out along the surface
+ * normal first. The stored depth for a texel was taken somewhere inside that
+ * texel's footprint, and on a surface edge-on to the light that footprint is a
+ * long way along the light ray - so moving the query off the surface sidesteps
+ * the comparison rather than trying to out-bias it. The push is in world units
+ * and scales with the same slope term, so a face turned to the light barely
+ * moves and one grazing it moves furthest.
  */
-function shadowFactor(x, y, z, ndl) {
-  const [cx, cy, cz, cw] = clipSpace(shadowMatrix, x, y, z);
+const SHADOW_TEXEL = (2 * shadowRadius) / SHADOW_SIZE;
+
+function shadowFactor(x, y, z, nx, ny, nz, ndl) {
+  const slope = Math.min(6, Math.sqrt(1 - ndl * ndl) / Math.max(ndl, 0.08));
+  const push = SHADOW_TEXEL * (1.5 + 2.2 * slope);
+  const [cx, cy, cz, cw] = clipSpace(
+    shadowMatrix,
+    x + nx * push,
+    y + ny * push,
+    z + nz * push
+  );
   const inv = 1 / (cw || 1);
   const u = (cx * inv * 0.5 + 0.5) * SHADOW_SIZE;
   const v = (1 - (cy * inv * 0.5 + 0.5)) * SHADOW_SIZE;
   const depth = cz * inv;
   if (u < 1 || v < 1 || u >= SHADOW_SIZE - 1 || v >= SHADOW_SIZE - 1) return 1;
 
-  const slope = Math.min(6, Math.sqrt(1 - ndl * ndl) / Math.max(ndl, 0.08));
-  const bias = 0.0006 + 0.0012 * slope;
+  const bias = 0.0005 + 0.0006 * slope;
   let lit = 0;
   for (const [du, dv] of [[-0.7, -0.7], [0.7, -0.7], [-0.7, 0.7], [0.7, 0.7]]) {
     const su = Math.round(u + du);
@@ -420,7 +438,7 @@ rasterise(viewProjection, W, H, depth, (offset, object, i0, i1, i2, b0, b1, b2) 
   // nothing for the shadow map to add. Skipping the lookup is both the right
   // answer and the one that removes the worst of the acne, because a grazing
   // surface is exactly where a depth comparison is least trustworthy.
-  const shadow = ndl > 0 ? shadowFactor(px, py, pz, ndl) : 0;
+  const shadow = ndl > 0 ? shadowFactor(px, py, pz, nx, ny, nz, ndl) : 0;
   const key = Math.max(0, (ndl + wrap) / (1 + wrap)) * shadow * 2.1;
   const fill = Math.max(0, nx * FILL[0] + ny * FILL[1] + nz * FILL[2]) * 0.4;
   const rim = Math.max(0, nx * RIM[0] + ny * RIM[1] + nz * RIM[2]) * 0.55;

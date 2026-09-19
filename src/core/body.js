@@ -78,9 +78,10 @@ export function selfCollisionExempt(volumeA, volumeB) {
  * @param {import("./skeleton.js").Skeleton} skeleton
  * @param {object} [options]
  * @param {number} [options.bust] chest fullness multiplier, 0 disables the pair
+ * @param {boolean} [options.anatomy] draw genital geometry, on by default
  * @returns {Array<object>} primitives in bone-local space
  */
-export function buildBodyVolumes(skeleton, { bust } = {}) {
+export function buildBodyVolumes(skeleton, { bust, anatomy = true } = {}) {
   const H = skeleton.stature;
   const g = skeleton.girth;
   const female = skeleton.chestType === "female";
@@ -137,7 +138,13 @@ export function buildBodyVolumes(skeleton, { bust } = {}) {
   section("spine02", 0.020, wide(0.166, 0.178), deep(0.12, 0.132), 0.004, 0.035);
   section("spine02", 0.070, wide(0.174, 0.187), deep(0.132, 0.14), 0.002);
   section("spine03", 0.028, wide(0.18, 0.196), deep(0.128, 0.138), 0.0, 0.028);
-  section("spine03", 0.066, wide(0.196, 0.214), deep(0.115, 0.125), -0.004, 0.028);
+  // Chest depth at shoulder level. 0.115/0.125 measured 20mm shy of the
+  // reference for both body types, and the female figure only looked closer
+  // because the bust's oversized blend was inflating the surface up here as a
+  // side effect. Once the blend was cut to the size of the feature it belongs
+  // to, the real shortfall showed. Authoring the depth is the honest way to
+  // hold it.
+  section("spine03", 0.066, wide(0.196, 0.214), deep(0.127, 0.137), -0.004, 0.028);
 
   // Gluteal mass, set back from the pelvis axis. It is narrow in X on
   // purpose: what a buttock owes the silhouette is depth from behind, and
@@ -154,12 +161,17 @@ export function buildBodyVolumes(skeleton, { bust } = {}) {
 
   if (bustScale > 0.01) {
     for (const side of [-1, 1]) {
+      // The blend radius here used to be 0.03 H, which on a 0.040 H sphere is
+      // three quarters of the feature's own radius - and a smooth union whose
+      // k approaches r does not soften a form, it dissolves it. A female
+      // figure came out with flat pectorals. Blending at a third of the radius
+      // keeps the join soft and the shape present.
       ball(
         "spine03",
         GROUP.TORSO,
         [side * (female ? 0.036 : 0.044), female ? 0.030 : 0.038, female ? 0.044 : 0.038],
         (female ? 0.040 : 0.034) * bustScale,
-        0.03
+        0.014
       );
     }
   }
@@ -196,8 +208,23 @@ export function buildBodyVolumes(skeleton, { bust } = {}) {
   };
 
   limb("neck", GROUP.HEAD, [0, -0.012, 0], girthR(0.2, 0.224), [0, 0.05, -0.002], girthR(0.186, 0.209), 0.022);
-  ball("head", GROUP.HEAD, [0, 0.062, 0.002], 0.048, 0.03);
-  cone("head", GROUP.HEAD, [0, 0.052, 0.012], 0.042, [0, 0.018, 0.020], 0.028, 0.03);
+
+  // A skull is not a ball. Head breadth is 0.089 H, head length front to back
+  // 0.114 H and head height 0.130 H, so a sphere can satisfy at most one of the
+  // three - the 0.096 ball that used to be here was 25mm too narrow front to
+  // back and 28mm short at the crown, which is most of why a rendered figure
+  // read as an egg on a stick.
+  //
+  // The fix is the trick the torso already uses, turned through 90 degrees. A
+  // capsule spanning *z* is circular in x and y, so 2r sets the breadth across
+  // the head while the span sets the depth independently. Two stacked carry the
+  // cranium; a forward-and-down taper gives the jaw a chin to end at, so the
+  // head has a front.
+  const skull = (y, back, front, r, blend = 0.028) =>
+    cone("head", GROUP.HEAD, [0, y, back], r, [0, y, front], r, blend);
+  skull(0.083, -0.014, 0.012, 0.0445);
+  skull(0.052, -0.012, 0.016, 0.042);
+  cone("head", GROUP.HEAD, [0, 0.034, 0.004], 0.036, [0, 0.014, 0.028], 0.017, 0.024);
 
   // --- arms -------------------------------------------------------------
   // The deltoid is sized by the thing it actually determines: bideltoid
@@ -242,14 +269,84 @@ export function buildBodyVolumes(skeleton, { bust } = {}) {
       girthR(0.096, 0.101),
       0.02
     );
+    // The forearm's last taper stops at the wrist crease. It used to run on to
+    // 0.072 and simply end, a tapered stump where a hand belongs - the single
+    // most obvious thing missing from a rendered figure.
     limb(
       `wrist_${suffix}`,
       group,
       [0, -0.006, 0],
       girthR(0.094, 0.099),
-      [0, -0.072, 0.006],
-      girthR(0.074, 0.078),
+      [0, -0.048, 0.004],
+      girthR(0.080, 0.084),
       0.018,
+      { soft: true }
+    );
+
+    // --- hand ---
+    // Authored on `hand_*`, a bone the rig has always carried and nothing has
+    // ever drawn. Hand length is 0.108 H, breadth 0.044 H and thickness
+    // 0.020 H: a hand is a flattened paddle, and a round cone is circular
+    // across its axis, so no single cone can be one.
+    //
+    // A hand is a flattened paddle and a round cone is circular across its
+    // axis, so no single cone can be one. Rails run the length of the hand,
+    // spread across the palm's width: the rail axis carries length, the spread
+    // between them carries breadth, and the radius carries thickness. Three
+    // independent numbers, which is what a flattened shape needs.
+    //
+    // Which local axis carries the breadth is not a free choice, and getting it
+    // wrong is invisible until something bears weight on the hand. The rig's
+    // wrist `flexion` channel rotates about the bone's local x, so x has to be
+    // the axis through the knuckles for flexion to bend the palm towards the
+    // forearm. Built the other way round - breadth along z, as this first was -
+    // flexion becomes sideways deviation instead, and no combination of joint
+    // angles can lay the palm flat: `all_fours` rendered with both hands
+    // standing on edge like a chop, thumbs out sideways. The foot uses the same
+    // convention, breadth across x, which is what makes ankle flexion plantar-
+    // flex rather than waggle.
+    //
+    // Stacking flattened pills down the hand instead - which is what this was
+    // first - renders as a string of visibly separate pads, because
+    // consecutive pills only ever meet near a point and the blend has nothing
+    // to work with there.
+    //
+    // There are *three* rails rather than two for a reason worth stating: with
+    // two, breadth = separation + 2r while overlap demands separation <= 2r, so
+    // breadth can never exceed 4r and a 0.044 H hand is stuck at 0.022 H thick.
+    // Pushed to that ceiling the rails meet in a razor-thin lens, and a thin
+    // sharply-curved sheet is the one shape dual contouring samples badly - it
+    // cost inverted triangles at 20mm and nearly doubled the worst surface
+    // error. A middle rail lifts the ceiling to 6r, which buys deep overlaps at
+    // the true breadth *and* the true thickness at once.
+    const sign = suffix === "l" ? 1 : -1;
+    for (const rail of [-1, 0, 1]) {
+      cone(
+        `hand_${suffix}`,
+        group,
+        [rail * 0.012, 0.042, 0],
+        0.0100,
+        [rail * 0.009, -0.040, 0],
+        0.0090,
+        0.012,
+        { soft: true }
+      );
+    }
+    // The thumb leaves the radial side - lateral, so +x on the left, which is
+    // the side `sign` already names - low on the palm where its joint is, and
+    // angled a little palmar so it opposes the fingers rather than lying in
+    // line with them. Palmar is -z: that is what makes the palm face the floor
+    // in `all_fours` rather than the ceiling, and since the rest of the hand is
+    // symmetric about z the thumb is the only thing that says which side is
+    // which.
+    cone(
+      `hand_${suffix}`,
+      group,
+      [sign * 0.016, 0.010, -0.004],
+      0.0108,
+      [sign * 0.026, -0.012, -0.012],
+      0.0096,
+      0.012,
       { soft: true }
     );
   }
@@ -283,16 +380,100 @@ export function buildBodyVolumes(skeleton, { bust } = {}) {
     // the leg reads as a peg; this puts the bulge back where it belongs, high
     // on the shank and towards the rear.
     ball(`knee_${suffix}`, group, [0, -0.062, -0.014], girthR(0.175, 0.162), 0.025);
-    limb(
-      `ankle_${suffix}`,
-      group,
-      [0, -0.012, -0.012],
-      girthR(0.136, 0.129),
-      [0, -0.026, 0.100],
-      girthR(0.115, 0.110),
-      0.018,
-      { soft: true }
-    );
+    // --- foot ---
+    // What used to be here was one cone from the ankle to z = 0.100: a sausage
+    // with no heel behind the leg, no flat sole and no toes.
+    //
+    // A foot is 0.152 H long, 0.055 H broad and sits on a *flat* sole 0.039 H
+    // below the ankle joint - which is exactly `P.ankleHeight`, so getting the
+    // sole right is what makes a standing figure stand rather than hover or
+    // sink. Every y below is paired with its radius so that `y - r` is -0.039
+    // for each piece, which is what makes the sole planar instead of a row of
+    // scallops.
+    //
+    // Foot radii are divided by the girth scale so `cone` multiplies it back
+    // out: shoe size does not track body mass, and letting it would tilt the
+    // sole, since these y offsets are not scaled to match.
+    const flat = (r) => r / g;
+    // Malleoli, bridging the shank into the foot.
+    ball(`ankle_${suffix}`, group, [0, -0.010, -0.004], flat(0.019), 0.016);
+    // Three rails again, heel to toe, for the same reason as the hand: two
+    // rails cap breadth at 4r, which at an honest 0.055 H forefoot forces a
+    // 0.028 H thickness and leaves the rails meeting in a thin sharply-curved
+    // sheet that dual contouring cannot sample. A middle rail lifts the cap to
+    // 6r, so the forefoot gets its real breadth and a real thickness together.
+    //
+    // The outer rails' spread opens from heel to forefoot, which is the whole
+    // difference between a heel breadth of 0.038 H and a forefoot of 0.055 H,
+    // and the radius shrinks along the way because toes are thinner than a
+    // heel.
+    //
+    // Each end pairs its height with its radius so that `y - r` is -0.039 at
+    // both, and a round cone interpolates centre and radius linearly - so
+    // `y - r` is that constant the whole length and the sole comes out
+    // genuinely planar rather than scalloped. The whole foot sits on `ankle_*`
+    // rather than being split at `toe_*`: nothing ever poses the toe joint, it
+    // is only an IK tip, and splitting there buys a seam for nothing.
+    for (const rail of [-1, 0, 1]) {
+      cone(
+        `ankle_${suffix}`,
+        group,
+        [rail * 0.004, -0.024, -0.027],
+        flat(0.015),
+        [rail * 0.0135, -0.025, 0.095],
+        flat(0.014),
+        0.018,
+        { soft: true }
+      );
+    }
+  }
+
+  // --- anatomy ----------------------------------------------------------
+  // Genital geometry, on the pelvis, gated by `anatomy` so a caller that only
+  // wants proportions can switch it off. On by default, because this system
+  // exists to judge how two bodies fit together and leaving it out moves the
+  // contacted surface by a couple of centimetres exactly where the judgement
+  // matters. Every piece is `soft`, so the narrowphase gives it the 18mm
+  // compression budget rather than the 10mm default.
+  //
+  // Crotch height is 0.475 H and the pelvis bone sits at 0.530 H, which puts
+  // the pubic arch at y = -0.055 in pelvis-local space. Everything here is
+  // placed from that line.
+  if (anatomy) {
+    // Mons pubis, on every body type. It is what carries the front of the
+    // pelvis down into the crotch instead of leaving a crease across it.
+    //
+    // Blends throughout this block are kept to roughly half the radius of the
+    // piece they belong to. These are the smallest features on the body, and a
+    // `smoothMin` whose k approaches r does not soften a form, it dissolves it
+    // - the same mistake that once flattened the bust into pectorals.
+    ball("pelvis", GROUP.TORSO, [0, -0.048, 0.044], female ? 0.024 : 0.021, 0.012, {
+      soft: true,
+    });
+    if (male) {
+      cone(
+        "pelvis",
+        GROUP.TORSO,
+        [0, -0.058, 0.048],
+        0.0130,
+        [0, -0.098, 0.054],
+        0.0115,
+        0.008,
+        { soft: true }
+      );
+      ball("pelvis", GROUP.TORSO, [0, -0.078, 0.034], 0.0190, 0.010, { soft: true });
+    } else if (female) {
+      cone(
+        "pelvis",
+        GROUP.TORSO,
+        [0, -0.056, 0.034],
+        0.0140,
+        [0, -0.072, 0.022],
+        0.0105,
+        0.008,
+        { soft: true }
+      );
+    }
   }
 
   // Precompute which pairs are authored to overlap, so the narrowphase never

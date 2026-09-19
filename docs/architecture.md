@@ -27,7 +27,7 @@ One direction, no loops between stages, no stage reaching backwards:
         │
         ▼
   ┌───────────────┐   src/core/body.js
-  │   volumes     │   31 round cones per body, posed into world space
+  │   volumes     │   ~48 round cones per body, posed into world space
   └───────────────┘
         │
         ▼

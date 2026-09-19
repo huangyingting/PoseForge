@@ -18,7 +18,7 @@ Read in this order:
 
 ## The one-paragraph version
 
-A body is 31 round cones. Their smooth union is a signed distance field. That
+A body is ~48 round cones. Their smooth union is a signed distance field. That
 one field is the rendered surface, the collision geometry and the ambient
 occlusion source — not three approximations of each other, the same function.
 Text is parsed into a scene spec; postures supply joint angles and a support

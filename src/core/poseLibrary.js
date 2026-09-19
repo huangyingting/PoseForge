@@ -245,7 +245,7 @@ export const POSTURES = {
     rootHeight: 0.26,
     supports: [{ landmark: "knee", side: "l" }, { landmark: "knee", side: "r" }],
     joints: {
-      ...legs({ flexion: 6, abduction: 8 }, { flexion: 104 }, { flexion: -32 }),
+      ...legs({ flexion: 6, abduction: 8 }, { flexion: 104 }, { flexion: -45 }),
       ...arms({ flexion: 10, abduction: 12 }, { flexion: 24 }),
       ...spine({ flexion: 1 }),
     },
@@ -258,7 +258,7 @@ export const POSTURES = {
     rootHeight: 0.17,
     supports: [{ landmark: "shin", side: "l" }, { landmark: "shin", side: "r" }],
     joints: {
-      ...legs({ flexion: 22, abduction: 10 }, { flexion: 138 }, { flexion: -38 }),
+      ...legs({ flexion: 22, abduction: 10 }, { flexion: 138 }, { flexion: -45 }),
       ...arms({ flexion: 12, abduction: 14 }, { flexion: 30 }),
       ...spine({ flexion: 2 }),
     },
@@ -271,7 +271,7 @@ export const POSTURES = {
     rootHeight: 0.30,
     supports: [{ landmark: "knee", side: "l" }, { landmark: "knee", side: "r" }],
     joints: {
-      ...legs({ flexion: 45, abduction: 40 }, { flexion: 118 }, { flexion: -12 }),
+      ...legs({ flexion: 45, abduction: 40 }, { flexion: 118 }, { flexion: -45 }),
       ...arms({ flexion: 22, abduction: 18 }, { flexion: 44 }),
       ...spine({ flexion: 3 }),
     },
@@ -289,8 +289,14 @@ export const POSTURES = {
       { landmark: "hand", side: "r" },
     ],
     joints: {
-      ...legs({ flexion: 82, abduction: 10 }, { flexion: 92 }, { flexion: -16 }),
-      ...arms({ flexion: 78, abduction: 12 }, { flexion: 10 }, { flexion: 22 }),
+      ...legs({ flexion: 82, abduction: 10 }, { flexion: 92 }, { flexion: -45 }),
+      // A hand bearing weight is pronated and extended, and it needs both: the
+      // forearm rolls so the wrist hinge lies across the body, then the wrist
+      // extends so the palm lies flat while the forearm stays vertical. Roll
+      // alone cannot do it - in this posture the forearm is near vertical, so
+      // rolling about it sweeps the palm around the horizontal and never down.
+      // Without these the palms stood on edge with the thumbs out sideways.
+      ...arms({ flexion: 78, abduction: 12 }, { flexion: 10, rotation: -75 }, { flexion: 75 }),
       ...spine({ flexion: -2 }, { flexion: 26 }, { flexion: 14 }),
     },
   },
@@ -307,7 +313,7 @@ export const POSTURES = {
       { landmark: "forearm", side: "r" },
     ],
     joints: {
-      ...legs({ flexion: 88, abduction: 12 }, { flexion: 96 }, { flexion: -18 }),
+      ...legs({ flexion: 88, abduction: 12 }, { flexion: 96 }, { flexion: -45 }),
       ...arms({ flexion: 92, abduction: 16 }, { flexion: 72 }, { flexion: 16 }),
       ...spine({ flexion: -4 }, { flexion: 34 }, { flexion: 16 }),
     },

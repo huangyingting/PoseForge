@@ -83,12 +83,28 @@ scales with the cube of resolution.
 
 | resolution | vertices | triangles | build | mean error | worst |
 |---|---|---|---|---|---|
-| 20mm | 5,338 | 10,676 | 147ms | 0.59mm | 8.18mm |
-| **12mm** (default) | 14,919 | 29,836 | 334ms | 0.21mm | 2.85mm |
-| 8mm | 33,586 | 67,168 | 695ms | 0.09mm | 1.05mm |
+| 20mm | 5,681 | 11,364 | 199ms | 0.59mm | 10.29mm |
+| **12mm** (default) | 15,792 | 31,580 | 471ms | 0.22mm | 2.79mm |
+| 8mm | 35,548 | 71,092 | 1070ms | 0.10mm | 1.22mm |
 
-Across all 18 postures at 12mm: worst surface error 2.51mm, every mesh closed
+Across all 18 postures at 12mm: worst surface error 3.82mm, every mesh closed
 and outward-facing.
+
+Error tracks the **smallest feature on the body**, not the quality of the
+mesher. A triangle's centroid sags off a curved surface by roughly
+`edge^2 / 8r`, so whatever is sharpest sets the worst number. Hands, feet and
+genital geometry carry radii of 12-25mm against a 12mm cell; before they
+existed nothing on the body was tighter than a wrist at ~35mm, which is the
+whole of the difference between the 2.51mm this table used to report and the
+3.82mm it reports now. Halving the cell to 8mm takes it to 1.22mm.
+
+The thumb is a worked example. Built at a 12mm tip radius it alone drove the
+12mm worst error from 3.02mm to 4.37mm. Rebuilt blunter, at 16mm, it reads
+better *and* measures 2.79mm - below the no-thumb figure, because the thicker
+cone also fills the crevice where the thumb meets the palm. Shrinking the blend
+radius to match these small features was tried first and made things worse: a
+small `k` leaves sharp concave creases between the rails that make up a hand,
+and a crease is high curvature too.
 
 At coarse resolutions a handful of triangles can pinch — one edge shared by two
 sheets of surface that happened to pass through the same cell. This is the
@@ -98,11 +114,11 @@ fails while the known residue does not.
 
 ## Sampling the field efficiently
 
-A body is ~31 primitives, but no point is near more than a handful. The naive
+A body is ~48 primitives, but no point is near more than a handful. The naive
 loop spends its whole time proving that an ankle is far from an ear.
 
 `sampleField` bins primitives into 8³ blocks by their padded bounds first. The
-inner loop then evaluates ~5 round cones instead of 31, and blocks no primitive
+inner loop then evaluates a handful of round cones rather than all, and blocks no primitive
 reaches are skipped outright rather than sampled and discarded.
 
 The subsets keep volumes in their **original order**, because `bodyDistance`

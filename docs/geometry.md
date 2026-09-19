@@ -95,6 +95,21 @@ These are calibrated against `scripts/measure-body.mjs`, which measures the
 inflation accumulates with the number of overlapping primitives — five meet at
 the hip — so generous blending there costs centimetres of silhouette.
 
+**A blend radius must be small against the feature it blends.** `smoothMin`'s
+`k` does not soften a form when it approaches that form's own radius — it
+dissolves it. A breast authored as a 0.040 H sphere with a 0.03 H blend is `k`
+at three quarters of `r`, and the female figure came out with flat pectorals.
+Cutting the blend to roughly a third of the radius keeps the join soft and the
+shape present. The same mistake, made again on the genital geometry and the
+hands, produced the same result both times.
+
+That bug also hid another one. The oversized bust blend had been inflating the
+surface at shoulder level as a side effect, so the chest depth *looked* close to
+the anthropometric target while actually being authored 20mm short — for **both**
+body types, not just the one with the blend. Fixing the blend exposed it. A
+measurement propped up by an unrelated defect is worth more suspicion than a
+measurement that is simply wrong.
+
 ## The torso trick
 
 A torso is not round. But every primitive has to stay circular in
@@ -109,6 +124,53 @@ individually stays circular and exact.
 The useful side effect is that sections are authored as **breadth and depth**,
 the same terms anthropometric tables use, so they can be checked directly
 against a measurement of the rendered surface instead of tuned by eye.
+
+## Flattened parts: three rails
+
+The same constraint bites harder on a hand, a foot or a skull. A round cone is
+circular across its axis, so one of them cannot be a flattened shape at all: it
+has two numbers, length and radius, where a paddle needs three.
+
+Rails give the third. Run several cones down the length of the part, spread
+across its width: the rail axis carries **length**, the spread between rails
+carries **breadth**, and the radius carries **thickness**. Stacking flattened
+pills down the part instead — the obvious first attempt — renders as a string
+of visibly separate pads, because consecutive pills only meet near a point and
+the blend has nothing to work with there.
+
+There are **three** rails, not two, and the reason is arithmetic. With two,
+breadth = separation + 2r, while overlapping at all demands separation ≤ 2r, so
+breadth can never exceed 4r. A 0.044 H hand is then stuck at 0.022 H thick, and
+pushed to that ceiling the rails meet in a razor-thin lens. A thin sharply
+curved sheet is the one shape dual contouring samples badly — it cost inverted
+triangles at 20mm and nearly doubled the worst surface error. A middle rail
+lifts the ceiling to 6r, which buys deep overlaps at the true breadth *and* the
+true thickness together.
+
+The skull uses the same idea rotated: a capsule spanning **z** is circular in x
+and y, so 2r sets the breadth across the head while the span sets the depth
+independently. Head breadth is 0.089 H, length front to back 0.114 H and height
+0.130 H — three numbers a sphere can satisfy at most one of, which is most of
+why a ball on a neck reads as an egg on a stick.
+
+### Which local axis carries the breadth is not a free choice
+
+It has to match the rig's joint axes, and getting it wrong is invisible until
+something bears weight. The wrist's `flexion` channel rotates about the bone's
+local **x**, so x must be the axis through the knuckles for flexion to bend the
+palm towards the forearm. Built the other way round — breadth along z — flexion
+becomes sideways deviation instead, and *no* combination of joint angles can
+lay the palm flat: `all_fours` rendered with both hands standing on edge like a
+chop, thumbs out sideways. The foot follows the same convention, breadth across
+x, which is what makes ankle flexion plantarflex rather than waggle.
+
+### A flat sole
+
+Pairing each cone end's `y` with its `r` so that `y − r` is the same constant at
+both ends makes the sole genuinely planar, because a round cone interpolates
+centre and radius linearly — so `y − r` holds that constant the whole length
+rather than scalloping between the ends. The constant is `−P.ankleHeight`,
+which is what makes a standing figure stand rather than hover or sink.
 
 ## The two documented approximations
 

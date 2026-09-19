@@ -28,7 +28,7 @@ surface rather than a pile of primitives.
 | | `../SexPoses` | here |
 |---|---|---|
 | **Input** | pick one of 9 authored poses | free text, English or Chinese |
-| **Body geometry** | separate three.js sphere and capsule meshes | one signed distance field over 31 round cones |
+| **Body geometry** | separate three.js sphere and capsule meshes | one signed distance field over ~48 round cones |
 | **Collision proxy** | 3 ellipsoids per body (torso, hips, head), unrelated to what is drawn | the drawn surface itself |
 | **What can collide** | limb endpoints and 1–2 samples along each limb, against those 3 ellipsoids | every volume against every volume, including torsos |
 | **Surface** | primitives interpenetrating at the joints | watertight manifold isosurface, no visible seams |
@@ -48,10 +48,11 @@ it touches the hip you can see.
 
 ## The unified field
 
-A body is 31 **round cones** — a cone with a sphere at each end, the exact
+A body is 47–49 **round cones** — a cone with a sphere at each end, the exact
 shape a limb segment wants — sized from anthropometric fractions of stature.
-`roundConeDistance` in `src/core/body.js` is an *exact* signed distance, not a
-bound, which is what makes the whole architecture affordable:
+The count varies with body type, because the bust and the genital geometry are
+per-type. `roundConeDistance` in `src/core/body.js` is an *exact* signed
+distance, not a bound, which is what makes the whole architecture affordable:
 
 - **Rendering**: sphere tracing can step the full distance without overshooting.
 - **Meshing**: one Newton step along the gradient puts a vertex on the surface.
@@ -121,16 +122,28 @@ Measured on a standing female (`node scripts/validate-mesh.mjs`):
 
 | resolution | vertices | triangles | build | mean error | worst |
 |---|---|---|---|---|---|
-| 20mm | 5,338 | 10,676 | 147ms | 0.59mm | 8.18mm |
-| 12mm *(default)* | 14,919 | 29,836 | 334ms | 0.21mm | 2.85mm |
-| 8mm | 33,586 | 67,168 | 695ms | 0.09mm | 1.05mm |
+| 20mm | 5,681 | 11,364 | 199ms | 0.59mm | 10.29mm |
+| 12mm *(default)* | 15,792 | 31,580 | 471ms | 0.22mm | 2.79mm |
+| 8mm | 35,548 | 71,092 | 1070ms | 0.10mm | 1.22mm |
 
 Vertex relaxation — one Newton step onto the true surface — is what buys the
-accuracy: at 12mm it more than halves mean error, from 0.49mm to 0.21mm. It is
-not free — it costs about 86% on top of the build (152ms → 284ms), which is the
-main reason meshing runs in a Web Worker rather than on the main thread. Across
-all 18 postures at 12mm the worst surface error is 2.51mm and every mesh is
-closed and outward-facing.
+accuracy: at 12mm it more than halves mean error, from 0.49mm to 0.22mm. It is
+not free — it costs about 86% on top of the build, which is the main reason
+meshing runs in a Web Worker rather than on the main thread. Across all 18
+postures at 12mm the worst surface error is 3.82mm and every mesh is closed and
+outward-facing.
+
+**Error tracks the smallest feature, not the mesher.** A triangle's centroid
+sags off a curved surface by roughly `edge² / 8r`, so the sharpest thing on the
+body sets the worst number. Hands, feet and genital geometry have radii of
+12–25mm against a 12mm cell, where the old handless, heelless body had nothing
+tighter than a wrist — which is the whole of the difference between the 2.51mm
+this used to report and the 3.82mm it reports now. Halving the cell to 8mm
+takes it to 1.22mm. It is resolution-limited detail rather than a defect, and
+it stays well inside the solver's 10mm compression budget either way.
+
+At 20mm a few triangles do come out inverted, because features that size are
+below the cell. The per-posture pass at 12mm gates on that and is clean.
 
 Meshing runs off the main thread, so typing never blocks the viewport.
 
@@ -189,20 +202,30 @@ way instead of wherever the seeding lands them. Out-of-reach targets report
 ```
 npm test                        # 108 tests across 8 files
 node scripts/validate-text.mjs      # 34/34 parsed as expected, 34/34 geometrically sound
-node scripts/validate-scenes.mjs    # 126/156 sound, worst penetration 91mm, 8s
-node scripts/validate-postures.mjs  # all postures within tolerance, worst support gap 13mm
-node scripts/validate-mesh.mjs      # all meshes closed and outward, worst error 2.51mm
+node scripts/validate-scenes.mjs    # 122/156 sound, worst penetration 104mm, 13s
+node scripts/validate-postures.mjs  # all postures within tolerance, worst support gap 30mm
+node scripts/validate-mesh.mjs      # all meshes closed and outward, worst error 3.82mm
 ```
 
 The validators are the part worth trusting. They pose real bodies and measure
 geometry — support gaps, penetration depth, unmet contacts, surface error,
 Euler characteristic — rather than checking that functions return values.
 
-**Known residuals.** `validate-scenes` reports 30 of 156 scene variants as not
-fully sound: residual penetration peaks at 91mm in `rear_alignment`, 55mm in
-`face_to_face` and 42mm in `head_to_toe`, and the `head_to_toe` pair leaves its
-head↔pelvis contacts unclosed. These are reported, not hidden — every unmet
-contact appears in the solve result and is printed by both the CLI and the app.
+**Known residuals.** `validate-scenes` reports 34 of 156 scene variants as not
+fully sound: residual penetration peaks at 104mm in `straddle_lap`, 103mm in
+`over_supine` and 101mm in `rear_alignment`. These are reported, not hidden —
+every unmet contact appears in the solve result and is printed by both the CLI
+and the app.
+
+The worst support gap is 30mm, in `inverted`: the skull reaches the rig's own
+`headTop` now that it is a head rather than a ball, so in a shoulder stand the
+head touches the floor first and the shoulders sit above it. That is the
+posture being right, not the seating being wrong.
+
+Kneeling postures cannot lay the instep flat on the floor. Doing so needs about
+90° of plantarflexion — a shin flat on the ground and a foot in line with it —
+and the ankle's range of motion is 45°, which is already at the clinical limit.
+The feet trail at an angle instead, which is what a tucked-toe kneel looks like.
 
 ---
 
@@ -265,10 +288,21 @@ and rejected:
 
 ## Scope
 
-Figures are rendered as **unclothed mannequins**: anthropometric proportions,
-smooth surfaces, no genital or facial detail. `buildBodyVolumes` takes a `bust`
-parameter and nothing else anatomical. The reference system models explicit
-anatomy (`createAdultAnatomy` in `../SexPoses/src/fullBodyRig.js`); this one
-deliberately does not, because none of it is load-bearing for the problem the
-system solves — which is whether two bodies are positioned correctly relative to
-each other.
+Figures are **unclothed anatomical mannequins**: anthropometric proportions,
+smooth surfaces, hands with thumbs, feet with heels and a flat sole, and
+genital geometry appropriate to the body type. There is no facial detail — the
+head is a skull shape with a jaw and chin, and nothing else.
+
+`buildBodyVolumes` takes `bust` and `anatomy`. `anatomy` is **on by default**,
+and that is a deliberate reversal: this system exists to judge how two bodies
+fit together, and leaving the anatomy out moves the contacted surface by a
+couple of centimetres exactly where the judgement matters. Every piece of it is
+marked `soft`, so the narrow phase gives it the 18mm compression budget rather
+than the 10mm default. A caller that only wants proportions can pass
+`anatomy: false`.
+
+The reference system models the same thing (`createAdultAnatomy` in
+`../SexPoses/src/fullBodyRig.js`), but as separate meshes that nothing collides
+against. Here it is part of the one field, so it is drawn and collided
+identically — which is the whole argument of this rebuild applied to the part
+of the body the problem is actually about.

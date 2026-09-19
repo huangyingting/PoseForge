@@ -83,12 +83,12 @@ Every posture on every surface, alone. Measures the gap between each declared
 support and the plane it wants, plus self-penetration.
 
 ```
-worst support gap 13mm   worst self-penetration 2mm
+worst support gap 30mm   worst self-penetration 2mm
 all postures within tolerance
 ```
 
 This is the validator that catches a two-height mistake: `bent_over_support` on
-a `table` must report `chest = 0mm` against 750mm and `foot = 2mm` against 0.
+a `table` must report `chest = 0mm` against 750mm and its feet against 0.
 
 ### `validate-scenes.mjs`
 
@@ -96,7 +96,7 @@ a `table` must report `chest = 0mm` against 750mm and `foot = 2mm` against 0.
 surfaces and body types.
 
 ```
-126/156 sound   worst penetration 91mm   unmet contacts 91 (all reported)   8.2s
+122/156 sound   worst penetration 104mm   unmet contacts 84 (all reported)   12.8s
 ```
 
 ### `validate-mesh.mjs`
@@ -105,7 +105,7 @@ A resolution sweep plus every posture at 12mm. Checks manifoldness, winding,
 and surface error against the field the mesh came from.
 
 ```
-worst surface error 2.51mm
+worst surface error 3.82mm
 all meshes closed and outward
 ```
 
@@ -120,10 +120,13 @@ the point.
 
 | | |
 |---|---|
-| 30 of 156 scene variants not fully sound | worst residual penetration: `rear_alignment` 91mm, `face_to_face` 55mm, `head_to_toe` 42mm |
+| 34 of 156 scene variants not fully sound | worst residual penetration: `straddle_lap` 104mm, `over_supine` 103mm, `rear_alignment` 101mm |
 | `head_to_toe` head↔pelvis contacts | never close |
 | `bodyDistance` is order-dependent | two orderings differ by at most the blend tolerance, but they do differ |
 | pinched edges at coarse resolution | ~2 per 50,000 edges at 12–20mm, none at 8mm |
+| `inverted` support gap 30mm | the skull now reaches the rig's own `headTop`, so a shoulder stand rests on the head and the shoulders sit above it |
+| kneeling postures cannot lay the instep flat | needs ~90° of plantarflexion; the ankle's range is 45°, already at the clinical limit. The feet trail at an angle, as in a tucked-toe kneel |
+| worst surface error is set by the smallest feature | 3.82mm at a 12mm cell, 1.22mm at 8mm. Hands, feet and genital geometry have radii of 12–25mm; nothing on the body used to be tighter than a wrist |
 
 Every unmet contact appears in the solve result with a reason and a residual
 gap, and both the CLI and the webapp print the count. None of these is silent.
