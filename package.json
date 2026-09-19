@@ -1,0 +1,20 @@
+{
+  "name": "poseforge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Text-driven 3D human interaction posing, collision-aware solving, and 2D image export.",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "node --test \"tests/**/*.test.js\"",
+    "render": "node scripts/render-cli.mjs"
+  },
+  "dependencies": {
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "vite": "^7.1.7"
+  }
+}

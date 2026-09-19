@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Vite build output. Reproducible with `npm run build`, and three.js makes it
+# large enough that committing it would dominate the history.
+dist/
+
+# Renders. `scripts/render-cli.mjs` writes pose.png by default, so working on
+# the renderer leaves these lying around; they are output, not source.
+*.png
+*.svg
+!docs/**/*.png
+!docs/**/*.svg
+
+# Editor and OS noise
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Logs
+npm-debug.log*
+yarn-error.log*
