@@ -723,6 +723,15 @@ export function buildPanel(root, handlers) {
   }
 
   return {
+    showNotes() {
+      tabButtons[0].click();
+      diagnostics.details.open = true;
+      const target =
+        root.querySelector(".contact-result.warning") ?? diagnostics.details;
+      target.scrollIntoView({ block: "center", behavior: "auto" });
+      target.tabIndex = -1;
+      target.focus({ preventScroll: true });
+    },
     /** Put text in the box without triggering a re-solve. */
     setText(text) {
       input.value = text;

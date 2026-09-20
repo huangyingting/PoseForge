@@ -122,3 +122,27 @@ standing gestures, body proportions, grounded limbs and missing-model behavior.
 Measure before and after gaps and collision residuals. Run the existing tests
 and browser authoring/export flows; inspect final renders and document remaining
 accuracy limits rather than weakening the checks to fit the implementation.
+
+## Catalog coverage, previews and touch input
+
+The existing twelve named definitions in `src/nlp/archetypes.js` are part of
+the product's vocabulary and should be discoverable in the library. Adapt those
+definitions directly into versioned presets, preserving their postures, relative
+facing, surfaces and contacts. Use clothed studio appearances and the existing
+labels/aliases. Keep one source of truth; adding a named definition must not
+require a second hand-maintained scene. Audit their geometry and expose unresolved
+constraints rather than calling every load a successful physical solution.
+
+Catalog diagrams should project one solved scene: figures share a scale and
+coordinate system, so arrangement, facing, contacts and support props are visible.
+Compute these joint diagrams off the main thread. Cache by scene intent, ignore
+stale results and unsubscribe removed cards. Reuse the viewport's final pose for
+selected/saved scenes. If preview generation is unavailable, provide a labeled
+authored-pose fallback without blocking the library or viewport.
+
+Add two-pointer pinch zoom and accessible zoom-in/out buttons. One pointer
+orbits; two pointers zoom. Switching between one and two pointers, cancellation,
+lost capture and a third touch must not make the camera jump. Preserve wheel and
+keyboard behavior and browser page zoom outside the canvas. Verify 320/390-pixel
+layouts, actual browser touch events, all camera controls, named-preset migration,
+and the preview lifecycle.

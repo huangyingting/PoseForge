@@ -68,6 +68,7 @@ src/core/          no dependencies, runs in plain Node
   meshDistance.js  triangle distance and bounding-volume hierarchy
   surfaceContacts.js  visible-region queries, constrained refinement, cancellation
   catalog.js       portable presets and strict interchange validation
+  posePreview.js   stable scene keys, solved joint snapshots and shared projection
   poseLibrary.js   authored postures, arrangements and support surfaces
   scene.js         scene validation and repair
   solver.js        seating, arrangement, the annealed contact loop
@@ -85,6 +86,7 @@ src/render/
 
 src/workers/
   bodyWorker.js    validate + solve + refine + mesh off the main thread
+  previewWorker.js base solves for visible catalog diagrams, independent of rendering
 
 src/app/
   main.js          one thread of control: panel → worker → viewport → export
@@ -93,6 +95,8 @@ src/app/
   studioUI.js      library, filters, dialogs and export choices
   libraryStore.js  atomic browser persistence for saved presets/favorites
   diagram.js       schematic joint previews
+  previewService.js queued preview work, bounded cache and stale-result protection
+  cameraInput.js   pointer/pinch, wheel and keyboard camera input
 
 scripts/           no dependencies
   render-cli.mjs   software rasteriser: z-buffer, shadow map, zlib PNG
@@ -255,3 +259,21 @@ paths draw through the same code:
 `indices` and the eyes' baked `occlusion` belong to the cached template and are
 the same arrays every time, so they are **copied** before transfer — giving them
 away would detach the template and every later pose would come back empty.
+
+## Catalog previews
+
+The reference studies and named archetypes feed one catalog. Named entries are
+adapted directly from their definitions, including relative facing and contacts;
+the parser and catalog contracts are checked together. Original data is not
+duplicated into a second manually maintained preset table.
+
+`previewWorker.js` solves diagram jobs independently of the expensive body worker.
+Cards share one projection and scale across all actors and props. Visible cards
+subscribe lazily; the selected card subscribes immediately. Cache keys normalize
+scene intent and omit display metadata and camera changes. Cache entry count and
+key storage are bounded, and filtered/deleted cards release their subscriptions.
+
+The body worker also emits a small snapshot of its final rig. This replaces the
+base diagram for the same intent and is reused when saving a copy. Late base
+replies cannot downgrade it, including after cache eviction. A failed preview
+worker leaves labeled authored-pose fallbacks and does not affect the main solve.

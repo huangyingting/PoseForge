@@ -1,17 +1,40 @@
 # Building a pose library
 
-Choose a study in **Explore**, use **Figures** to change body type, height,
+Choose an entry in **All** or browse the existing named definitions in **Positions**.
+Use **Figures** to change body type, height,
 build, clothing, hands, feet and individual joints, then choose **Save preset**.
 Give it a name, category and optional comma-separated tags. Categories do not
-need to exist first. Saved studies appear in **My presets**; the star button
+need to exist first. Saved studies appear in **Saved**; the star button
 adds any study to **Favorites**. Search matches names, descriptions, tags,
 categories and posture names together.
+
+The catalog combines eleven reference studies and twelve definitions adapted
+directly from `src/nlp/archetypes.js`, with clothed studio appearances. Original
+aliases remain searchable. Some inherited definitions have unresolved geometry;
+**Pose notes** badges and the viewport's **Pose checks** shortcut make that visible.
+Loading successfully does not mean every physical constraint was satisfied.
+
+Diagrams use shared world coordinates from a solve, including props, relative
+height, facing and contact placement. They are prepared in a separate worker as
+cards enter view. A selected scene supplies its final refined pose, which also
+warms the preview for a saved copy. Worker failure leaves an explicitly labeled
+authored-pose fallback; it does not prevent opening or editing the scene.
+
+On the canvas, drag one pointer to orbit or pinch two fingers to zoom. Zoom buttons,
+named views and **Fit figures** are also available on narrow screens. Arrow keys
+orbit, plus/minus zoom and F fits the scene when the canvas is focused. Camera
+gestures do not change the pose. Browser page zoom remains available.
 
 Opening **Save preset** on one of your studies lets you rename it, update its
 current scene, save an independent copy, or delete it with confirmation.
 Built-ins cannot be overwritten or deleted. Undo and redo restore scene edits
 within the current session. They do not undo library deletion; export a backup
 before deleting valuable studies.
+
+A catalog caption is separate from the description used as a text command.
+Editing a saved caption does not overwrite that command. Unread input warnings
+remain visible through rendering and a draft reload; applying text replaces the
+pose intent, while structured figure/contact controls edit the scene directly.
 
 Your library and current workspace are stored in this browser. They are not
 an account or a cloud backup. **Export library** downloads all saved studies;
@@ -132,12 +155,13 @@ write. The tolerant natural-language parser remains a separate input path.
 
 ## Extending the application
 
-Add bundled preset data to `BUILTIN_PRESETS` in `src/core/catalog.js`; no UI
-branch is needed. Each entry stores a complete scene, so it does not rely on
-future parser behavior. The cards derive schematic diagrams from the same rig
-and joint data, before placement and contact solving. The 3D viewport is the
-authoritative solved representation. Run `npm test` to validate new presets'
-geometry as well as their schema.
+Add reference data to `STUDIO_PRESETS` in `src/core/catalog.js`, or add a named
+definition to `src/nlp/archetypes.js`. `presetFromArchetype` adapts the latter
+without reparsing its display title; the combined immutable `BUILTIN_PRESETS`
+feeds the UI and CLI. Each catalog entry stores a complete scene. Run `npm test`
+for schema/parity/regression checks and the geometry validators for pose quality.
+The named-position audit is a separate acceptance gate and currently reports
+unresolved inherited cases.
 
 Adding a new underlying posture or arrangement is an engine extension: author
 its joint and support/contact contract in the pose library and verify it with

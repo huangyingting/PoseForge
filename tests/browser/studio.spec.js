@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { BUILTIN_PRESETS, serializeCatalog } from "../../src/core/catalog.js";
+import {
+  BUILTIN_PRESETS,
+  STUDIO_PRESETS,
+  serializeCatalog,
+} from "../../src/core/catalog.js";
 import { readFile } from "node:fs/promises";
 import AxeBuilder from "@axe-core/playwright";
 
@@ -21,13 +25,11 @@ test("long metadata fits narrow screens and keyboard selection preserves focus",
   preset.title = "Study".repeat(16);
   preset.description = "A calm reference study. ".repeat(20);
   preset.category = "Category".repeat(5);
-  await page
-    .locator("#catalog-file")
-    .setInputFiles({
-      name: "long.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(serializeCatalog([preset])),
-    });
+  await page.locator("#catalog-file").setInputFiles({
+    name: "long.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(serializeCatalog([preset])),
+  });
   const card = page.getByRole("button", {
     name: `Load ${preset.title}`,
     exact: true,
@@ -56,7 +58,7 @@ test("catalog, figure edits, undo, save, update, duplicate, reload and delete", 
   await ready(page);
   await expect(page.locator(".preset-name").first()).toBeInViewport();
   await page.getByLabel("Search presets").fill("kneel");
-  await expect(page.locator(".preset-card")).toHaveCount(3);
+  await expect(page.locator(".preset-card")).toHaveCount(6);
   await page.getByLabel("Category", { exact: true }).selectOption("Together");
   await expect(page.locator(".preset-card")).toHaveCount(1);
   await page.getByLabel("Search presets").fill("");
@@ -279,7 +281,7 @@ test("PNG, transparent PNG, SVG and editable preset downloads contain real outpu
   }
 });
 
-test("all bundled presets render, camera and material work, desktop has no overflow", async ({
+test("reference studies render, camera and material work, desktop has no overflow", async ({
   page,
 }, testInfo) => {
   const errors = [],
@@ -291,7 +293,7 @@ test("all bundled presets render, camera and material work, desktop has no overf
   page.on("requestfailed", (req) => failures.push(req.url()));
   await page.goto("/");
   await ready(page);
-  for (const preset of BUILTIN_PRESETS) {
+  for (const preset of STUDIO_PRESETS) {
     await load(page, preset.title);
     await expect(page.locator("#scene-title")).toHaveText(preset.title);
   }

@@ -1,5 +1,6 @@
 import { searchCatalog, MAX_PACK_BYTES } from "../core/catalog.js";
-import { poseDiagram } from "./diagram.js";
+import { authoredPreview, poseDiagram } from "./diagram.js";
+import { createPreviewService } from "./previewService.js";
 import { download } from "../render/exporters.js";
 import { newId } from "./ids.js";
 
@@ -72,6 +73,23 @@ function field(
 
 export function buildStudio(library, handlers) {
   const root = document.getElementById("library");
+  const previews = createPreviewService();
+  let previewCleanups = [];
+  const starts = new Map();
+  const observer =
+    typeof IntersectionObserver === "undefined"
+      ? null
+      : new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries)
+              if (entry.isIntersecting) {
+                observer.unobserve(entry.target);
+                starts.get(entry.target)?.();
+                starts.delete(entry.target);
+              }
+          },
+          { root, rootMargin: "160px" },
+        );
   let selected = "";
   let scope = "all";
   const count = element("span");
@@ -82,8 +100,9 @@ export function buildStudio(library, handlers) {
   });
   const scopes = element("div", { className: "library-scopes" });
   for (const [value, label] of [
-    ["all", "Explore"],
-    ["saved", "My presets"],
+    ["all", "All"],
+    ["named", "Positions"],
+    ["saved", "Saved"],
     ["favorites", "Favorites"],
   ]) {
     const node = button(
@@ -91,6 +110,7 @@ export function buildStudio(library, handlers) {
       () => {
         scope = value;
         refresh();
+        list.scrollTop = 0;
       },
       value === scope ? "active" : "",
     );
@@ -205,11 +225,17 @@ export function buildStudio(library, handlers) {
       file.value = "";
     }
   };
-  search.oninput = refresh;
-  category.onchange = refresh;
+  search.oninput = category.onchange = () => {
+    refresh();
+    list.scrollTop = 0;
+  };
 
   function refresh() {
     const focusedPreset = document.activeElement?.dataset.preset;
+    previewCleanups.forEach((cleanup) => cleanup());
+    previewCleanups = [];
+    observer?.disconnect();
+    starts.clear();
     const all = library.all();
     const oldCategory = category.value || "all";
     category.replaceChildren(
@@ -240,12 +266,19 @@ export function buildStudio(library, handlers) {
       choose.dataset.preset = preset.id;
       choose.setAttribute("aria-label", `Load ${preset.title}`);
       choose.setAttribute("aria-pressed", String(preset.id === selected));
+      const picture = element(
+        "span",
+        { className: "preset-preview", title: "Authored pose preview" },
+        [poseDiagram(authoredPreview(preset.scene))],
+      );
+      const previewNote = element("span", {
+        className: "preset-note",
+        id: newId("preview-note"),
+        textContent: "Preparing preview…",
+      });
+      choose.setAttribute("aria-describedby", previewNote.id);
       choose.append(
-        element(
-          "span",
-          { className: "preset-preview", title: "Schematic posture diagram" },
-          [poseDiagram(preset.scene)],
-        ),
+        picture,
         element("span", { className: "preset-info" }, [
           element("span", {
             className: "preset-name",
@@ -255,6 +288,7 @@ export function buildStudio(library, handlers) {
             className: "preset-meta",
             textContent: `${preset.scene.actors.length === 1 ? "Solo" : `${preset.scene.actors.length} figures`} · ${preset.category}`,
           }),
+          previewNote,
         ]),
       );
       const favorite = button(
@@ -285,6 +319,39 @@ export function buildStudio(library, handlers) {
           [choose, favorite],
         ),
       );
+      const start = () =>
+        previewCleanups.push(
+          previews.subscribe(preset.scene, (result) => {
+            if (result.preview) {
+              try {
+                picture.replaceChildren(poseDiagram(result.preview));
+                picture.title = "Solved pose diagram";
+                previewNote.textContent = result.preview.issues.length
+                  ? "Pose notes"
+                  : "";
+                previewNote.title = result.preview.issues.join(" · ");
+                previewNote.classList.toggle(
+                  "warning",
+                  result.preview.issues.length > 0,
+                );
+                return;
+              } catch {
+                /* Diagram failure must not break the studio. */
+              }
+            }
+            if (picture.querySelector("svg")?.dataset.basis === "refined")
+              return;
+            previewNote.textContent = "Preview unavailable";
+            previewNote.classList.remove("warning");
+            picture.title =
+              "Authored poses only. Load this preset to inspect it.";
+          }),
+        );
+      if (preset.id === selected) start();
+      else if (observer) {
+        starts.set(choose, start);
+        observer.observe(choose);
+      } else start();
     }
     if (!filtered.length)
       list.append(
@@ -412,7 +479,6 @@ export function buildStudio(library, handlers) {
             scene: {
               ...snapshot.scene,
               title: title.input.value,
-              description: description.input.value,
             },
           },
           event.submitter?.value === "update" ? snapshot.id : null,
@@ -437,9 +503,23 @@ export function buildStudio(library, handlers) {
   return {
     refresh,
     openSave,
+    setPreview(scene, preview) {
+      previews.remember(scene, preview);
+    },
+    dispose() {
+      observer?.disconnect();
+      starts.clear();
+      previewCleanups.forEach((cleanup) => cleanup());
+      previews.dispose();
+    },
     setSelected(id) {
+      const changed = selected !== id;
       selected = id;
       refresh();
+      if (changed)
+        list
+          .querySelector(".preset-card.selected")
+          ?.scrollIntoView({ block: "nearest" });
     },
   };
 }

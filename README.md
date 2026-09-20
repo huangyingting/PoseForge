@@ -1,9 +1,14 @@
 # PoseForge
 
-PoseForge now includes a responsive pose studio: a searchable library of eleven
-clothed reference studies, figure and joint editing, favorites, local saved
-presets, undo/redo, and portable JSON import/export. The center viewport has
-keyboard camera controls, natural and clay materials, and PNG/SVG export.
+PoseForge includes a responsive pose studio with 23 catalog entries: eleven
+clothed reference studies and the twelve existing named position definitions.
+The **Positions** collection makes those definitions searchable by their original
+English and Chinese aliases. Solved joint diagrams show the figures together,
+including their support props; pose notes identify unresolved geometry.
+
+Figure/contact editing, favorites, saved presets, undo/redo and JSON import/export
+let you build a personal library. The viewport supports drag/keyboard orbit,
+pinch/wheel/button zoom, natural and clay materials, and PNG/SVG export.
 
 Start from **New study**, name your figures, and use **Scene → Partner contacts**
 to author gestures with figure/body-part pickers and measured target feedback.
@@ -19,6 +24,8 @@ npm ci
 npm run dev
 npm test
 node scripts/validate-surface-contacts.mjs
+# Existing named definitions still have geometry issues; this audit reports them:
+node scripts/validate-named-presets.mjs
 npm run build
 npx playwright install chromium
 npm run test:browser
@@ -230,23 +237,30 @@ way instead of wherever the seeding lands them. Out-of-reach targets report
 
 ## Verification
 
+See [studio verification](docs/studio-verification.md) for current results,
+browser coverage, and the remaining acceptance gaps.
+
 ```
-npm test                        # 108 tests across 8 files
-node scripts/validate-text.mjs      # 34/34 parsed as expected, 34/34 geometrically sound
-node scripts/validate-scenes.mjs    # 122/156 sound, worst penetration 104mm, 13s
-node scripts/validate-postures.mjs  # all postures within tolerance, worst support gap 30mm
-node scripts/validate-mesh.mjs      # all meshes closed and outward, worst error 3.82mm
+npm test                                  # units, catalog and geometry regressions
+npm run test:browser                       # production-build interaction checks
+node scripts/validate-surface-contacts.mjs  # clothed visible-surface contact fixtures
+node scripts/validate-named-presets.mjs     # inherited named-preset quality gate
+node scripts/validate-text.mjs             # parser and geometry corpus
+node scripts/validate-scenes.mjs           # base-model scene sweep
+node scripts/validate-postures.mjs         # single-figure support constraints
+node scripts/validate-mesh.mjs             # topology and surface accuracy
 ```
 
 The validators are the part worth trusting. They pose real bodies and measure
 geometry — support gaps, penetration depth, unmet contacts, surface error,
 Euler characteristic — rather than checking that functions return values.
 
-**Known residuals.** `validate-scenes` reports 34 of 156 scene variants as not
-fully sound: residual penetration peaks at 104mm in `straddle_lap`, 103mm in
-`over_supine` and 101mm in `rear_alignment`. These are reported, not hidden —
-every unmet contact appears in the solve result and is printed by both the CLI
-and the app.
+**Known residuals.** The recorded base-model scene sweep reports 32 of 159
+variants as not fully sound, with a worst residual penetration of 63mm. The
+separate named-preset gate flags 10 of 12 inherited definitions for unresolved
+contacts, overlap or support gaps. These quality gates remain open despite
+passing structural and browser checks. Every unmet contact appears in the solve
+result, and both the CLI and app report unresolved constraints.
 
 The worst support gap is 30mm, in `inverted`: the skull reaches the rig's own
 `headTop` now that it is a head rather than a ball, so in a shoulder stand the

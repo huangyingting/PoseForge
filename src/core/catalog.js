@@ -4,7 +4,9 @@ import {
   POSTURE_NAMES,
   ARRANGEMENT_NAMES,
   SURFACE_NAMES,
+  resolveArrangement,
 } from "./poseLibrary.js";
+import { ARCHETYPES } from "../nlp/archetypes.js";
 import { HAIR_STYLES } from "./hair.js";
 import { GARMENT_COLOURS } from "./garments.js";
 import { HAND_SHAPE_NAMES } from "./handPose.js";
@@ -256,6 +258,7 @@ export function searchCatalog(
       .toLocaleLowerCase();
     return (
       (category === "all" || preset.category === category) &&
+      (scope !== "named" || preset.id.startsWith("builtin.named.")) &&
       (scope !== "saved" || preset.id.startsWith("user.")) &&
       (scope !== "favorites" || favorites.includes(preset.id)) &&
       words.every((word) => haystack.includes(word))
@@ -305,7 +308,7 @@ const preset = (
   },
 });
 
-export const BUILTIN_PRESETS = freeze([
+export const STUDIO_PRESETS = freeze([
   preset(
     "together",
     "Side by side",
@@ -419,3 +422,65 @@ export const BUILTIN_PRESETS = freeze([
     },
   ),
 ]);
+
+/** Adapt existing named definitions as data, without reparsing their titles. */
+export function presetFromArchetype(definition) {
+  const title = definition.id
+    .replace(/_/g, " ")
+    .replace(/^./, (c) => c.toUpperCase());
+  const baseYaw = resolveArrangement(definition.arrangement)?.yaw ?? 180;
+  const yaw = definition.facing
+    ? definition.facing === "away"
+      ? (baseYaw + 180) % 360
+      : baseYaw
+    : definition.yaw;
+  const checked = validateScene({
+    title,
+    description: definition.phrases[0],
+    actors: definition.actors.map((actor, index) => ({
+      ...actor,
+      id: `actor${index}`,
+      label: `Figure ${String.fromCharCode(65 + index)}`,
+      wearing: ["top", "shorts"],
+      outfit: index % 2 ? "navy" : "sage",
+    })),
+    relationship: {
+      arrangement: definition.arrangement,
+      ...(yaw != null ? { yaw } : {}),
+    },
+    support: { surface: definition.surface },
+    contacts: structuredClone(definition.contacts ?? []),
+    camera: { view: "three_quarter" },
+  });
+  if (checked.issues.length)
+    throw new Error(
+      `${definition.id}: ${checked.issues.map((issue) => issue.message).join(" ")}`,
+    );
+  const posture = definition.actors[0].posture;
+  const category =
+    definition.surface === "table" ||
+    definition.arrangement === "supported_lift"
+      ? "Supported"
+      : posture === "side_lying"
+        ? "Side-lying"
+        : ["supine", "prone", "reclined", "supine_legs_raised"].includes(
+              posture,
+            )
+          ? "Reclining"
+          : posture.startsWith("seated")
+            ? "Seated"
+            : ["kneeling", "all_fours", "kneeling_low"].includes(posture)
+              ? "Kneeling"
+              : "Standing";
+  return checkPreset({
+    id: `builtin.named.${definition.id}`,
+    title,
+    description: definition.label,
+    category,
+    tags: ["named", "pair", ...definition.phrases],
+    scene: JSON.parse(JSON.stringify(checked.scene)),
+  });
+}
+
+export const NAMED_PRESETS = freeze(ARCHETYPES.map(presetFromArchetype));
+export const BUILTIN_PRESETS = freeze([...STUDIO_PRESETS, ...NAMED_PRESETS]);

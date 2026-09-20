@@ -24,6 +24,7 @@ import { parseDescription } from "../nlp/parser.js";
 import { validateScene } from "../core/scene.js";
 import { solveScene } from "../core/solver.js";
 import { surfaceContactSteps } from '../core/surfaceContacts.js';
+import { solvedPreview } from '../core/posePreview.js';
 import { buildHumanTemplate, featureRelief, skinHumanMesh } from "../core/humanMesh.js";
 import { withHair } from "../core/hair.js";
 import { withGarments } from "../core/garments.js";
@@ -223,6 +224,7 @@ async function meshActors(actors, { occlusion, resolution }, transfers, loaded) 
  */
 function summarise(solved) {
   return {
+    preview: solvedPreview(solved, 'refined'),
     surface: solved.surface,
     props: solved.props.map(({ kind, size, center }) => ({ kind, size, center })),
     quality: {

@@ -9,6 +9,7 @@ import {
 import { buildPanel } from "./ui.js";
 import { createLibrary, DRAFT_KEY } from "./libraryStore.js";
 import { buildStudio, toast, showRegion, openExport } from "./studioUI.js";
+import { bindCameraInput } from "./cameraInput.js";
 
 const $ = (id) => document.getElementById(id);
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -128,6 +129,8 @@ function apply(next, { history = true, frame = false } = {}) {
   heading();
   panel.setText(current.scene.description ?? "");
   panel.setInterpretation([]);
+  panel.setNotes([{ level: "pending", message: "Checking this pose…" }]);
+  $("show-notes").hidden = true;
   panel.setScene(
     current.scene,
     SKIN.map((color) => `#${color.toString(16).padStart(6, "0")}`),
@@ -145,7 +148,7 @@ function selectPreset(preset, options = {}) {
   showRegion("studio");
 }
 function edit(scene) {
-  const next = { ...current, scene, dirty: true };
+  const next = { ...current, scene, dirty: true, inputWarnings: [] };
   apply(next);
   const url = new URL(location.href);
   url.search = "";
@@ -165,6 +168,7 @@ function textScene(text) {
       tags: [],
       scene: parsed.scene,
       dirty: true,
+      inputWarnings: parsed.warnings,
     },
     { frame: true },
   );
@@ -237,14 +241,26 @@ const studio = buildStudio(library, {
 });
 
 function collectNotes(data) {
-  const notes = [...data.warnings, ...data.quality.warnings].map((message) => ({
+  const inputWarnings = Array.isArray(current?.inputWarnings)
+    ? current.inputWarnings.filter((message) => typeof message === "string")
+    : [];
+  const notes = [
+    ...inputWarnings,
+    ...data.warnings,
+    ...data.quality.warnings,
+  ].map((message) => ({
     level: "warning",
     message,
   }));
-  if (data.quality.maxDepth > 0.045)
+  if (data.quality.maxDepth > 0.022)
     notes.push({
-      level: "error",
-      message: `Figures overlap by ${Math.round(data.quality.maxDepth * 1000)} mm. Try another arrangement or adjust the pose.`,
+      level: data.quality.maxDepth > 0.045 ? "error" : "warning",
+      message: `The body model reports ${Math.round(data.quality.maxDepth * 1000)} mm of unresolved overlap. Check the arrangement or adjust the figures.`,
+    });
+  if (data.quality.propPenetration > 0.022)
+    notes.push({
+      level: "warning",
+      message: `The body model overlaps its support by ${Math.round(data.quality.propPenetration * 1000)} mm.`,
     });
   for (const actor of data.actors)
     if (actor.seatResidual > 0.02)
@@ -256,6 +272,7 @@ function collectNotes(data) {
 }
 function workerFailure(message) {
   ready = false;
+  $("show-notes").hidden = false;
   $("panel").setAttribute("aria-busy", "false");
   status("This pose could not be rendered. Choose a preset to try again.");
   panel.setNotes([{ level: "error", message }]);
@@ -285,8 +302,10 @@ worker.onmessage = ({ data }) => {
     SKIN.map((color) => `#${color.toString(16).padStart(6, "0")}`),
   );
   const notes = collectNotes(data);
+  $("show-notes").hidden = !notes.length && !data.preview?.issues.length;
   panel.setNotes(notes);
   panel.setContactReport(data.quality.contactDetail ?? []);
+  if (data.preview) studio.setPreview(current.scene, data.preview);
   ready = data.stage === "final";
   $("save-preset").disabled = !ready;
   $("open-export").disabled = !ready;
@@ -329,6 +348,25 @@ $("fit-view").onclick = () => {
   view?.frame();
   draw();
 };
+const cameraChanged = (kind) => {
+  if (kind === "orbit")
+    document.querySelectorAll("[data-view]").forEach((button) => {
+      button.classList.remove("active");
+      button.setAttribute("aria-pressed", "false");
+    });
+};
+for (const [id, factor] of [
+  ["zoom-in", 0.85],
+  ["zoom-out", 1 / 0.85],
+])
+  $(id).onclick = () => {
+    view?.dolly(factor);
+    draw();
+  };
+$("show-notes").onclick = () => {
+  showRegion("edit");
+  panel.showNotes();
+};
 $("material").onchange = () => {
   view?.setDisplayMode($("material").value);
   draw();
@@ -368,50 +406,25 @@ document.addEventListener("keydown", (event) => {
     travel(event.shiftKey ? "redo" : "undo");
   }
 });
-let dragging = null;
-canvas.addEventListener("pointerdown", (event) => {
-  dragging = { x: event.clientX, y: event.clientY };
-  canvas.setPointerCapture(event.pointerId);
+const removeCameraInput = bindCameraInput(canvas, {
+  orbit: (x, y) => view?.orbit(x, y),
+  zoom: (factor) => view?.dolly(factor),
+  frame: () => view?.frame(),
+  draw,
+  changed: cameraChanged,
 });
-canvas.addEventListener("pointermove", (event) => {
-  if (!dragging) return;
-  view?.orbit(
-    -(event.clientX - dragging.x) * 0.006,
-    -(event.clientY - dragging.y) * 0.006,
-  );
-  dragging = { x: event.clientX, y: event.clientY };
-  draw();
-});
-for (const type of ["pointerup", "pointercancel"])
-  canvas.addEventListener(type, (event) => {
-    dragging = null;
-    if (canvas.hasPointerCapture(event.pointerId))
-      canvas.releasePointerCapture(event.pointerId);
-  });
-canvas.addEventListener(
-  "wheel",
-  (event) => {
-    event.preventDefault();
-    view?.dolly(Math.exp(event.deltaY * 0.0012));
-    draw();
-  },
-  { passive: false },
-);
-canvas.addEventListener("keydown", (event) => {
-  const keys = {
-    ArrowLeft: [-0.12, 0],
-    ArrowRight: [0.12, 0],
-    ArrowUp: [0, -0.12],
-    ArrowDown: [0, 0.12],
-  };
-  if (keys[event.key]) {
-    event.preventDefault();
-    view?.orbit(...keys[event.key]);
-  } else if (["+", "="].includes(event.key)) view?.dolly(0.9);
-  else if (event.key === "-") view?.dolly(1.1);
-  else if (event.key.toLowerCase() === "f") view?.frame();
-  else return;
-  draw();
+document.querySelector(".skip-link").onclick = (event) => {
+  event.preventDefault();
+  showRegion("studio");
+  canvas.focus();
+};
+window.addEventListener("pagehide", (event) => {
+  if (!event.persisted) {
+    removeCameraInput();
+    studio.dispose();
+    worker.terminate();
+    view?.dispose();
+  }
 });
 let lastAspect = 0;
 new ResizeObserver(() => {

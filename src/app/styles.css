@@ -363,6 +363,49 @@ p {
   color: var(--muted);
   margin-top: 5px;
 }
+.preset-note {
+  display: block;
+  margin-top: 5px;
+  height: 13px;
+  color: var(--muted);
+  font-size: 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.preset-note.warning {
+  color: #87502d;
+}
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.stage-toolbar {
+  flex-wrap: wrap;
+}
+#show-notes {
+  font-size: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+@media (max-width: 760px) {
+  #stage .stage-toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 14px;
+  }
+  .view-buttons {
+    grid-column: 1 / -1;
+    justify-self: center;
+  }
+  .zoom-controls {
+    justify-self: end;
+  }
+  .material-control {
+    justify-self: start;
+  }
+}
 .favorite {
   position: absolute;
   right: 3px;

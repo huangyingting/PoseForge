@@ -1,5 +1,10 @@
 # Validation
 
+This page preserves the original engine-validation snapshot, including its
+historical counts and coverage gaps. For current test results, browser coverage,
+visible-surface contacts and named-preset acceptance status, see
+[studio verification](studio-verification.md).
+
 Two layers, with different jobs.
 
 ```

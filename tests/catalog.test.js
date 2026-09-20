@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   BUILTIN_PRESETS,
+  STUDIO_PRESETS,
+  NAMED_PRESETS,
   checkPreset,
   checkScene,
   parseCatalog,
@@ -10,6 +12,8 @@ import {
 } from "../src/core/catalog.js";
 import { solveScene } from "../src/core/solver.js";
 import { createLibrary, LIBRARY_KEY } from "../src/app/libraryStore.js";
+import { ARCHETYPES } from "../src/nlp/archetypes.js";
+import { parseDescription } from "../src/nlp/parser.js";
 
 const example = () => structuredClone(BUILTIN_PRESETS[0]);
 function storage() {
@@ -23,8 +27,8 @@ function storage() {
 let seq = 0;
 const ids = () => `user.test-${++seq}`;
 
-test("every bundled study solves with finite geometry, grounded supports and no unresolved partner contacts", () => {
-  for (const preset of BUILTIN_PRESETS) {
+test("reference studies retain their geometry gate: grounded supports and resolved partner contacts", () => {
+  for (const preset of STUDIO_PRESETS) {
     const checked = checkPreset(preset);
     const result = solveScene(checked.scene);
     assert.ok(result.quality.maxDepth < 0.02, `${preset.id} overlaps`);
@@ -115,14 +119,64 @@ test("search composes text, category, saved scope and favorites", () => {
     category: "Favorites of mine",
   };
   const all = [...BUILTIN_PRESETS, custom];
-  assert.equal(searchCatalog(all, { query: "STANDING pair" }).length, 3);
+  assert.equal(searchCatalog(all, { query: "STANDING pair" }).length, 6);
   assert.equal(searchCatalog(all, { scope: "saved" }).length, 1);
-  assert.equal(searchCatalog(all, { category: "Seated" }).length, 3);
+  assert.equal(
+    searchCatalog(all, { scope: "named" }).length,
+    ARCHETYPES.length,
+  );
+  assert.equal(searchCatalog(all, { category: "Seated" }).length, 5);
   assert.equal(
     searchCatalog(all, { scope: "favorites", favorites: [custom.id] })[0].id,
     custom.id,
   );
   assert.equal(searchCatalog(all, { query: "no such study" }).length, 0);
+});
+
+test("every existing named definition has a clothed, portable catalog entry preserving its parser contract", () => {
+  assert.equal(NAMED_PRESETS.length, ARCHETYPES.length);
+  assert.equal(
+    new Set(BUILTIN_PRESETS.map((p) => p.id)).size,
+    BUILTIN_PRESETS.length,
+  );
+  for (const definition of ARCHETYPES) {
+    const entry = NAMED_PRESETS.find(
+      (p) => p.id === `builtin.named.${definition.id}`,
+    );
+    assert.ok(entry, definition.id);
+    const parsed = parseDescription(definition.phrases[0]).scene;
+    assert.deepEqual(entry.scene.support, parsed.support, definition.id);
+    assert.deepEqual(
+      entry.scene.relationship,
+      parsed.relationship,
+      definition.id,
+    );
+    assert.deepEqual(
+      entry.scene.contacts,
+      JSON.parse(JSON.stringify(parsed.contacts)),
+      definition.id,
+    );
+    assert.deepEqual(
+      entry.scene.actors.map((a) => [a.bodyType, a.posture]),
+      parsed.actors.map((a) => [a.bodyType, a.posture]),
+      definition.id,
+    );
+    assert.ok(
+      entry.scene.actors.every(
+        (a) => a.wearing.includes("top") && a.wearing.includes("shorts"),
+      ),
+    );
+    for (const alias of definition.phrases)
+      assert.ok(
+        searchCatalog(NAMED_PRESETS, { query: alias }).some(
+          (p) => p.id === entry.id,
+        ),
+        alias,
+      );
+    assert.deepEqual(parseCatalog(serializeCatalog([entry])), [
+      checkPreset(entry),
+    ]);
+  }
 });
 
 test("saved edits, favorites, duplicates and deletion survive a reload without mutating built-ins", () => {

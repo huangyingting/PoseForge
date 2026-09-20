@@ -5,6 +5,10 @@ contract and [catalog guide](catalog.md) for saving, importing and authoring
 portable presets. [Verification evidence](studio-verification.md) records the
 current checks and limitations. The documents below describe the underlying geometry engine.
 
+The catalog now includes the existing named definitions. Their
+`validate-named-presets.mjs` quality gate remains open even though structural,
+preview and browser loading checks pass.
+
 These describe *why* the system is built the way it is. The code carries the
 "what" in its own comments; these carry the reasoning, the measurements, and the
 things that were tried and rejected.
