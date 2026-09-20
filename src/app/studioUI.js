@@ -104,6 +104,7 @@ export function buildStudio(library, handlers) {
       element("h2", { textContent: "The pose library" }),
       count,
     ]),
+    button("+ New study", () => handlers.newStudy(), "action full new-study"),
     element("div", { className: "search-box" }, [
       element("label", {
         htmlFor: search.id,

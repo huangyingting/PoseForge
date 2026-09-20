@@ -332,6 +332,7 @@ function toSegment(p, a, b) {
  */
 function lift(body, field, veto, colour, name, { bulge } = {}) {
   const count = body.positions.length / 3;
+  const coveredTriangles = [];
   const f = new Float64Array(count);
   for (let v = 0; v < count; v += 1) {
     const inside = field(body.positions[v * 3], body.positions[v * 3 + 1], body.positions[v * 3 + 2]);
@@ -432,6 +433,10 @@ function lift(body, field, veto, colour, name, { bulge } = {}) {
     if (!inside.length) continue;
     if (inside.length === 3) {
       tris.push(keepVertex(tri[0]), keepVertex(tri[1]), keepVertex(tri[2]));
+      // Skin well inside an opaque garment is never visible. Retain a narrow
+      // border at cuffs and hems, where a cut fabric triangle only partly
+      // covers its source skin triangle.
+      if (tri.every(v => f[v] > LIFT * 0.5)) coveredTriangles.push(i / 3);
       continue;
     }
     // Rotate the triangle so the odd vertex out comes first. The winding has to
@@ -612,6 +617,7 @@ function lift(body, field, veto, colour, name, { bulge } = {}) {
     name,
     primary: false,
     garment: true,
+    coveredTriangles,
     colour,
     positions: Float32Array.from(positions),
     normals: Float32Array.from(normals),
@@ -833,7 +839,7 @@ function studioGarment(template, body, marks, colour, name) {
  * @param {object} template a template from `featureRelief`
  * @param {object} [options]
  * @param {string} [options.bodyType]
- * @param {string[]} [options.wearing] any of `"bra"`, `"briefs"`; `[]` for none
+ * @param {string[]} [options.wearing] names from GARMENT_NAMES; `[]` for none
  * @param {string} [options.colour] a key of `GARMENT_COLOURS`
  * @returns {object} a new template; the original is not touched
  */
@@ -869,8 +875,17 @@ export function withGarments(template, { bodyType = "neutral", wearing, colour =
   if (!added.length) return template;
 
   const covered = wanted.includes("briefs") || wanted.includes('shorts');
+  // Opaque fabric hides the interior skin faces. Keeping both layers lets
+  // retargeted seams and interpolated cut weights expose skin through a shirt.
+  // Only fully covered faces are removed; the clipped boundary keeps its skin.
+  const hidden = new Set(added.flatMap(piece => piece.coveredTriangles));
+  const visibleIndices = [];
+  for (let i = 0; i < body.indices.length; i += 3) {
+    if (!hidden.has(i / 3)) visibleIndices.push(body.indices[i], body.indices[i + 1], body.indices[i + 2]);
+  }
   const submeshes = template.submeshes.filter(
     (submesh) => !(covered && submesh.name === "pelvis-anatomy")
-  );
-  return { ...template, submeshes: [...submeshes, ...added] };
+  ).map(submesh => submesh === body ? { ...body, indices: Uint32Array.from(visibleIndices) } : submesh);
+  const garments = added.map(({ coveredTriangles, ...piece }) => piece);
+  return { ...template, submeshes: [...submeshes, ...garments] };
 }

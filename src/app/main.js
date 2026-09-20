@@ -181,6 +181,39 @@ const panel = buildPanel($("panel"), {
 });
 const studio = buildStudio(library, {
   select: selectPreset,
+  newStudy() {
+    apply(
+      {
+        id: null,
+        title: "Untitled study",
+        description: "",
+        category: "My studies",
+        tags: [],
+        dirty: true,
+        scene: {
+          actors: [
+            {
+              id: "figure-a",
+              label: "Figure A",
+              bodyType: "female",
+              posture: "standing",
+              wearing: ["top", "shorts"],
+              outfit: "sage",
+            },
+          ],
+          support: { surface: "floor" },
+          relationship: { contactMode: "custom" },
+          contacts: [],
+          camera: { view: "three_quarter" },
+        },
+      },
+      { frame: true },
+    );
+    const url = new URL(location.href);
+    url.search = "";
+    history.replaceState(null, "", url);
+    showRegion("studio");
+  },
   saved(preset) {
     current = { ...preset, dirty: false };
     heading();
@@ -248,11 +281,12 @@ worker.onmessage = ({ data }) => {
   }
   draw();
   panel.setScene(
-    data.scene,
+    current.scene,
     SKIN.map((color) => `#${color.toString(16).padStart(6, "0")}`),
   );
   const notes = collectNotes(data);
   panel.setNotes(notes);
+  panel.setContactReport(data.quality.contactDetail ?? []);
   ready = data.stage === "final";
   $("save-preset").disabled = !ready;
   $("open-export").disabled = !ready;

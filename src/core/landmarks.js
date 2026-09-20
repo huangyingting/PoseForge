@@ -69,9 +69,13 @@ export const SIDES = { left: "l", right: "r" };
  * @param {"l"|"r"|null} [defaultSide]
  */
 export function resolveLandmark(name, defaultSide = null) {
-  const [base, sideWord] = name.split(".");
+  if (typeof name !== 'string') return null;
+  const [base, sideWord, extra] = name.split(".");
+  if (extra != null || !Object.hasOwn(LANDMARKS, base)) return null;
+  if (sideWord != null && !['l', 'r', 'left', 'right'].includes(sideWord)) return null;
+  if (defaultSide != null && !['l', 'r'].includes(defaultSide)) return null;
   const entry = LANDMARKS[base];
-  if (!entry) return null;
+  if (sideWord != null && !entry.mirror) return null;
 
   let side = sideWord ? SIDES[sideWord] ?? sideWord : defaultSide;
   if (entry.mirror && !side) side = "l";

@@ -1,9 +1,14 @@
 # PoseForge
 
-PoseForge now includes a responsive pose studio: a searchable library of ten
+PoseForge now includes a responsive pose studio: a searchable library of eleven
 clothed reference studies, figure and joint editing, favorites, local saved
 presets, undo/redo, and portable JSON import/export. The center viewport has
 keyboard camera controls, natural and clay materials, and PNG/SVG export.
+
+Start from **New study**, name your figures, and use **Scene → Partner contacts**
+to author gestures with figure/body-part pickers and measured target feedback.
+Choose **My contacts only** to build a composition without the arrangement's
+default contacts. **A helping hand** is a working example you can edit and save.
 
 **Start here:** [studio design](docs/studio-redesign.md) ·
 [catalog and extension guide](docs/catalog.md) ·

@@ -49,7 +49,16 @@ test("a portable pack retains joint, figure, contact and camera edits", () => {
     hands: { l: "relaxed", r: "relaxed" },
   });
   preset.scene.camera.view = "side";
-  preset.scene.contacts = [{ fromActor: 'female', toActor: 'male', from: 'hand.l', to: 'hand.r', strength: 0.45, type: 'touch' }];
+  preset.scene.contacts = [
+    {
+      fromActor: "female",
+      toActor: "male",
+      from: "hand.l",
+      to: "hand.r",
+      strength: 0.45,
+      type: "touch",
+    },
+  ];
   const canonical = checkPreset(preset);
   assert.equal(canonical.scene.contacts.length, 1);
   assert.deepEqual(parseCatalog(serializeCatalog([preset])), [canonical]);
@@ -106,7 +115,7 @@ test("search composes text, category, saved scope and favorites", () => {
     category: "Favorites of mine",
   };
   const all = [...BUILTIN_PRESETS, custom];
-  assert.equal(searchCatalog(all, { query: "STANDING pair" }).length, 2);
+  assert.equal(searchCatalog(all, { query: "STANDING pair" }).length, 3);
   assert.equal(searchCatalog(all, { scope: "saved" }).length, 1);
   assert.equal(searchCatalog(all, { category: "Seated" }).length, 3);
   assert.equal(

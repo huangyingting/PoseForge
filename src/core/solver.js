@@ -1198,10 +1198,14 @@ export function solveScene(scene, options = {}) {
   }
   // An arrangement is written for two upright partners; what it means on the
   // ground depends on the postures it is being asked to arrange.
-  const arrangement =
+  let arrangement =
     actors.length > 1
       ? reconcileArrangement(requested, actors[0].posture, actors[1].posture)
       : requested;
+  // Custom-only means the defaults influence neither the initial placement
+  // alignment nor the iterative contact solve. Merely skipping the latter
+  // would still quietly seed a user-authored pose from an unwanted contact.
+  if (scene.relationship?.contactMode === 'custom') arrangement = { ...arrangement, contacts: [] };
   for (let i = 1; i < actors.length; i += 1) {
     const rule = i === 1 ? arrangement : fanOut(arrangement, i);
     applyArrangement(actors[0], actors[i], rule, surface);
@@ -1214,13 +1218,14 @@ export function solveScene(scene, options = {}) {
 
   // 3. gather contacts: arrangement defaults plus anything the text asked for
   const contacts = [];
-  for (const contact of arrangement.contacts || []) {
+  for (const [sourceIndex, contact] of (arrangement.contacts || []).entries()) {
     if (actors.length < 2) break;
-    contacts.push(normaliseContact(contact, 1, 0, actors));
+    const normalised = normaliseContact(contact, 1, 0, actors);
+    if (normalised) contacts.push({ ...normalised, source: 'arrangement', sourceIndex });
   }
-  for (const contact of scene.contacts || []) {
+  for (const [sourceIndex, contact] of (scene.contacts || []).entries()) {
     const normalised = normaliseContact(contact, null, null, actors);
-    if (normalised) contacts.push(normalised);
+    if (normalised) contacts.push({ ...normalised, source: 'custom', sourceIndex });
   }
 
   const declaredKeys = new Set();
@@ -1428,7 +1433,15 @@ export function solveScene(scene, options = {}) {
       contactDetail: contactReports.map((entry) => ({
         from: entry.contact.from,
         to: entry.contact.to,
+        fromActor: entry.contact.fromActor,
+        toActor: entry.contact.toActor,
+        fromSide: entry.contact.fromSide,
+        toSide: entry.contact.toSide,
+        source: entry.contact.source,
+        sourceIndex: entry.contact.sourceIndex,
+        strength: entry.contact.strength,
         distance: entry.distance,
+        blocked: Boolean(entry.blocked),
         unreachable: Boolean(entry.unreachable || entry.blocked),
       })),
       balance: actors.map((actor) => balanceOf(actor, surface.ground)),
@@ -1674,6 +1687,7 @@ function fanOut(arrangement, index) {
 
 /** Normalise a contact reference into indices plus base landmark and side. */
 function normaliseContact(contact, defaultFrom, defaultTo, actors) {
+  if (!resolveLandmark(contact.from) || !resolveLandmark(contact.to)) return null;
   const from = splitLandmark(contact.from);
   const to = splitLandmark(contact.to);
   const fromActor = resolveActorIndex(contact.fromActor ?? defaultFrom, actors);

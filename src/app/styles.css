@@ -705,6 +705,89 @@ input[type="checkbox"] {
   padding: 15px;
   margin-bottom: 15px;
 }
+.new-study {
+  margin-bottom: 12px;
+}
+.contact-editor {
+  margin: 22px 0;
+}
+.contact-editor > h2 {
+  margin-bottom: 8px;
+}
+.contact-card {
+  min-width: 0;
+  margin: 14px 0;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.contact-card legend {
+  padding: 0 5px;
+  color: var(--ink);
+  font-weight: 650;
+  font-size: 11px;
+}
+.contact-card .field {
+  margin: 10px 0;
+}
+.contact-card select {
+  font-size: 11px;
+}
+.contact-direction {
+  color: var(--muted);
+  font-size: 10px;
+  padding: 2px 0;
+}
+.contact-strength {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.contact-strength input {
+  min-width: 0;
+  flex: 1;
+}
+.contact-strength output {
+  font-size: 11px;
+  min-width: 32px;
+  text-align: right;
+}
+.contact-result {
+  display: block;
+  margin: 8px 0;
+  font-size: 10px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.contact-result.ok {
+  color: var(--accent);
+}
+.contact-result.pending {
+  color: var(--muted);
+}
+.contact-result.warning {
+  color: #925023;
+  background: #fcf3e8;
+  border-radius: 5px;
+  padding: 7px;
+}
+.contact-defaults {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+}
+.contact-defaults li {
+  font-size: 10px;
+  line-height: 1.5;
+  background: #f3f6ef;
+  border-radius: 7px;
+  padding: 10px;
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+.contact-defaults .contact-result {
+  margin-bottom: 0;
+}
 .actor-card h3 {
   display: flex;
   gap: 8px;

@@ -81,7 +81,7 @@ export const BODY_TYPES = ["female", "male", "neutral"];
  * @property {string} [title]
  * @property {string} [description] the text this was interpreted from
  * @property {{surface?: string}} [support]
- * @property {{arrangement?: string}} [relationship]
+ * @property {{arrangement?: string, contactMode?: "automatic"|"custom"}} [relationship]
  * @property {ActorSpec[]} actors
  * @property {ContactSpec[]} [contacts]
  * @property {object} [camera]
@@ -454,6 +454,12 @@ export function validateScene(scene) {
   }
   if (!arrangement && actors.length > 1) arrangement = "face_to_face";
 
+  let contactMode = scene.relationship?.contactMode;
+  if (contactMode != null && !['automatic', 'custom'].includes(contactMode)) {
+    note('warning', `unknown contact mode "${contactMode}", used automatic`);
+    contactMode = 'automatic';
+  }
+
   // A yaw override only means anything relative to an arrangement, and only
   // when there is a second person for it to turn.
   let yaw = scene.relationship?.yaw ?? readYaw ?? undefined;
@@ -486,7 +492,11 @@ export function validateScene(scene) {
       title: scene.title,
       description: scene.description,
       support: { surface: surface || "floor" },
-      relationship: arrangement ? { arrangement, ...(yaw != null ? { yaw } : {}) } : {},
+      relationship: {
+        ...(arrangement ? { arrangement } : {}),
+        ...(yaw != null ? { yaw } : {}),
+        ...(contactMode != null ? { contactMode } : {}),
+      },
       actors,
       contacts,
       ...(scene.camera ? { camera: scene.camera } : {}),

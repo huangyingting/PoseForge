@@ -20,6 +20,32 @@ changes. **Import presets** adds a valid pack without replacing existing work.
 Re-importing assigns new IDs and makes independent copies. Your favorites are
 local preferences and are not included in exported packs.
 
+## Author a partner gesture without JSON
+
+Choose **New study** for one clothed figure with no automatic contacts, or load
+**A helping hand** to explore a working two-figure example. **Figures** lets you
+name each figure, choose postures and adjust appearance. Add a second figure
+before opening **Scene → Partner contacts**.
+
+**Add contact** creates a moving-figure/body-part pair and a target-figure/body-part
+pair. Choose the two sides explicitly, then adjust **Pull strength** if needed.
+Changing the moving figure to the current target swaps the figure roles so a
+contact never accidentally points back to the same person. Removing a figure
+removes contacts involving it and preserves the remaining references.
+
+**Arrangement + my contacts** includes the arrangement's existing contacts,
+shown above your editable list. **My contacts only** suppresses those defaults
+from both the initial alignment and the solve. An empty custom list means no
+partner-contact constraints. These settings travel with saved presets and JSON.
+
+Each row reports the solver's distance from the requested target point. **On
+target** means within 12 mm; other rows show the remaining distance and whether
+reach or body interference limited movement. This is a measured target error,
+not an assurance that every visible surface is in exact physical contact. A
+strength of zero applies no pull. Delete a row to remove its constraint entirely.
+Joint limits, support and collision checks still apply. Review **Pose checks**
+when the status reports notes.
+
 ## Interchange format
 
 The bundled [reference-study.json](../examples/reference-study.json) is a
@@ -49,7 +75,7 @@ working starter. All dimensions are in meters and joint angles are degrees.
         "joints": {"elbow_l": {"flexion": 45}}
       }],
       "support": {"surface": "floor"},
-      "relationship": {},
+      "relationship": {"contactMode": "custom"},
       "contacts": [],
       "camera": {"view": "three_quarter"}
     }
@@ -72,6 +98,7 @@ working starter. All dimensions are in meters and joint angles are degrees.
 | `joints` | Bone names → `flexion`, `abduction`, `rotation`; angles must fit the rig's joint limits |
 | `hands`, `feet` | A named shape for both sides, or `{ "l": "…", "r": "…" }` |
 | `camera.view` | `three_quarter`, `front`, `side`, `top`; free orbit and zoom are temporary viewport settings |
+| `relationship.contactMode` | `automatic` (the default) adds arrangement contacts; `custom` uses only `scene.contacts`, including an empty list |
 | `contacts` | Optional existing engine contact definitions, at most 32; invalid people or landmarks are rejected |
 
 Available posture, arrangement and surface names come from
@@ -92,8 +119,8 @@ geometry as well as their schema.
 Adding a new underlying posture or arrangement is an engine extension: author
 its joint and support/contact contract in the pose library and verify it with
 the geometry validators. Merely naming a new posture in an imported JSON file
-does not create a new solver rule. Users can already create pose variations
-through joint overrides without extending the engine.
+does not create a new solver rule. Users can create pose variations through
+joint overrides and authored contacts without extending the engine.
 
 ## Limits
 

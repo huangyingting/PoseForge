@@ -77,6 +77,59 @@ const submesh = (name) => {
   return found;
 };
 
+test("opaque studio clothing removes covered skin without changing the source or exposed extremities", () => {
+  for (const bodyType of ["female", "male"]) {
+    const template = featureRelief(
+      buildHumanTemplate(
+        readFileSync(
+          new URL(
+            `../assets/models/realistic-${bodyType}.glb`,
+            import.meta.url,
+          ),
+        ),
+      ),
+      { bodyType, build: 1 },
+    );
+    const skin = template.submeshes.find((part) => part.primary);
+    const original = skin.indices.slice();
+    const clothed = withGarments(template, {
+      bodyType,
+      wearing: ["top", "shorts"],
+    });
+    const visible = clothed.submeshes.find((part) => part.primary).indices;
+    assert.ok(
+      visible.length < original.length * 0.85,
+      `${bodyType}: covered torso still renders`,
+    );
+    assert.deepEqual(
+      skin.indices,
+      original,
+      "dressing must not mutate the cached skin template",
+    );
+    const kept = new Set();
+    for (let i = 0; i < visible.length; i += 3)
+      kept.add(`${visible[i]},${visible[i + 1]},${visible[i + 2]}`);
+    let exposed = 0;
+    for (let i = 0; i < original.length; i += 3) {
+      const triangle = [original[i], original[i + 1], original[i + 2]];
+      if (
+        triangle.every(
+          (v) =>
+            skin.positions[v * 3 + 1] > 0.9 || skin.positions[v * 3 + 1] < 0.2,
+        )
+      ) {
+        assert.ok(
+          kept.has(triangle.join(",")),
+          `${bodyType}: removed exposed head or lower leg`,
+        );
+        exposed++;
+      }
+    }
+    assert.ok(exposed > 500, "test must examine real exposed geometry");
+    assert.equal(withGarments(template, { bodyType, wearing: [] }), template);
+  }
+});
+
 test("studio outfits stay attached to male and female figures through standing, seated and kneeling poses", () => {
   for (const bodyType of ["female", "male"]) {
     const template = featureRelief(

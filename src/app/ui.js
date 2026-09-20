@@ -32,6 +32,7 @@ import { GARMENT_COLOURS, GARMENT_NAMES } from "../core/garments.js";
 import { HAND_SHAPE_NAMES } from "../core/handPose.js";
 import { FOOT_SHAPE_NAMES } from "../core/footPose.js";
 import { newId } from "./ids.js";
+import { createContactEditor } from "./contactEditor.js";
 
 const EXAMPLES = [
   "a woman standing on the floor wearing clothes",
@@ -296,6 +297,10 @@ export function buildPanel(root, handlers) {
   const surface = picker("Surface", SURFACE_NAMES);
   const facing = picker("Facing", ["as written", "toward", "away"]);
   const actorHost = el("div");
+  const contactEditor = createContactEditor((next) => {
+    scene = next;
+    emit();
+  });
   const overrides = el("div", {}, [
     arrangement.field,
     surface.field,
@@ -303,6 +308,7 @@ export function buildPanel(root, handlers) {
   ]);
   scenePane.append(
     section("Composition", overrides),
+    contactEditor.root,
     interpretation.details,
     diagnostics.details,
   );
@@ -322,7 +328,10 @@ export function buildPanel(root, handlers) {
         outfit: "navy",
       });
       if (scene.actors.length === 2)
-        scene.relationship = { arrangement: "side_by_side" };
+        scene.relationship = {
+          ...scene.relationship,
+          arrangement: "side_by_side",
+        };
       emit();
     },
   });
@@ -504,6 +513,20 @@ export function buildPanel(root, handlers) {
     actorHost.replaceChildren();
     actorControls.length = 0;
     for (let index = 0; index < count; index += 1) {
+      const nameInput = el("input", {
+        type: "text",
+        id: newId("figure-name"),
+        maxLength: 80,
+      });
+      const nameField = el("div", { className: "field" }, [
+        el("label", { htmlFor: nameInput.id, textContent: "Figure name" }),
+        nameInput,
+      ]);
+      nameInput.addEventListener("change", () => {
+        scene.actors[index].label =
+          nameInput.value.trim() || `Figure ${index + 1}`;
+        emit();
+      });
       const bodyType = picker("Body type", ["female", "male", "neutral"]);
       const skinTone = el("input", {
         type: "color",
@@ -569,6 +592,7 @@ export function buildPanel(root, handlers) {
       actorHost.append(
         el("div", { className: "actor-card" }, [
           title,
+          nameField,
           bodyType.field,
           posture.field,
           stature.field,
@@ -603,7 +627,10 @@ export function buildPanel(root, handlers) {
                       : c.toActor,
                 }));
               scene.actors.splice(index, 1);
-              if (scene.actors.length === 1) scene.relationship = {};
+              if (scene.actors.length === 1)
+                scene.relationship = scene.relationship?.contactMode
+                  ? { contactMode: scene.relationship.contactMode }
+                  : {};
               emit();
             },
           }),
@@ -675,6 +702,7 @@ export function buildPanel(root, handlers) {
       }
 
       actorControls.push({
+        nameInput,
         bodyType,
         skinTone,
         posture,
@@ -745,9 +773,14 @@ export function buildPanel(root, handlers) {
       }
     },
 
+    setContactReport(reports) {
+      contactEditor.setReport(reports);
+    },
+
     /** Point the override controls at a new scene. */
     setScene(next, swatches) {
       scene = structuredClone(next);
+      contactEditor.setScene(scene);
       syncing = true;
       if (actorControls.length !== scene.actors.length) {
         buildActorCards(scene.actors.length, swatches);
@@ -762,6 +795,8 @@ export function buildPanel(root, handlers) {
       scene.actors.forEach((actor, index) => {
         const control = actorControls[index];
         if (!control) return;
+        if (document.activeElement !== control.nameInput)
+          control.nameInput.value = actor.label ?? `Figure ${index + 1}`;
         control.bodyType.select.value = actor.bodyType ?? "neutral";
         control.skinTone.value =
           actor.skinTone ?? swatches[index % swatches.length];

@@ -24,7 +24,7 @@
           }
         ],
         "support": { "surface": "floor" },
-        "relationship": {},
+        "relationship": { "contactMode": "custom" },
         "contacts": [],
         "camera": { "view": "three_quarter" }
       }

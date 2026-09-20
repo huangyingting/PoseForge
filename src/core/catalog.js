@@ -88,6 +88,11 @@ export function checkScene(input) {
     fail("Facing must be a number from -360 to 360.");
   if (input.camera?.view != null && !CAMERA_VIEWS.includes(input.camera.view))
     fail("Unknown camera view.");
+  if (
+    input.relationship?.contactMode != null &&
+    !["automatic", "custom"].includes(input.relationship.contactMode)
+  )
+    fail("Contact mode must be automatic or custom.");
   const ids = new Set();
   for (const [index, actor] of input.actors.entries()) {
     if (!record(actor)) fail("Every figure must be an object.");
@@ -281,6 +286,7 @@ const preset = (
   actors,
   surface = "floor",
   tags = [],
+  sceneOverrides = {},
 ) => ({
   id: `builtin.${id}`,
   title,
@@ -295,6 +301,7 @@ const preset = (
     relationship: actors.length > 1 ? { arrangement: "side_by_side" } : {},
     contacts: [],
     camera: { view: "three_quarter" },
+    ...sceneOverrides,
   },
 });
 
@@ -388,5 +395,27 @@ export const BUILTIN_PRESETS = freeze([
     [figure("female", "kneeling"), figure("male", "kneeling")],
     "floor",
     ["pair", "kneeling"],
+  ),
+  preset(
+    "helping-hand",
+    "A helping hand",
+    "Together",
+    "A standing gesture with a hand reaching toward a partner’s forearm.",
+    [figure("female"), figure("male")],
+    "floor",
+    ["pair", "gesture"],
+    {
+      relationship: { arrangement: "side_by_side", contactMode: "custom" },
+      contacts: [
+        {
+          fromActor: 0,
+          toActor: 1,
+          from: "hand.r",
+          to: "forearm.l",
+          strength: 1,
+          type: "rest",
+        },
+      ],
+    },
   ),
 ]);

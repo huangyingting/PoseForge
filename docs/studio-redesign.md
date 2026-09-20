@@ -69,3 +69,24 @@ the viewport aspect ratio accounted for. Exports use the final visible scene.
    mobile usability. Browser errors and failed resources are checked.
 6. Record exact verification and remaining limits before delivery. Do not
    claim the broader explicit-content objective complete on this basis.
+
+## Authoring follow-through
+
+The first delivery exposes joint overrides, but partner contacts still require
+hand-edited JSON. Add a Scene contact editor with figure and landmark pickers,
+strength, add/remove actions, and the measured result of each request. A user
+must be able to choose whether arrangement contacts are included. In custom-only
+mode, arrangement contacts must not influence either initial alignment or the
+iterative solve. Existing scenes keep their current behavior unless they opt in.
+
+Figure names should be editable and remain stable in contact controls. Contacts
+must survive preset save/update, history, import/export and reload. Removing a
+figure must remove only its contacts and remap surviving references. Invalid
+landmark sides must be rejected at import rather than silently ignored by the
+solver. Clear feedback should distinguish a measured gap, an unreachable target,
+and a target blocked by the bodies.
+
+Add a blank-study entry point with no implicit partner contacts. Verify authoring
+with ordinary clothed standing gestures. Also inspect the fitted studio garments
+at close range and correct any reproducible rendering defects found; do not call
+surface fitting a cloth simulation.
