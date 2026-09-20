@@ -92,6 +92,8 @@ function scanned(bodyType) {
 function humanTemplate({ bodyType, bust, build, hair, wearing, outfit }) {
   const key = `${bodyType}|${bust ?? ""}|${build ?? 1}|${hair ?? ""}|${(wearing ?? []).join(",")}|${outfit ?? ""}`;
   if (!relieved.has(key)) {
+    // Bound memory when a user explores many body proportions and outfits.
+    if (relieved.size >= 24) relieved.delete(relieved.keys().next().value);
     relieved.set(
       key,
       scanned(bodyType).then((template) => {
@@ -203,6 +205,7 @@ async function meshActors(actors, { occlusion, resolution }, transfers) {
       // Which skin atlas this figure wears. The renderer needs the body type,
       // not the file, because the file is its business.
       bodyType: actor.skeleton.bodyType,
+      skinTone: actor.spec?.skinTone,
       source: loaded[index] ? "scanned" : `field ${Math.round(resolution * 1000)}mm`,
       triangles: parts.reduce((sum, part) => sum + part.indices.length / 3, 0),
     };

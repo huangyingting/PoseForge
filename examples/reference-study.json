@@ -1,0 +1,33 @@
+{
+  "format": "poseforge.catalog",
+  "version": 1,
+  "presets": [
+    {
+      "id": "example.standing",
+      "title": "Standing reference",
+      "description": "An upright clothed figure for a gesture study.",
+      "category": "My studies",
+      "tags": ["standing", "reference"],
+      "scene": {
+        "actors": [
+          {
+            "id": "figure-a",
+            "label": "Figure A",
+            "bodyType": "female",
+            "posture": "standing",
+            "stature": 1.72,
+            "build": 1,
+            "wearing": ["top", "shorts"],
+            "outfit": "sage",
+            "skinTone": "#e8c9a4",
+            "joints": { "elbow_l": { "flexion": 45 } }
+          }
+        ],
+        "support": { "surface": "floor" },
+        "relationship": {},
+        "contacts": [],
+        "camera": { "view": "three_quarter" }
+      }
+    }
+  ]
+}

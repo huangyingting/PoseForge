@@ -1,5 +1,10 @@
 # Design documentation
 
+Start with the [studio redesign](studio-redesign.md) for the current interface
+contract and [catalog guide](catalog.md) for saving, importing and authoring
+portable presets. [Verification evidence](studio-verification.md) records the
+current checks and limitations. The documents below describe the underlying geometry engine.
+
 These describe *why* the system is built the way it is. The code carries the
 "what" in its own comments; these carry the reasoning, the measurements, and the
 things that were tried and rejected.

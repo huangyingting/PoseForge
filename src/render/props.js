@@ -20,6 +20,7 @@ import {
   Mesh,
   MeshStandardMaterial,
   PlaneGeometry,
+  ShadowMaterial,
 } from "three";
 
 const PALETTE = {
@@ -59,12 +60,11 @@ function propMesh(prop) {
  * tells the eye where the floor is; a textured floor plane competes with it.
  */
 function groundMesh() {
-  const material = new MeshStandardMaterial({
-    color: new Color(0xd8d4cd),
-    roughness: 1,
-    metalness: 0,
+  const material = new ShadowMaterial({
+    color: new Color(0x35443a),
+    opacity: 0.18,
   });
-  const mesh = new Mesh(new PlaneGeometry(24, 24), material);
+  const mesh = new Mesh(new PlaneGeometry(200, 200), material);
   mesh.rotation.x = -Math.PI / 2;
   mesh.receiveShadow = true;
   mesh.name = "ground";

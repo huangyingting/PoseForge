@@ -1,252 +1,458 @@
-/**
- * The application.
- *
- * Four pieces with one thread of control between them: the panel collects a
- * sentence, the worker turns it into triangles, the viewport draws them, and
- * the exporters take the picture off to a file.
- *
- * The rule that keeps this honest is that there is exactly one way in. Typing a
- * description and dragging a slider both end up posting to the same worker and
- * coming back through the same handler, so the override controls cannot reach a
- * state the text could not, and what is on screen is always the result of a
- * full solve rather than a patch applied to a previous one.
- */
-
 import { createRenderer, SKIN } from "../render/renderer.js";
 import { exportPNG, exportSVG, download } from "../render/exporters.js";
+import { parseDescription } from "../nlp/parser.js";
+import {
+  BUILTIN_PRESETS,
+  checkScene,
+  serializeCatalog,
+} from "../core/catalog.js";
 import { buildPanel } from "./ui.js";
+import { createLibrary, DRAFT_KEY } from "./libraryStore.js";
+import { buildStudio, toast, showRegion, openExport } from "./studioUI.js";
 
-const canvas = document.getElementById("viewport");
-const panelRoot = document.getElementById("panel");
-const statusBar = document.getElementById("status");
-
-const view = createRenderer(canvas);
-const worker = new Worker(new URL("../workers/bodyWorker.js", import.meta.url), {
-  type: "module",
+const $ = (id) => document.getElementById(id);
+const clone = (value) => JSON.parse(JSON.stringify(value));
+const canvas = $("viewport");
+let storage;
+try {
+  storage = localStorage;
+} catch {
+  storage = {
+    getItem: () => null,
+    setItem: () => {
+      throw new Error("Browser storage is unavailable.");
+    },
+    removeItem: () => {},
+  };
+}
+const library = createLibrary(storage);
+let view;
+let pendingDraw = false;
+function draw() {
+  if (pendingDraw || !view) return;
+  pendingDraw = true;
+  requestAnimationFrame(() => {
+    pendingDraw = false;
+    view?.render();
+  });
+}
+try {
+  view = createRenderer(canvas, { onChange: draw });
+} catch {
+  $("viewport-error").hidden = false;
+  $("viewport-error").textContent =
+    "3D preview is unavailable. Enable WebGL or try another browser. You can still edit and save presets.";
+}
+canvas.addEventListener("webglcontextlost", (event) => {
+  event.preventDefault();
+  $("viewport-error").hidden = false;
+  $("viewport-error").textContent =
+    "The 3D connection was interrupted. Reload to restore the preview; your latest scene is saved in this browser.";
+});
+canvas.addEventListener("webglcontextrestored", () => {
+  $("viewport-error").hidden = true;
+  draw();
 });
 
-/** Monotonic request id. A reply that is not the newest is stale and dropped. */
+const worker = new Worker(
+  new URL("../workers/bodyWorker.js", import.meta.url),
+  { type: "module" },
+);
 let request = 0;
-let lastScene = null;
-let lastStage = null;
+let ready = false;
+let current = null;
+let shouldFrame = true;
+let past = [];
+let future = [];
+let storageWarned = false;
+let exporting = false;
 
-const status = (text, busy = false) => {
-  statusBar.textContent = text;
-  statusBar.classList.toggle("busy", busy);
+function status(message, busy = false) {
+  $("status").textContent = message;
+  $("status").classList.toggle("busy", busy);
+  $("loading").hidden = !busy;
+  if (busy) $("loading").textContent = message;
+}
+const historyButtons = () => {
+  $("undo").disabled = !past.length;
+  $("redo").disabled = !future.length;
+  document.querySelectorAll("[data-history]").forEach((node) => {
+    node.disabled = !(node.dataset.history === "undo"
+      ? past.length
+      : future.length);
+  });
 };
-
-function solve(payload) {
+function remember() {
+  if (current) past.push(clone(current));
+  if (past.length > 50) past.shift();
+  future = [];
+  historyButtons();
+}
+function persist() {
+  if (!current) return;
+  try {
+    storage.setItem(DRAFT_KEY, JSON.stringify({ version: 1, current }));
+  } catch {
+    if (!storageWarned) {
+      toast(
+        "Autosave is unavailable. Download an editable preset to keep your scene.",
+      );
+      storageWarned = true;
+    }
+  }
+}
+function heading() {
+  $("scene-title").textContent = current.title;
+  $("scene-title").title = current.title;
+  $("scene-description").textContent =
+    current.description || "Your scene. Your point of view.";
+  $("scene-badge").textContent = current.dirty
+    ? "Unsaved changes"
+    : current.id?.startsWith("user.")
+      ? "My preset"
+      : "Built-in study";
+}
+function solve(scene, { frame = false } = {}) {
   request += 1;
-  status("solving…", true);
-  worker.postMessage({ id: request, ...payload });
+  ready = false;
+  shouldFrame = frame;
+  $("save-preset").disabled = true;
+  $("open-export").disabled = true;
+  $("panel").setAttribute("aria-busy", "true");
+  status("Shaping your study…", true);
+  worker.postMessage({ id: request, scene });
+}
+function apply(next, { history = true, frame = false } = {}) {
+  if (history) remember();
+  current = clone(next);
+  heading();
+  panel.setText(current.scene.description ?? "");
+  panel.setInterpretation([]);
+  panel.setScene(
+    current.scene,
+    SKIN.map((color) => `#${color.toString(16).padStart(6, "0")}`),
+  );
+  studio.setSelected(current.id);
+  persist();
+  solve(current.scene, { frame });
+}
+function selectPreset(preset, options = {}) {
+  apply({ ...preset, dirty: false }, { frame: true, ...options });
+  const url = new URL(location.href);
+  url.search = "";
+  url.searchParams.set("preset", preset.id);
+  history.replaceState(null, "", url);
+  showRegion("studio");
+}
+function edit(scene) {
+  const next = { ...current, scene, dirty: true };
+  apply(next);
+  const url = new URL(location.href);
+  url.search = "";
+  history.replaceState(null, "", url);
+}
+function textScene(text) {
+  const parsed = parseDescription(text);
+  for (const actor of parsed.scene.actors) {
+    if (!actor.wearing?.length) actor.wearing = ["top", "shorts"];
+  }
+  apply(
+    {
+      id: null,
+      title: "Custom study",
+      description: text,
+      category: "My studies",
+      tags: [],
+      scene: parsed.scene,
+      dirty: true,
+    },
+    { frame: true },
+  );
+  panel.setInterpretation(parsed.interpretation);
+  const url = new URL(location.href);
+  url.search = "";
+  history.replaceState(null, "", url);
 }
 
-const panel = buildPanel(panelRoot, {
-  onText: (text) => solve({ text }),
-  onScene: (scene) => solve({ scene }),
-  onExport: (kind, options) => exportImage(kind, options),
-  onView: (name) => {
-    if (name === "frame") view.frame();
-    else view.setView(name);
-    draw();
+const panel = buildPanel($("panel"), {
+  onScene: edit,
+  onText: textScene,
+  onHistory: travel,
+});
+const studio = buildStudio(library, {
+  select: selectPreset,
+  saved(preset) {
+    current = { ...preset, dirty: false };
+    heading();
+    persist();
+    const url = new URL(location.href);
+    url.search = "";
+    url.searchParams.set("preset", preset.id);
+    history.replaceState(null, "", url);
+  },
+  deleted(id) {
+    if (current.id === id) {
+      current.id = null;
+      current.dirty = true;
+      heading();
+      persist();
+      const url = new URL(location.href);
+      url.search = "";
+      history.replaceState(null, "", url);
+    }
   },
 });
 
-/* ------------------------------------------------------------------ */
-/* Worker replies                                                      */
-/* ------------------------------------------------------------------ */
-
-worker.onmessage = ({ data }) => {
-  if (data.id !== request) return; // a newer request is already in flight
-  if (data.stage === "error") {
-    status(`failed: ${data.error.split("\n")[0]}`);
-    panel.setNotes([{ level: "error", message: data.error.split("\n")[0] }]);
-    return;
-  }
-
-  const firstScene = lastScene === null;
-  lastScene = data.scene;
-  lastStage = data.stage;
-
-  view.setScene({ meshes: data.meshes, props: data.props });
-  // The camera only re-frames when the scene is genuinely new. Refining the
-  // draft into the final mesh moves the bounds by a few millimetres, and
-  // re-framing on that makes the picture twitch every time a refinement lands.
-  if (data.stage === "draft") view.frame();
-  if (firstScene) view.setView("three_quarter");
-  draw();
-
-  panel.setInterpretation(data.interpretation);
-  panel.setScene(data.scene, SKIN.map((c) => `#${c.toString(16).padStart(6, "0")}`));
-  panel.setNotes(collectNotes(data));
-  panel.setExportEnabled(true);
-
-  const triangles = data.meshes.reduce((sum, mesh) => sum + mesh.triangles, 0);
-  const source = data.meshes[0]?.source ?? "field";
-  status(
-    `${data.stage === "draft" ? "draft" : "final"} · ${source} · ` +
-      `${(triangles / 1000).toFixed(1)}k tris · ` +
-      `${Math.round(data.timings.parse)}ms solve · ${Math.round(data.timings.mesh)}ms mesh`,
-    data.stage === "draft"
-  );
-};
-
-/**
- * Everything the user ought to know about this scene, in one list.
- *
- * Parse warnings and geometry warnings are different kinds of problem and get
- * fixed differently - one by rewording, one by moving a slider - but the user
- * does not care about that distinction until they know there is a problem at
- * all. Splitting them across two places means the one they are not looking at
- * gets missed.
- */
 function collectNotes(data) {
-  const notes = [];
-  for (const message of data.warnings) notes.push({ level: "warning", message });
-  for (const message of data.quality.warnings) notes.push({ level: "warning", message });
-
-  const depth = data.quality.maxDepth;
-  if (depth > 0.045) {
+  const notes = [...data.warnings, ...data.quality.warnings].map((message) => ({
+    level: "warning",
+    message,
+  }));
+  if (data.quality.maxDepth > 0.045)
     notes.push({
       level: "error",
-      message: `bodies overlap by ${Math.round(depth * 1000)}mm — the pose did not resolve`,
+      message: `Figures overlap by ${Math.round(data.quality.maxDepth * 1000)} mm. Try another arrangement or adjust the pose.`,
     });
-  }
-  for (const actor of data.actors) {
-    if (actor.seatResidual > 0.02) {
+  for (const actor of data.actors)
+    if (actor.seatResidual > 0.02)
       notes.push({
         level: "warning",
-        message: `${actor.label} floats ${Math.round(actor.seatResidual * 1000)}mm above the surface`,
+        message: `${actor.label} has a ${Math.round(actor.seatResidual * 1000)} mm support gap.`,
       });
-    }
-  }
   return notes;
 }
+function workerFailure(message) {
+  ready = false;
+  $("panel").setAttribute("aria-busy", "false");
+  status("This pose could not be rendered. Choose a preset to try again.");
+  panel.setNotes([{ level: "error", message }]);
+  toast(message);
+}
+worker.onerror = (event) =>
+  workerFailure(
+    event.message ||
+      "The pose worker stopped unexpectedly. Reload to restart it.",
+  );
+worker.onmessage = ({ data }) => {
+  if (data.id !== request) return;
+  if (data.stage === "error") return workerFailure(data.error.split("\n")[0]);
+  current.scene = clone({
+    ...data.scene,
+    camera: current.scene.camera ?? data.scene.camera,
+  });
+  view?.setScene({ meshes: data.meshes, props: data.props });
+  if (shouldFrame) {
+    view?.frame();
+    setView(current.scene.camera?.view ?? "three_quarter");
+    shouldFrame = false;
+  }
+  draw();
+  panel.setScene(
+    data.scene,
+    SKIN.map((color) => `#${color.toString(16).padStart(6, "0")}`),
+  );
+  const notes = collectNotes(data);
+  panel.setNotes(notes);
+  ready = data.stage === "final";
+  $("save-preset").disabled = !ready;
+  $("open-export").disabled = !ready;
+  $("panel").setAttribute("aria-busy", String(!ready));
+  status(
+    ready
+      ? `Ready · ${data.scene.actors.length} ${data.scene.actors.length === 1 ? "figure" : "figures"}${notes.length ? ` · ${notes.length} pose notes` : ""}`
+      : "Adding the finishing touches…",
+    !ready,
+  );
+  persist();
+};
 
-/* ------------------------------------------------------------------ */
-/* Drawing                                                             */
-/* ------------------------------------------------------------------ */
-
-let pending = false;
-
-/**
- * Draw once, on the next frame.
- *
- * There is no animation loop. Nothing in the scene moves on its own, so a
- * continuous loop would spend a laptop's battery redrawing an identical
- * picture sixty times a second. Redrawing on demand and coalescing several
- * demands into one frame costs nothing when idle.
- */
-function draw() {
-  if (pending) return;
-  pending = true;
-  requestAnimationFrame(() => {
-    pending = false;
-    view.render();
+function setView(name) {
+  view?.setView(name);
+  draw();
+  document.querySelectorAll("[data-view]").forEach((node) => {
+    const active = node.dataset.view === name;
+    node.classList.toggle("active", active);
+    node.setAttribute("aria-pressed", String(active));
   });
 }
-
-function fit() {
-  // The canvas's own box, not its parent's. The stage is padded - the canvas
-  // is a plate floating inside it with a shadow, not a fill - so the parent's
-  // rect is the padding wider and taller than the thing being drawn into, and
-  // sizing the drawing buffer from it stretches every render by the padding.
-  const rect = canvas.getBoundingClientRect();
-  view.resize(Math.max(1, Math.round(rect.width)), Math.max(1, Math.round(rect.height)));
+document.querySelectorAll("[data-view]").forEach(
+  (node) =>
+    (node.onclick = () => {
+      setView(node.dataset.view);
+      if (current) {
+        remember();
+        current.scene.camera = { view: node.dataset.view };
+        current.dirty = true;
+        heading();
+        persist();
+        const url = new URL(location.href);
+        url.search = "";
+        history.replaceState(null, "", url);
+      }
+    }),
+);
+$("fit-view").onclick = () => {
+  view?.frame();
   draw();
+};
+$("material").onchange = () => {
+  view?.setDisplayMode($("material").value);
+  draw();
+};
+$("save-preset").onclick = () => {
+  if (ready) studio.openSave(clone(current));
+};
+$("open-export").onclick = () => {
+  if (ready) openExport(exportImage);
+};
+document
+  .querySelectorAll("[data-region]")
+  .forEach((node) => (node.onclick = () => showRegion(node.dataset.region)));
+
+function travel(direction) {
+  const source = direction === "undo" ? past : future;
+  const target = direction === "undo" ? future : past;
+  if (!source.length) return;
+  target.push(clone(current));
+  const previous = source.pop();
+  apply(previous, { history: false, frame: true });
+  historyButtons();
+  const url = new URL(location.href);
+  url.search = "";
+  history.replaceState(null, "", url);
 }
-
-new ResizeObserver(fit).observe(canvas);
-fit();
-
-/* ------------------------------------------------------------------ */
-/* Camera input                                                        */
-/* ------------------------------------------------------------------ */
-
+$("undo").onclick = () => travel("undo");
+$("redo").onclick = () => travel("redo");
+document.addEventListener("keydown", (event) => {
+  if (
+    document.querySelector("dialog[open]") ||
+    /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)
+  )
+    return;
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+    event.preventDefault();
+    travel(event.shiftKey ? "redo" : "undo");
+  }
+});
 let dragging = null;
-
 canvas.addEventListener("pointerdown", (event) => {
   dragging = { x: event.clientX, y: event.clientY };
   canvas.setPointerCapture(event.pointerId);
 });
-
 canvas.addEventListener("pointermove", (event) => {
   if (!dragging) return;
-  const dx = event.clientX - dragging.x;
-  const dy = event.clientY - dragging.y;
+  view?.orbit(
+    -(event.clientX - dragging.x) * 0.006,
+    -(event.clientY - dragging.y) * 0.006,
+  );
   dragging = { x: event.clientX, y: event.clientY };
-  view.orbit(-dx * 0.006, -dy * 0.006);
   draw();
 });
-
-for (const type of ["pointerup", "pointercancel"]) {
+for (const type of ["pointerup", "pointercancel"])
   canvas.addEventListener(type, (event) => {
     dragging = null;
-    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    if (canvas.hasPointerCapture(event.pointerId))
+      canvas.releasePointerCapture(event.pointerId);
   });
-}
-
 canvas.addEventListener(
   "wheel",
   (event) => {
     event.preventDefault();
-    view.dolly(Math.exp(event.deltaY * 0.0012));
+    view?.dolly(Math.exp(event.deltaY * 0.0012));
     draw();
   },
-  { passive: false }
+  { passive: false },
 );
+canvas.addEventListener("keydown", (event) => {
+  const keys = {
+    ArrowLeft: [-0.12, 0],
+    ArrowRight: [0.12, 0],
+    ArrowUp: [0, -0.12],
+    ArrowDown: [0, 0.12],
+  };
+  if (keys[event.key]) {
+    event.preventDefault();
+    view?.orbit(...keys[event.key]);
+  } else if (["+", "="].includes(event.key)) view?.dolly(0.9);
+  else if (event.key === "-") view?.dolly(1.1);
+  else if (event.key.toLowerCase() === "f") view?.frame();
+  else return;
+  draw();
+});
+let lastAspect = 0;
+new ResizeObserver(() => {
+  const rect = canvas.getBoundingClientRect();
+  if (rect.width < 1 || rect.height < 1) return;
+  view?.resize(Math.round(rect.width), Math.round(rect.height));
+  const aspect = rect.width / rect.height;
+  if (Math.abs(lastAspect - aspect) > 0.15) view?.frame();
+  lastAspect = aspect;
+  draw();
+}).observe(canvas);
 
-/* ------------------------------------------------------------------ */
-/* Export                                                              */
-/* ------------------------------------------------------------------ */
-
-/** A filename from the description, so a folder of exports stays readable. */
-function filename(extension) {
-  const base =
-    (lastScene?.description || "pose")
+async function exportImage(kind, options = {}) {
+  if (!ready || exporting || !current) return;
+  exporting = true;
+  const name =
+    current.title
       .toLowerCase()
       .replace(/[^a-z0-9一-鿿]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .slice(0, 48) || "pose";
-  return `${base}.${extension}`;
-}
-
-async function exportImage(kind, options) {
-  // Exporting the draft would hand the user a deliberately coarse mesh as a
-  // finished picture. The refinement is already on its way, so the honest
-  // answer is to say so and let them press it again.
-  if (lastStage === "draft") {
-    status("still refining — try the export again in a moment");
-    return;
-  }
+      .replace(/^-|-$/g, "") || "poseforge-study";
   try {
-    if (kind === "png") {
-      status(`rendering ${options.scale}x…`, true);
-      const blob = await exportPNG(view, options);
-      download(blob, filename("png"));
-      status(`saved ${blob ? Math.round(blob.size / 1024) : 0} kB PNG`);
+    if (kind === "json") {
+      download(
+        serializeCatalog([
+          { ...clone(current), id: current.id ?? "user.snapshot" },
+        ]),
+        `${name}.json`,
+        "application/json",
+      );
     } else {
-      status("tracing outlines…", true);
-      const svg = exportSVG(view, { width: canvas.clientWidth * 2, ...options });
-      download(svg, filename("svg"), "image/svg+xml");
-      status(`saved ${Math.round(svg.length / 1024)} kB SVG`);
+      if (!view || !$("viewport-error").hidden)
+        throw new Error("A working 3D preview is needed to export an image.");
+      // A mobile user can open export from the inspector; restore the stage's dimensions first.
+      showRegion("studio");
+      await new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      );
+      status("Preparing your export…", true);
+      if (kind === "png")
+        download(await exportPNG(view, options), `${name}.png`);
+      else
+        download(
+          exportSVG(view, { width: canvas.clientWidth * 2, ...options }),
+          `${name}.svg`,
+          "image/svg+xml",
+        );
     }
-  } catch (error) {
-    status(`export failed: ${error.message}`);
+    toast("Your study was downloaded.");
+  } catch (e) {
+    toast(`Export failed: ${e.message}`);
+  } finally {
+    exporting = false;
+    status("Ready");
+    draw();
   }
-  draw();
 }
 
-/* ------------------------------------------------------------------ */
-/* Start                                                               */
-/* ------------------------------------------------------------------ */
-
-panel.setExportEnabled(false);
-
-// A description in the URL makes a pose shareable as a link, which is the only
-// form of saving this needs: the scene is a pure function of the sentence.
-const initial =
-  new URLSearchParams(location.search).get("q") ||
-  "she is lying on her back on the bed, he is kneeling between her legs";
-panel.setText(initial);
-solve({ text: initial });
+const params = new URLSearchParams(location.search);
+let restored = null;
+try {
+  const draft = JSON.parse(storage.getItem(DRAFT_KEY) ?? "null");
+  if (draft?.version === 1 && draft.current) {
+    restored = { ...draft.current, scene: checkScene(draft.current.scene) };
+    if (typeof restored.title !== "string") restored = null;
+  }
+} catch {
+  toast(
+    "The last workspace could not be restored. Your saved library is still available.",
+  );
+}
+if (params.has("q")) textScene(params.get("q"));
+else if (params.has("preset")) {
+  const preset = library.all().find((p) => p.id === params.get("preset"));
+  if (!preset)
+    toast("That preset is not in this browser. Opening a starter study.");
+  selectPreset(preset ?? BUILTIN_PRESETS[0], { history: false });
+} else if (restored) apply(restored, { history: false, frame: true });
+else selectPreset(BUILTIN_PRESETS[0], { history: false });

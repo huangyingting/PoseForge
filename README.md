@@ -1,5 +1,30 @@
 # PoseForge
 
+PoseForge now includes a responsive pose studio: a searchable library of ten
+clothed reference studies, figure and joint editing, favorites, local saved
+presets, undo/redo, and portable JSON import/export. The center viewport has
+keyboard camera controls, natural and clay materials, and PNG/SVG export.
+
+**Start here:** [studio design](docs/studio-redesign.md) ·
+[catalog and extension guide](docs/catalog.md) ·
+[importable example](examples/reference-study.json).
+
+```sh
+npm ci
+npm run dev
+npm test
+npm run build
+npx playwright install chromium
+npm run test:browser
+```
+
+For an installed Chrome, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` when running
+the browser suite. Tests cover real library/editor/export flows at desktop and
+mobile sizes. Saved studies live in this browser; download JSON for a backup.
+New bundled studies are non-graphic references. The existing engine documentation
+below includes its broader vocabulary and historical measurements; those are
+not claims that every composition is geometrically valid.
+
 Type a sentence describing how two people are positioned. Get a correct 3D render
 of it, and a 2D image you can export.
 

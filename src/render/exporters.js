@@ -48,6 +48,9 @@ export async function exportPNG(view, { scale = 2, transparent = false, ground =
   const canvas = renderer.domElement;
   const width = Math.round(canvas.clientWidth || canvas.width);
   const height = Math.round(canvas.clientHeight || canvas.height);
+  if (![1, 2, 4].includes(scale) || Math.max(width, height) * scale > renderer.capabilities.maxTextureSize) {
+    throw new Error('This image is too large for the graphics device. Choose a smaller PNG scale.');
+  }
 
   const groundMesh = scene.getObjectByName("ground");
   const groundWas = groundMesh?.visible;
@@ -65,20 +68,21 @@ export async function exportPNG(view, { scale = 2, transparent = false, ground =
   });
 
   const clearAlpha = renderer.getClearAlpha();
-  renderer.setClearAlpha(transparent ? 0 : 1);
-  renderer.setRenderTarget(target);
-  renderer.render(scene, camera);
-
-  const pixels = new Uint8Array(target.width * target.height * 4);
-  renderer.readRenderTargetPixels(target, 0, 0, target.width, target.height, pixels);
-
-  renderer.setRenderTarget(null);
-  renderer.setClearAlpha(clearAlpha);
-  scene.background = background;
-  if (groundMesh) groundMesh.visible = groundWas;
-  target.dispose();
-
-  return encodePNG(pixels, target.width, target.height);
+  const previousTarget = renderer.getRenderTarget();
+  try {
+    renderer.setClearAlpha(transparent ? 0 : 1);
+    renderer.setRenderTarget(target);
+    renderer.render(scene, camera);
+    const pixels = new Uint8Array(target.width * target.height * 4);
+    renderer.readRenderTargetPixels(target, 0, 0, target.width, target.height, pixels);
+    return encodePNG(pixels, target.width, target.height);
+  } finally {
+    renderer.setRenderTarget(previousTarget);
+    renderer.setClearAlpha(clearAlpha);
+    scene.background = background;
+    if (groundMesh) groundMesh.visible = groundWas;
+    target.dispose();
+  }
 }
 
 /** GL reads bottom-up; a canvas is top-down. */

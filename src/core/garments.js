@@ -62,12 +62,14 @@ export const GARMENT_COLOURS = {
   white: [0.86, 0.85, 0.83],
   grey: [0.30, 0.30, 0.32],
   red: [0.42, 0.075, 0.105],
-  navy: [0.075, 0.095, 0.17],
+  navy: [0.16, 0.21, 0.29],
+  sage: [0.30, 0.46, 0.39],
+  clay: [0.55, 0.30, 0.22],
   nude: [0.62, 0.48, 0.42],
 };
 
 /** Everything `withGarments` knows how to make. */
-export const GARMENT_NAMES = ["bra", "briefs"];
+export const GARMENT_NAMES = ["bra", "briefs", "top", "shorts"];
 
 /** What a request for clothing means if it does not say. */
 export const DEFAULT_WEARING = {
@@ -813,6 +815,18 @@ function briefs(template, body, marks, colour, { bulge = 0 } = {}) {
   return lift(body, field, veto, colour, "briefs", { bulge: shape });
 }
 
+/** Simple studio clothing follows the same skin weights as the scanned body. */
+function studioGarment(template, body, marks, colour, name) {
+  const top = name === 'top';
+  const veto = boneMargin(template, body, top
+    ? /lowerarm|hand|index|middle|pinky|ring|thumb|head|neck/
+    : ARM_BONES);
+  const field = top
+    ? (x, y, z) => Math.min(y - (marks.waistY - 0.035), 0.855 - y - Math.max(0, z) * 0.12)
+    : (x, y) => Math.min(marks.waistY - 0.012 - y, y - (marks.crotchY - 0.11));
+  return lift(body, field, veto, colour, name);
+}
+
 /**
  * Dress a template.
  *
@@ -846,9 +860,15 @@ export function withGarments(template, { bodyType = "neutral", wearing, colour =
     });
     if (piece) added.push(piece);
   }
+  for (const name of ['top', 'shorts']) {
+    if (wanted.includes(name)) {
+      const piece = studioGarment(template, body, marks, tone, name);
+      if (piece) added.push(piece);
+    }
+  }
   if (!added.length) return template;
 
-  const covered = wanted.includes("briefs");
+  const covered = wanted.includes("briefs") || wanted.includes('shorts');
   const submeshes = template.submeshes.filter(
     (submesh) => !(covered && submesh.name === "pelvis-anatomy")
   );

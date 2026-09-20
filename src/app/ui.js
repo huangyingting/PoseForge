@@ -21,22 +21,23 @@ import {
   resolveArrangement,
   resolvePosture,
 } from "../core/poseLibrary.js";
-import { CHANNELS, POSEABLE_BONES, ROM } from "../core/skeleton.js";
+import {
+  BODY_PRESETS,
+  CHANNELS,
+  POSEABLE_BONES,
+  ROM,
+} from "../core/skeleton.js";
 import { HAIR_STYLES } from "../core/hair.js";
 import { GARMENT_COLOURS, GARMENT_NAMES } from "../core/garments.js";
 import { HAND_SHAPE_NAMES } from "../core/handPose.js";
 import { FOOT_SHAPE_NAMES } from "../core/footPose.js";
+import { newId } from "./ids.js";
 
 const EXAMPLES = [
-  "missionary on the bed",
-  "he kneels behind her while she is on all fours, hands on her hips",
-  "a slim woman sitting on his lap, arms around his neck",
-  "spooning on the bed",
-  "he is carrying her against the wall",
-  "a tall man standing behind a short woman bent over the table",
-  "她仰卧在床上，他跪在她身后",
-  "两人侧躺，面对面在床上",
+  "a woman standing on the floor wearing clothes",
+  "a man seated on a chair wearing clothes",
 ];
+let controlId = 0;
 
 const el = (tag, props = {}, children = []) => {
   const node = Object.assign(document.createElement(tag), props);
@@ -44,19 +45,21 @@ const el = (tag, props = {}, children = []) => {
   return node;
 };
 
-const section = (title, body) => el("section", {}, [el("h2", { textContent: title }), body]);
+const section = (title, body) =>
+  el("section", {}, [el("h2", { textContent: title }), body]);
 
 /** A labelled <select>. */
 function picker(label, options, { blank = null } = {}) {
-  const select = el("select");
-  if (blank !== null) select.append(el("option", { value: "", textContent: blank }));
+  const select = el("select", { id: `control-${++controlId}` });
+  if (blank !== null)
+    select.append(el("option", { value: "", textContent: blank }));
   for (const option of options) {
     select.append(
-      el("option", { value: option, textContent: option.replace(/_/g, " ") })
+      el("option", { value: option, textContent: option.replace(/_/g, " ") }),
     );
   }
   const field = el("div", { className: "field" }, [
-    el("label", { textContent: label }),
+    el("label", { textContent: label, htmlFor: select.id }),
     select,
   ]);
   return { field, select };
@@ -64,10 +67,16 @@ function picker(label, options, { blank = null } = {}) {
 
 /** A labelled slider that shows its own value. */
 function slider(label, { min, max, step, format }) {
-  const input = el("input", { type: "range", min, max, step });
+  const input = el("input", {
+    id: `control-${++controlId}`,
+    type: "range",
+    min,
+    max,
+    step,
+  });
   const readout = el("span", { className: "value" });
   const field = el("div", { className: "field" }, [
-    el("label", { textContent: label }),
+    el("label", { textContent: label, htmlFor: input.id }),
     el("div", {}, [input, readout]),
   ]);
   // `--fill` is how far along the track the value sits, and the stylesheet
@@ -79,8 +88,11 @@ function slider(label, { min, max, step, format }) {
   const sync = () => {
     const value = Number(input.value);
     readout.textContent = format(value);
-    const span = Number(max) - Number(min) || 1;
-    input.style.setProperty("--fill", `${(((value - Number(min)) / span) * 100).toFixed(2)}%`);
+    const span = Number(input.max) - Number(input.min) || 1;
+    input.style.setProperty(
+      "--fill",
+      `${(((value - Number(input.min)) / span) * 100).toFixed(2)}%`,
+    );
   };
   input.addEventListener("input", sync);
   sync();
@@ -101,14 +113,21 @@ function toggles(label, options) {
     const input = el("input", { type: "checkbox" });
     boxes.set(option, input);
     row.append(
-      el("label", { className: "toggle" }, [input, el("span", { textContent: option })])
+      el("label", { className: "toggle" }, [
+        input,
+        el("span", { textContent: option }),
+      ]),
     );
   }
-  const field = el("div", { className: "field" }, [el("label", { textContent: label }), row]);
+  const field = el("div", { className: "field" }, [
+    el("label", { textContent: label }),
+    row,
+  ]);
   return {
     field,
     boxes,
-    value: () => [...boxes].filter(([, box]) => box.checked).map(([name]) => name),
+    value: () =>
+      [...boxes].filter(([, box]) => box.checked).map(([name]) => name),
   };
 }
 
@@ -126,7 +145,8 @@ function group(title) {
 }
 
 /** One side of a paired control, read back from a `string | {l, r}` spec. */
-const sideOf = (value, side) => (typeof value === "string" ? value : (value?.[side] ?? ""));
+const sideOf = (value, side) =>
+  typeof value === "string" ? value : (value?.[side] ?? "");
 
 /**
  * Two sides back into the spec shape.
@@ -147,26 +167,69 @@ function bothSides(left, right) {
  * Build the panel.
  *
  * @param {HTMLElement} root
- * @param {{onText: Function, onScene: Function, onExport: Function, onView: Function}} handlers
+ * @param {{onText: Function, onScene: Function, onHistory: Function}} handlers
  */
 export function buildPanel(root, handlers) {
   root.replaceChildren();
   // The brand block is its own element rather than two loose children of the
   // panel so the stylesheet can pin it: the panel scrolls, and a title that
   // scrolls away takes the only thing identifying the application with it.
+  const scenePane = el("div", {
+    id: "scene-controls",
+    className: "inspector-pane",
+  });
+  const figurePane = el("div", {
+    id: "figure-controls",
+    className: "inspector-pane",
+    hidden: true,
+  });
+  const tabs = el("div", { className: "inspector-tabs" });
+  const tabButtons = ["Scene", "Figures"].map((name, index) => {
+    const button = el("button", {
+      type: "button",
+      textContent: name,
+      className: index ? "" : "active",
+    });
+    button.setAttribute("aria-pressed", String(index === 0));
+    button.setAttribute("aria-controls", index ? figurePane.id : scenePane.id);
+    button.onclick = () => {
+      scenePane.hidden = index !== 0;
+      figurePane.hidden = index !== 1;
+      tabButtons.forEach((b, i) => {
+        b.classList.toggle("active", i === index);
+        b.setAttribute("aria-pressed", String(i === index));
+      });
+    };
+    tabs.append(button);
+    return button;
+  });
+  const mobileHistory = el("div", { className: "mobile-history" });
+  for (const name of ["Undo", "Redo"]) {
+    const button = el("button", {
+      type: "button",
+      className: "action small",
+      textContent: name,
+      disabled: true,
+    });
+    button.dataset.history = name.toLowerCase();
+    button.onclick = () => handlers.onHistory(name.toLowerCase());
+    mobileHistory.append(button);
+  }
   root.append(
-    el("header", { className: "brand" }, [
-      el("h1", { textContent: "PoseForge" }),
-      el("p", {
-        className: "tagline",
-        textContent: "Describe two people. One field decides both the surface and the collisions.",
-      }),
-    ])
+    el("div", { className: "inspector-heading" }, [
+      el("span", { className: "eyebrow", textContent: "MAKE IT YOURS" }),
+      mobileHistory,
+      tabs,
+    ]),
+    scenePane,
+    figurePane,
   );
 
   /* ---- description ---- */
   const input = el("textarea", {
-    placeholder: "e.g. she is lying on her back on the bed, he is kneeling between her legs",
+    id: "description-input",
+    placeholder:
+      "Describe a pose, e.g. a woman seated on a chair wearing clothes",
     spellcheck: false,
   });
   const examples = el("div", { className: "examples" });
@@ -181,32 +244,55 @@ export function buildPanel(root, handlers) {
           input.value = example;
           handlers.onText(example);
         },
-      })
+      }),
     );
   }
-  root.append(section("Description", el("div", {}, [input, examples])));
+  const generate = el("button", {
+    type: "button",
+    className: "action primary full",
+    textContent: "Apply description",
+    onclick: () => handlers.onText(input.value),
+  });
+  scenePane.append(
+    section(
+      "Start with words",
+      el("div", {}, [
+        el("label", {
+          className: "sr-only",
+          htmlFor: input.id,
+          textContent: "Pose description",
+        }),
+        input,
+        generate,
+        examples,
+      ]),
+    ),
+  );
 
-  // Typing re-solves, but not on every keystroke: a full pass is a fifth of a
-  // second and firing one per character queues work faster than it retires.
-  // Waiting for a pause in typing is both cheaper and what the user means -
-  // half a word is rarely a sentence they want rendered.
-  let timer = null;
-  input.addEventListener("input", () => {
-    clearTimeout(timer);
-    timer = setTimeout(() => handlers.onText(input.value), 260);
+  // Explicit application lets a person finish writing before replacing their scene.
+  input.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter")
+      handlers.onText(input.value);
   });
 
   /* ---- interpretation ---- */
   const trace = el("ul", { className: "trace" });
-  const traceEmpty = el("p", { className: "empty", textContent: "Nothing read yet." });
-  root.append(section("How it was read", el("div", {}, [traceEmpty, trace])));
+  const traceEmpty = el("p", {
+    className: "empty",
+    textContent: "Nothing read yet.",
+  });
+  const interpretation = group("How the description was read");
+  interpretation.body.append(traceEmpty, trace);
 
   /* ---- notes ---- */
   const notes = el("ul", { className: "notes" });
-  root.append(section("Notes", notes));
+  const diagnostics = group("Pose checks");
+  diagnostics.body.append(notes);
 
   /* ---- overrides ---- */
-  const arrangement = picker("Arrangement", ARRANGEMENT_NAMES, { blank: "— none —" });
+  const arrangement = picker("Arrangement", ARRANGEMENT_NAMES, {
+    blank: "— none —",
+  });
   const surface = picker("Surface", SURFACE_NAMES);
   const facing = picker("Facing", ["as written", "toward", "away"]);
   const actorHost = el("div");
@@ -214,62 +300,33 @@ export function buildPanel(root, handlers) {
     arrangement.field,
     surface.field,
     facing.field,
-    actorHost,
   ]);
-  root.append(section("Override", overrides));
-
-  /* ---- export ---- */
-  const buttons = el("div", { className: "buttons" });
-  const exportButtons = [
-    ["PNG 1×", () => handlers.onExport("png", { scale: 1 })],
-    ["PNG 2×", () => handlers.onExport("png", { scale: 2 })],
-    ["PNG 4×", () => handlers.onExport("png", { scale: 4 })],
-    ["PNG cut-out", () => handlers.onExport("png", { scale: 2, transparent: true })],
-    ["SVG line art", () => handlers.onExport("svg", {})],
-  ].map(([label, action], index) => {
-    // One of the five is the primary, and it is the 2x rather than the first:
-    // five identical buttons in a row leave a first-time visitor reading all
-    // five before picking, and 2x is the one almost everyone wants - 1x is a
-    // viewport-sized screenshot and 4x takes long enough to look broken.
-    const button = el("button", {
-      className: index === 1 ? "action primary" : "action",
-      type: "button",
-      textContent: label,
-    });
-    button.addEventListener("click", action);
-    buttons.append(button);
-    return button;
+  scenePane.append(
+    section("Composition", overrides),
+    interpretation.details,
+    diagnostics.details,
+  );
+  figurePane.append(actorHost);
+  const addFigure = el("button", {
+    className: "action full",
+    type: "button",
+    textContent: "+ Add figure",
+    onclick: () => {
+      if (!scene || scene.actors.length >= 4) return;
+      scene.actors.push({
+        id: newId("figure"),
+        label: `Figure ${scene.actors.length + 1}`,
+        bodyType: "male",
+        posture: "standing",
+        wearing: ["top", "shorts"],
+        outfit: "navy",
+      });
+      if (scene.actors.length === 2)
+        scene.relationship = { arrangement: "side_by_side" };
+      emit();
+    },
   });
-  root.append(section("Export", buttons));
-
-  /* ---- view ---- */
-  const view = el("div", { className: "buttons" }, [
-    el("button", {
-      className: "action",
-      type: "button",
-      textContent: "Reframe",
-      onclick: () => handlers.onView("frame"),
-    }),
-    el("button", {
-      className: "action",
-      type: "button",
-      textContent: "Front",
-      onclick: () => handlers.onView("front"),
-    }),
-    el("button", {
-      className: "action",
-      type: "button",
-      textContent: "Side",
-      onclick: () => handlers.onView("side"),
-    }),
-    el("button", {
-      className: "action",
-      type: "button",
-      textContent: "Top",
-      onclick: () => handlers.onView("top"),
-    }),
-  ]);
-  root.append(section("View", view));
+  figurePane.append(addFigure);
 
   /* ---- wiring ---- */
 
@@ -288,7 +345,9 @@ export function buildPanel(root, handlers) {
 
   arrangement.select.addEventListener("change", () => {
     const value = arrangement.select.value;
-    scene.relationship = value ? { ...scene.relationship, arrangement: value } : {};
+    scene.relationship = value
+      ? { ...scene.relationship, arrangement: value }
+      : {};
     emit();
   });
   surface.select.addEventListener("change", () => {
@@ -304,12 +363,18 @@ export function buildPanel(root, handlers) {
    * none at all. Hard-coding the number makes this control say "away" for
    * cowgirl and "toward" for reverse cowgirl, which is the wrong way round.
    */
-  const defaultYaw = () => resolveArrangement(scene.relationship?.arrangement)?.yaw ?? 180;
+  const defaultYaw = () =>
+    resolveArrangement(scene.relationship?.arrangement)?.yaw ?? 180;
 
   facing.select.addEventListener("change", () => {
     const value = facing.select.value;
     const base = defaultYaw();
-    const yaw = value === "toward" ? base : value === "away" ? (base + 180) % 360 : undefined;
+    const yaw =
+      value === "toward"
+        ? base
+        : value === "away"
+          ? (base + 180) % 360
+          : undefined;
     scene.relationship = { ...scene.relationship };
     if (yaw == null) delete scene.relationship.yaw;
     else scene.relationship.yaw = yaw;
@@ -317,7 +382,9 @@ export function buildPanel(root, handlers) {
   });
 
   /** Which ROM entry each adjustable bone reads its range from. */
-  const BONE_KIND = new Map(POSEABLE_BONES.map((entry) => [entry.name, entry.kind]));
+  const BONE_KIND = new Map(
+    POSEABLE_BONES.map((entry) => [entry.name, entry.kind]),
+  );
 
   /**
    * The angle a bone sits at before anyone touches it.
@@ -347,7 +414,7 @@ export function buildPanel(root, handlers) {
   function jointEditor(index) {
     const bone = picker(
       "Joint",
-      POSEABLE_BONES.map((entry) => entry.name)
+      POSEABLE_BONES.map((entry) => entry.name),
     );
     const channels = CHANNELS.map((channel) => ({
       channel,
@@ -359,8 +426,16 @@ export function buildPanel(root, handlers) {
       }),
     }));
     const adjusted = el("p", { className: "hint" });
-    const reset = el("button", { className: "action small", type: "button", textContent: "Reset joint" });
-    const resetAll = el("button", { className: "action small", type: "button", textContent: "Reset all" });
+    const reset = el("button", {
+      className: "action small",
+      type: "button",
+      textContent: "Reset joint",
+    });
+    const resetAll = el("button", {
+      className: "action small",
+      type: "button",
+      textContent: "Reset all",
+    });
 
     /** Point the sliders at whatever the chosen bone is doing now. */
     const load = () => {
@@ -429,30 +504,52 @@ export function buildPanel(root, handlers) {
     actorHost.replaceChildren();
     actorControls.length = 0;
     for (let index = 0; index < count; index += 1) {
+      const bodyType = picker("Body type", ["female", "male", "neutral"]);
+      const skinTone = el("input", {
+        type: "color",
+        id: `control-${++controlId}`,
+        value: "#e8c9a4",
+      });
+      const skinField = el("div", { className: "field" }, [
+        el("label", { htmlFor: skinTone.id, textContent: "Skin tone" }),
+        skinTone,
+      ]);
       const posture = picker("Posture", POSTURE_NAMES);
       const stature = slider("Height", {
-        min: 1.45,
-        max: 2.0,
+        min: 1.4,
+        max: 2.1,
         step: 0.01,
         format: (v) => `${Math.round(v * 100)} cm`,
       });
       const build = slider("Build", {
-        min: 0.82,
-        max: 1.28,
+        min: 0.8,
+        max: 1.3,
         step: 0.01,
         format: (v) => (v < 0.94 ? "slim" : v > 1.08 ? "heavy" : "average"),
       });
 
-      const hair = picker("Hair", Object.keys(HAIR_STYLES), { blank: "— for the body —" });
+      const hair = picker("Hair", Object.keys(HAIR_STYLES), {
+        blank: "— for the body —",
+      });
       const wearing = toggles("Wearing", GARMENT_NAMES);
-      const outfit = picker("Colour", Object.keys(GARMENT_COLOURS), { blank: "— black —" });
+      const outfit = picker("Colour", Object.keys(GARMENT_COLOURS), {
+        blank: "— black —",
+      });
       const look = group("Appearance");
-      look.body.append(hair.field, wearing.field, outfit.field);
+      look.body.append(skinField, hair.field, wearing.field, outfit.field);
 
-      const handL = picker("Left hand", HAND_SHAPE_NAMES, { blank: "— from the pose —" });
-      const handR = picker("Right hand", HAND_SHAPE_NAMES, { blank: "— from the pose —" });
-      const footL = picker("Left foot", FOOT_SHAPE_NAMES, { blank: "— from the posture —" });
-      const footR = picker("Right foot", FOOT_SHAPE_NAMES, { blank: "— from the posture —" });
+      const handL = picker("Left hand", HAND_SHAPE_NAMES, {
+        blank: "— from the pose —",
+      });
+      const handR = picker("Right hand", HAND_SHAPE_NAMES, {
+        blank: "— from the pose —",
+      });
+      const footL = picker("Left foot", FOOT_SHAPE_NAMES, {
+        blank: "— from the posture —",
+      });
+      const footR = picker("Right foot", FOOT_SHAPE_NAMES, {
+        blank: "— from the posture —",
+      });
       const ends = group("Hands & feet");
       ends.body.append(handL.field, handR.field, footL.field, footR.field);
 
@@ -465,19 +562,62 @@ export function buildPanel(root, handlers) {
           className: "swatch",
           style: `background:${swatches[index] ?? "#ccc"}`,
         }),
-        el("span", { textContent: `Partner ${String.fromCharCode(65 + index)}` }),
+        el("span", {
+          textContent: `Partner ${String.fromCharCode(65 + index)}`,
+        }),
       ]);
       actorHost.append(
         el("div", { className: "actor-card" }, [
           title,
+          bodyType.field,
           posture.field,
           stature.field,
           build.field,
           look.details,
           ends.details,
           bones.details,
-        ])
+          el("button", {
+            className: "text-button danger",
+            type: "button",
+            textContent: "Remove figure",
+            disabled: count === 1,
+            onclick: () => {
+              const removed = scene.actors[index].id;
+              scene.contacts = (scene.contacts ?? [])
+                .filter(
+                  (c) =>
+                    c.fromActor !== index &&
+                    c.toActor !== index &&
+                    c.fromActor !== removed &&
+                    c.toActor !== removed,
+                )
+                .map((c) => ({
+                  ...c,
+                  fromActor:
+                    typeof c.fromActor === "number" && c.fromActor > index
+                      ? c.fromActor - 1
+                      : c.fromActor,
+                  toActor:
+                    typeof c.toActor === "number" && c.toActor > index
+                      ? c.toActor - 1
+                      : c.toActor,
+                }));
+              scene.actors.splice(index, 1);
+              if (scene.actors.length === 1) scene.relationship = {};
+              emit();
+            },
+          }),
+        ]),
       );
+
+      bodyType.select.addEventListener("change", () => {
+        scene.actors[index].bodyType = bodyType.select.value;
+        emit();
+      });
+      skinTone.addEventListener("change", () => {
+        scene.actors[index].skinTone = skinTone.value;
+        emit();
+      });
 
       posture.select.addEventListener("change", () => {
         scene.actors[index].posture = posture.select.value;
@@ -505,8 +645,16 @@ export function buildPanel(root, handlers) {
           emit();
         });
       }
-      for (const box of wearing.boxes.values()) {
+      for (const [name, box] of wearing.boxes) {
         box.addEventListener("change", () => {
+          const alternative = {
+            top: "bra",
+            bra: "top",
+            shorts: "briefs",
+            briefs: "shorts",
+          }[name];
+          if (box.checked && alternative)
+            wearing.boxes.get(alternative).checked = false;
           scene.actors[index].wearing = wearing.value();
           emit();
         });
@@ -517,13 +665,18 @@ export function buildPanel(root, handlers) {
       ]) {
         for (const control of [left, right]) {
           control.select.addEventListener("change", () => {
-            scene.actors[index][key] = bothSides(left.select.value, right.select.value);
+            scene.actors[index][key] = bothSides(
+              left.select.value,
+              right.select.value,
+            );
             emit();
           });
         }
       }
 
       actorControls.push({
+        bodyType,
+        skinTone,
         posture,
         stature,
         build,
@@ -559,13 +712,16 @@ export function buildPanel(root, handlers) {
             : String(entry.value);
         trace.append(
           el("li", {}, [
-            el("span", { className: "phrase", textContent: entry.phrase ?? "(default)" }),
+            el("span", {
+              className: "phrase",
+              textContent: entry.phrase ?? "(default)",
+            }),
             el("span", { className: "arrow", textContent: "→" }),
             el("span", {
               className: "effect",
               textContent: `${entry.field} = ${value}${entry.note ? ` (${entry.note})` : ""}`,
             }),
-          ])
+          ]),
         );
       }
     },
@@ -574,12 +730,17 @@ export function buildPanel(root, handlers) {
     setNotes(entries) {
       notes.replaceChildren();
       if (entries.length === 0) {
-        notes.append(el("li", { className: "ok", textContent: "No problems reported." }));
+        notes.append(
+          el("li", { className: "ok", textContent: "No problems reported." }),
+        );
         return;
       }
       for (const entry of entries) {
         notes.append(
-          el("li", { className: entry.level ?? "warning", textContent: entry.message })
+          el("li", {
+            className: entry.level ?? "warning",
+            textContent: entry.message,
+          }),
         );
       }
     },
@@ -592,6 +753,8 @@ export function buildPanel(root, handlers) {
         buildActorCards(scene.actors.length, swatches);
       }
       arrangement.select.value = scene.relationship?.arrangement ?? "";
+      arrangement.select.disabled = scene.actors.length < 2;
+      facing.select.disabled = scene.actors.length < 2;
       surface.select.value = scene.support?.surface ?? "floor";
       const yaw = scene.relationship?.yaw;
       facing.select.value =
@@ -599,15 +762,20 @@ export function buildPanel(root, handlers) {
       scene.actors.forEach((actor, index) => {
         const control = actorControls[index];
         if (!control) return;
+        control.bodyType.select.value = actor.bodyType ?? "neutral";
+        control.skinTone.value =
+          actor.skinTone ?? swatches[index % swatches.length];
         control.posture.select.value = actor.posture ?? "standing";
-        control.stature.input.value = actor.stature ?? 1.72;
+        control.stature.input.value =
+          actor.stature ?? BODY_PRESETS[actor.bodyType ?? "neutral"].stature;
         control.build.input.value = actor.build ?? 1;
         control.stature.sync();
         control.build.sync();
         control.hair.select.value = actor.hair ?? "";
         control.outfit.select.value = actor.outfit ?? "";
         const worn = actor.wearing ?? [];
-        for (const [name, box] of control.wearing.boxes) box.checked = worn.includes(name);
+        for (const [name, box] of control.wearing.boxes)
+          box.checked = worn.includes(name);
         control.handL.select.value = sideOf(actor.hands, "l");
         control.handR.select.value = sideOf(actor.hands, "r");
         control.footL.select.value = sideOf(actor.feet, "l");
@@ -617,14 +785,11 @@ export function buildPanel(root, handlers) {
         control.joints.load();
         const set = Object.keys(actor.joints ?? {}).length;
         control.summary.textContent = set ? `Joints (${set} set)` : "Joints";
-        control.title.textContent = actor.label ?? `Partner ${String.fromCharCode(65 + index)}`;
+        control.title.textContent =
+          actor.label ?? `Partner ${String.fromCharCode(65 + index)}`;
       });
       syncing = false;
-    },
-
-    /** Export is meaningless until there is something on screen. */
-    setExportEnabled(enabled) {
-      for (const button of exportButtons) button.disabled = !enabled;
+      addFigure.disabled = scene.actors.length >= 4;
     },
   };
 }

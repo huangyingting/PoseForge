@@ -84,6 +84,7 @@ const SKIN_ATLAS = {
 };
 const atlases = new Map();
 const loader = new TextureLoader();
+const textureListeners = new Set();
 
 /**
  * The atlas for a body type, loaded once and shared.
@@ -95,7 +96,8 @@ const loader = new TextureLoader();
 function skinAtlas(bodyType) {
   const url = String(SKIN_ATLAS[bodyType] ?? SKIN_ATLAS.neutral);
   if (!atlases.has(url)) {
-    const texture = loader.load(url);
+    const texture = loader.load(url, () => textureListeners.forEach(notify => notify()), undefined,
+      () => textureListeners.forEach(notify => notify()));
     texture.colorSpace = SRGBColorSpace;
     // The atlas is authored with the glTF convention - v down from the top
     // left - which is what the GLB's own TEXCOORD_0 expects and the opposite of
@@ -134,14 +136,14 @@ function skinMaterial(colour, atlas = null) {
   const material = new MeshPhysicalMaterial({
     color: new Color(colour),
     map: atlas,
-    roughness: 0.58,
+    roughness: 0.68,
     metalness: 0,
     // A very slight sheen stands in for the fine hair that catches grazing
     // light along a silhouette. Without it edges read as cut out.
-    sheen: 0.28,
+    sheen: 0.16,
     sheenRoughness: 0.85,
     sheenColor: new Color(0xffd9c9),
-    clearcoat: 0.08,
+    clearcoat: 0.02,
     clearcoatRoughness: 0.75,
     vertexColors: false,
   });
@@ -356,7 +358,7 @@ function toGeometry(mesh) {
  * which surface is in front.
  */
 function buildLights(scene) {
-  const key = new DirectionalLight(0xfff1e0, 2.6);
+  const key = new DirectionalLight(0xfff5e9, 2.1);
   key.position.set(2.4, 3.4, 2.2);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -374,16 +376,16 @@ function buildLights(scene) {
   scene.add(key);
   scene.add(key.target);
 
-  const fill = new DirectionalLight(0xc9dcff, 0.75);
+  const fill = new DirectionalLight(0xe5eeff, 1.25);
   fill.position.set(-3, 1.6, 1.4);
   scene.add(fill);
 
-  const rim = new DirectionalLight(0xffffff, 1.5);
+  const rim = new DirectionalLight(0xffffff, 1.1);
   rim.position.set(-1.2, 2.2, -3.2);
   scene.add(rim);
 
-  scene.add(new HemisphereLight(0xdfe8ff, 0x6b5a4a, 0.55));
-  scene.add(new AmbientLight(0xffffff, 0.12));
+  scene.add(new HemisphereLight(0xf0f4ff, 0x9b9583, 0.85));
+  scene.add(new AmbientLight(0xffffff, 0.30));
 
   return { key, fill, rim };
 }
@@ -394,7 +396,8 @@ function buildLights(scene) {
  * @param {HTMLCanvasElement} canvas
  * @param {{alpha?: boolean, shadows?: boolean}} [options]
  */
-export function createRenderer(canvas, { alpha = false, shadows = true } = {}) {
+export function createRenderer(canvas, { alpha = false, shadows = true, onChange = () => {} } = {}) {
+  textureListeners.add(onChange);
   const renderer = new WebGLRenderer({
     canvas,
     antialias: true,
@@ -403,12 +406,12 @@ export function createRenderer(canvas, { alpha = false, shadows = true } = {}) {
   });
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 0.95;
   renderer.shadowMap.enabled = shadows;
   renderer.shadowMap.type = PCFSoftShadowMap;
 
   const scene = new Scene();
-  scene.background = alpha ? null : new Color(0xf2efe9);
+  scene.background = alpha ? null : new Color(0xf1f3ef);
   const lights = buildLights(scene);
 
   const camera = new PerspectiveCamera(38, 1, 0.05, 60);
@@ -418,6 +421,8 @@ export function createRenderer(canvas, { alpha = false, shadows = true } = {}) {
   bodies.name = "bodies";
   scene.add(bodies);
   let propGroup = null;
+  let displayMode = 'natural';
+  let lastPayload = null;
 
   const focus = new Vector3(0, 0.9, 0);
 
@@ -436,6 +441,7 @@ export function createRenderer(canvas, { alpha = false, shadows = true } = {}) {
    * @param {{meshes: Array<object>, props?: Array<object>, bounds?: number[][]}} payload
    */
   function setScene({ meshes, props }) {
+    lastPayload = { meshes, props };
     clearBodies();
     if (propGroup) {
       disposeProps(propGroup);
@@ -450,15 +456,17 @@ export function createRenderer(canvas, { alpha = false, shadows = true } = {}) {
       // as one buffer, which is what the distance field produces, is treated as
       // a single primary part so both paths draw through the same code.
       const parts = mesh.parts ?? [{ ...mesh, primary: true }];
-      const tone = SKIN[index % SKIN.length];
+      const tone = /^#[0-9a-f]{6}$/i.test(mesh.skinTone ?? '') ? mesh.skinTone : SKIN[index % SKIN.length];
       for (const part of parts) {
         // Flesh takes the per-actor skin tone; trim keeps the colour it was
         // authored with. The scan's body carries a baseColorFactor of its own,
         // so "is this flesh" is `primary` *or* the absence of a colour - which
         // is what marks the anatomy `featureRelief` adds as a separate part.
         const flesh = part.primary || !part.colour;
-        const atlas = flesh && part.uvs ? skinAtlas(mesh.bodyType) : null;
-        const material = flesh
+        const atlas = flesh && part.uvs && displayMode === 'natural' ? skinAtlas(mesh.bodyType) : null;
+        const material = displayMode === 'clay'
+          ? new MeshPhysicalMaterial({ color: index % 2 ? 0x9bafa5 : 0xd2bca6, roughness: 0.78 })
+          : flesh
           ? skinMaterial(atlas ? tinted(tone) : tone, atlas)
           : part.hair
             ? hairMaterial(part.colour)
@@ -490,7 +498,6 @@ export function createRenderer(canvas, { alpha = false, shadows = true } = {}) {
       }
     });
 
-    frame();
   }
 
   /**
@@ -521,7 +528,9 @@ export function createRenderer(canvas, { alpha = false, shadows = true } = {}) {
       (box.min[2] + box.max[2]) / 2
     );
     const extent = Math.max(size[0], size[1], size[2], 0.4);
-    const distance = (extent * 0.62) / Math.tan((camera.fov * Math.PI) / 360) + extent * 0.5;
+    const halfFov = (camera.fov * Math.PI) / 360;
+    const limitingFov = Math.min(halfFov, Math.atan(Math.tan(halfFov) * camera.aspect));
+    const distance = (extent * 0.60) / Math.tan(limitingFov) + extent * 0.5;
     const direction = camera.position.clone().sub(focus);
     if (direction.lengthSq() < 1e-6) direction.set(1, 0.6, 1.2);
     camera.position.copy(focus).add(direction.normalize().multiplyScalar(distance));
@@ -593,6 +602,7 @@ export function createRenderer(canvas, { alpha = false, shadows = true } = {}) {
   }
 
   function dispose() {
+    textureListeners.delete(onChange);
     clearBodies();
     if (propGroup) disposeProps(propGroup);
     renderer.dispose();
@@ -603,6 +613,10 @@ export function createRenderer(canvas, { alpha = false, shadows = true } = {}) {
     scene,
     camera,
     setScene,
+    setDisplayMode(mode) {
+      displayMode = mode === 'clay' ? 'clay' : 'natural';
+      if (lastPayload) setScene(lastPayload);
+    },
     frame,
     setView,
     orbit,

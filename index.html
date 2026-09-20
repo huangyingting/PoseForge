@@ -3,18 +3,137 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>PoseForge</title>
-    <link rel="icon" href="data:," />
+    <title>PoseForge — Your pose studio</title>
+    <meta name="theme-color" content="#f7f8f5" />
+    <meta
+      name="description"
+      content="Explore pose studies, shape your figures, and build a library of your own."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%231e675a'/%3E%3Cpath d='M10 24V8h7a5 5 0 010 10h-7' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E"
+    />
     <link rel="stylesheet" href="/src/app/styles.css" />
   </head>
   <body>
-    <div id="app">
-      <aside id="panel"></aside>
-      <main id="stage">
-        <canvas id="viewport"></canvas>
-        <div id="status" role="status" aria-live="polite"></div>
+    <a class="skip-link" href="#viewport">Skip to the studio</a>
+    <div id="app" data-mobile="studio">
+      <header class="topbar">
+        <a class="brand" href="./" aria-label="PoseForge home"
+          ><span class="brand-mark">p<span>f</span></span
+          ><span
+            >PoseForge<span class="brand-sub"
+              >A LITTLE SPACE TO CREATE</span
+            ></span
+          ></a
+        >
+        <span class="workspace-label"
+          >Your pose studio <span class="version-badge">01</span></span
+        >
+        <div class="header-actions">
+          <div class="history-actions">
+            <button
+              id="undo"
+              class="icon-button"
+              aria-label="Undo"
+              title="Undo (Ctrl/⌘ Z)"
+              disabled
+            >
+              ↶</button
+            ><button
+              id="redo"
+              class="icon-button"
+              aria-label="Redo"
+              title="Redo (Ctrl/⌘ Shift Z)"
+              disabled
+            >
+              ↷
+            </button>
+          </div>
+          <button id="save-preset" class="action" disabled>Save preset</button>
+          <button id="open-export" class="action primary" disabled>
+            Export <span aria-hidden="true">↗</span>
+          </button>
+        </div>
+      </header>
+      <aside id="library" aria-label="Pose library"></aside>
+      <main id="stage" aria-label="3D studio">
+        <div class="stage-heading">
+          <div>
+            <span class="eyebrow">THE STUDIO</span>
+            <h1 id="scene-title">Side by side</h1>
+            <p id="scene-description">
+              A little inspiration. Endless possibilities.
+            </p>
+          </div>
+          <span id="scene-badge" class="badge">Built-in study</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas
+            id="viewport"
+            tabindex="0"
+            aria-label="3D pose preview. Drag to orbit, scroll to zoom. Arrow keys rotate; plus and minus zoom; F fits the figures."
+          ></canvas>
+          <div
+            id="viewport-error"
+            class="viewport-error"
+            role="alert"
+            hidden
+          ></div>
+          <div class="stage-watermark" aria-hidden="true">POSE / STUDY</div>
+          <div id="loading" class="loading-indicator">
+            Preparing your figures…
+          </div>
+        </div>
+        <div class="stage-toolbar">
+          <div class="view-buttons" role="group" aria-label="Camera views">
+            <button
+              data-view="three_quarter"
+              class="active"
+              aria-pressed="true"
+            >
+              3D</button
+            ><button data-view="front" aria-pressed="false">Front</button
+            ><button data-view="side" aria-pressed="false">Side</button
+            ><button data-view="top" aria-pressed="false">Top</button>
+          </div>
+          <button
+            id="fit-view"
+            class="icon-button"
+            aria-label="Fit figures"
+            title="Fit figures (F)"
+          >
+            ⛶
+          </button>
+          <div class="material-control">
+            <label for="material" class="sr-only">Material</label
+            ><select id="material">
+              <option value="natural">Natural</option>
+              <option value="clay">Clay study</option>
+            </select>
+          </div>
+        </div>
+        <div class="stage-footer">
+          <span class="camera-hint"
+            >Drag to orbit <span>·</span> Scroll to zoom</span
+          ><span id="status" role="status" aria-live="polite"
+            >Loading studio</span
+          >
+        </div>
       </main>
+      <aside id="panel" aria-label="Scene inspector"></aside>
+      <nav class="mobile-nav" aria-label="Workspace">
+        <button data-region="library" aria-pressed="false">
+          ▦ <span>Library</span></button
+        ><button data-region="studio" aria-pressed="true" class="active">
+          ◈ <span>Studio</span></button
+        ><button data-region="edit" aria-pressed="false">
+          ☷ <span>Edit</span>
+        </button>
+      </nav>
     </div>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <noscript>PoseForge needs JavaScript to run the 3D studio.</noscript>
     <script type="module" src="/src/app/main.js"></script>
   </body>
 </html>
