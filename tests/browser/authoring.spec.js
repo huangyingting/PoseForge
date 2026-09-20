@@ -25,7 +25,16 @@ test("contact targets, figure names and custom behavior survive save, reload, ex
   await ready(page);
   await expect(page.getByLabel("Contact behavior")).toHaveValue("custom");
   const contact = page.getByRole("group", { name: "Contact 1", exact: true });
-  await expect(contact.locator(".contact-result")).toContainText("On target");
+  await expect(contact.locator(".contact-result")).toContainText(
+    "Close contact",
+  );
+  await expect(contact.locator(".contact-result")).toHaveAttribute(
+    "data-measurement",
+    "rendered",
+  );
+  expect(
+    Number(await contact.locator(".contact-result").getAttribute("data-gap")),
+  ).toBeLessThanOrEqual(0.004);
   await page.getByRole("button", { name: "Figures", exact: true }).click();
   await page.getByLabel("Figure name", { exact: true }).nth(0).fill("Alex");
   await page.getByLabel("Figure name", { exact: true }).nth(0).press("Tab");
@@ -69,7 +78,9 @@ test("contact targets, figure names and custom behavior survive save, reload, ex
   await ready(page);
   await expect(page.getByLabel("Contact behavior")).toHaveValue("custom");
   await expect(contact.getByLabel("Target body part")).toHaveValue("forearm.l");
-  await expect(contact.locator(".contact-result")).toContainText("On target");
+  await expect(contact.locator(".contact-result")).toContainText(
+    "Close contact",
+  );
   const scene = await exportedScene(page);
   expect(scene.actors.map((actor) => actor.label)).toEqual(["Alex", "Sam"]);
   expect(scene.relationship.contactMode).toBe("custom");
@@ -162,13 +173,11 @@ test("removing a figure remaps surviving contacts and invalid imported sides can
   ];
   await page.goto("/");
   await ready(page);
-  await page
-    .locator("#catalog-file")
-    .setInputFiles({
-      name: "three.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(serializeCatalog([preset])),
-    });
+  await page.locator("#catalog-file").setInputFiles({
+    name: "three.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(serializeCatalog([preset])),
+  });
   await page
     .getByRole("button", { name: "Load Three figures", exact: true })
     .click();
@@ -191,13 +200,59 @@ test("removing a figure remaps surviving contacts and invalid imported sides can
   expect(scene.contacts).toEqual([]);
   const invalid = JSON.parse(serializeCatalog([preset]));
   invalid.presets[0].scene.contacts[0].from = "hand.middle";
-  await page
-    .locator("#catalog-file")
-    .setInputFiles({
-      name: "invalid.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(JSON.stringify(invalid)),
-    });
+  await page.locator("#catalog-file").setInputFiles({
+    name: "invalid.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(invalid)),
+  });
   await expect(page.locator("#toast")).toContainText("Import failed");
   await expect(page.locator(".preset-card")).toHaveCount(1);
+});
+
+test("missing scanned geometry is labeled as an estimate and does not taint a healthy model", async ({
+  page,
+  context,
+}) => {
+  await context.route("**/realistic-female*.glb", (route) =>
+    route.abort("failed"),
+  );
+  await page.goto("/?preset=builtin.helping-hand");
+  await ready(page);
+  const result = page
+    .getByRole("group", { name: "Contact 1", exact: true })
+    .locator(".contact-result");
+  await expect(result).toContainText("Estimated target");
+  await expect(result).toHaveAttribute("data-measurement", "body-model");
+  await expect(result).not.toHaveAttribute("data-gap", /.+/);
+  await page
+    .getByRole("button", { name: "Load Standing · male", exact: true })
+    .click();
+  await ready(page);
+  await expect(page.locator(".notes")).not.toContainText("Could not load");
+});
+
+test("rapid preset changes publish only the final scene and its measured contact", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/");
+  await ready(page);
+  for (const name of ["Take a seat", "Standing · male", "A helping hand"]) {
+    await page
+      .getByRole("button", { name: `Load ${name}`, exact: true })
+      .click();
+  }
+  await ready(page);
+  await expect(page.locator("#scene-title")).toHaveText("A helping hand");
+  const result = page
+    .getByRole("group", { name: "Contact 1", exact: true })
+    .locator(".contact-result");
+  await expect(result).toContainText("Close contact");
+  await expect(result).toHaveAttribute("data-measurement", "rendered");
+  const scene = await exportedScene(page);
+  expect(scene.title).toBe("A helping hand");
+  expect(scene.actors).toHaveLength(2);
+  expect(scene.relationship.contactMode).toBe("custom");
+  expect(errors).toEqual([]);
 });

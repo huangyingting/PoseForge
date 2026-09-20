@@ -17,16 +17,18 @@ Read in this order:
 | [geometry.md](geometry.md) | The signed distance field: round cones, exactness, smooth union, and the two documented approximations |
 | [collision.md](collision.md) | Broad and narrow phase, compression budgets, and how a penetration becomes a pose change |
 | [solver.md](solver.md) | Postures, support sets, two-height surfaces, arrangements, and the annealed contact loop |
+| [surface-contacts.md](surface-contacts.md) | Visible triangle gaps, guarded corrections, and the distinction between mesh contact and a body-model target |
 | [meshing.md](meshing.md) | Dual contouring stitched from edges, vertex relaxation, field-sampled AO |
 | [language.md](language.md) | Lexicon, archetypes, the scanner, and why a turn is relative |
 | [validation.md](validation.md) | What the 104 tests and 4 validators actually measure, and the known residuals |
 
 ## The one-paragraph version
 
-A body is ~48 round cones. Their smooth union is a signed distance field. That
-one field is the rendered surface, the collision geometry and the ambient
-occlusion source — not three approximations of each other, the same function.
-Text is parsed into a scene spec; postures supply joint angles and a support
-set; an annealed loop pulls declared contacts closed while pushing penetrations
-apart; the field is meshed by dual contouring into a watertight surface and
-drawn, or exported as PNG or SVG.
+A body model is a collection of round cones whose smooth union supplies the
+base collision field and AO. Scanned figures share its rig but have a distinct
+visible surface. Scene data produces poses and support constraints; the base
+solver arranges the figures, then visible-contact refinement measures dressed
+triangles and adjusts free limbs without hiding unrelated collisions. The
+viewport and CLI draw the resulting geometry, with an SDF fallback when models
+are unavailable. Measurements say whether they concern the visible surface or
+the approximate body-model target.

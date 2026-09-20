@@ -38,13 +38,36 @@ shown above your editable list. **My contacts only** suppresses those defaults
 from both the initial alignment and the solve. An empty custom list means no
 partner-contact constraints. These settings travel with saved presets and JSON.
 
-Each row reports the solver's distance from the requested target point. **On
-target** means within 12 mm; other rows show the remaining distance and whether
-reach or body interference limited movement. This is a measured target error,
-not an assurance that every visible surface is in exact physical contact. A
-strength of zero applies no pull. Delete a row to remove its constraint entirely.
+Each row reports the measured gap between the visible body-part regions when
+the models are available. **Close contact** means within 4 mm. Intersecting
+surfaces are flagged separately. Other rows show the remaining gap and whether
+reach or supporting limbs limited the adjustment. If a model or measurement is
+unavailable, the row says **Estimated target** instead of claiming a visible
+contact. A strength of zero applies no pull. Delete a row to remove its constraint entirely.
 Joint limits, support and collision checks still apply. Review **Pose checks**
 when the status reports notes.
+
+The renderer may make a small adjustment to a free wrist or move a standing or
+kneeling figure a few centimeters along the floor to achieve an authored contact.
+Explicit wrist overrides and pinned figures are respected. Supporting limbs
+retain their height. The collision check uses the rendered limbs to resolve
+coarse-model discrepancies at the declared contact, while retaining the raw
+diagnostic and checks for other body parts and furniture.
+
+## Use saved presets from the command line
+
+The headless renderer accepts both raw scene JSON and exported catalog files:
+
+```sh
+node scripts/render-cli.mjs --scene examples/reference-study.json --out study.png
+node scripts/render-cli.mjs --preset builtin.helping-hand --out gesture.png
+node scripts/render-cli.mjs --scene my-library.json --preset user.MY-ID --out custom.png
+```
+
+A catalog without `--preset` renders its first entry. An unknown ID is an error.
+The browser and CLI share surface-contact refinement, so exported scene settings
+receive the same geometry corrections in both. Lighting and framing differ
+between the two renderers. `--body sdf` keeps the original body-model diagnostic.
 
 ## Interchange format
 

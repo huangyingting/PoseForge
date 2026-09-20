@@ -52,13 +52,31 @@ function selectField(label, values) {
 }
 function verdict(report) {
   if (!report || !Number.isFinite(report.distance))
-    return ["Waiting for the pose", "pending"];
+    return [
+      report ? "Measurement unavailable" : "Waiting for the pose",
+      report ? "warning" : "pending",
+    ];
+  if (report.basis === "rendered") {
+    const gap = `${(report.surfaceGap * 1000).toFixed(report.surfaceGap < 0.01 ? 1 : 0)} mm surface gap`;
+    if (report.limbIntersects)
+      return ["Contact limbs intersect · adjust the pose", "warning"];
+    if (report.intersects)
+      return ["Surfaces intersect · adjust the pose", "warning"];
+    if (report.strength === 0) return [`No pull · ${gap}`, "pending"];
+    if (report.surfaceGap <= report.tolerance)
+      return [`Close contact · ${gap}`, "ok"];
+    if (report.reason === "load_bearing")
+      return [`Supporting limb · ${gap}`, "warning"];
+    if (report.unreachable) return [`Out of reach · ${gap}`, "warning"];
+    if (report.blocked) return [`Movement limited · ${gap}`, "warning"];
+    return [gap, "warning"];
+  }
   const error = `${Math.round(report.distance * 1000)} mm from target`;
   if (report.strength === 0) return [`No pull · ${error}`, "pending"];
-  if (report.distance <= 0.012) return [`On target · ${error}`, "ok"];
-  if (report.blocked) return [`Movement blocked · ${error}`, "warning"];
-  if (report.unreachable) return [`Out of reach · ${error}`, "warning"];
-  return [error, "warning"];
+  return [
+    `Estimated target · ${error}`,
+    report.distance > 0.06 ? "warning" : "pending",
+  ];
 }
 
 /** A scene-data editor; only the solver supplies contact result measurements. */
@@ -91,7 +109,7 @@ export function createContactEditor(onChange) {
       node("p", {
         className: "hint",
         textContent:
-          "Choose what should meet. The pose checks show how closely the figures can reach each target.",
+          "Choose which parts should meet. Results measure visible surfaces when available; body-model estimates are labeled.",
       }),
       mode.field,
       help,
@@ -282,6 +300,8 @@ export function createContactEditor(onChange) {
         row.showStrength();
         row.result.textContent = "Updating the pose…";
         row.result.className = "contact-result pending";
+        delete row.result.dataset.measurement;
+        delete row.result.dataset.gap;
       }
       actorSignature = signature;
     },
@@ -298,6 +318,9 @@ export function createContactEditor(onChange) {
           : ["No result for this contact", "warning"];
         row.result.textContent = message;
         row.result.className = `contact-result ${state}`;
+        row.result.dataset.measurement = report?.basis ?? "body-model";
+        if (report?.surfaceGap != null)
+          row.result.dataset.gap = String(report.surfaceGap);
       });
       defaults.replaceChildren();
       for (const report of reports.filter(

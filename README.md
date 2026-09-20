@@ -18,6 +18,7 @@ default contacts. **A helping hand** is a working example you can edit and save.
 npm ci
 npm run dev
 npm test
+node scripts/validate-surface-contacts.mjs
 npm run build
 npx playwright install chromium
 npm run test:browser

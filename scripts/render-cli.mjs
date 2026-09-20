@@ -25,7 +25,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { deflateSync, inflateSync } from "node:zlib";
 import { parseDescription } from "../src/nlp/parser.js";
 import { validateScene } from "../src/core/scene.js";
+import { BUILTIN_PRESETS, parseCatalog } from '../src/core/catalog.js';
 import { solveScene } from "../src/core/solver.js";
+import { refineSurfaceContacts } from '../src/core/surfaceContacts.js';
 import { bindCorrections, buildHumanTemplate, featureRelief, skinHumanMesh } from "../src/core/humanMesh.js";
 import { withHair } from "../src/core/hair.js";
 import { withGarments } from "../src/core/garments.js";
@@ -120,9 +122,31 @@ const GROUND_COLOUR = [0.85, 0.83, 0.8];
 /* Scene                                                               */
 /* ------------------------------------------------------------------ */
 
-const parsed = SCENE_FILE
-  ? { scene: validateScene(JSON.parse(readFileSync(SCENE_FILE, "utf8"))).scene, warnings: [] }
-  : parseDescription(text);
+function sceneInput() {
+  const reference = flag('preset', null);
+  if (has('preset') && !reference) throw new Error('--preset needs a preset ID.');
+  if (has('scene') && !SCENE_FILE) throw new Error('--scene needs a JSON file.');
+  if (SCENE_FILE) {
+    const source = readFileSync(SCENE_FILE, 'utf8');
+    const value = JSON.parse(source);
+    if (value?.format != null || value?.presets != null) {
+      const presets = parseCatalog(source);
+      const selected = reference ? presets.find(p => p.id === reference) : presets[0];
+      if (!selected) throw new Error(`No preset named "${reference}" in this catalog.`);
+      return { scene: selected.scene, warnings: presets.length > 1 && !reference ? [`Rendering the first preset: ${selected.title}. Use --preset ID to select another.`] : [] };
+    }
+    if (reference) throw new Error('--preset selects an entry in a catalog; a raw scene has no preset IDs.');
+    const checked = validateScene(value);
+    return { scene: checked.scene, warnings: checked.issues.map(issue => issue.message) };
+  }
+  if (reference) {
+    const preset = BUILTIN_PRESETS.find(p => p.id === reference);
+    if (!preset) throw new Error(`No built-in preset named "${reference}".`);
+    return { scene: preset.scene, warnings: [] };
+  }
+  return parseDescription(text);
+}
+const parsed = sceneInput();
 const solved = solveScene(parsed.scene);
 
 /**
@@ -308,6 +332,7 @@ const humanTemplate = (actor) => {
 
 // Occlusion is sampled against every body in the scene rather than each figure
 // against itself, so the crease where two people touch darkens on both of them.
+if (BODY !== 'sdf') refineSurfaceContacts(solved, solved.actors.map(humanTemplate));
 const allVolumes = solved.actors.flatMap((actor) => actor.volumes);
 
 solved.actors.forEach((actor, index) => {
@@ -1209,7 +1234,7 @@ if (has("svg")) {
 /* ------------------------------------------------------------------ */
 
 const triangles = objects.reduce((sum, object) => sum + object.indices.length / 3, 0);
-console.log(`"${text}"`);
+console.log(JSON.stringify(parsed.scene.title || parsed.scene.description || SCENE_FILE || flag('preset', null) || text));
 console.log(`  ${OUT}  ${WIDTH}x${HEIGHT} (${SS}x) · ${(triangles / 1000).toFixed(1)}k triangles`);
 if (svgOut) console.log(`  ${svgOut}  vector outlines`);
 console.log(

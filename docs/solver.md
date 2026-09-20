@@ -4,6 +4,10 @@
 whose declared contacts are closed and whose volumes do not interpenetrate —
 two goals that actively fight each other.
 
+This document describes the base body-model solver. Scanned rendering adds the
+[visible-contact pass](surface-contacts.md) after this solve. That pass measures
+the actual posed triangles and retains coarse-model diagnostics separately.
+
 ## Postures are angles plus a support set
 
 A posture in `src/core/poseLibrary.js` is:

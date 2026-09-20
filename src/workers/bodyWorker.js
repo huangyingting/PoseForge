@@ -23,6 +23,7 @@
 import { parseDescription } from "../nlp/parser.js";
 import { validateScene } from "../core/scene.js";
 import { solveScene } from "../core/solver.js";
+import { surfaceContactSteps } from '../core/surfaceContacts.js';
 import { buildHumanTemplate, featureRelief, skinHumanMesh } from "../core/humanMesh.js";
 import { withHair } from "../core/hair.js";
 import { withGarments } from "../core/garments.js";
@@ -57,7 +58,7 @@ const MODELS = {
 };
 const templates = new Map();
 const relieved = new Map();
-let modelWarning = "";
+const modelWarnings = new Map();
 
 function scanned(bodyType) {
   const url = String(MODELS[bodyType] ?? MODELS.neutral);
@@ -71,7 +72,7 @@ function scanned(bodyType) {
         })
         .then((bytes) => buildHumanTemplate(bytes))
         .catch((error) => {
-          modelWarning = `Could not load the scanned body (${error.message}); drawing the collision field instead.`;
+          modelWarnings.set(url, `Could not load the ${bodyType} scanned body (${error.message}); drawing the collision field instead.`);
           return null;
         })
     );
@@ -170,13 +171,8 @@ function bodyParts(actor, template, scene, occlusion, resolution) {
   }));
 }
 
-/** Package the solved actors as drawable parts, and list their buffers for transfer. */
-async function meshActors(actors, { occlusion, resolution }, transfers) {
-  // Occlusion is sampled against every body in the scene rather than each
-  // figure against itself, so the crease where two people touch darkens on
-  // both of them.
-  const scene = actors.flatMap((actor) => actor.volumes);
-  const loaded = await Promise.all(
+function templatesFor(actors) {
+  return Promise.all(
     actors.map((actor) =>
       humanTemplate({
         bodyType: actor.skeleton.bodyType,
@@ -188,6 +184,11 @@ async function meshActors(actors, { occlusion, resolution }, transfers) {
       })
     )
   );
+}
+
+/** Package the solved actors as drawable parts, and list their buffers for transfer. */
+async function meshActors(actors, { occlusion, resolution }, transfers, loaded) {
+  const scene = actors.flatMap((actor) => actor.volumes);
 
   return actors.map((actor, index) => {
     const parts = bodyParts(actor, loaded[index], scene, occlusion, resolution);
@@ -226,6 +227,8 @@ function summarise(solved) {
     props: solved.props.map(({ kind, size, center }) => ({ kind, size, center })),
     quality: {
       maxDepth: solved.quality.maxDepth,
+      proxyMaxDepth: solved.quality.proxyMaxDepth,
+      verifiedProxyContacts: solved.quality.verifiedProxyContacts,
       propPenetration: solved.quality.propPenetration,
       unmetContacts: solved.quality.unmetContacts,
       contactDetail: solved.quality.contactDetail,
@@ -273,12 +276,20 @@ self.onmessage = async (event) => {
 
     const solved = solveScene(parsed.scene);
     const solvedAt = performance.now();
+    const loaded = await templatesFor(solved.actors);
+    if (current !== id) return;
+    const loadedAt = performance.now();
+    for (const step of surfaceContactSteps(solved, loaded)) {
+      await yieldToQueue();
+      if (current !== id) return;
+    }
+    const refinedAt = performance.now();
 
     const base = {
       id,
       scene: parsed.scene,
       interpretation: parsed.interpretation,
-      warnings: parsed.warnings,
+      warnings: [...parsed.warnings, ...new Set(solved.actors.map(actor => modelWarnings.get(String(MODELS[actor.skeleton.bodyType] ?? MODELS.neutral))).filter(Boolean))],
       matched: parsed.matched,
       ...summarise(solved),
     };
@@ -287,16 +298,16 @@ self.onmessage = async (event) => {
     const draftMeshes = await meshActors(
       solved.actors,
       { occlusion: false, resolution: resolution ?? DRAFT },
-      draftTransfers
+      draftTransfers,
+      loaded
     );
     if (current !== id) return;
     self.postMessage(
       {
         ...base,
-        warnings: modelWarning ? [...base.warnings, modelWarning] : base.warnings,
         stage: "draft",
         meshes: draftMeshes,
-        timings: { parse: solvedAt - started, mesh: performance.now() - solvedAt },
+        timings: { parse: solvedAt - started, models: loadedAt - solvedAt, surface: refinedAt - loadedAt, mesh: performance.now() - refinedAt },
       },
       draftTransfers
     );
@@ -312,13 +323,13 @@ self.onmessage = async (event) => {
     const fineMeshes = await meshActors(
       solved.actors,
       { occlusion: true, resolution: FINAL },
-      fineTransfers
+      fineTransfers,
+      loaded
     );
     if (current !== id) return;
     self.postMessage(
       {
         ...base,
-        warnings: modelWarning ? [...base.warnings, modelWarning] : base.warnings,
         stage: "final",
         meshes: fineMeshes,
         timings: { parse: solvedAt - started, mesh: performance.now() - fineStarted },

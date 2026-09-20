@@ -2,7 +2,9 @@
 
 ## The pipeline
 
-One direction, no loops between stages, no stage reaching backwards:
+Scene input flows through validation, the body-model solve, visible-contact
+refinement and rendering. Refinement re-skins the rig internally to measure the
+same triangles that the renderer will draw.
 
 ```
   "she is bent over the table, he stands behind her"
@@ -21,7 +23,7 @@ One direction, no loops between stages, no stage reaching backwards:
         │
         ▼
   ┌───────────────┐   src/core/skeleton.js  + poseLibrary.js
-  │  build rigs   │   25 bones, anthropometric, scaled by stature/build
+  │  build rigs   │   articulated, anthropometric, scaled by stature/build
   │  apply pose   │   posture → joint angles, clamped to range of motion
   └───────────────┘
         │
@@ -34,6 +36,11 @@ One direction, no loops between stages, no stage reaching backwards:
   ┌───────────────┐   src/core/solver.js
   │    solve      │   seat → arrange → anneal(contacts ⇄ collisions) → keep best
   └───────────────┘   also: warnings[] for anything it could not do
+        │
+        ▼
+  ┌───────────────┐   src/core/surfaceContacts.js + meshDistance.js
+  │ refine contact│   dressed triangles → measured gaps → constrained rig edits
+  └───────────────┘   skipped/estimated when geometry is unavailable
         │
         ▼
   ┌───────────────┐   src/core/humanMesh.js      (in a Worker)
@@ -51,14 +58,17 @@ One direction, no loops between stages, no stage reaching backwards:
 ```
 src/core/          no dependencies, runs in plain Node
   math.js          vectors, quaternions, matrices, segment/segment closest points
-  skeleton.js      25-bone rig, anthropometric scaling, range-of-motion clamping
+  skeleton.js      articulated rig, anthropometric scaling, range-of-motion clamping
   landmarks.js     "chest", "hand.left" → bone + offset
   ik.js            two-bone analytic IK with pole hints, aim, blending
   body.js          round cones, the SDF, smooth union, normals
   collision.js     broad/narrow phase, compression budgets, rigid correction
   gltf.js          GLB container, accessors, node transforms
   humanMesh.js     scanned body: bind to the rig, skin, smooth, split the eyes
-  poseLibrary.js   18 postures, 10 arrangements, 6 surfaces
+  meshDistance.js  triangle distance and bounding-volume hierarchy
+  surfaceContacts.js  visible-region queries, constrained refinement, cancellation
+  catalog.js       portable presets and strict interchange validation
+  poseLibrary.js   authored postures, arrangements and support surfaces
   scene.js         scene validation and repair
   solver.js        seating, arrangement, the annealed contact loop
 
@@ -74,45 +84,48 @@ src/render/
   exporters.js     three.js — PNG and SVG
 
 src/workers/
-  bodyWorker.js    parse + solve + mesh off the main thread
+  bodyWorker.js    validate + solve + refine + mesh off the main thread
 
 src/app/
   main.js          one thread of control: panel → worker → viewport → export
   ui.js            description box, override controls, interpretation readout
+  contactEditor.js figure/landmark contact editing and measured feedback
+  studioUI.js      library, filters, dialogs and export choices
+  libraryStore.js  atomic browser persistence for saved presets/favorites
+  diagram.js       schematic joint previews
 
 scripts/           no dependencies
   render-cli.mjs   software rasteriser: z-buffer, shadow map, zlib PNG
-  validate-*.mjs   four validators that measure geometry
+  validate-*.mjs   geometry validators, including scanned-surface contact checks
   measure-body.mjs anthropometric check of the rendered surface
 
-tests/             node:test, no framework, 104 tests
+tests/             node:test geometry/data checks; browser/ uses Playwright and Axe
 ```
 
 ## Three invariants
 
 Everything else is a consequence of these.
 
-### 1. One surface
+### 1. Distinguish the body model from the visible surface
 
-The rendered surface, the collision geometry and the AO source are the same
-function — `bodyDistance` in `src/core/body.js`. Not three representations kept
-in sync; one representation, read three ways.
+`bodyDistance` supplies the base collision model, field-based AO and the SDF
+fallback mesh. In that rendering mode one field serves all three purposes.
+Scanned figures share the rig, but their surfaces can differ from the field;
+limb thickness is one measured example. A small body-model target residual is
+therefore not evidence that the visible surfaces meet.
 
-This is the single largest departure from `../SexPoses`, where the body is drawn
-as separate three.js sphere and capsule meshes while collision runs against
-three ellipsoids that are not drawn at all. There, a hand can rest visibly
-inside a thigh while the solver believes it is 60mm clear, because the thigh is
-not in the collision set. Here that state is unrepresentable.
-
-The cost is that the field must be cheap enough to evaluate in a mesher's inner
-loop and exact enough to trust in a narrow phase. Round cones are chosen because
-they are both. See [geometry.md](geometry.md).
+`surfaceContacts.js` measures posed, dressed triangle regions, adjusts free
+limbs and rechecks the final pose. At declared limb contacts, complete rendered
+limbs can resolve a coarse-model overlap only when their triangles do not cross
+and the closest surfaces face outward. Raw proxy diagnostics remain available.
+Self, furniture and unrelated-body collisions are not exempted. Missing models
+produce an explicitly labeled estimate. See [surface-contacts.md](surface-contacts.md).
 
 ### 2. The core has no dependencies
 
 `src/core/`, `src/nlp/`, `src/render/meshBuilder.js` and `scripts/` import
 nothing — not even three.js. three.js appears only in `src/render/renderer.js`,
-`props.js`, `exporters.js` and the app.
+`props.js` and `exporters.js`.
 
 This is not aesthetic. It is what makes the validators possible: the entire
 geometric pipeline runs headless in Node, so correctness can be *measured* in CI
@@ -123,16 +136,20 @@ A guard test enforces it, and the rule is worth defending — the moment a core
 module imports `THREE.Vector3`, the validators stop being runnable and the
 system loses its only objective check.
 
-### 3. Nothing throws on bad input
+### 3. Tolerant descriptions, strict interchange
 
-The webapp parses on every keystroke, so half-typed words and empty boxes are
-the common case rather than the edge case, and an exception is a blank screen.
+Descriptions are applied explicitly, but incomplete or ambiguous text still
+needs a useful result and an explanation of any assumptions.
 
 - `parseDescription` accepts `""`, `null`, `12345`, 5000 characters of `a`, pure
   punctuation — and always returns a scene the solver accepts.
 - `validateScene` returns the same shape for `null`, `42`, `"a scene"`, `{}`.
 - Anything repaired is reported in `warnings`, with a "did you mean" suggestion
   where one exists.
+
+Catalog imports use `checkScene` and `parseCatalog` instead: unknown versions,
+unsafe data and invalid scene choices reject the complete pack before a storage
+write. UI error handling preserves the existing library and scene.
 
 The corollary is the rule that matters more: **a guess is always labelled**.
 Every field the parser filled in appears in `interpretation` with the phrase
@@ -152,12 +169,13 @@ What the parser produces and the solver consumes. Every field is optional except
 ```js
 {
   actors: [
-    { id, posture, bodyType: "female"|"male"|"neutral", stature, build, bust }
+    { id, label, posture, bodyType: "female"|"male"|"neutral", stature, build, bust,
+      wearing, outfit, skinTone, joints, hands, feet, mobility }
   ],
-  relationship: { arrangement, yaw },   // yaw overrides the arrangement default
+  relationship: { arrangement, yaw, contactMode: "automatic"|"custom" },
   support:      { surface },            // "floor"|"bed"|"sofa"|"chair"|"table"|"bench"
   contacts: [
-    { from, fromSide, fromActor, to, toSide, toActor, strength }
+    { from: "hand.r", fromActor, to: "forearm.l", toActor, strength, type }
   ],
 }
 ```
@@ -168,9 +186,11 @@ What the parser produces and the solver consumes. Every field is optional except
 {
   actors:   [ { id, posture, skeleton, pose, evaluated, volumes } ],
   surface:  { height, ground, props },  // two heights; see solver.md
-  contacts: [ { contact, distance, unreachable, blocked } ],
-  penetration: { maxDepth, count },
-  warnings: [ "chest to chest could not be closed, left 55mm apart", … ],
+  contacts: [ { from, fromSide, fromActor, to, toSide, toActor, strength, source } ],
+  quality: {
+    maxDepth, count, warnings, unmetContacts,
+    contactDetail: [{ from, to, distance, unreachable, blocked }]
+  },
   camera:   { … },
 }
 ```
@@ -179,7 +199,13 @@ There is deliberately no single `y` on the surface. `height` is where a trunk
 rests, `ground` is where feet go, and collapsing them is the bug that puts a
 figure bent over a table standing on the tabletop.
 
-### Mesh
+After visible refinement, `quality` also includes raw `proxyMaxDepth`, the number
+of `verifiedProxyContacts`, and per-contact `basis`, `surfaceGap`,
+`targetDistance`, `intersects` and `limbIntersects`. The body-model target error
+and rendered-region gap have different meanings and must not share an unlabeled
+readout.
+
+### Field mesh
 
 ```js
 { positions: Float32Array,  // xyz
@@ -192,27 +218,26 @@ figure bent over a table standing on the tabletop.
 
 ## Threading
 
-Parse, solve and mesh all run in `src/workers/bodyWorker.js`. The main thread
-only ever draws and exports.
+The UI can parse descriptions and draw lightweight joint diagrams. Rig solving,
+scanned-surface refinement and mesh construction run in `bodyWorker.js`; the main
+thread owns interaction, the library, history, drawing and export.
 
-There is exactly one way into the worker. Typing a description and dragging an
-override slider both post the same message shape and come back through the same
-handler, so the override controls cannot reach a state the text could not
-express, and what is on screen is always the result of a full solve rather than
-a patch applied to a previous one.
+Selecting a preset, applying a description and editing a control all post a
+scene request through the same handler. Descriptions are one authoring path;
+structured controls and JSON expose additional fields. Every accepted edit
+receives a complete validated solve rather than patching the previous mesh.
 
 Replies carry a monotonic request id; anything that is not the newest is stale
 and dropped.
 
-The worker answers **twice** to the same request. The first reply skins the
-scanned body and stops — around 5ms an actor, so the picture updates between
-keystrokes rather than between sentences. What it leaves out is the field
-occlusion, ~200ms an actor, which is what darkens every crease and every place
-two bodies touch; the second reply adds it to the very same triangles, so what
-lands is the same pose gaining its shading rather than a different shape.
-Between the two the worker yields to the message queue, which is what lets a
-newer request arrive and cancel the refinement of a pose nobody is looking at
-any more.
+The worker loads the required templates and runs incremental contact refinement.
+The generator yields between contact updates so a newer request can cancel it;
+cancellation restores the old job's rig and publishes no partial measurements.
+It then answers **twice**: a posed draft without field occlusion, followed by the
+same corrected pose with occlusion. Scanned figures keep the same triangles;
+the SDF fallback also refines mesh resolution. The worker yields between replies.
+Timings separate model loading, surface refinement and mesh work. Both the CLI
+and worker call the same refinement implementation.
 
 Each actor comes back as **parts**, not as one buffer, because a body is
 several materials — the skin, and the white, iris and pupil of each eye. A

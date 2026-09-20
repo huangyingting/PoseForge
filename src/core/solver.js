@@ -1382,6 +1382,16 @@ export function solveScene(scene, options = {}) {
       })
       .filter(Boolean);
   }
+  // Reports must describe the returned pose, including the ground/collision
+  // adjustments after the last IK step, and use the same target definition
+  // whether or not the best snapshot was restored.
+  const finalVerdicts = new Map(contactReports.map(entry => [entry.contact, entry]));
+  contactReports = contacts.map(contact => {
+    const measured = measureContact(actors, contact);
+    if (!measured) return null;
+    const verdict = finalVerdicts.get(contact);
+    return { ...measured, unreachable: verdict?.unreachable, blocked: verdict?.blocked };
+  }).filter(Boolean);
   const report = penetrationReport(finalContacts);
 
   // What each hand is doing, decided once here rather than by every renderer
@@ -1396,6 +1406,7 @@ export function solveScene(scene, options = {}) {
   // as confident either way. Naming the contact and the reason is what lets the
   // webapp tell the user their description does not fit together, rather than
   // showing them a wrong answer with no caveat.
+  const placementWarnings = [...warnings];
   for (const entry of contactReports) {
     if (entry.distance <= 0.06) continue;
     const label = `${entry.contact.from} to ${entry.contact.to}`;
@@ -1447,6 +1458,7 @@ export function solveScene(scene, options = {}) {
       balance: actors.map((actor) => balanceOf(actor, surface.ground)),
       convergence: history,
       warnings,
+      placementWarnings,
     },
   };
 }
@@ -1661,9 +1673,51 @@ function restoreActor(actor, snapshot) {
  * was ever trying to minimise.
  */
 function measureContact(actors, contact) {
+  if (LIMB_LANDMARKS.has(contact.from)) {
+    const actor = actors[contact.fromActor], target = actors[contact.toActor];
+    const current = landmarkPoint(actor, contact.from, contact.fromSide ?? null);
+    const surface = current && landmarkSurface(target, contact.to, current, {
+      offset: actor.skeleton.stature * 0.018,
+      defaultSide: contact.toSide ?? null,
+    });
+    return surface ? { contact, distance: v3dist(current, surface.point) } : null;
+  }
   const separation = contactSeparation(actors, contact);
   if (!separation) return null;
   return { contact, distance: Math.abs(separation.error) };
+}
+
+/** Recheck safety after a renderer-aware correction, using the solver's rules. */
+export function measureSceneSafety(solved, { verifiedPair = () => false } = {}) {
+  const declared = new Set();
+  for (const contact of solved.contacts) {
+    const a = resolveLandmark(contact.from, contact.fromSide)?.bone;
+    const b = resolveLandmark(contact.to, contact.toSide)?.bone;
+    if (!a || !b) continue;
+    const left = `${solved.actors[contact.fromActor].id}:${a}`;
+    const right = `${solved.actors[contact.toActor].id}:${b}`;
+    declared.add(left < right ? `${left}|${right}` : `${right}|${left}`);
+  }
+  const bodies = solved.actors.map(actor => ({ id: actor.id, volumes: actor.volumes }));
+  const rawContacts = detectContacts(bodies, { declared, selfCollision: true });
+  const contacts = rawContacts.filter(contact => contact.self || !verifiedPair(contact));
+  const report = penetrationReport(contacts);
+  const raw = penetrationReport(rawContacts);
+  const props = detectPropContacts(bodies, solved.props);
+  return { ...report,
+    proxyMaxDepth: raw.maxDepth, proxyTotalDepth: raw.totalDepth,
+    verifiedProxyContacts: rawContacts.length - contacts.length,
+    violations: [...contacts.map(c => ({ key: `${c.bodyA}:${solved.actors[c.bodyA].volumes.indexOf(c.volumeA)}|${c.bodyB}:${solved.actors[c.bodyB].volumes.indexOf(c.volumeB)}`, depth: c.depth })),
+      ...props.map(c => ({ key: `prop:${c.bodyIndex}:${solved.actors[c.bodyIndex].volumes.indexOf(c.volume)}:${solved.props.indexOf(c.prop)}`, depth: c.depth }))],
+    maxSelfDepth: Math.max(0, ...contacts.filter(p => p.self).map(p => p.depth)),
+    maxBodyDepth: Math.max(0, ...contacts.filter(p => !p.self).map(p => p.depth)),
+    propPenetration: Math.max(0, ...props.map(p => p.depth)),
+    balance: solved.actors.map(actor => balanceOf(actor, solved.surface.ground)) };
+}
+
+/** Final body-model target errors, separate from rendered surface distances. */
+export function measureContactTargets(solved) {
+  return solved.contacts.map(contact => measureContact(solved.actors, contact)?.distance ?? null);
 }
 
 function limitStep(vector, maximum) {

@@ -90,3 +90,35 @@ Add a blank-study entry point with no implicit partner contacts. Verify authorin
 with ordinary clothed standing gestures. Also inspect the fitted studio garments
 at close range and correct any reproducible rendering defects found; do not call
 surface fitting a cloth simulation.
+
+## Visible-contact accuracy
+
+The solver's target residual is not a measurement between the scanned surfaces.
+Add an exact triangle-distance query over the posed, visible mesh regions and a
+bounded refinement pass for free limb contacts. Use the same dressed templates
+as rendering. A correction moves the existing rig through IK, a free wrist, or a
+small mobility-controlled step along the floor. It must not move vertices
+independently of the skeleton, lift a load-bearing limb, or worsen unresolved
+collisions. Keep the best accepted pose and measure the final pose again.
+
+The coarse limb volumes can overlap while the actual limbs remain separate.
+For the declared limb pair only, allow a coarse overlap to be superseded by a
+check of the complete visible limbs: their triangles must not cross, and their
+nearest surfaces must face outward toward each other. Keep the raw proxy
+diagnostic separately. Missing geometry never authorizes an exception. Self,
+furniture and unrelated-body collisions remain checked, including newly
+appearing collision pairs; a lower overall maximum cannot hide a new collision.
+
+The browser and CLI should use this shared, dependency-free pass when scanned
+templates are available. Missing templates, unsupported regions, unreachable
+targets and intersecting surfaces must be reported honestly. Show a rendered
+surface gap when one is measured, and label a body-model target as an approximation
+otherwise. Neither a small target error nor missing measurements prove visible
+contact. Preserve the original target residual as a separate diagnostic.
+
+Verify the triangle query on known geometry (including edge intersections and
+degenerate triangles), then check actual male/female meshes, clothing, safe
+standing gestures, body proportions, grounded limbs and missing-model behavior.
+Measure before and after gaps and collision residuals. Run the existing tests
+and browser authoring/export flows; inspect final renders and document remaining
+accuracy limits rather than weakening the checks to fit the implementation.
