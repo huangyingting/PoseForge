@@ -26,6 +26,7 @@ npm test
 node scripts/validate-surface-contacts.mjs
 # Existing named definitions still have geometry issues; this audit reports them:
 node scripts/validate-named-presets.mjs
+node scripts/validate-named-presets.mjs --rendered
 npm run build
 npx playwright install chromium
 npm run test:browser
@@ -245,6 +246,7 @@ npm test                                  # units, catalog and geometry regressi
 npm run test:browser                       # production-build interaction checks
 node scripts/validate-surface-contacts.mjs  # clothed visible-surface contact fixtures
 node scripts/validate-named-presets.mjs     # inherited named-preset quality gate
+node scripts/validate-named-presets.mjs --rendered # dressed-mesh contact gate
 node scripts/validate-text.mjs             # parser and geometry corpus
 node scripts/validate-scenes.mjs           # base-model scene sweep
 node scripts/validate-postures.mjs         # single-figure support constraints
@@ -257,9 +259,11 @@ Euler characteristic — rather than checking that functions return values.
 
 **Known residuals.** The recorded base-model scene sweep reports 32 of 159
 variants as not fully sound, with a worst residual penetration of 63mm. The
-separate named-preset gate flags 10 of 12 inherited definitions for unresolved
-contacts, overlap or support gaps. These quality gates remain open despite
-passing structural and browser checks. Every unmet contact appears in the solve
+separate base-model named-preset gate flags 9 of 12 inherited definitions for
+unresolved contacts, overlap or support gaps. The rendered-contact audit flags
+all 12; a small base-model target error is not proof of visible contact. These
+quality gates remain open despite passing structural and browser checks. Every
+unmet contact appears in the solve
 result, and both the CLI and app report unresolved constraints.
 
 The worst support gap is 30mm, in `inverted`: the skull reaches the rig's own

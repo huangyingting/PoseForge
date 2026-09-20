@@ -131,6 +131,27 @@ so it belongs as an override rather than as `straddle_supine_reversed` sitting
 next to `straddle_supine` in the catalogue. See [language.md](language.md) for
 why this matters to the parser.
 
+### Body-supported clearance
+
+An inferred vertical clearance is only a starting choice. A figure supported by
+an upright seated partner can be in front of that partner's torso, not above
+their head. Aligning the support landmarks and then retreating only upward can
+leave the figure almost a metre above the initial alignment.
+
+For a mounted, non-carried figure with no ground supports and no explicit
+clearance rule, placement tries the vertical and horizontal approach directions.
+It accepts the horizontal seed only when it clears the same torso-overlap limit,
+requires less retreat, and does not worsen the weighted whole-body contact
+residual. Free hand targets do not vote. Missing measurements do not count as
+zero error. Explicit clearance rules, ground-supported figures and custom-only
+scenes without placement contacts retain their original path.
+
+Contact residual matters as much as distance: the shortest retreat alone can
+replace an already seated floor support with a thigh overlap. Regression tests
+cover that case, chair/bench support, body-type order and varied proportions.
+This improves the base placement; it does not prove that the dressed meshes
+meet their surface targets. Run the rendered-contact audit separately.
+
 ## The annealed loop
 
 45 iterations by default. Each one:

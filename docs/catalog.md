@@ -161,7 +161,12 @@ without reparsing its display title; the combined immutable `BUILTIN_PRESETS`
 feeds the UI and CLI. Each catalog entry stores a complete scene. Run `npm test`
 for schema/parity/regression checks and the geometry validators for pose quality.
 The named-position audit is a separate acceptance gate and currently reports
-unresolved inherited cases.
+unresolved inherited cases. Run `node scripts/validate-named-presets.mjs` for
+base-model constraints and add `--rendered` for dressed-mesh contact gaps and
+intersections. The latter preserves base results alongside surface measurements;
+passing the base gate alone is not sufficient. Add `--preset <built-in-id>` to
+audit a single definition or resume an interrupted long audit. Invalid or empty
+selections fail instead of reporting success for zero cases.
 
 Adding a new underlying posture or arrangement is an engine extension: author
 its joint and support/contact contract in the pose library and verify it with

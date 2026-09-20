@@ -384,8 +384,13 @@ export function* surfaceContactSteps(
         const delta = measured.intersects
           ? measured.normal.map((v) => v * 0.003)
           : measured.to.map((v, k) => (v - measured.from[k]) * gain);
+        // A crossing triangle supplies a normal axis, not a signed penetration
+        // depth. Either side may free the moving limb, and a dressed upper arm
+        // can be thicker than the old 24 mm search. Try both sides, bounded at
+        // 96 mm before the contact-weight blend. Every candidate still has to
+        // pass the full safety and new-intersection checks above.
         for (const factor of measured.intersects
-          ? [1, 2, 4, 8]
+          ? [1, -1, 2, -2, 4, -4, 8, -8, 16, -16, 24, -24, 32, -32]
           : [1, 0.5, 0.25]) {
           if (steps >= maxSteps) break;
           steps++;

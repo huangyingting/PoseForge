@@ -51,6 +51,87 @@ test("body-model reports are remeasured consistently on the returned pose", () =
   );
 });
 
+test("intersecting hands escape the target surface without moving a seated support or adding collisions", () => {
+  const spec = checkScene({
+    support: { surface: "chair" },
+    relationship: { arrangement: "straddle_lap" },
+    actors: [
+      { bodyType: "male", posture: "seated", wearing: ["top", "shorts"] },
+      {
+        bodyType: "female",
+        posture: "seated_straddle",
+        wearing: ["top", "shorts"],
+      },
+    ],
+    contacts: [],
+  });
+  const solved = solveScene(spec),
+    bodies = forScene(solved);
+  const initialPoses = poses(solved);
+  const initial = measureSurfaceSafety(
+    solved,
+    createSurfaceContactQuery(solved.actors, bodies),
+  );
+  assert.deepEqual(
+    initial.limbIntersections,
+    [true, true],
+    "fixture must begin with crossed surfaces",
+  );
+  refineSurfaceContacts(solved, bodies);
+  const hands = solved.quality.contactDetail.filter(
+    (contact) => contact.from === "hand",
+  );
+  assert.equal(hands.length, 2);
+  for (const hand of hands) {
+    assert.equal(hand.intersects, false);
+    assert.ok(
+      hand.surfaceGap <= SURFACE_CONTACT_TOLERANCE,
+      `${hand.surfaceGap} hand gap`,
+    );
+  }
+  assert.deepEqual(solved.quality.limbIntersections, [false, false]);
+  assert.ok(
+    solved.quality.surfaceRefinement.steps <= 32,
+    "default work budget must be sufficient",
+  );
+  for (const key of [
+    "maxDepth",
+    "maxSelfDepth",
+    "maxBodyDepth",
+    "propPenetration",
+    "totalDepth",
+  ])
+    assert.ok(solved.quality[key] <= initial[key] + 1e-8, key);
+  const originalViolations = new Map(
+    initial.violations.map((v) => [v.key, v.depth]),
+  );
+  assert.ok(
+    solved.quality.violations.every(
+      (v) => v.depth <= (originalViolations.get(v.key) ?? 0) + 1e-8,
+    ),
+  );
+  assert.deepEqual(
+    solved.actors[0].pose,
+    initialPoses[0],
+    "supporting figure moved",
+  );
+  solved.actors.forEach((actor, index) =>
+    assert.deepEqual(actor.pose.root, initialPoses[index].root),
+  );
+  for (const joint of [
+    "hip_l",
+    "hip_r",
+    "knee_l",
+    "knee_r",
+    "ankle_l",
+    "ankle_r",
+  ])
+    assert.deepEqual(
+      solved.actors[1].pose.joints[joint],
+      initialPoses[1].joints[joint],
+    );
+});
+
 test("rendered hand-to-forearm distance closes without added collisions or source-template mutations", () => {
   const solved = solveScene(checkScene(base())),
     bodies = forScene(solved);

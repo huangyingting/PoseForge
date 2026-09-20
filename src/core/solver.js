@@ -874,15 +874,56 @@ export function applyArrangement(primary, secondary, arrangement, surface) {
         ? [0, 1, 0]
         : [offsetWorld[0] / horizontal, 0, offsetWorld[2] / horizontal];
     const tolerance = H * (measure === "bulk" ? 0.008 : 0.005);
-    for (let pass = 0; pass < 8; pass += 1) {
-      const overlap = overlapBetween(primary, secondary)[measure];
-      if (overlap <= tolerance) break;
-      translateActor(secondary, v3mul(axis, overlap + H * 0.004));
-      refresh(secondary);
-      // A straddling partner still has their own knees on the bed; lifting them
-      // clear of their partner must not lift them off it. Re-seating pulls the
-      // limbs back down and leaves the torso where the clearance put it.
-      if (grounded) seatOnSurface(secondary, surface, { useIK: axisKind === "vertical" });
+    const retreat = (direction) => {
+      let distance = 0;
+      for (let pass = 0; pass < 8; pass += 1) {
+        const overlap = overlapBetween(primary, secondary)[measure];
+        if (overlap <= tolerance) break;
+        const step = overlap + H * 0.004;
+        distance += step;
+        translateActor(secondary, v3mul(direction, step));
+        refresh(secondary);
+        // A ground-supported mounted actor must keep their limbs on the plane.
+        if (grounded) seatOnSurface(secondary, surface, { useIK: axisKind === "vertical" });
+      }
+      return { distance, overlap: overlapBetween(primary, secondary)[measure] };
+    };
+    const pair = [primary, secondary];
+    const placementContacts = (arrangement.contacts || [])
+      .map((contact) => normaliseContact(contact, 1, 0, pair))
+      .filter((contact) =>
+        contact && contact.strength > 0 &&
+        !LIMB_LANDMARKS.has(contact.from) && !LIMB_LANDMARKS.has(contact.to)
+      );
+    const placementError = () => placementContacts.reduce(
+      (sum, contact) => sum + Math.abs(contactSeparation(pair, contact)?.error ?? Infinity) * contact.strength,
+      0
+    );
+    const compareApproach =
+      !declared && mounted && !grounded && !secondary.carried &&
+      axisKind === "vertical" && horizontal > 1e-6 && placementContacts.length > 0;
+    const aligned = compareApproach ? snapshotActor(secondary) : null;
+    const vertical = retreat(axis);
+    if (compareApproach) {
+      const cleared = snapshotActor(secondary);
+      const verticalError = placementError();
+      restoreActor(secondary, aligned);
+      const approach = retreat([offsetWorld[0] / horizontal, 0, offsetWorld[2] / horizontal]);
+      const approachError = placementError();
+      // A lap support is not necessarily a vertical stack. Two upright torsos
+      // aligned at the pelvis can require almost a body length of upward
+      // clearance but only a small horizontal retreat. Keep the shorter clear
+      // seed only if its body contacts are at least as close. Otherwise a short
+      // retreat can trade a seated support for a thigh overlap. A recumbent
+      // support still normally selects the original vertical path. Neither
+      // candidate is allowed a larger compression tolerance.
+      if (
+        !Number.isFinite(approachError) || approach.overlap > tolerance ||
+        approachError > verticalError + 1e-8 ||
+        (vertical.overlap <= tolerance && approach.distance >= vertical.distance)
+      ) {
+        restoreActor(secondary, cleared);
+      }
     }
   }
   return secondary;

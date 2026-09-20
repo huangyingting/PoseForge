@@ -59,14 +59,21 @@ test("pose, arrangement, relative height and facing survive projection; failures
     solvedPreview(solveScene(checkScene(forward.scene))).actors[1].face,
     solvedPreview(solveScene(checkScene(reverse.scene))).actors[1].face,
   );
-  const notes = solvedPreview(
-    solveScene(
-      checkScene(
-        BUILTIN_PRESETS.find((p) => p.id === "builtin.named.chair_straddle")
-          .scene,
-      ),
-    ),
-  ).issues;
+  // Use a deliberately impossible fixed-figure target, not a catalog defect
+  // that should eventually be repaired by the placement solver.
+  const impossible = scene();
+  impossible.actors.forEach((actor) => {
+    actor.posture = "standing";
+    actor.mobility = 0;
+  });
+  impossible.relationship = {
+    arrangement: "side_by_side",
+    contactMode: "custom",
+  };
+  impossible.contacts = [
+    { from: "head", to: "foot.l", fromActor: 0, toActor: 1, strength: 1 },
+  ];
+  const notes = solvedPreview(solveScene(checkScene(impossible))).issues;
   assert.ok(notes.includes("Unresolved contacts"));
 });
 

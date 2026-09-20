@@ -23,6 +23,12 @@ kneeling figures on the floor. Authored wrist angles and pinned placement are
 respected. Supporting limbs are not lifted; furniture-supported figures do not
 slide off their props. The pose with an improved total contact score is retained.
 
+For an existing triangle crossing, a normal supplies an axis, not a guaranteed
+signed escape direction for the moving limb. Refinement tries both signs with
+increasing offsets, bounded at 96 mm before contact-weight blending. This is a
+candidate search, not permission to move through another body: every accepted
+candidate must pass the same per-pair, aggregate and new-intersection guards.
+
 A coarse capsule can report overlap even when the visible limbs are separate.
 Such a discrepancy is reconciled only for the declared limb pair, after checking
 the complete visible limbs for triangle crossings and outward-facing clearance.
@@ -66,6 +72,13 @@ collisions or intersections of the affected limbs.
 | Kneeling pair | 25.5 mm | 3.1 mm |
 | Different height/build | Surfaces intersected | 2.1 mm |
 | Authored wrist angle | 16.7 mm | 3.7 mm |
+
+An additional seated-support regression starts with both hands crossing the
+target arms. Both finish clear, approximately 2.3 mm and 1.8 mm from their
+targets, within the normal 32-candidate budget. The supporting figure, both
+roots and lower-body joints remain unchanged, and no unresolved collision pair
+worsens. The separate lap-region target still fails; resolving the hands does
+not make the whole preset pass.
 
 These are specified fixtures, not proof that arbitrary conflicting contacts can
 all be satisfied. Region boundaries depend on skin weights, and collision

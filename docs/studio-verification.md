@@ -20,7 +20,9 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 | Visible contact accuracy | Exact triangle-region distances replace the old unlabeled target residual. Seven dressed-model fixtures finish within 4 mm, including both body orders, same-type pairs, kneeling, varied proportions and authored wrist angles. Complete affected limbs are checked for crossings. Ground heights and pinned placement are preserved, and unrelated/self/prop collisions cannot be hidden by a lower aggregate score. |
 | Full scene fidelity | JSON round trips preserve figure properties, joint overrides, hand shapes, contacts and named camera view. Browser reload tests preserve edited height and joints, and the latest unsaved workspace. |
 | Safe persistence and imports | Unit tests cover invalid versions, malformed JSON, unsafe keys, unknown scene choices, invalid landmark sides, duplicate IDs, quota errors and corrupt storage. A failed import does not partially add a pack. Re-importing creates fresh IDs. Browser recovery and invalid-import flows pass. |
-| Preset geometry | All 23 entries validate structurally and render. The original eleven reference-study geometry checks still pass. The separate named-position quality audit flags 10/12 inherited definitions; these receive pose notes rather than a claim of physical correctness. |
+| Preset geometry | All 23 entries validate structurally and render. The original eleven reference-study geometry checks still pass. The named-position audit flags 9/12 at the base-model level and 12/12 in the dressed-mesh contact audit. These receive pose notes rather than a claim of physical correctness. |
+| Body-supported placement | Adaptive clearance reduces the seated-pair base support target from 523.7 mm to 3.4 mm. Chair cases pass across all four male/female pairings; bench and stature/build variations have measured support-plane regression tests. A 96-case comparison against `969f4f8` has 12 newly clean cases, no newly flagged cases and 78 unchanged results. Dressed contact failures remain separately reported. |
+| Surface-intersection escape | Bidirectional bounded IK trials clear both hand/arm intersections in the seated-support fixture, ending at approximately 2.3 mm and 1.8 mm. The supporting figure, both roots and lower-body joints stay unchanged; individual collision pairs and aggregate residuals cannot worsen. The lap target remains unresolved. |
 | Description feedback | Unread text warnings survive worker rendering and draft reload. Catalog captions no longer overwrite the original text command. Pending poses do not retain stale quality notes. |
 | Exports | Real PNG, transparent PNG, SVG and JSON downloaded. PNG pixels decoded: opaque image content present; background corner alpha is 255 for standard PNG and 0 for transparent PNG. JSON is re-importable. |
 | Runtime | Every new preset rendered in a production build without page errors, console errors or failed requests in the normal-path browser test. Missing WebGL leaves the editor usable. An intentionally failed model download produces an estimated contact, and its warning does not leak into a healthy model. Rapid preset changes publish only the final scene; cancellation restores discarded rigs. |
@@ -28,9 +30,10 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 
 ## Commands and results
 
-- `npm test`: **155 passed**, including the original parser, geometry and
+- `npm test`: **162 passed**, including the original parser, geometry and
   architecture tests, catalog/storage tests, contact-authoring tests, clothing
-  checks and triangle/surface-refinement checks.
+  checks, triangle/surface-refinement checks and per-preset CLI selection,
+  quality-dependent exit status and invalid/empty input.
 - `npm run build`: **passed**; also rebuilt by the browser test configuration.
 - `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/google/chrome/chrome npm run test:browser`:
   **18 passed** in the complete production-build run (10.1 minutes).
@@ -39,18 +42,36 @@ remain unresolved; loading a preset is not proof that its constraints were met.
   **18 passed**; `npm run test:browser -- tests/browser/collections.spec.js`
   with the same Chrome path: **2 passed** in a fresh production build. These are
   two additional scenarios, for **20 distinct passing browser scenarios**.
+- After the body-supported placement and intersection-escape changes,
+  `npm run test:browser -- tests/browser/catalog-camera.spec.js tests/browser/authoring.spec.js`
+  with the same Chrome path: **8 passed**, with one cold-start readiness timeout
+  while CPU-heavy validators were running concurrently. The timed-out authoring
+  scenario then passed in isolation (1.1 minutes) with the same 30-second
+  readiness limit and no application changes: **9 distinct targeted scenarios
+  passed**, including every named definition, authoring/export/history,
+  refined-preview retention and trusted touch. The timeout is retained here,
+  not counted as a successful complete-suite run.
 - `node scripts/validate-surface-contacts.mjs`: **7/7 passed**; each fixture
   requires a final gap at most 4 mm and clear affected limbs. Raw coarse-model
   overlap and verified contact counts are printed separately.
-- `node scripts/validate-scenes.mjs --all`, compared with commit `8d79937` in
-  an isolated checkout: both report **127/159 sound**, **32 flagged**, and
-  **63 mm worst penetration**. Every case retains its penetration/count/flag
-  measurements. Corrected final-pose target reporting changes four cases (three
-  added misses, one removed), for 95 reported misses versus 93 previously.
-  This is a base-solver regression comparison, not a passing all-scenes gate.
-- `node scripts/validate-named-presets.mjs`: **2/12 without base-model flags;
-  10 require review**. The command correctly exits nonzero. Migration parity and
-  rendering checks pass, but this quality gate has not been satisfied.
+- `node scripts/validate-scenes.mjs`, compared with commit `969f4f8`: both report
+  **127/159 sound**, the same **32 flagged cases**, and **63 mm worst penetration**.
+  Reported unmet targets drop from 95 to 93 (blocked/unreachable targets are
+  tracked separately). This is a base-solver regression comparison, not a passing
+  all-scenes gate.
+- The supported-placement comparison covers three primary postures (`seated`,
+  `seated_reclined`, `reclined`), two secondary postures (`seated_straddle`,
+  `kneeling_straddle`), four surfaces (floor/chair/bench/sofa), and all four
+  male/female body-type pairings. It compares overlap, support gap and unresolved
+  targets with the parent commit, not just the intended chair fixture.
+- `node scripts/validate-named-presets.mjs`: **3/12 without base-model flags;
+  9 require review**. `node scripts/validate-named-presets.mjs --rendered`:
+  **0/12 without rendered-contact flags; 12 require review**. The final rendered
+  audit was interrupted after eleven entries; the last entry was audited with
+  `--rendered --preset builtin.named.standing_embrace`. All twelve case results
+  are accounted for. The second mode uses the same dressed-template construction
+  and refinement as the viewport, and prints base targets, surface gaps and
+  intersection flags separately.
 - `git diff --check`: **passed**.
 
 The browser runner uses installed Chrome and software WebGL (SwiftShader).
@@ -86,10 +107,24 @@ and the production build are distinct from a hosted deployment.
 Catalog integration, solved-pair diagrams and touch zoom are now implemented and
 verified. Named-preset geometry remains the main unfinished requirement. The
 inherited flags include unreachable contact targets, overlap and support gaps.
-The chair-straddle pelvis target is over 500 mm away in the base solve, and the
-head-to-toe definition reports a roughly 489 mm support gap. These require
-layout/support/contact analysis; the UI badges do not resolve them.
+The chair-supported layout no longer starts above the supporting figure's head.
+Its base support target is 3.4 mm away. The two hand/arm intersections initially
+created by bringing the figures together are now cleared by surface refinement,
+but the current rendered-region query still reports a 200 mm lap gap. Clothed
+640×640 renders before and after hand refinement were inspected. The lap query's
+anatomical coverage needs review:
+an independent query over the complete weighted pelvis/upper-thigh meshes finds
+about 15 mm clearance. That is not a passing contact, and broadening a region
+until it passes would not establish the intended support.
 
-The current named audit reports no base-model flags for lotus and standing
-embrace. All other inherited definitions remain flagged. This is not a claim
-that every arbitrary combination of poses, builds and surfaces is satisfiable.
+Only the chair case changes its base joint pose among the twelve named entries.
+Against the parent commit, its rendered lap-region gap decreases from about
+790 mm to 200 mm and its hand gaps from about 256 mm to under 4 mm. The new
+rendered audit expands coverage; it does not imply twelve newly broken presets.
+
+The current named audit reports no base-model flags for lotus, chair straddle
+and standing embrace; all twelve definitions remain flagged by the dressed-mesh
+contact pass. The head-to-toe definition also retains its roughly 489 mm support
+gap. Next work needs both accurate anatomical regions and collision-safe contact
+refinement, not only the base solver. This is not a claim that every arbitrary
+combination of poses, builds and surfaces is satisfiable.

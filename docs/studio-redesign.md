@@ -146,3 +146,31 @@ lost capture and a third touch must not make the camera jump. Preserve wheel and
 keyboard behavior and browser page zoom outside the canvas. Verify 320/390-pixel
 layouts, actual browser touch events, all camera controls, named-preset migration,
 and the preview lifecycle.
+
+## Body-supported placement
+
+The seated-pair audit exposed a placement error before contact iteration: after
+aligning a support target, vertical-only torso clearance can raise an upright
+figure above the other figure's head. Lowering that final pose causes overlap;
+unconditionally choosing horizontal clearance instead regresses floor studies.
+
+For a mounted figure without ground supports, compare the existing inferred
+vertical retreat with a retreat along the arrangement's horizontal approach.
+Choose the shorter collision-cleared seed only when the whole-body contact
+residual does not worsen, preserving explicit clearance rules and the existing
+path for ground-supported figures. Keep the same torso
+compression allowance and limb/collision solve; do not change quality thresholds,
+hide contacts, or change the authored postures to make a result pass.
+
+Regressions must cover chair and bench support, body-type order, varied stature,
+and floor cases that already worked. Compare the broad scene sweep and named
+audit against the current commit, retain the reference-study and visible-contact
+gates, and inspect the resulting clothed seated composition.
+
+When contact triangles already intersect, their normal defines an axis but not
+a guaranteed escape direction for the moving limb. Try both signs, with bounded
+increasing offsets, while retaining every existing collision, support, authored
+joint and new-intersection check. A successful escape must finish with separated
+complete limb meshes and a measured contact gap, not merely a lower overlap score.
+The lap-region definition remains unchanged until its anatomical coverage can be
+validated independently.
