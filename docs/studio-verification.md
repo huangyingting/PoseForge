@@ -23,6 +23,7 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 | Preset geometry | All 23 entries validate structurally and render. The original eleven reference-study geometry checks still pass. The named-position audit flags 9/12 at the base-model level and 12/12 in the dressed-mesh contact audit. These receive pose notes rather than a claim of physical correctness. |
 | Body-supported placement | Adaptive clearance reduces the seated-pair base support target from 523.7 mm to 3.4 mm. Chair cases pass across all four male/female pairings; bench and stature/build variations have measured support-plane regression tests. A 96-case comparison against `969f4f8` has 12 newly clean cases, no newly flagged cases and 78 unchanged results. Dressed contact failures remain separately reported. |
 | Surface-intersection escape | Bidirectional bounded IK trials clear both hand/arm intersections in the seated-support fixture, ending at approximately 2.3 mm and 1.8 mm. The supporting figure, both roots and lower-body joints stay unchanged; individual collision pairs and aggregate residuals cannot worsen. The lap target remains unresolved. |
+| Anatomical region selection | Lap queries now include declared thigh-owned surfaces while retaining the original radius and regional weight threshold. Synthetic patches verify both sides, pose/stature/heading changes and exclusion of distant knee surfaces, unrelated bones and small weight tails. The seated lap gap is now measured at 107.5 mm, not reported as fixed. |
 | Description feedback | Unread text warnings survive worker rendering and draft reload. Catalog captions no longer overwrite the original text command. Pending poses do not retain stale quality notes. |
 | Exports | Real PNG, transparent PNG, SVG and JSON downloaded. PNG pixels decoded: opaque image content present; background corner alpha is 255 for standard PNG and 0 for transparent PNG. JSON is re-importable. |
 | Runtime | Every new preset rendered in a production build without page errors, console errors or failed requests in the normal-path browser test. Missing WebGL leaves the editor usable. An intentionally failed model download produces an estimated contact, and its warning does not leak into a healthy model. Rapid preset changes publish only the final scene; cancellation restores discarded rigs. |
@@ -30,7 +31,7 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 
 ## Commands and results
 
-- `npm test`: **162 passed**, including the original parser, geometry and
+- `npm test`: **166 passed**, including the original parser, geometry and
   architecture tests, catalog/storage tests, contact-authoring tests, clothing
   checks, triangle/surface-refinement checks and per-preset CLI selection,
   quality-dependent exit status and invalid/empty input.
@@ -51,6 +52,10 @@ remain unresolved; loading a preset is not proof that its constraints were met.
   passed**, including every named definition, authoring/export/history,
   refined-preview retention and trusted touch. The timeout is retained here,
   not counted as a successful complete-suite run.
+- After the lap-region ownership correction, the production-build browser
+  scenario `every existing named definition loads and renders` passed again
+  (2.3 minutes), loading all twelve entries and checking discoverable quality
+  notes with no normal-path page/console/request errors.
 - `node scripts/validate-surface-contacts.mjs`: **7/7 passed**; each fixture
   requires a final gap at most 4 mm and clear affected limbs. Raw coarse-model
   overlap and verified contact counts are printed separately.
@@ -72,6 +77,10 @@ remain unresolved; loading a preset is not proof that its constraints were met.
   are accounted for. The second mode uses the same dressed-template construction
   and refinement as the viewport, and prints base targets, surface gaps and
   intersection flags separately.
+- After the lap-region correction, individual rendered audits for
+  `builtin.named.chair_straddle` and `builtin.named.lotus` both correctly remain
+  nonzero. Their lap-region gaps are approximately 108 mm and 24 mm respectively;
+  the chair case's hand contacts remain clear at approximately 2 mm.
 - `git diff --check`: **passed**.
 
 The browser runner uses installed Chrome and software WebGL (SwiftShader).
@@ -110,15 +119,19 @@ inherited flags include unreachable contact targets, overlap and support gaps.
 The chair-supported layout no longer starts above the supporting figure's head.
 Its base support target is 3.4 mm away. The two hand/arm intersections initially
 created by bringing the figures together are now cleared by surface refinement,
-but the current rendered-region query still reports a 200 mm lap gap. Clothed
-640×640 renders before and after hand refinement were inspected. The lap query's
-anatomical coverage needs review:
-an independent query over the complete weighted pelvis/upper-thigh meshes finds
-about 15 mm clearance. That is not a passing contact, and broadening a region
-until it passes would not establish the intended support.
+but the corrected rendered-region query still reports a 107.5 mm lap gap. Clothed
+640×640 renders before and after hand refinement were inspected in the placement
+iteration. The later triangle trace found why the broader 15 mm diagnostic was
+misleading: its source was a mid-thigh/shorts-edge triangle admitted by only
+3–4% pelvis skin weight. It was not a pelvic support point. Lap target ownership
+now includes the adjacent thigh bones within the original radius; the source
+pelvis and the regional weight threshold are unchanged. This changes the
+measurement from 200 mm to 107.5 mm, not the pose itself.
 
-Only the chair case changes its base joint pose among the twelve named entries.
-Against the parent commit, its rendered lap-region gap decreases from about
+In the placement iteration, only the chair case changed its base joint pose
+among the twelve named entries; the later lap-region correction does not move
+the figures.
+The placement iteration reduced its then-measured lap-region gap from about
 790 mm to 200 mm and its hand gaps from about 256 mm to under 4 mm. The new
 rendered audit expands coverage; it does not imply twelve newly broken presets.
 
@@ -128,3 +141,8 @@ contact pass. The head-to-toe definition also retains its roughly 489 mm support
 gap. Next work needs both accurate anatomical regions and collision-safe contact
 refinement, not only the base solver. This is not a claim that every arbitrary
 combination of poses, builds and surfaces is satisfiable.
+
+A diagnostic that restricted all base-model pelvic contacts to the pelvis bone
+was not retained: it displaced one inherited layout by over a metre and worsened
+other support gaps. Base contact-region refinement needs pose-level regression
+checks, not a global replacement of the current neighborhood rule.

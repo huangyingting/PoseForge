@@ -15,6 +15,21 @@ weights, posed vertices and dressed triangle indices as the renderer. Entire
 connected limbs are checked as well: a clear hand/forearm target must not conceal
 an intersection with the nearby wrist or hand.
 
+Default surface ownership comes from the landmark's complete `bones` list, not
+only its primary bone; specialized limb and torso rules remain in place. A foot
+includes its toe segment, and a lap includes the pelvis and adjacent thigh bones.
+The lap keeps the existing 0.11-stature spatial radius and
+35% regional weight threshold, so this does not admit distant knee surfaces or
+expand the source pelvic region. Synthetic skinned-patch tests verify both sides,
+different poses/scales/headings, unrelated bones and small weight influences.
+
+Whole-group collision coverage deliberately includes tiny skin-weight tails;
+named contact regions do not. In the seated-pair diagnostic, a broad whole-group
+query found 15 mm between a thigh-edge triangle with only 3–4% pelvis influence
+and the other thigh. That is not a pelvic support contact. Correcting only the
+lap target's ownership changes the actual regional measurement from 200 mm to
+about 108 mm, still a failing target, without moving either figure.
+
 ## Refinement contract
 
 The pass starts from the base solver's pose. It tries bounded IK adjustments,

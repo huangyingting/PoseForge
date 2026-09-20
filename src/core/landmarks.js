@@ -22,7 +22,9 @@ export const LANDMARKS = {
   hip: { bone: "pelvis", local: [0.055, 0.0, 0], mirror: true },
   groin: { bone: "pelvis", local: [0, -0.055, 0.03] },
   buttocks: { bone: "pelvis", local: [0, -0.05, -0.06] },
-  lap: { bone: "pelvis", local: [0, 0.01, 0.075] },
+  // A lap surface extends onto the upper thighs. Its point still belongs to
+  // the pelvis; surface queries additionally use the adjacent thigh bones.
+  lap: { bone: "pelvis", also: ["hip_l", "hip_r"], local: [0, 0.01, 0.075] },
   waist: { bone: "spine01", local: [0, 0.035, 0] },
   abdomen: { bone: "spine01", local: [0, 0.03, 0.05] },
   lowerBack: { bone: "spine01", local: [0, 0.03, -0.055] },

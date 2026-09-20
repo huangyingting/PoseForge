@@ -172,5 +172,22 @@ a guaranteed escape direction for the moving limb. Try both signs, with bounded
 increasing offsets, while retaining every existing collision, support, authored
 joint and new-intersection check. A successful escape must finish with separated
 complete limb meshes and a measured contact gap, not merely a lower overlap score.
-The lap-region definition remains unchanged until its anatomical coverage can be
-validated independently.
+At this stage the lap-region definition is left unchanged pending independent
+validation of its anatomical coverage, described below.
+
+## Anatomical lap-region coverage
+
+The rendered lap region must include the pelvis and the adjacent upper-thigh
+surfaces. The current mesh query reads only the landmark's primary bone, even
+though the landmark contract already supports multiple surface bones for feet.
+Declare the lap's thigh ownership in that same data contract and make the mesh
+query honor it. Keep the existing spatial radius and regional skin-weight
+threshold; do not expand the source pelvis or accept an entire limb as a region.
+
+Verify with synthetic skinned patches on the existing rig: proximal thigh
+patches are included, distant knee patches and unrelated-bone patches are not,
+and tiny pelvis weights cannot turn a mid-thigh surface into pelvic contact.
+Check posed/scaled rigs, unchanged source geometry, existing contact fixtures
+and the actual clothed seated pair. The broad 15 mm diagnostic was a thigh-edge
+contact admitted by a small pelvis-weight influence; it is not evidence that
+the requested pelvic support is already close.

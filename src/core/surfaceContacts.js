@@ -18,7 +18,7 @@ const topologyCache = new WeakMap();
 function region(actor, name, side) {
   const landmark = resolveLandmark(name, side);
   if (!landmark) return null;
-  let bones = [landmark.bone],
+  let bones = [...landmark.bones],
     radius = 0.11;
   if (name === "hand") {
     bones = [`wrist_${landmark.side}`];
