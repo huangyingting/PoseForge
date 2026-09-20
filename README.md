@@ -248,6 +248,21 @@ code, because a second implementation is what catches geometry being in the
 wrong place — figures facing backwards, a body inside the mattress. A render
 takes about 1.5s.
 
+The SVG path does hidden-line removal against a depth pass, and both halves of
+that — the packing into bytes and the unpacking back out — are written here
+rather than borrowed from three's `MeshDepthMaterial`. Reading three's packed
+depth means depending on its *internals*: the layout has changed at least once,
+which byte is the most significant is now the opposite of what it was, and when
+it changes nothing throws. The depth unpacks to a number near zero, every line
+tests as hidden behind something at the lens, and the export is a valid SVG
+containing no lines at all. Owning the packing also lets the stored value be
+distance in metres, which is the unit the visibility test compares in.
+
+Silhouette detection welds vertices on position first, for the same reason the
+normals do: the scanned model is exported flat-shaded, so keyed by index every
+edge has exactly one triangle, reads as a hole in the surface, and the line art
+comes out as the whole wireframe — 50,244 segments where the drawing has 3,134.
+
 ---
 
 ## Layout
@@ -288,10 +303,21 @@ and rejected:
 
 ## Scope
 
-Figures are **unclothed anatomical mannequins**: anthropometric proportions,
-smooth surfaces, hands with thumbs, feet with heels and a flat sole, and
-genital geometry appropriate to the body type. There is no facial detail — the
-head is a skull shape with a jaw and chin, and nothing else.
+There are **two surfaces**, and keeping them apart is the whole design.
+
+The one that *collides* is the distance field: around forty-eight round cones
+per body, with anthropometric proportions, hands with thumbs, feet with heels
+and a flat sole, and genital geometry appropriate to the body type. It is
+exact, cheap to query from any direction, and it is what every contact,
+penetration depth and seat height in this system is measured against.
+
+The one that is *drawn* is a scanned human mesh — about 27k triangles, skinned
+to the same skeleton the field is built from, so the two move together by
+construction. It carries what a field of round cones cannot: a face with a
+nose, lips, ears and brows, separate fingers, and eyes split into a white, an
+iris and a pupil. It is the mesh that makes the picture read as a person; it is
+never asked a geometric question. If it fails to load the viewport falls back
+to drawing the field and says so.
 
 `buildBodyVolumes` takes `bust` and `anatomy`. `anatomy` is **on by default**,
 and that is a deliberate reversal: this system exists to judge how two bodies

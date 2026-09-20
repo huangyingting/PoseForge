@@ -35,6 +35,7 @@ import {
   PerspectiveCamera,
   Scene,
   SRGBColorSpace,
+  TextureLoader,
   Vector3,
   WebGLRenderer,
 } from "three";
@@ -48,8 +49,79 @@ import { buildProps, disposeProps } from "./props.js";
  * inventing a correlation between the two would be both wrong and ugly. What
  * the render actually needs is for the two figures to be told apart where they
  * overlap, and two adjacent tones do that without claiming anything.
+ *
+ * The range is East Asian, which is a statement about undertone before it is
+ * one about lightness. The five this replaced ran 0xe0b49a to 0x8a5540 - a pink
+ * undertone, red above green above blue by a wide margin, which is northern
+ * European skin. These keep the same spread of lightness and move the hue to
+ * gold: green sits much closer to red (within 8-12 levels rather than 30-40)
+ * and blue drops away, which is the olive cast of Fitzpatrick III-IV. Rendered
+ * over the atlas the difference is clear on the chest and the forearm, which
+ * are the largest flat areas a viewer reads tone from.
+ *
+ * Still five, still adjacent, so two figures in one picture are still told
+ * apart where they overlap.
  */
-export const SKIN = [0xe0b49a, 0xc98f74, 0xa9705a, 0x8a5540, 0xf0cdb6];
+export const SKIN = [0xe8c9a4, 0xd9b183, 0xc69a6a, 0xab7f53, 0xf2dcbd];
+
+/**
+ * The skin atlases, by body type.
+ *
+ * These ship with the scans and are the diffuse maps those meshes were made
+ * for, so the UVs already in the GLB address them directly. They are nude
+ * photographic skin - nipples, navel, the creases of the palm - and that is the
+ * point: the figures are nude, and a flat tone over a correct silhouette is the
+ * one thing that will not read as a body no matter how good the geometry is.
+ *
+ * Multiplied over the per-actor tone rather than replacing it, so two figures
+ * in one picture still differ from each other. The atlas is close to neutral,
+ * so the product keeps both the photograph's detail and the tone's identity.
+ */
+const SKIN_ATLAS = {
+  female: new URL("../../assets/models/skin-female.png", import.meta.url),
+  male: new URL("../../assets/models/skin-male.png", import.meta.url),
+  neutral: new URL("../../assets/models/skin-female.png", import.meta.url),
+};
+const atlases = new Map();
+const loader = new TextureLoader();
+
+/**
+ * The atlas for a body type, loaded once and shared.
+ *
+ * Failure is not fatal: three hands back a texture that is simply never
+ * populated, the material keeps its flat tone, and the picture is the one this
+ * renderer drew before the atlases existed.
+ */
+function skinAtlas(bodyType) {
+  const url = String(SKIN_ATLAS[bodyType] ?? SKIN_ATLAS.neutral);
+  if (!atlases.has(url)) {
+    const texture = loader.load(url);
+    texture.colorSpace = SRGBColorSpace;
+    // The atlas is authored with the glTF convention - v down from the top
+    // left - which is what the GLB's own TEXCOORD_0 expects and the opposite of
+    // three's default.
+    texture.flipY = false;
+    texture.anisotropy = 8;
+    atlases.set(url, texture);
+  }
+  return atlases.get(url);
+}
+
+/**
+ * The per-actor tone, weakened so it can multiply a photograph.
+ *
+ * `SKIN` is a set of finished skin colours, chosen to be read directly. The
+ * atlas is also a finished skin colour, and the product of two of those is
+ * neither: 0.74 x 0.73 is 0.54, and a figure that should be light brown comes
+ * out the colour of a chestnut. Lightening the tone most of the way to white
+ * makes it a tint over the photograph instead of a second coat of paint, and
+ * that is all it needs to be - the job the tone has in a two-figure picture is
+ * to tell the two figures apart, not to describe anybody.
+ */
+const ATLAS_TINT = 0.65;
+function tinted(colour) {
+  return new Color(colour).lerp(new Color(0xffffff), ATLAS_TINT);
+}
 
 /**
  * Wrapped diffuse plus a thickness glow, patched into the standard shader.
@@ -58,9 +130,10 @@ export const SKIN = [0xe0b49a, 0xc98f74, 0xa9705a, 0x8a5540, 0xf0cdb6];
  * `MeshPhysicalMaterial` does - shadows, tone mapping, the environment - and
  * changes only the one term that is wrong for skin.
  */
-function skinMaterial(colour) {
+function skinMaterial(colour, atlas = null) {
   const material = new MeshPhysicalMaterial({
     color: new Color(colour),
+    map: atlas,
     roughness: 0.58,
     metalness: 0,
     // A very slight sheen stands in for the fine hair that catches grazing
@@ -77,18 +150,7 @@ function skinMaterial(colour) {
     shader.uniforms.subsurface = { value: new Color(0x9e3b28) };
     shader.uniforms.wrap = { value: 0.45 };
 
-    shader.vertexShader = shader.vertexShader
-      .replace(
-        "#include <common>",
-        `#include <common>
-         attribute float occlusion;
-         varying float vOcclusion;`
-      )
-      .replace(
-        "#include <begin_vertex>",
-        `#include <begin_vertex>
-         vOcclusion = occlusion;`
-      );
+    carryOcclusion(shader);
 
     shader.fragmentShader = shader.fragmentShader
       .replace(
@@ -121,8 +183,150 @@ function skinMaterial(colour) {
 
     material.userData.shader = shader;
   };
-  // Two materials that compile to the same program should share it.
-  material.customProgramCacheKey = () => "poseforge-skin";
+  // Two materials that compile to the same program should share it - and a
+  // textured one does not compile to the same program as an untextured one,
+  // which is why the key is not a constant. The eyes and the anatomy part share
+  // a body's atlas, but a figure drawn from the field has no UVs at all.
+  material.customProgramCacheKey = () => (atlas ? "poseforge-skin-map" : "poseforge-skin");
+  return material;
+}
+
+/**
+ * The vertex occlusion attribute, plumbed through to the fragment stage.
+ *
+ * Both materials here want it and neither of them can get it any other way:
+ * three's own `aoMap` is a texture read through a second UV set, and what the
+ * mesher produces is a value per vertex.
+ */
+function carryOcclusion(shader) {
+  shader.vertexShader = shader.vertexShader
+    .replace(
+      "#include <common>",
+      `#include <common>
+       attribute float occlusion;
+       varying float vOcclusion;`
+    )
+    .replace(
+      "#include <begin_vertex>",
+      `#include <begin_vertex>
+       vOcclusion = occlusion;`
+    );
+  return shader;
+}
+
+/**
+ * Eyes.
+ *
+ * Not skin: no wrap, no subsurface, and a clearcoat standing in for the tear
+ * film, which is the whole reason an eye reads as wet. The occlusion these
+ * parts carry is not the field's - the field has no eye socket in it to shade
+ * them with - but a baked lid shadow, so it is applied flat rather than mixed.
+ */
+function eyeMaterial(colour) {
+  const material = new MeshPhysicalMaterial({
+    color: new Color().setRGB(colour[0], colour[1], colour[2], SRGBColorSpace),
+    roughness: 0.14,
+    metalness: 0,
+    clearcoat: 1,
+    clearcoatRoughness: 0.04,
+  });
+  material.onBeforeCompile = (shader) => {
+    carryOcclusion(shader);
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", "#include <common>\n varying float vOcclusion;")
+      .replace(
+        "#include <lights_physical_fragment>",
+        `#include <lights_physical_fragment>
+         material.diffuseColor.rgb *= vOcclusion;`
+      );
+  };
+  material.customProgramCacheKey = () => "poseforge-eye";
+  return material;
+}
+
+/**
+ * Hair.
+ *
+ * Also not skin, and not the eyes either. Hair's whole appearance is its
+ * specular: at an albedo around 0.05 the diffuse term is a fifteenth of what
+ * the skin beside it returns, so what tells a viewer this is hair and not a
+ * hole cut in the picture is the band of reflection running across it, and a
+ * reflection off a dielectric is not attenuated by albedo at all.
+ *
+ * `sheen` is the term that gives it: a broad retro-reflective lobe over the
+ * whole surface, which is what a mass of fine fibres returns, on top of the
+ * ordinary specular that draws the band. Roughness is well up from the eyes'
+ * 0.14 because the band on a head of hair is a hand's width across, not a
+ * point, and the clearcoat is off - hair is not wet.
+ *
+ * 0.42 and not the 0.34 this ran at, which is the same correction the CLI's
+ * tight lobe took and for the same reason: at 0.34 the band was wide enough to
+ * cover the whole front of the cap at once, so the lock ridges meant to break
+ * it up were all inside it and the head came back wearing a gloss visor.
+ *
+ * The occlusion is the field's, mixed rather than applied flat, so hair falling
+ * against a neck darkens where it touches.
+ */
+function hairMaterial(colour) {
+  const material = new MeshPhysicalMaterial({
+    color: new Color().setRGB(colour[0], colour[1], colour[2], SRGBColorSpace),
+    roughness: 0.42,
+    metalness: 0,
+    sheen: 0.7,
+    sheenRoughness: 0.5,
+    sheenColor: new Color(0xbfb6ad),
+  });
+  material.onBeforeCompile = (shader) => {
+    carryOcclusion(shader);
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", "#include <common>\n varying float vOcclusion;")
+      .replace(
+        "#include <lights_physical_fragment>",
+        `#include <lights_physical_fragment>
+         material.diffuseColor.rgb *= mix(1.0, vOcclusion, 0.8);`
+      );
+  };
+  material.customProgramCacheKey = () => "poseforge-hair";
+  return material;
+}
+
+/**
+ * Fabric.
+ *
+ * Knitted cotton, which is the honest answer for a bra and a pair of briefs and
+ * is also the easiest thing in this file to get wrong, because the default for
+ * an unknown coloured submesh here is `eyeMaterial` and that carries a full
+ * clearcoat. Cloth under a clearcoat reads as wet, or as latex, and in black -
+ * which is what the garments default to - it reads as a hole cut in the figure.
+ *
+ * So: rough, no clearcoat, and a small sheen. The sheen is doing real work
+ * rather than decoration. Black fabric has an albedo of about 0.05, which is
+ * under half what the darkest skin returns, so its diffuse shading carries
+ * almost no information about its shape - a pair of briefs lit only
+ * diffusely is a silhouette. The retro-reflective lobe off the nap of the
+ * knit is most of what actually tells an eye that a dark garment is curved,
+ * and it survives at an albedo where nothing else does.
+ */
+function fabricMaterial(colour) {
+  const material = new MeshPhysicalMaterial({
+    color: new Color().setRGB(colour[0], colour[1], colour[2], SRGBColorSpace),
+    roughness: 0.86,
+    metalness: 0,
+    sheen: 0.55,
+    sheenRoughness: 0.75,
+    sheenColor: new Color(0x8e8a86),
+  });
+  material.onBeforeCompile = (shader) => {
+    carryOcclusion(shader);
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", "#include <common>\n varying float vOcclusion;")
+      .replace(
+        "#include <lights_physical_fragment>",
+        `#include <lights_physical_fragment>
+         material.diffuseColor.rgb *= mix(1.0, vOcclusion, 0.7);`
+      );
+  };
+  material.customProgramCacheKey = () => "poseforge-fabric";
   return material;
 }
 
@@ -136,6 +340,9 @@ function toGeometry(mesh) {
     "occlusion",
     new BufferAttribute(mesh.occlusion ?? new Float32Array(mesh.positions.length / 3).fill(1), 1)
   );
+  // The scan brings its own; the field does not, and a body drawn from the
+  // field is drawn untextured rather than drawn with somebody else's chart.
+  if (mesh.uvs) geometry.setAttribute("uv", new BufferAttribute(mesh.uvs, 2));
   geometry.computeBoundingSphere();
   return geometry;
 }
@@ -238,11 +445,49 @@ export function createRenderer(canvas, { alpha = false, shadows = true } = {}) {
     scene.add(propGroup);
 
     meshes.forEach((mesh, index) => {
-      const body = new Mesh(toGeometry(mesh), skinMaterial(SKIN[index % SKIN.length]));
-      body.castShadow = true;
-      body.receiveShadow = true;
-      body.name = mesh.id ?? `actor${index}`;
-      bodies.add(body);
+      // An actor arrives as several parts because it is several materials - the
+      // skin, and the white, iris and pupil of each eye. A body that came back
+      // as one buffer, which is what the distance field produces, is treated as
+      // a single primary part so both paths draw through the same code.
+      const parts = mesh.parts ?? [{ ...mesh, primary: true }];
+      const tone = SKIN[index % SKIN.length];
+      for (const part of parts) {
+        // Flesh takes the per-actor skin tone; trim keeps the colour it was
+        // authored with. The scan's body carries a baseColorFactor of its own,
+        // so "is this flesh" is `primary` *or* the absence of a colour - which
+        // is what marks the anatomy `featureRelief` adds as a separate part.
+        const flesh = part.primary || !part.colour;
+        const atlas = flesh && part.uvs ? skinAtlas(mesh.bodyType) : null;
+        const material = flesh
+          ? skinMaterial(atlas ? tinted(tone) : tone, atlas)
+          : part.hair
+            ? hairMaterial(part.colour)
+            : part.garment
+              ? fabricMaterial(part.colour)
+              : eyeMaterial(part.colour);
+        const body = new Mesh(toGeometry(part), material);
+        // Eyes sit inside a socket that is already baked into their own
+        // occlusion. Letting them into the shadow map as well would shade them
+        // twice, and casting from them puts an eyeball's shadow on the inside
+        // of a face.
+        // Eyes stay out of the shadow map; hair and cloth emphatically do
+        // not. A fringe's shadow on a forehead is most of what places the hair
+        // in front of the head rather than painted on it, and the same holds
+        // for the shadow a band throws on the ribs under it.
+        const solid = flesh || !!part.hair || !!part.garment;
+        body.castShadow = solid;
+        body.receiveShadow = solid;
+        body.renderOrder = solid ? 0 : 1;
+        // Line art traces silhouettes, and an eyeball's silhouette is its
+        // equator - a circle buried inside the skull. The depth test would
+        // probably hide it, but "probably hidden" is not a reason to hand the
+        // tracer a contour that should never be drawn.
+        body.userData.outline = solid;
+        body.name = part.primary
+          ? (mesh.id ?? `actor${index}`)
+          : `${mesh.id ?? `actor${index}`}.${part.name}`;
+        bodies.add(body);
+      }
     });
 
     frame();

@@ -183,6 +183,64 @@ const ARRANGEMENT_POSTURES = {
 const STATURE = { tall: 1.85, short: 1.62 };
 
 /**
+ * Reading a limb shape back off a contact.
+ *
+ * The near end says which limb is being talked about; the far end says roughly
+ * where it has to get to. That is enough to pick an opening pose, and it is all
+ * that should be read from it - a contact is solved properly later, so these
+ * only have to land the limb in the right half of the body.
+ */
+const ARM_PARTS = new Set(["hand", "forearm", "upperArm", "elbow"]);
+const LEG_PARTS = new Set(["thigh", "knee", "shin", "ankle", "foot"]);
+
+/**
+ * Relations that name a hand without saying "hand".
+ *
+ * Only the grasping verbs. "Against her back" and "on her back" elide nothing -
+ * whatever is against it was named earlier in the sentence or is the whole
+ * body - so reading a pair of hands into those would invent a contact.
+ */
+const GRASPING = new Set([
+  "holding", "holds", "grips", "gripping", "cupping", "grabbing", "grabs",
+  "握着", "扶着", "抓着", "捧着",
+]);
+
+const ARM_SHAPE_FOR = {
+  hip: "arms_on_hips",
+  buttocks: "arms_on_hips",
+  waist: "arms_on_hips",
+  pelvis: "arms_on_hips",
+  lowerBack: "arms_on_hips",
+  thigh: "arms_on_thighs",
+  knee: "arms_on_thighs",
+  shin: "arms_on_thighs",
+  ankle: "arms_on_thighs",
+  foot: "arms_on_thighs",
+  lap: "arms_on_thighs",
+  shoulder: "arms_around",
+  neck: "arms_around",
+  back: "arms_around",
+  upperBack: "arms_around",
+  torso: "arms_around",
+  chest: "arms_around",
+  abdomen: "arms_around",
+  head: "arms_around",
+  face: "arms_around",
+};
+
+const LEG_SHAPE_FOR = {
+  hip: "legs_wrapped",
+  waist: "legs_wrapped",
+  pelvis: "legs_wrapped",
+  buttocks: "legs_wrapped",
+  torso: "legs_wrapped",
+  back: "legs_wrapped",
+  lowerBack: "legs_wrapped",
+  shoulder: "legs_raised_high",
+  neck: "legs_raised_high",
+};
+
+/**
  * Interpret a description.
  *
  * @param {string} text
@@ -327,6 +385,8 @@ export function parseDescription(text) {
   //    short", where the modifier trails its subject.
   const buildFor = new Map();
   const statureFor = new Map();
+  const armsFor = new Map();
+  const legsFor = new Map();
   const refPositions = matches
     .map((m, index) => ({ index, at: m.at, id: m.kind === "ref" ? m.value : m.ref }))
     .filter((entry) => entry.id && entry.id !== "both");
@@ -340,12 +400,12 @@ export function parseDescription(text) {
     }
     return best?.id ?? subjectAt[index] ?? identityOrder[0];
   };
+  const MODIFIER_BINS = { build: buildFor, stature: statureFor, arms: armsFor, legs: legsFor };
   matches.forEach((match, index) => {
-    if (match.kind !== "build" && match.kind !== "stature") return;
+    const bin = MODIFIER_BINS[match.kind];
+    if (!bin) return;
     const owner = nearestPerson(match, index);
-    if (!owner) return;
-    if (match.kind === "build") buildFor.set(owner, match);
-    else statureFor.set(owner, match);
+    if (owner) bin.set(owner, match);
   });
 
   // 6. Assemble the people.
@@ -364,6 +424,10 @@ export function parseDescription(text) {
     if (build) spec.build = build.value;
     const stature = statureFor.get(identity);
     if (stature) spec.stature = STATURE[stature.value];
+    const armShape = armsFor.get(identity);
+    if (armShape) spec.arms = armShape.value;
+    const legShape = legsFor.get(identity);
+    if (legShape) spec.legs = legShape.value;
     actors[slot] = spec;
 
     say(
@@ -374,6 +438,8 @@ export function parseDescription(text) {
     );
     if (build) say(`${identity}.build`, build.value, build.phrase);
     if (stature) say(`${identity}.stature`, spec.stature, stature.phrase);
+    if (armShape) say(`${identity}.arms`, armShape.value, armShape.phrase);
+    if (legShape) say(`${identity}.legs`, legShape.value, legShape.phrase);
   }
   for (let i = 0; i < actorCount; i += 1) {
     if (!actors[i]) {
@@ -427,6 +493,7 @@ export function parseDescription(text) {
 
   // 9. Contacts: "<part> <relation> [whose] <part>".
   const contacts = [];
+  const consumed = new Set();
   const slotOf = (identity) => slots.get(identity) ?? null;
   for (let i = 0; i < matches.length; i += 1) {
     const a = matches[i];
@@ -489,7 +556,77 @@ export function parseDescription(text) {
       contacts[contacts.length - 1].from = `${a.value}.left`;
       contacts.push({ ...contact, from: `${a.value}.right` });
     }
+    for (let k = i; k <= j; k += 1) consumed.add(k);
     i = j;
+  }
+
+  // 9a. "...holding her hips" - a grasping verb with nothing in front of it.
+  //
+  //     English drops the hands from these constantly: "he kneels behind her,
+  //     holding her hips" has a subject, a verb and a target, and the part
+  //     doing the holding is left to the reader because there is only one
+  //     thing it could be. The main pattern needs a part on both ends, so
+  //     these fell through it entirely and the hands stayed wherever the
+  //     posture had them - which is most of what "the hands are not expressed"
+  //     looked like from the outside.
+  for (let i = 0; i < matches.length; i += 1) {
+    if (consumed.has(i)) continue;
+    const rel = matches[i];
+    if (rel.kind !== "relation" || !GRASPING.has(rel.phrase)) continue;
+    let j = i + 1;
+    let toIdentity = null;
+    if (matches[j]?.kind === "ref" && matches[j].value !== "both") {
+      toIdentity = matches[j].value;
+      j += 1;
+    }
+    const b = matches[j];
+    if (b?.kind !== "part" || b.at - rel.end > 24) continue;
+
+    const fromIdentity = subjectAt[i] ?? identityOrder[0];
+    let fromSlot = slotOf(fromIdentity);
+    let toSlot = toIdentity ? slotOf(toIdentity) : null;
+    if (toSlot == null && fromSlot != null && actorCount > 1) toSlot = fromSlot === 0 ? 1 : 0;
+    if (fromSlot == null || toSlot == null) continue;
+    if (fromSlot === toSlot) {
+      if (actorCount < 2) continue;
+      fromSlot = toSlot === 0 ? 1 : 0;
+    }
+    // Both hands, always. The elided part is "his hands", not "his hand" -
+    // nobody holds somebody's hips one-handed without saying so, and when they
+    // do say so the main pattern has a part to match and handles it there.
+    const base2 = { to: b.value, fromActor: fromSlot, toActor: toSlot, strength: 0.7, type: "rest" };
+    contacts.push({ ...base2, from: "hand.left" }, { ...base2, from: "hand.right" });
+    say(
+      "contact",
+      `hand to ${b.value}`,
+      normalised.slice(rel.at, b.end).trim(),
+      "the hands were left unsaid"
+    );
+    for (let k = i; k <= j; k += 1) consumed.add(k);
+    i = j;
+  }
+
+  // 9b. The limb shape a contact implies.
+  //
+  //     "His hands on her hips" already says what his arms are doing, and it
+  //     says it more precisely than any standalone phrase could - it names the
+  //     target too. The contact is what gets solved, but the solver still needs
+  //     somewhere to start from, and starting from the posture's own arms means
+  //     starting with them wherever the archetype happened to leave them. So
+  //     the shape is read back off the contact and used as the opening pose.
+  //     Anything the sentence stated outright wins, because that was a separate
+  //     clause about the same limb and it is the more specific claim.
+  for (const contact of contacts) {
+    const fromPart = contact.from.split(".")[0];
+    const toPart = contact.to.split(".")[0];
+    const spec = actors[contact.fromActor];
+    if (!spec) continue;
+    const limb = ARM_PARTS.has(fromPart) ? "arms" : LEG_PARTS.has(fromPart) ? "legs" : null;
+    if (!limb || spec[limb]) continue;
+    const shape = (limb === "arms" ? ARM_SHAPE_FOR : LEG_SHAPE_FOR)[toPart];
+    if (!shape) continue;
+    spec[limb] = shape;
+    say(`${spec.id}.${limb}`, shape, null, `implied by ${contact.from} resting on ${contact.to}`);
   }
 
   // 10. What went unread. Silence here would mean the user could not tell a

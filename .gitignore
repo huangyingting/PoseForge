@@ -7,10 +7,17 @@ dist/
 
 # Renders. `scripts/render-cli.mjs` writes pose.png by default, so working on
 # the renderer leaves these lying around; they are output, not source.
+#
+# The exceptions are the ones that are source. `assets/` holds the scans' skin
+# atlases, which the renderer loads at run time - ignored, they would go
+# missing from a fresh clone and every figure would come back untextured, with
+# nothing in the history to say why.
 *.png
 *.svg
 !docs/**/*.png
 !docs/**/*.svg
+!assets/**/*.png
+!assets/**/*.svg
 
 # Editor and OS noise
 .DS_Store

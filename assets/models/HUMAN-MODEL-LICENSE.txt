@@ -1,0 +1,24 @@
+Primary realistic body models
+=============================
+
+Generated with MakeHuman Community 1.3.0:
+https://www.makehumancommunity.org/
+
+The MakeHuman core assets used to generate these models are released under
+Creative Commons CC0 1.0 Universal:
+https://github.com/makehumancommunity/makehuman/blob/master/LICENSE.ASSETS.md
+
+The generated female and male bodies were created specifically for this
+project with distinct gender, height, muscle, weight, and body-proportion
+parameters, the MakeHuman Asian macro target, and the CC0 young Asian skin
+materials. They use MakeHuman's game-engine skeleton and were exported to
+glTF/GLB through Blender.
+
+Fallback CC0 base meshes
+========================
+
+Source: "Human Basemeshes" by pistachio
+https://opengameart.org/content/human-basemeshes
+
+License: Creative Commons CC0 1.0 Universal
+https://creativecommons.org/publicdomain/zero/1.0/

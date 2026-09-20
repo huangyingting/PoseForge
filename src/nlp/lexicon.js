@@ -76,7 +76,8 @@ add("posture", "prone", [
   "俯卧", "趴着", "趴下", "俯身趴",
 ]);
 add("posture", "side_lying", [
-  "on her side", "on his side", "on their side", "lying on her side", "lying on his side",
+  "on her side", "on his side", "on their side", "on their sides",
+  "lying on her side", "lying on his side", "lying on their sides",
   "side lying", "sideways on the bed", "侧卧", "侧躺", "侧身躺",
 ]);
 add("posture", "seated", [
@@ -289,10 +290,96 @@ add("facing", "toward", ["facing him", "facing her", "turned to face", "面朝",
 add("relation", "on", [
   "resting on", "rests on", "placed on", "on top of", "on to", "onto", "on",
   "against", "pressed against", "pressed to", "touching", "touches", "holding",
-  "holds", "grips", "gripping", "cupping", "around", "over",
-  "放在", "贴着", "压在", "抵着", "握着", "扶着", "靠在", "在",
+  "holds", "grips", "gripping", "grabbing", "grabs", "cupping", "around", "over",
+  "放在", "贴着", "压在", "抵着", "握着", "扶着", "抓着", "捧着", "靠在", "在",
 ]);
 add("relation", "to", ["to", "with", "at", "对着", "朝向"]);
+
+// ---------------------------------------------------------------------------
+// Limb shapes
+//
+// What the arms and legs are doing, when the sentence says so outright. These
+// deliberately stop short of the phrasings that already build a *contact* -
+// "his hands on her hips", "her arms around his neck" - because those carry
+// strictly more information: they name a target as well as a shape, and the
+// parser turns them into a shape anyway by reading the contact it made. Adding
+// them here would only consume the span and throw the target away.
+//
+// So what is left is the self-contained half: the shapes a limb can be in with
+// nothing else involved.
+// ---------------------------------------------------------------------------
+
+add("arms", "arms_overhead", [
+  "arms overhead", "arms over her head", "arms over his head", "arms above her head",
+  "arms above his head", "hands above her head", "hands above his head",
+  "hands behind her head", "hands behind his head", "arms up over her head",
+  "举过头顶", "手举过头", "手臂举过头", "双臂举高", "手放在脑后",
+]);
+add("arms", "arms_sides", [
+  "arms at her sides", "arms at his sides", "arms by her sides", "arms by his sides",
+  "arms down at her sides", "arms down at his sides", "hands at her sides",
+  "hands at his sides", "arms relaxed", "arms hanging",
+  "手臂垂在身侧", "双手垂在身侧", "手放在身侧", "双臂自然下垂",
+]);
+add("arms", "arms_out", [
+  "arms out to the sides", "arms outstretched", "arms spread wide", "arms stretched out",
+  "双臂张开", "手臂张开", "双臂伸展",
+]);
+add("arms", "arms_folded", [
+  "arms folded", "arms crossed", "arms folded across her chest",
+  "arms folded across his chest", "双臂交叉", "抱着胸", "环抱胸前",
+]);
+add("arms", "arms_braced_behind", [
+  "arms braced behind", "hands planted behind", "propped up on her hands",
+  "propped up on his hands", "leaning back on her hands", "leaning back on his hands",
+  "双手撑在身后", "手撑在身后", "向后撑着",
+]);
+add("arms", "arms_forward", [
+  "arms reaching forward", "reaching forward", "arms stretched forward",
+  "arms out in front", "双臂前伸", "手臂前伸", "双手前伸",
+]);
+add("arms", "arms_straps", [
+  "holding the straps", "arms restrained", "hands tied", "wrists tied", "wrists bound",
+  "双手被绑", "手腕被绑", "抓着吊带",
+]);
+
+add("legs", "legs_apart", [
+  "legs apart", "legs spread", "legs spread apart", "legs open", "legs wide apart",
+  "thighs apart", "thighs open", "thighs spread", "spreads her legs", "spreading her legs",
+  "双腿张开", "双腿分开", "腿张开", "大腿张开", "双腿大开",
+]);
+add("legs", "legs_together", [
+  "legs together", "knees together", "thighs together", "双腿并拢", "双膝并拢",
+]);
+add("legs", "legs_extended", [
+  "legs straight", "legs extended", "legs stretched out", "legs out straight",
+  "双腿伸直", "腿伸直", "双腿伸展",
+]);
+// "legs around his waist" is already a posture phrase - it says she is being
+// carried - so the wrapping phrases here are the ones that say only where the
+// legs are.
+add("legs", "legs_wrapped", [
+  "legs wrapped around", "legs wrapped around him", "legs wrapped around her",
+  "legs locked around", "ankles locked behind", "ankles crossed behind",
+  "双腿盘住", "双腿环住", "腿夹住腰", "双腿缠住",
+]);
+add("legs", "legs_crossed", [
+  "legs crossed", "legs intertwined", "legs entwined", "legs overlapping",
+  "双腿交叉", "腿交缠", "双腿交缠",
+]);
+add("legs", "legs_one_raised", [
+  "one leg raised", "one knee raised", "one leg up", "one leg lifted",
+  "一条腿抬起", "单腿抬起", "抬起一条腿",
+]);
+add("legs", "legs_feet_apart", [
+  "feet apart", "feet shoulder width apart", "双脚分开", "两脚分开",
+]);
+add("legs", "legs_folded", [
+  "knees drawn up", "knees tucked up", "knees pulled up", "膝盖蜷起", "屈膝收起",
+]);
+add("legs", "legs_raised_high", [
+  "legs straight up", "legs vertical", "legs raised high", "双腿竖直", "双腿高举",
+]);
 
 // ---------------------------------------------------------------------------
 // Body descriptors

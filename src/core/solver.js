@@ -18,6 +18,7 @@
 
 import {
   buildBodyVolumes,
+  gravityHang,
   poseVolumes,
   selfCollisionExempt,
   volumesBounds,
@@ -60,6 +61,7 @@ import {
   supportPlaneFor,
 } from "./poseLibrary.js";
 import { Skeleton, evaluatePose } from "./skeleton.js";
+import { handShapes } from "./handPose.js";
 
 /** Dempster segment mass fractions, used for the centre of mass. */
 const SEGMENT_MASS = {
@@ -156,7 +158,19 @@ export function createActor(spec, index) {
 /** Refresh an actor's evaluated pose and world-space volumes. */
 export function refresh(actor) {
   actor.evaluated = evaluatePose(actor.skeleton, actor.pose);
-  actor.volumes = poseVolumes(actor.skeleton, actor.evaluated, actor.localVolumes, actor.index);
+  // Gravity on the parts that hang, recomputed every refresh because it
+  // depends on where the pelvis has ended up and on nothing else. Stored on
+  // the actor so the drawing side can apply the identical rotation to the
+  // drawn part - a shaft that collides in one place and is drawn in another
+  // is worse than one that is rigid.
+  actor.hang = gravityHang(actor.skeleton, actor.evaluated, actor.localVolumes);
+  actor.volumes = poseVolumes(
+    actor.skeleton,
+    actor.evaluated,
+    actor.localVolumes,
+    actor.index,
+    actor.hang
+  );
   return actor;
 }
 
@@ -204,7 +218,7 @@ function supportLowestY(actor, landmark) {
   let lowest = Infinity;
   let point = null;
   for (const volume of actor.volumes) {
-    if (volume.bone !== resolved.bone) continue;
+    if (!resolved.bones.includes(volume.bone)) continue;
     for (const [end, radius] of [
       [volume.a, volume.ra],
       [volume.b, volume.rb],
@@ -301,8 +315,46 @@ function levelSupports(actor, planeFor, { maxAngle = 0.2, passes = 3 } = {}) {
     const a22 = xx + lambda;
     const det = a11 * a22 - a12 * a12;
     if (Math.abs(det) < 1e-12) return;
-    const u = (-zd * a22 + xd * a12) / det;
-    const v = (-xd * a11 + zd * a12) / det;
+
+    // Supports strung out in a line measure the tilt *along* that line and say
+    // nothing whatever about the tilt across it.
+    //
+    // A figure on their side rests on one shoulder, one hip and one thigh, and
+    // those three are all on the same straight line down the body. Least
+    // squares does not know that a direction was never measured; asked for the
+    // plane through three collinear points it returns whichever of the infinitely
+    // many makes the arithmetic work, and the ridge above is four orders of
+    // magnitude too small to damp it. What came back was the cap - 11.5 degrees
+    // a pass, three passes - about the body's own long axis, so every side-lying
+    // figure in the library lay down on her side and ended up 36 degrees onto
+    // her back. The pose was right when it was built and wrong by the time it
+    // was drawn.
+    //
+    // So decompose the scatter and invert only the directions it actually
+    // constrains. Where the supports do span the ground - a seated figure's
+    // buttocks and both feet - both directions survive and this is the same
+    // least-squares fit it always was.
+    const trace = xx + zz;
+    const disc = Math.sqrt(Math.max(0, trace * trace - 4 * (xx * zz - zx * zx)));
+    const eigenvalues = [(trace + disc) / 2, (trace - disc) / 2];
+    const eigenvector = (value) => {
+      let e = [zx, value - xx];
+      if (Math.hypot(e[0], e[1]) < 1e-12) e = [value - zz, zx];
+      if (Math.hypot(e[0], e[1]) < 1e-12) e = [1, 0];
+      const length = Math.hypot(e[0], e[1]);
+      return [e[0] / length, e[1] / length];
+    };
+    let u = 0;
+    let v = 0;
+    for (const value of eigenvalues) {
+      // A direction carrying under 4% of the spread is one the supports do not
+      // pin down. Dividing by it is how the noise gets amplified.
+      if (value <= 1e-12 || value < eigenvalues[0] * 0.04) continue;
+      const e = eigenvector(value);
+      const scale = (-xd * e[0] + -zd * e[1]) / value;
+      v += scale * e[0];
+      u += scale * e[1];
+    }
 
     const omega = [-u, 0, v];
     const angle = v3len(omega);
@@ -667,7 +719,34 @@ export function applyArrangement(primary, secondary, arrangement, surface) {
   // So: turn the horizontal part by where the primary is facing, and leave the
   // vertical part alone.
   const face = heading(primary);
-  const [ox, oy, oz] = v3mul(arrangement.offset, H);
+  let [ox, oy, oz] = v3mul(arrangement.offset, H);
+
+  // "Beside" means nothing to somebody lying on their side.
+  //
+  // The offset's x is a step along the shoulder axis - past the partner's arm,
+  // across the bed - and that axis is horizontal for everybody in the library
+  // except one. Roll a figure onto their side and it stands up: their upper
+  // shoulder is now directly above the lower one, and there is no sideways left
+  // to go. The horizontal direction that *is* still free is the one their chest
+  // and back face, which for a partner nestling in behind them is the one that
+  // was wanted all along.
+  //
+  // So a sideways step becomes a backward one. Spooning asked for 0.22 of a
+  // stature beside and 0.06 behind, and was getting 0.06 behind and 0.22 along
+  // the mattress towards the partner's head, which is how two people meant to
+  // be touching ended up with 699mm between one's chest and the other's back -
+  // four of the six spooning scenes in the suite, and the worst ratio in it.
+  //
+  // Only for a figure on their *side*. Lying on your back the shoulder axis is
+  // as horizontal as it ever was, and "beside" means exactly what it says.
+  const onSide =
+    isRecumbent(primary.posture) &&
+    Math.hypot(primary.posture.faceDir[0], primary.posture.faceDir[2]) > 0.5;
+  if (onSide) {
+    oz += ox;
+    ox = 0;
+  }
+
   const offsetWorld = [
     ox * face[2] + oz * face[0],
     oy,
@@ -1092,8 +1171,13 @@ export function solveScene(scene, options = {}) {
 
   // 2. place the first actor, then arrange the rest around it
   seatOnSurface(actors[0], surface);
-  standOffProps(actors[0], props, surface);
-  seatOnSurface(actors[0], surface);
+  // Stepping clear of a table changes which part of it is underfoot, so the
+  // seating has to be redone - but only if the step happened. Seating is not
+  // idempotent (`settleLimbs` keeps finding a little more to give), and doing
+  // it twice on a floor scene with no props to stand off from is what put a
+  // figure on her forearms and knees onto the top of her head. Every validator
+  // seats once and saw nothing; only the renderer went round twice.
+  if (standOffProps(actors[0], props, surface)) seatOnSurface(actors[0], surface);
   // An arrangement name the library does not know is worth saying out loud.
   // Quietly falling back to face-to-face renders a confident, wrong picture,
   // and the caller has no way to tell that from a correct one.
@@ -1294,6 +1378,12 @@ export function solveScene(scene, options = {}) {
       .filter(Boolean);
   }
   const report = penetrationReport(finalContacts);
+
+  // What each hand is doing, decided once here rather than by every renderer
+  // separately. It needs the contacts *and* the postures, and this is the only
+  // place that holds both - see `handShapes` for why the declarations are a
+  // better source for it than the solved geometry.
+  for (const actor of actors) actor.hands = handShapes(actor, contacts);
 
   // Say what could not be done. A pose where the chests never met is a
   // different picture from the one that was asked for, and the caller cannot
@@ -1799,9 +1889,9 @@ function boxSpan(box, dir) {
  * table he was sharing with it, for the same reason: his legs are under it.
  */
 function standOffProps(actor, props, surface) {
-  if (!props.length) return;
+  if (!props.length) return false;
   const chains = standingChains(actor, surface);
-  if (!chains.size) return;
+  if (!chains.size) return false;
   const axis = heading(actor);
   let forward = 0;
   let back = 0;
@@ -1832,10 +1922,11 @@ function standOffProps(actor, props, surface) {
   // than deciding per-volume keeps the figure rigid: half of her stepping back
   // while the other half steps forward is not a step, it is a tear.
   const push = Math.min(forward, back);
-  if (push <= 0.002 || !Number.isFinite(push)) return;
+  if (push <= 0.002 || !Number.isFinite(push)) return false;
   const sign = forward <= back ? 1 : -1;
   translateActor(actor, [axis[0] * push * sign, 0, axis[2] * push * sign]);
   refresh(actor);
+  return true;
 }
 
 /** Lift an actor out of props and the ground plane. */

@@ -83,7 +83,16 @@ const axialAxes = () => ({
  * tighter than clinical extremes so solver corrections stay plausible.
  */
 const ROM = {
-  spine: { flexion: [-25, 45], abduction: [-30, 30], rotation: [-35, 35] },
+  // Same story as the ankle below, and found the same way. Negative flexion
+  // bends a vertebra *towards* the face - that is what the bone chain does -
+  // so this range used to allow 135 degrees of backward extension across the
+  // three vertebrae and only 75 of forward flexion, which is close to the
+  // reverse of a human (about 30 back, about 95 forward). Nothing caught it
+  // while every posture in the library kept its spine within five degrees of
+  // neutral and took its lean from `spineDir` and the hips instead; what
+  // caught it was the trunk layer, whose whole job is to bend the spine, and
+  // whose deepest forward fold was being clamped away to a third of itself.
+  spine: { flexion: [-32, 12], abduction: [-30, 30], rotation: [-35, 35] },
   neck: { flexion: [-45, 55], abduction: [-38, 38], rotation: [-70, 70] },
   head: { flexion: [-30, 30], abduction: [-20, 20], rotation: [-45, 45] },
   clavicle: { flexion: [-20, 20], abduction: [-12, 28], rotation: [-10, 10] },
@@ -92,8 +101,21 @@ const ROM = {
   wrist: { flexion: [-70, 75], abduction: [-25, 35], rotation: [-15, 15] },
   hip: { flexion: [-25, 135], abduction: [-25, 70], rotation: [-45, 45] },
   knee: { flexion: [0, 150], abduction: [-4, 4], rotation: [-12, 12] },
-  ankle: { flexion: [-45, 25], abduction: [-18, 18], rotation: [-20, 20] },
-  toe: { flexion: [-30, 45], abduction: [0, 0], rotation: [0, 0] },
+  // Ankle and toe read negative as *dorsiflexion* - toes towards the shin -
+  // because that is what the bone chain does, not because it was declared:
+  // with the leg hanging at rest, ankle -45 swings the foot up towards the
+  // shank and +25 points it away. Both ranges used to be written the other way
+  // round, allowing 45 degrees of dorsiflexion (a human has about 20) and 25 of
+  // plantarflexion (a human has about 50). Nothing caught it while the toes
+  // were a rigid plank and every posture's ankle was within a few degrees of
+  // neutral; what caught it was a kneeling figure whose feet could not be laid
+  // back along the floor because the joint ran out of travel 60 degrees early,
+  // and stuck up behind her instead.
+  ankle: { flexion: [-25, 50], abduction: [-18, 18], rotation: [-20, 20] },
+  // Same convention: negative lifts the toes. The metatarsophalangeal joints
+  // extend much further than they flex - that is what lets a foot roll onto the
+  // ball and what a kneeling figure's tucked toes need.
+  toe: { flexion: [-70, 40], abduction: [0, 0], rotation: [0, 0] },
   root: { flexion: [-180, 180], abduction: [-180, 180], rotation: [-180, 180] },
 };
 
@@ -185,7 +207,23 @@ function boneTable(shoulderScale, hipScale) {
       {
         name: `toe_${name}`,
         parent: `ankle_${name}`,
-        offset: [0, -P.ankleHeight * 0.55, P.footLength * 0.72],
+        // The ball of the foot - the metatarsophalangeal line the toes hinge
+        // on - not the end of the toes. It used to be at 0.72 of foot length
+        // ahead of the ankle, which is the *tip*: the heel projects 0.042 H
+        // behind the ankle, so 0.72 of a 0.152 H foot measured from the ankle
+        // lands 0.110 H forward, and the whole foot is only 0.110 H long ahead
+        // of the ankle.
+        //
+        // That was invisible while nothing posed this joint, and ruinous the
+        // moment the scanned body was skinned to it: the scan's `ball_*` bone
+        // sits 0.068 H forward of its ankle, and `poseJoints` puts a mapped
+        // joint at *our* bone's position, so the forefoot was dragged 0.042 H
+        // forward and the drawn foot came out 282mm long on a 1.66m woman.
+        // Both scans agree on where the ball is (0.0663 H female, 0.0706 H
+        // male, both 0.0356 H below the ankle), and so does the anthropometry -
+        // the ball is 0.72 of foot length from the *heel* - so the numbers
+        // below are that place, from the ankle.
+        offset: [0, -P.ankleHeight * 0.91, P.footLength * 0.45],
         kind: "toe",
         side: s,
         axes: kneeAxes(s),
@@ -399,5 +437,40 @@ export function bonePosition(skeleton, evaluated, name) {
 export function boneToWorld(skeleton, evaluated, name, localPoint) {
   return mat4TransformPoint(evaluated.matrices[skeleton.boneIndex(name)], localPoint);
 }
+
+/**
+ * The bones an angle can usefully be written on, head to toe.
+ *
+ * Not every bone. The root is left out because `evaluatePose` ignores its
+ * channels outright - where the pelvis points is the arrangement's business and
+ * travels on `pose.root` - so an angle written there would be accepted and then
+ * do nothing, which is the one outcome a control panel must never produce.
+ *
+ * The other exclusions are the tips that are markers rather than joints, and
+ * the test for that is already in the table: a tip whose `kind` is its parent's
+ * `kind` shares the parent's ROM entry because it *is* a point on the parent.
+ * `headTop` names the crown and `hand_l` the middle of the palm; turning either
+ * one would be turning a second head or a second wrist. The ball of the foot is
+ * a tip too and stays, because `toe` is its own entry with its own range and
+ * every posture in the library already sets it.
+ *
+ * Each entry carries its `kind` so a caller can look the range up in `ROM`
+ * without building a skeleton of its own.
+ *
+ * @type {Array<{name: string, kind: string}>}
+ */
+export const POSEABLE_BONES = (() => {
+  const skeleton = new Skeleton();
+  return skeleton.bones
+    .filter(
+      (bone) =>
+        bone.parentIndex >= 0 &&
+        !(bone.tip && bone.kind === skeleton.bones[bone.parentIndex].kind)
+    )
+    .map((bone) => ({ name: bone.name, kind: bone.kind }));
+})();
+
+/** The three channels every joint has, in the order the angles compose in. */
+export const CHANNELS = ["flexion", "abduction", "rotation"];
 
 export { ROM };

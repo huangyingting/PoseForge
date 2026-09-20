@@ -82,9 +82,9 @@ worker.onmessage = ({ data }) => {
   panel.setExportEnabled(true);
 
   const triangles = data.meshes.reduce((sum, mesh) => sum + mesh.triangles, 0);
-  const resolution = Math.round((data.meshes[0]?.resolution ?? 0) * 1000);
+  const source = data.meshes[0]?.source ?? "field";
   status(
-    `${data.stage === "draft" ? "draft" : "final"} · ${resolution}mm · ` +
+    `${data.stage === "draft" ? "draft" : "final"} · ${source} · ` +
       `${(triangles / 1000).toFixed(1)}k tris · ` +
       `${Math.round(data.timings.parse)}ms solve · ${Math.round(data.timings.mesh)}ms mesh`,
     data.stage === "draft"
@@ -147,12 +147,16 @@ function draw() {
 }
 
 function fit() {
-  const rect = canvas.parentElement.getBoundingClientRect();
+  // The canvas's own box, not its parent's. The stage is padded - the canvas
+  // is a plate floating inside it with a shadow, not a fill - so the parent's
+  // rect is the padding wider and taller than the thing being drawn into, and
+  // sizing the drawing buffer from it stretches every render by the padding.
+  const rect = canvas.getBoundingClientRect();
   view.resize(Math.max(1, Math.round(rect.width)), Math.max(1, Math.round(rect.height)));
   draw();
 }
 
-new ResizeObserver(fit).observe(canvas.parentElement);
+new ResizeObserver(fit).observe(canvas);
 fit();
 
 /* ------------------------------------------------------------------ */

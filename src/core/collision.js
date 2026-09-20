@@ -35,6 +35,22 @@ export const COMPRESSION = {
   declaredContact: 0.022,
 };
 
+/**
+ * How far a single volume yields, when it yields more than `soft` says.
+ *
+ * `soft` is one number for every fleshy part of the body, which is right for
+ * most of them - a calf and a forearm really do give about the same amount -
+ * and wrong for the breast, which is the most compressible tissue on a person
+ * and flattens to a fraction of its depth under a chest lying on it. Without
+ * this, modelling a bust at all reads as two scenes' worth of penetration that
+ * a photograph of the same pose plainly does not show.
+ *
+ * Read from the volume, so `body.js` says how soft each part of the body is
+ * where it says how big that part is, and the two cannot drift apart.
+ */
+export const volumeCompression = (volume) =>
+  volume.compression ?? (volume.soft ? COMPRESSION.soft : COMPRESSION.default);
+
 /** Axis-aligned bounds of a single posed round cone. */
 export function volumeBounds(volume, padding = 0) {
   const min = [0, 0, 0];
@@ -180,11 +196,11 @@ export function detectContacts(bodies, options = {}) {
 
           const key = contactKey(bodyA.id, volumeA.bone, bodyB.id, volumeB.bone);
           const isDeclared = declared?.has(key) ?? false;
-          const allowance = isDeclared
-            ? COMPRESSION.declaredContact
-            : volumeA.soft || volumeB.soft
-              ? COMPRESSION.soft
-              : COMPRESSION.default;
+          const allowance = Math.max(
+            isDeclared ? COMPRESSION.declaredContact : 0,
+            volumeCompression(volumeA),
+            volumeCompression(volumeB)
+          );
 
           const effectiveDepth = contact.depth - allowance;
           if (effectiveDepth <= 0) continue;
@@ -230,7 +246,7 @@ export function detectPropContacts(bodies, props, margin = 0) {
         if (!aabbOverlaps(volumeBox, prop.box)) continue;
         const contact = capsuleBoxContact(volume, prop.box);
         if (!contact) continue;
-        const allowance = volume.soft ? COMPRESSION.soft : COMPRESSION.default;
+        const allowance = volumeCompression(volume);
         const depth = contact.depth - allowance;
         if (depth <= 0) continue;
         contacts.push({ ...contact, depth, bodyIndex: i, prop, allowance });

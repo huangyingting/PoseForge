@@ -19,7 +19,13 @@ import {
   POSTURE_NAMES,
   SURFACE_NAMES,
   resolveArrangement,
+  resolvePosture,
 } from "../core/poseLibrary.js";
+import { CHANNELS, POSEABLE_BONES, ROM } from "../core/skeleton.js";
+import { HAIR_STYLES } from "../core/hair.js";
+import { GARMENT_COLOURS, GARMENT_NAMES } from "../core/garments.js";
+import { HAND_SHAPE_NAMES } from "../core/handPose.js";
+import { FOOT_SHAPE_NAMES } from "../core/footPose.js";
 
 const EXAMPLES = [
   "missionary on the bed",
@@ -64,9 +70,77 @@ function slider(label, { min, max, step, format }) {
     el("label", { textContent: label }),
     el("div", {}, [input, readout]),
   ]);
-  const sync = () => (readout.textContent = format(Number(input.value)));
+  // `--fill` is how far along the track the value sits, and the stylesheet
+  // paints the track with it. A range input has no styleable "filled" part in
+  // WebKit - Gecko's `::-moz-range-progress` has no counterpart - so the only
+  // way to have the track read as a level rather than as a rail is to hand the
+  // fraction to CSS from here, on every change, including the programmatic
+  // ones that `sync` exists for.
+  const sync = () => {
+    const value = Number(input.value);
+    readout.textContent = format(value);
+    const span = Number(max) - Number(min) || 1;
+    input.style.setProperty("--fill", `${(((value - Number(min)) / span) * 100).toFixed(2)}%`);
+  };
   input.addEventListener("input", sync);
+  sync();
   return { field, input, sync };
+}
+
+/**
+ * A labelled row of checkboxes.
+ *
+ * Clothing is the one control here that is genuinely a set rather than a
+ * choice - a bra and briefs are not alternatives - and a multiple <select> hides
+ * that behind a scroll box nobody discovers.
+ */
+function toggles(label, options) {
+  const boxes = new Map();
+  const row = el("div", { className: "toggles" });
+  for (const option of options) {
+    const input = el("input", { type: "checkbox" });
+    boxes.set(option, input);
+    row.append(
+      el("label", { className: "toggle" }, [input, el("span", { textContent: option })])
+    );
+  }
+  const field = el("div", { className: "field" }, [el("label", { textContent: label }), row]);
+  return {
+    field,
+    boxes,
+    value: () => [...boxes].filter(([, box]) => box.checked).map(([name]) => name),
+  };
+}
+
+/**
+ * A collapsible group inside an actor card.
+ *
+ * Every actor now carries three pages of controls and only one of them - the
+ * posture - is touched in the common case. Folded away they cost a line each;
+ * laid out flat they push the export buttons off the bottom of the panel.
+ */
+function group(title) {
+  const summary = el("summary", { textContent: title });
+  const body = el("div", { className: "group-body" });
+  return { details: el("details", {}, [summary, body]), body, summary };
+}
+
+/** One side of a paired control, read back from a `string | {l, r}` spec. */
+const sideOf = (value, side) => (typeof value === "string" ? value : (value?.[side] ?? ""));
+
+/**
+ * Two sides back into the spec shape.
+ *
+ * The same shape going out as came in: one name when both sides agree, so a
+ * scene edited in the panel reads the way a person would have written it, and
+ * nothing at all when neither side was asked for, so the inference downstream -
+ * `handShapes` reading the contacts, the posture setting its own ankles - is
+ * left alone rather than overruled with a blank.
+ */
+function bothSides(left, right) {
+  if (!left && !right) return undefined;
+  if (left === right) return left;
+  return { ...(left ? { l: left } : {}), ...(right ? { r: right } : {}) };
 }
 
 /**
@@ -77,12 +151,17 @@ function slider(label, { min, max, step, format }) {
  */
 export function buildPanel(root, handlers) {
   root.replaceChildren();
+  // The brand block is its own element rather than two loose children of the
+  // panel so the stylesheet can pin it: the panel scrolls, and a title that
+  // scrolls away takes the only thing identifying the application with it.
   root.append(
-    el("h1", { textContent: "PoseForge" }),
-    el("p", {
-      className: "tagline",
-      textContent: "Describe two people. One field decides both the surface and the collisions.",
-    })
+    el("header", { className: "brand" }, [
+      el("h1", { textContent: "PoseForge" }),
+      el("p", {
+        className: "tagline",
+        textContent: "Describe two people. One field decides both the surface and the collisions.",
+      }),
+    ])
   );
 
   /* ---- description ---- */
@@ -147,8 +226,16 @@ export function buildPanel(root, handlers) {
     ["PNG 4×", () => handlers.onExport("png", { scale: 4 })],
     ["PNG cut-out", () => handlers.onExport("png", { scale: 2, transparent: true })],
     ["SVG line art", () => handlers.onExport("svg", {})],
-  ].map(([label, action]) => {
-    const button = el("button", { className: "action", type: "button", textContent: label });
+  ].map(([label, action], index) => {
+    // One of the five is the primary, and it is the 2x rather than the first:
+    // five identical buttons in a row leave a first-time visitor reading all
+    // five before picking, and 2x is the one almost everyone wants - 1x is a
+    // viewport-sized screenshot and 4x takes long enough to look broken.
+    const button = el("button", {
+      className: index === 1 ? "action primary" : "action",
+      type: "button",
+      textContent: label,
+    });
     button.addEventListener("click", action);
     buttons.append(button);
     return button;
@@ -229,6 +316,113 @@ export function buildPanel(root, handlers) {
     emit();
   });
 
+  /** Which ROM entry each adjustable bone reads its range from. */
+  const BONE_KIND = new Map(POSEABLE_BONES.map((entry) => [entry.name, entry.kind]));
+
+  /**
+   * The angle a bone sits at before anyone touches it.
+   *
+   * `joints` on a validated scene holds only what was *asked* for - the limb
+   * phrases, the foot shapes, and anything written out by name. The rest of the
+   * pose lives in the posture archetype and never appears there, so a slider
+   * parked at zero would snap a kneeling figure's knee from 92 degrees to
+   * straight the moment it was nudged a single degree. Reading the archetype
+   * underneath makes the first drag continuous, and makes "reset" mean "back to
+   * the posture" instead of "straighten".
+   *
+   * What it cannot show is the solver's own corrections - the IK that puts a
+   * hand on a hip, the push-out that stops two people sharing a volume. Those
+   * are quaternions laid over the whole chain at solve time and have no angles
+   * to read back. So these controls state an intent and the solver still has
+   * the last word, which is the same bargain the posture itself gets.
+   */
+  const baseline = (index, bone, channel) => {
+    const actor = scene?.actors?.[index];
+    const written = actor?.joints?.[bone]?.[channel];
+    if (written != null) return written;
+    return resolvePosture(actor?.posture)?.joints?.[bone]?.[channel] ?? 0;
+  };
+
+  /** The bone picker and its three sliders, for one actor. */
+  function jointEditor(index) {
+    const bone = picker(
+      "Joint",
+      POSEABLE_BONES.map((entry) => entry.name)
+    );
+    const channels = CHANNELS.map((channel) => ({
+      channel,
+      control: slider(`${channel[0].toUpperCase()}${channel.slice(1)}`, {
+        min: -180,
+        max: 180,
+        step: 1,
+        format: (value) => `${Math.round(value)}°`,
+      }),
+    }));
+    const adjusted = el("p", { className: "hint" });
+    const reset = el("button", { className: "action small", type: "button", textContent: "Reset joint" });
+    const resetAll = el("button", { className: "action small", type: "button", textContent: "Reset all" });
+
+    /** Point the sliders at whatever the chosen bone is doing now. */
+    const load = () => {
+      const range = ROM[BONE_KIND.get(bone.select.value)];
+      if (!range) return;
+      for (const { channel, control } of channels) {
+        const [low, high] = range[channel];
+        control.input.min = low;
+        control.input.max = high;
+        // A channel with no travel is not a control. Both of the toe's are
+        // 0..0, and a slider that cannot move but still looks like one reads as
+        // broken rather than as "this joint is a hinge".
+        control.input.disabled = low === high;
+        control.input.value = baseline(index, bone.select.value, channel);
+        control.sync();
+      }
+      const names = Object.keys(scene?.actors?.[index]?.joints ?? {});
+      adjusted.textContent = names.length
+        ? `Set away from the posture: ${names.join(", ")}`
+        : "Nothing set; the posture decides every joint.";
+    };
+
+    bone.select.addEventListener("change", load);
+    for (const { channel, control } of channels) {
+      // `change` rather than `input`, as with height and build: one drag is a
+      // hundred events and each one is a full solve.
+      control.input.addEventListener("change", () => {
+        const actor = scene.actors[index];
+        actor.joints = { ...actor.joints };
+        actor.joints[bone.select.value] = {
+          ...actor.joints[bone.select.value],
+          [channel]: Number(control.input.value),
+        };
+        emit();
+      });
+    }
+    reset.addEventListener("click", () => {
+      const actor = scene.actors[index];
+      if (!actor.joints?.[bone.select.value]) return;
+      actor.joints = { ...actor.joints };
+      delete actor.joints[bone.select.value];
+      emit();
+    });
+    resetAll.addEventListener("click", () => {
+      // Deleting the whole table rather than zeroing it: re-validating rebuilds
+      // whatever the *description* implies - the limb phrases, the foot shapes -
+      // so this returns the figure to the sentence rather than to a T-pose.
+      const actor = scene.actors[index];
+      if (!actor.joints) return;
+      delete actor.joints;
+      emit();
+    });
+
+    const body = el("div", {}, [
+      bone.field,
+      ...channels.map(({ control }) => control.field),
+      el("div", { className: "buttons" }, [reset, resetAll]),
+      adjusted,
+    ]);
+    return { body, load };
+  }
+
   /** Per-actor controls, rebuilt when the number of people changes. */
   const actorControls = [];
   function buildActorCards(count, swatches) {
@@ -248,6 +442,24 @@ export function buildPanel(root, handlers) {
         step: 0.01,
         format: (v) => (v < 0.94 ? "slim" : v > 1.08 ? "heavy" : "average"),
       });
+
+      const hair = picker("Hair", Object.keys(HAIR_STYLES), { blank: "— for the body —" });
+      const wearing = toggles("Wearing", GARMENT_NAMES);
+      const outfit = picker("Colour", Object.keys(GARMENT_COLOURS), { blank: "— black —" });
+      const look = group("Appearance");
+      look.body.append(hair.field, wearing.field, outfit.field);
+
+      const handL = picker("Left hand", HAND_SHAPE_NAMES, { blank: "— from the pose —" });
+      const handR = picker("Right hand", HAND_SHAPE_NAMES, { blank: "— from the pose —" });
+      const footL = picker("Left foot", FOOT_SHAPE_NAMES, { blank: "— from the posture —" });
+      const footR = picker("Right foot", FOOT_SHAPE_NAMES, { blank: "— from the posture —" });
+      const ends = group("Hands & feet");
+      ends.body.append(handL.field, handR.field, footL.field, footR.field);
+
+      const joints = jointEditor(index);
+      const bones = group("Joints");
+      bones.body.append(joints.body);
+
       const title = el("h3", {}, [
         el("span", {
           className: "swatch",
@@ -256,7 +468,15 @@ export function buildPanel(root, handlers) {
         el("span", { textContent: `Partner ${String.fromCharCode(65 + index)}` }),
       ]);
       actorHost.append(
-        el("div", { className: "actor-card" }, [title, posture.field, stature.field, build.field])
+        el("div", { className: "actor-card" }, [
+          title,
+          posture.field,
+          stature.field,
+          build.field,
+          look.details,
+          ends.details,
+          bones.details,
+        ])
       );
 
       posture.select.addEventListener("change", () => {
@@ -274,8 +494,50 @@ export function buildPanel(root, handlers) {
           emit();
         });
       }
+      // Empty is not a value: it means "you decide", so it is written as absent
+      // rather than as a blank the validator would have to reject.
+      for (const [control, key] of [
+        [hair, "hair"],
+        [outfit, "outfit"],
+      ]) {
+        control.select.addEventListener("change", () => {
+          scene.actors[index][key] = control.select.value || undefined;
+          emit();
+        });
+      }
+      for (const box of wearing.boxes.values()) {
+        box.addEventListener("change", () => {
+          scene.actors[index].wearing = wearing.value();
+          emit();
+        });
+      }
+      for (const [left, right, key] of [
+        [handL, handR, "hands"],
+        [footL, footR, "feet"],
+      ]) {
+        for (const control of [left, right]) {
+          control.select.addEventListener("change", () => {
+            scene.actors[index][key] = bothSides(left.select.value, right.select.value);
+            emit();
+          });
+        }
+      }
 
-      actorControls.push({ posture, stature, build, title: title.lastChild });
+      actorControls.push({
+        posture,
+        stature,
+        build,
+        hair,
+        wearing,
+        outfit,
+        handL,
+        handR,
+        footL,
+        footR,
+        joints,
+        summary: bones.summary,
+        title: title.lastChild,
+      });
     }
   }
 
@@ -342,6 +604,19 @@ export function buildPanel(root, handlers) {
         control.build.input.value = actor.build ?? 1;
         control.stature.sync();
         control.build.sync();
+        control.hair.select.value = actor.hair ?? "";
+        control.outfit.select.value = actor.outfit ?? "";
+        const worn = actor.wearing ?? [];
+        for (const [name, box] of control.wearing.boxes) box.checked = worn.includes(name);
+        control.handL.select.value = sideOf(actor.hands, "l");
+        control.handR.select.value = sideOf(actor.hands, "r");
+        control.footL.select.value = sideOf(actor.feet, "l");
+        control.footR.select.value = sideOf(actor.feet, "r");
+        // After the scene is in place: the sliders read their range and their
+        // value out of it.
+        control.joints.load();
+        const set = Object.keys(actor.joints ?? {}).length;
+        control.summary.textContent = set ? `Joints (${set} set)` : "Joints";
         control.title.textContent = actor.label ?? `Partner ${String.fromCharCode(65 + index)}`;
       });
       syncing = false;

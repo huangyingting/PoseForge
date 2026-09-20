@@ -4,6 +4,9 @@
 No dependencies — it runs in plain Node, which is why `scripts/validate-mesh.mjs`
 can measure it and `scripts/render-cli.mjs` can draw it without a browser.
 
+The field is the collider and the source of the shading, but it is not what the
+viewport draws — see [The drawn body](#the-drawn-body) at the end.
+
 ## Why dual contouring
 
 Marching cubes emits vertices on grid **edges**; dual contouring emits one
@@ -140,19 +143,39 @@ the triangle winding.
 
 ## Ambient occlusion
 
-Five field evaluations per vertex, no rays, no acceleration structure, no second
-pass:
+Five field evaluations per vertex plus one at the vertex itself, no rays, no
+second pass:
 
 ```js
+base = bodyDistance(p)
 for s in 1..5:
     reach = s · step · 1.6
-    occlusion += weight · max(0, reach - bodyDistance(p + normal·reach))
+    free  = (bodyDistance(p + normal·reach) - base) / reach
+    occlusion += weight · clamp(1 - free, 0, 1)
     weight *= 0.62
+shade = 1 - strength · (1 - e^(-gain · occlusion / total))
 ```
 
 March out along the normal and compare how far the surface *should* be with how
 far it actually is. The gap measures how much of the body is folded back over
 that point.
+
+Two details carry more weight than they look:
+
+**The samples are measured against the field's value at the vertex**, not
+against zero. That costs one more evaluation and buys the ability to shade a
+surface that is not the field's own — the scanned body sits a centimetre or two
+inside the field down the outside of an arm, and reading the raw distance there
+makes every sample look buried, painting a hard black stripe the length of the
+limb. Taking the difference cancels the offset, so what is measured is
+curvature and nearby geometry instead of which side of the field a vertex is on.
+
+**The sum is shaped by `1 - e^-gain`** rather than used linearly. A linear scale
+is both too weak and unbounded: a right-angled crease only blocks a third of the
+normal's reach and has to read much darker than a third to look like a crease,
+and the scanned mesh has folds tight enough — under a breast, the groin, between
+the thighs — to run any linear scale past its range, where it clamps and turns
+each of them into a flat black hole with a hard edge.
 
 Because it reads the same field as everything else, the contact shadow where two
 bodies meet appears **exactly where the solver put the contact**. That crease is
@@ -160,8 +183,57 @@ most of what makes a pair of figures read as touching rather than as two
 separate renders composited together — and it is unavailable to the reference
 system, whose collision proxy and drawn geometry are different shapes.
 
+`fieldOcclusion` bins the volumes the same way `sampleField` does, through
+`binVolumes`, because its callers walk a list of arbitrary points rather than a
+grid. The padding is what makes it safe: a caller samples up to `reach` from the
+point it looks up, so a volume is filed under every cell its bounds reach once
+grown by *both* its blend radius and that reach. Measured against the uncalled
+loop over a posed scanned body: 4× faster, mean shade difference 1.7e-6, worst
+9.4e-3 — inside the blend tolerance the culling is derived from.
+
 Measured: 1.000 on a lone sphere, 0.117 in a crease, always within [0, 1],
 `null` when `ao: false`.
+
+## The drawn body
+
+The field is not what the viewport draws. `src/core/humanMesh.js` loads a
+scanned human model, binds it to the same skeleton the volumes are built from,
+and skins it per pose; the field stays underneath as the collider and as the
+source of the occlusion above. Making the mesh's joints coincide with *our*
+joint positions is what keeps the two in agreement — there is no second rig and
+no retargeting step to drift.
+
+Three things had to be corrected before it looked like a person rather than a
+mannequin, and two of them turned out to affect every render rather than just
+the head:
+
+**The export is flat-shaded.** 46,658 vertices over 13,380 distinct positions,
+and at 99.6% of those positions the copies disagree — by 25° on average, up to
+166°. The exporter splits every vertex, so boundary-edge detection also reports
+46,646 boundary edges on a closed mesh. `smoothNormals` welds on quantised
+position first, then averages the incident faces weighted by area, skipping any
+face more than 70° from the vertex's own normal so a genuine hard edge survives.
+
+**The colours were sRGB used as linear reflectance.** The shading pipeline is
+linear-light, so an authored `0.86` was about a third too high, worst in the
+darkest channel — which crushes hue and pushes everything into the tonemap
+shoulder. One `toLinear` pass over the authored albedos fixes it.
+
+**The eyes.** The models *do* ship eyeballs, in a proxy submesh; what did not
+survive the export is their texture, so every vertex carried one flat dark iris
+brown and each eye read as a dark slit. `splitEyes` fits a sphere to each globe
+by least squares, takes the gaze axis from the fitted centre to the cap
+centroid, and cuts the mesh into a white, an iris and a pupil by angle from that
+axis — assigning each triangle to the narrowest zone all three of its corners
+reach, so the limbus lands on an edge rather than cutting across faces. The
+limbus angle is not guessed: the iris is modelled as a dish, 2.4mm deep at the
+pole, and 18° is where it crosses back through the fitted sphere. It measures
+identical on both eyes of both models. The dish's normals are replaced with the
+fitted sphere's radial normal, because under a flat colour, with no texture to
+refract, they read as mottled facets rather than as an iris.
+
+The eyes also carry their own baked occlusion rather than the field's, since the
+field has no eye socket in it to shade them with.
 
 ## Edge cases
 

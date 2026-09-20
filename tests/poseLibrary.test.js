@@ -37,6 +37,7 @@ import {
 import { validateScene, emptyScene, BODY_TYPES } from "../src/core/scene.js";
 import { Skeleton } from "../src/core/skeleton.js";
 import { resolveLandmark } from "../src/core/landmarks.js";
+import { createActor, refresh, seatOnSurface, solveScene } from "../src/core/solver.js";
 import { quatRotate, v3dot, v3len } from "../src/core/math.js";
 
 const AXES = ["flexion", "abduction", "rotation"];
@@ -426,4 +427,48 @@ test("the catalogue name lists match the catalogues", () => {
   // The UI builds its menus from these, so an entry missing from one is an
   // entry a user cannot choose.
   assert.ok(POSTURE_NAMES.length > 10 && ARRANGEMENT_NAMES.length > 5);
+});
+
+/**
+ * Every validator in this repository seats an actor once and measures it.
+ * `solveScene` used to seat twice - once, then again after standing clear of
+ * any props - and seating is not idempotent: `settleLimbs` finds a little more
+ * to give each time it runs. So `forearms_and_knees` measured as a figure on
+ * her forearms and knees and rendered as one balanced on the top of her head,
+ * with half a metre between the two pictures and nothing in the suite able to
+ * see it, because nothing in the suite went round twice.
+ *
+ * This pins the invariant the rest of the file relies on rather than the
+ * particular fix: what the solver draws has to be what the validators check.
+ * Postures that bring a prop with them are left out, because for those the two
+ * are *meant* to differ - the solver puts a chair in the scene and steps the
+ * figure onto it, which is the one case the second seating exists for.
+ */
+test("a figure on the floor is drawn where seating alone puts her", () => {
+  for (const name of POSTURE_NAMES) {
+    if (POSTURES[name].surface) continue;
+    const { scene } = validateScene({ actors: [{ posture: name, bodyType: "female" }] });
+    const surface = resolveSurface("floor");
+
+    const seated = refresh(createActor(scene.actors[0], 0));
+    seatOnSurface(seated, surface);
+    const solved = solveScene(scene).actors[0];
+
+    let worst = 0;
+    for (let i = 0; i < seated.volumes.length; i += 1) {
+      for (const end of ["a", "b"]) {
+        for (let axis = 0; axis < 3; axis += 1) {
+          const drift = Math.abs(seated.volumes[i][end][axis] - solved.volumes[i][end][axis]);
+          worst = Math.max(worst, drift);
+        }
+      }
+    }
+    // Room for the contact and collision work the solver does afterwards, which
+    // moves a limb by a couple of centimetres. The bug this guards against moved
+    // a whole figure by 480mm.
+    assert.ok(
+      worst < 0.05,
+      `${name}: the solved pose is ${(worst * 1000).toFixed(0)}mm from the seated one`,
+    );
+  }
 });

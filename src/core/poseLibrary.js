@@ -17,6 +17,7 @@
  */
 
 import { quatNormalize, v3cross, v3dot, v3mul, v3normalize, v3sub } from "./math.js";
+import { readArrangementName, readPostureName, readSurfaceName } from "./vocabulary.js";
 
 /**
  * Build the pelvis orientation from where the spine (+Y local) and face
@@ -80,10 +81,21 @@ const arms = (shoulder, elbow, wrist = {}) => ({
   ...pair("wrist", wrist),
 });
 
-const legs = (hip, knee, ankle = {}) => ({
+/**
+ * Leg channels, hip to toe.
+ *
+ * The toe channel exists because feet without one are the most obviously dead
+ * part of a figure: every pose, from standing to kneeling to lying down, wore
+ * the same flat plank of a foot. Sign follows the ankle's, which is the one
+ * already in this file - negative lifts the toes towards the shin, positive
+ * points them away. So a foot flat on the floor is 0, a relaxed foot in the air
+ * is a small positive, and toes tucked under a kneeling figure are negative.
+ */
+const legs = (hip, knee, ankle = {}, toe = {}) => ({
   ...pair("hip", hip),
   ...pair("knee", knee),
   ...pair("ankle", ankle),
+  ...pair("toe", toe),
 });
 
 const spine = (perVertebra, neck = {}, head = {}) => ({
@@ -108,7 +120,7 @@ export const POSTURES = {
     rootHeight: 0.53,
     supports: [{ landmark: "foot", side: "l" }, { landmark: "foot", side: "r" }],
     joints: {
-      ...legs({ flexion: 2 }, { flexion: 5 }, { flexion: -3 }),
+      ...legs({ flexion: 2 }, { flexion: 5 }, { flexion: -3 }, { flexion: -5 }),
       ...arms({ flexion: 6, abduction: 8 }, { flexion: 14 }),
       ...spine({ flexion: 1 }),
     },
@@ -121,7 +133,7 @@ export const POSTURES = {
     rootHeight: 0.52,
     supports: [{ landmark: "foot", side: "l" }, { landmark: "foot", side: "r" }],
     joints: {
-      ...legs({ flexion: 10 }, { flexion: 14 }, { flexion: -6 }),
+      ...legs({ flexion: 72 }, { flexion: 12 }, { flexion: -2 }, { flexion: -5 }),
       ...arms({ flexion: 42, abduction: 10 }, { flexion: 30 }),
       ...spine({ flexion: 5 }, { flexion: -22 }, { flexion: -12 }),
     },
@@ -134,7 +146,7 @@ export const POSTURES = {
     rootHeight: 0.075,
     supports: [{ landmark: "upperBack" }, { landmark: "buttocks" }, { landmark: "head" }],
     joints: {
-      ...legs({ flexion: 6, abduction: 7 }, { flexion: 8 }, { flexion: 4 }),
+      ...legs({ flexion: -8, abduction: 7 }, { flexion: 4 }, { flexion: 25 }, { flexion: 20 }),
       ...arms({ flexion: 4, abduction: 14 }, { flexion: 16 }),
       ...spine({ flexion: 0 }),
     },
@@ -147,7 +159,7 @@ export const POSTURES = {
     rootHeight: 0.075,
     supports: [{ landmark: "upperBack" }, { landmark: "buttocks" }, { landmark: "head" }],
     joints: {
-      ...legs({ flexion: 92, abduction: 22 }, { flexion: 78 }, { flexion: 2 }),
+      ...legs({ flexion: 92, abduction: 22 }, { flexion: 78 }, { flexion: 20 }, { flexion: 18 }),
       ...arms({ flexion: 8, abduction: 22 }, { flexion: 26 }),
       ...spine({ flexion: 2 }),
     },
@@ -160,7 +172,7 @@ export const POSTURES = {
     rootHeight: 0.075,
     supports: [{ landmark: "chest" }, { landmark: "hips" }],
     joints: {
-      ...legs({ flexion: -4, abduction: 8 }, { flexion: 14 }, { flexion: -18 }),
+      ...legs({ flexion: -6, abduction: 8 }, { flexion: 6 }, { flexion: 50 }, { flexion: 20 }),
       ...arms({ flexion: 62, abduction: 26 }, { flexion: 74 }),
       ...spine({ flexion: -4 }, { flexion: 20 }, { flexion: 10 }),
     },
@@ -184,9 +196,24 @@ export const POSTURES = {
       // The legs are staggered rather than stacked - the underneath leg runs
       // out nearly straight and the top leg draws forward over it, which is
       // both what people do and what keeps the two from interleaving.
-      ...pair("hip", { flexion: 46, abduction: 14 }, { flexion: 12, abduction: 0 }),
+      //
+      // The top leg *adducts*, towards the midline, and that sign is the whole
+      // difference between lying down and doing a leg raise. Rolled onto your
+      // side the abduction axis is no longer across the floor but along it, so
+      // abducting the upper hip does not open the legs, it lifts the whole leg
+      // into the air: the authored +14 put that knee 440mm up, higher than its
+      // own hip and 336mm above the other knee, on every side-lying figure in
+      // the library. Bringing it the other way lays the leg down across the
+      // one underneath. Only part of the way down, though: the leg keeps
+      // falling all the way to -12, but from about -6 it starts landing on
+      // whoever the figure is lying next to, and four scenes that were sound
+      // pick up 25-75mm of a thigh inside a partner. -4 is the far end of the
+      // range that costs nothing, and it is still 142mm lower at the ankle
+      // than what was there before.
+      ...pair("hip", { flexion: 46, abduction: -4 }, { flexion: 12, abduction: 0 }),
       ...pair("knee", { flexion: 64 }, { flexion: 22 }),
-      ...pair("ankle", { flexion: -6 }),
+      ...pair("ankle", { flexion: 25 }),
+      ...pair("toe", { flexion: 18 }),
       // The down-side arm reaches forward rather than being pinned under the
       // ribcage, which is both what people actually do and what keeps it clear
       // of the floor.
@@ -205,7 +232,7 @@ export const POSTURES = {
     rootHeight: 0.26,
     supports: [{ landmark: "buttocks" }, { landmark: "foot", side: "l" }, { landmark: "foot", side: "r" }],
     joints: {
-      ...legs({ flexion: 86, abduction: 9 }, { flexion: 88 }, { flexion: -4 }),
+      ...legs({ flexion: 86, abduction: 9 }, { flexion: 88 }, { flexion: -17 }, { flexion: -5 }),
       ...arms({ flexion: 10, abduction: 12 }, { flexion: 26 }),
       ...spine({ flexion: 2 }),
     },
@@ -219,7 +246,7 @@ export const POSTURES = {
     rootHeight: 0.26,
     supports: [{ landmark: "buttocks" }, { landmark: "foot", side: "l" }, { landmark: "foot", side: "r" }],
     joints: {
-      ...legs({ flexion: 72, abduction: 12 }, { flexion: 74 }, { flexion: -2 }),
+      ...legs({ flexion: 72, abduction: 12 }, { flexion: 74 }, { flexion: 25 }, { flexion: 6 }),
       ...arms({ flexion: -18, abduction: 22 }, { flexion: 42 }),
       ...spine({ flexion: -4 }, { flexion: 14 }, { flexion: 6 }),
     },
@@ -232,7 +259,7 @@ export const POSTURES = {
     rootHeight: 0.1,
     supports: [{ landmark: "buttocks" }, { landmark: "forearm", side: "l" }, { landmark: "forearm", side: "r" }],
     joints: {
-      ...legs({ flexion: 34, abduction: 14 }, { flexion: 48 }, { flexion: 0 }),
+      ...legs({ flexion: 34, abduction: 14 }, { flexion: 48 }, { flexion: 20 }, { flexion: 14 }),
       ...arms({ flexion: -28, abduction: 26 }, { flexion: 38 }),
       ...spine({ flexion: 3 }, { flexion: 8 }),
     },
@@ -245,7 +272,7 @@ export const POSTURES = {
     rootHeight: 0.26,
     supports: [{ landmark: "knee", side: "l" }, { landmark: "knee", side: "r" }],
     joints: {
-      ...legs({ flexion: 6, abduction: 8 }, { flexion: 104 }, { flexion: -45 }),
+      ...legs({ flexion: 0, abduction: 8 }, { flexion: 92 }, { flexion: 50 }, { flexion: 38 }),
       ...arms({ flexion: 10, abduction: 12 }, { flexion: 24 }),
       ...spine({ flexion: 1 }),
     },
@@ -258,7 +285,7 @@ export const POSTURES = {
     rootHeight: 0.17,
     supports: [{ landmark: "shin", side: "l" }, { landmark: "shin", side: "r" }],
     joints: {
-      ...legs({ flexion: 22, abduction: 10 }, { flexion: 138 }, { flexion: -45 }),
+      ...legs({ flexion: 55, abduction: 10 }, { flexion: 145 }, { flexion: 50 }, { flexion: 38 }),
       ...arms({ flexion: 12, abduction: 14 }, { flexion: 30 }),
       ...spine({ flexion: 2 }),
     },
@@ -271,7 +298,7 @@ export const POSTURES = {
     rootHeight: 0.30,
     supports: [{ landmark: "knee", side: "l" }, { landmark: "knee", side: "r" }],
     joints: {
-      ...legs({ flexion: 45, abduction: 40 }, { flexion: 118 }, { flexion: -45 }),
+      ...legs({ flexion: 12, abduction: 40 }, { flexion: 100 }, { flexion: 50 }, { flexion: 38 }),
       ...arms({ flexion: 22, abduction: 18 }, { flexion: 44 }),
       ...spine({ flexion: 3 }),
     },
@@ -289,7 +316,7 @@ export const POSTURES = {
       { landmark: "hand", side: "r" },
     ],
     joints: {
-      ...legs({ flexion: 82, abduction: 10 }, { flexion: 92 }, { flexion: -45 }),
+      ...legs({ flexion: 82, abduction: 10 }, { flexion: 92 }, { flexion: 50 }, { flexion: 38 }),
       // A hand bearing weight is pronated and extended, and it needs both: the
       // forearm rolls so the wrist hinge lies across the body, then the wrist
       // extends so the palm lies flat while the forearm stays vertical. Roll
@@ -313,7 +340,7 @@ export const POSTURES = {
       { landmark: "forearm", side: "r" },
     ],
     joints: {
-      ...legs({ flexion: 88, abduction: 12 }, { flexion: 96 }, { flexion: -45 }),
+      ...legs({ flexion: 88, abduction: 12 }, { flexion: 48 }, { flexion: 50 }, { flexion: 38 }),
       ...arms({ flexion: 92, abduction: 16 }, { flexion: 72 }, { flexion: 16 }),
       ...spine({ flexion: -4 }, { flexion: 34 }, { flexion: 16 }),
     },
@@ -326,7 +353,7 @@ export const POSTURES = {
     rootHeight: 0.42,
     supports: [],
     joints: {
-      ...legs({ flexion: 88, abduction: 34 }, { flexion: 108 }, { flexion: -6 }),
+      ...legs({ flexion: 88, abduction: 34 }, { flexion: 108 }, { flexion: -20 }, { flexion: -5 }),
       ...arms({ flexion: 34, abduction: 22 }, { flexion: 62 }),
       ...spine({ flexion: 2 }),
     },
@@ -339,7 +366,7 @@ export const POSTURES = {
     rootHeight: 0.62,
     supports: [{ landmark: "shoulders" }, { landmark: "head" }],
     joints: {
-      ...legs({ flexion: 18, abduction: 14 }, { flexion: 26 }, { flexion: 0 }),
+      ...legs({ flexion: 18, abduction: 14 }, { flexion: 26 }, { flexion: 15 }, { flexion: 14 }),
       ...arms({ flexion: -34, abduction: 30 }, { flexion: 44 }),
       ...spine({ flexion: 2 }, { flexion: -18 }),
     },
@@ -352,9 +379,97 @@ export const POSTURES = {
     rootHeight: 0.62,
     supports: [],
     joints: {
-      ...legs({ flexion: 86, abduction: 42 }, { flexion: 104 }, { flexion: -8 }),
+      ...legs({ flexion: 86, abduction: 42 }, { flexion: 104 }, { flexion: 20 }, { flexion: 14 }),
       ...arms({ flexion: 108, abduction: 30 }, { flexion: 84 }),
       ...spine({ flexion: 2 }),
+    },
+  },
+
+  squatting: {
+    label: "squatting on the heels of the feet",
+    // Not a full deep squat. The ankle is the limit: sinking the pelvis to
+    // 0.20 H needs about 40 degrees of dorsiflexion and a human has 20-25,
+    // which is why an unpractised deep squat lifts the heels. Ours keeps the
+    // feet flat and stops where the ankle does.
+    spineDir: [0, 0.97, 0.26],
+    faceDir: [0, -0.26, 0.97],
+    rootHeight: 0.31,
+    supports: [{ landmark: "foot", side: "l" }, { landmark: "foot", side: "r" }],
+    joints: {
+      ...legs({ flexion: 100, abduction: 22 }, { flexion: 118 }, { flexion: -22 }, { flexion: -8 }),
+      // Forward, not hanging. A squat with the arms at the sides falls over
+      // backwards, and everyone who squats reaches forward to stop it.
+      ...arms({ flexion: 48, abduction: 14 }, { flexion: 44 }),
+      ...spine({ flexion: 3 }, { flexion: -14 }, { flexion: -8 }),
+    },
+  },
+
+  seated_floor: {
+    label: "seated on the floor with the legs out",
+    spineDir: [0, 1, 0],
+    faceDir: [0, 0, 1],
+    rootHeight: 0.1,
+    // Seat and heels, not the thighs. The thigh is the part of a floor-sit that
+    // most obviously touches the ground, and it is the one support this body
+    // cannot make: the pelvis volume is a 166mm-radius blob centred on the hip
+    // joints, so with its underside on the floor the joints are 164mm up and a
+    // 74mm-thick thigh cannot reach down to meet it. Declaring the thighs
+    // anyway just left the figure permanently 55mm short of its own supports.
+    supports: [{ landmark: "buttocks" }, { landmark: "foot", side: "l" }, { landmark: "foot", side: "r" }],
+    joints: {
+      // Past 90: the hip joint sits well above the heel, so the leg runs
+      // slightly downhill to the floor. At 85 it ran uphill and the feet ended
+      // up higher than the knees.
+      ...legs({ flexion: 97, abduction: 14 }, { flexion: 6 }, { flexion: 20 }, { flexion: 12 }),
+      ...arms({ flexion: 18, abduction: 16 }, { flexion: 56 }),
+      ...spine({ flexion: 2 }),
+    },
+  },
+
+  bridge: {
+    label: "supine with the hips lifted",
+    // Head-down-and-*forward*, along the way the body already points. A bridge
+    // is made from a supine pose by walking the feet in and lifting the hips,
+    // so the head stays where it was - at +z, the same end `supine` puts it -
+    // and it is the pelvis that rises between the head and the feet. Writing
+    // the z the other way round is the intuitive mistake and it is a different
+    // pose entirely: it rolls the figure face-down.
+    spineDir: [0, -0.57, 0.82],
+    faceDir: [0, 0.82, 0.57],
+    rootHeight: 0.19,
+    // The head as well as the shoulders, because a bridge rests on the whole
+    // upper back and not on the skull. Without the shoulders named, the one
+    // thing touching the floor is the crown of the head and the entire figure
+    // balances on it with the shoulder blades 122mm in the air.
+    supports: [
+      { landmark: "shoulders" },
+      { landmark: "head" },
+      { landmark: "foot", side: "l" },
+      { landmark: "foot", side: "r" },
+    ],
+    joints: {
+      // Slightly negative, and small either way. A bridge is close to a
+      // straight line from the shoulder through the hip to the knee - that is
+      // the whole shape of it - and with the pelvis already tipped 35 degrees
+      // head-down the thigh's rest direction is most of the way there. The
+      // first draft asked for -45 and the ROM clamp caught it: the hip only
+      // extends 25 degrees, and a bridge needs almost none of it.
+      ...legs({ flexion: -12, abduction: 12 }, { flexion: 110 }, { flexion: -12 }, { flexion: -5 }),
+      // Down at the sides on the floor, which is where a bridge presses. With
+      // the upper trunk levelled by the lumbar flexion below, a hanging arm
+      // already lies that way.
+      ...arms({ flexion: 4, abduction: 16 }, { flexion: 14 }),
+      // The trunk is not one straight tilted piece. The lumbar carries the
+      // whole tilt and the ribcage lies flat: the chest volume is 160mm thick,
+      // so a trunk sloping evenly from the pelvis puts the shoulder blades a
+      // hand's breadth in the air even with the head touching. Most of the
+      // pelvis's 35 degrees is given back at `spine01` for that reason, which
+      // is also where a real bridge bends. The neck gives back the rest - it
+      // reads as extension here, because with the trunk upside down relative
+      // to standing, tipping the head "back" onto the floor is the same motion
+      // as tucking the chin.
+      ...spine({ flexion: 3 }, { flexion: -25 }),
+      spine01: { flexion: -25, abduction: 0, rotation: 0 },
     },
   },
 
@@ -390,7 +505,7 @@ export const POSTURES = {
       // Authored for the flat trunk: with the spine along +z, hip flexion 90
       // points the thigh straight down, so 78 is down and a little back, and
       // the arms reach along the surface at 160 rather than hanging at 96.
-      ...legs({ flexion: 68, abduction: 6 }, { flexion: 18 }, { flexion: -4 }),
+      ...legs({ flexion: 84, abduction: 6 }, { flexion: 10 }, { flexion: -4 }, { flexion: -5 }),
       ...arms({ flexion: 160, abduction: 14 }, { flexion: 32 }),
       ...spine({ flexion: 2 }, { flexion: 24 }, { flexion: 12 }),
     },
@@ -419,6 +534,26 @@ export const POSTURE_ALIASES = {
   standing_or_kneeling_behind: "kneeling",
   standing_seated_or_kneeling_at_edge: "kneeling",
   standing_or_kneeling_at_edge: "kneeling",
+
+  // The partner holding up an inverted figure is never standing.
+  //
+  // These six names are hedges, and a hedge resolves to whichever reading is
+  // written first - so every one of them was coming back `standing`. All 56
+  // uses in the corpus sit opposite a partner who is inverted or raised, and
+  // the photographs are unanimous: the supporter is down on their knees or
+  // sitting on the floor, because an inverted partner's hips are about 400mm
+  // up and a standing man's hands are twice that. We were drawing him upright
+  // with his back to the camera and her collapsed across his feet, every time.
+  //
+  // `kneeling` rather than `seated_floor` because it is the reading the
+  // photographs support most often, and because `seated` would bring a chair
+  // into a scene that is happening on the floor.
+  standing_or_kneeling: "kneeling",
+  standing_or_kneeling_supporter: "kneeling",
+  standing_kneeling_or_low_supporting: "kneeling",
+  kneeling_sitting_or_standing_support: "kneeling",
+  supporting_partner: "kneeling",
+  supporting_or_reclining: "kneeling",
   side_lying_close: "side_lying",
   side_lying_behind: "side_lying",
   prone_lowered: "prone",
@@ -428,12 +563,27 @@ export const POSTURE_ALIASES = {
   all_fours_forearms: "forearms_and_knees",
 };
 
-export function resolvePosture(name) {
+/**
+ * @param {string} name posture name, alias, or anything the vocabulary can read
+ * @param {string|string[]} [support] what is holding the figure up, if the
+ *        caller knows it separately. It refines rather than decides: the name's
+ *        own answer is carried into the vote as a strong prior, and only a
+ *        support word that contradicts the name outright can move it.
+ */
+export function resolvePosture(name, support = null) {
   if (!name) return null;
   const direct = POSTURES[name];
-  if (direct) return { id: name, ...direct };
   const alias = POSTURE_ALIASES[name];
-  return alias ? { id: alias, ...POSTURES[alias] } : null;
+  const named = direct ? name : alias || null;
+  if (named && !support) return { id: named, ...POSTURES[named] };
+  // Nothing hand-written matched, so read the name instead. This is what takes
+  // the corpus's 191 posture words - and anything else anyone invents - down
+  // onto the base set. See `vocabulary.js` for why it is a fallback and not the
+  // first thing tried.
+  const prior = named ? { target: named, weight: direct ? 24 : 12 } : null;
+  const read = readPostureName(name, support, prior);
+  if (read) return { id: read, ...POSTURES[read], ...(read === named ? {} : { inferred: true }) };
+  return named ? { id: named, ...POSTURES[named] } : null;
 }
 
 /**
@@ -467,11 +617,34 @@ export function rollPosture(posture) {
  *
  * `yaw` is the secondary's rotation relative to the primary, in degrees.
  * `contacts` are seeded constraints the solver will try to satisfy.
+ *
+ * The numbers are swept rather than guessed: each one is the offset that leaves
+ * the fewest cases of `validate-scenes.mjs` broken for its own arrangement. Two
+ * things about that are worth knowing before changing any of them.
+ *
+ * The **y component only does anything for a mounted arrangement**. Everyone
+ * else is put down by `seatOnSurface`, which decides their height from what
+ * they are standing on, and `applyArrangement` drops the vertical part of the
+ * alignment for them on purpose. Sweeping y for `spooning` moves nothing at all.
+ *
+ * And **several carry a small lateral stagger** where symmetry would suggest
+ * zero. Two bodies started exactly co-axial give the collision response no
+ * lateral direction to prefer, so the only way out of an overlap is along the
+ * very axis the contact is pulling them together on, and the two fight. A few
+ * centimetres to one side is enough to break the tie, and it is what a pair of
+ * people standing together actually do.
  */
 export const ARRANGEMENTS = {
   face_to_face: {
     label: "facing each other",
-    offset: [0, 0, 0.34],
+    // The 0.02 is the whole point of this line and the 0.32 is nearly
+    // arbitrary. Staggering the pair laterally halves the worst penetration
+    // across the arrangement - 63mm down to 34mm - at every approach distance
+    // tried, because it gives the collision response somewhere to go that is
+    // not straight back down the axis the chest and pelvis contacts are pulling
+    // along. The approach distance itself moves almost nothing between 0.28 and
+    // 0.36; 0.32 is the middle of the flat part.
+    offset: [0.02, 0, 0.32],
     yaw: 180,
     contacts: [
       { from: "chest", to: "chest", type: "surface", strength: 0.5 },
@@ -480,7 +653,14 @@ export const ARRANGEMENTS = {
   },
   rear_alignment: {
     label: "one partner behind the other",
-    offset: [0, 0, -0.34],
+    // Started further back than the pair will end up. `alignToContacts` measures
+    // the real landmarks and closes the gap afterwards, so the distance here is
+    // not the finished spacing - it only has to be far enough out that the two
+    // never begin interpenetrating. Kneeling behind all-fours starts with the
+    // hips overlapping at -0.34 and the solver has to push back out of it;
+    // approaching from clear air instead takes this arrangement from nine of
+    // twenty-four suite pairs broken to six.
+    offset: [-0.05, 0, -0.42],
     yaw: 0,
     contacts: [
       { from: "pelvis", to: "buttocks", type: "surface", strength: 0.9 },
@@ -490,7 +670,15 @@ export const ARRANGEMENTS = {
   },
   spooning: {
     label: "nested on their sides, same direction",
-    offset: [-0.2, 0, -0.06],
+    // Two numbers doing two jobs, because the two readings of "spooning" need
+    // different ones. Behind a figure on their side, the sideways step folds
+    // into the backward one (see `applyArrangement`) and the pair nestle a
+    // torso's depth apart: -0.22 + 0.08 = -0.14. Beside one on their back -
+    // which is not really spooning at all, but the library is asked for it -
+    // the shoulder axis is still horizontal, the fold does not fire, and what
+    // is left is a body's width to the side, which is the only thing that keeps
+    // the two of them from occupying the same space.
+    offset: [-0.22, 0, 0.08],
     yaw: 0,
     contacts: [
       { from: "chest", to: "upperBack", type: "surface", strength: 0.7 },
@@ -525,7 +713,12 @@ export const ARRANGEMENTS = {
   straddle_lap: {
     mounted: true,
     label: "straddling the seated partner's lap",
-    offset: [0, 0.16, 0.12],
+    // Higher and closer in than `over_supine`. The partner underneath is sitting
+    // up, so the lap to be straddled is most of a thigh above the seat and
+    // directly under their own chest - starting 0.12 out in front of it puts the
+    // straddling partner on their partner's knees and the settle has to drag
+    // them back along the thigh.
+    offset: [0, 0.22, 0.04],
     // Upright partner underneath, so this is the standing case: half a turn.
     yaw: 180,
     contacts: [
@@ -549,7 +742,12 @@ export const ARRANGEMENTS = {
   },
   side_by_side: {
     label: "alongside one another",
-    offset: [-0.34, 0, 0],
+    // The one arrangement whose only contact is hand to hand, so the two want
+    // room between them rather than closure: at 0.34 of stature the shoulders
+    // are still overlapping in the side-lying pairs and something has to give.
+    // Out at 0.42 with a few centimetres of stagger, all sixteen suite pairs
+    // come out sound, 3mm of residual penetration, no unmet contacts.
+    offset: [-0.42, 0, 0.06],
     yaw: 0,
     contacts: [{ from: "hand.l", to: "hand.r", type: "grip", strength: 0.4 }],
   },
@@ -583,6 +781,35 @@ export const ARRANGEMENTS = {
       { from: "buttocks", to: "hand.r", type: "support", strength: 1 },
       { from: "hand.l", to: "shoulder.r", type: "grip", strength: 0.6 },
       { from: "hand.r", to: "shoulder.l", type: "grip", strength: 0.6 },
+    ],
+  },
+  supported_inversion: {
+    // A shoulder-stand held at the hips, which is not a carry at all.
+    //
+    // This used to be an alias for `supported_lift`, and the two look alike
+    // written down - one partner supporting the other's weight - but nothing
+    // about the geometry matches. A lift is chest to chest with the carried
+    // partner's arms round the carrier's neck. Here she is upside down on her
+    // own shoulders with her hips in the air and he is kneeling at them; their
+    // chests are a metre apart and pointing different ways, and her hands are
+    // on the floor by her head, nowhere near his shoulders. Asking for the
+    // lift's five contacts left all five unmet, the worst by 1331mm - the
+    // largest single failure in the corpus, across 52 scenes.
+    //
+    // What the photographs agree on is his hands at her hips taking the weight,
+    // and the two pelvises together. Those are the contacts worth stating; her
+    // legs folding over his shoulders is real too, but there is no thigh
+    // landmark to say it with, and the hips are what actually holds her up.
+    //
+    // Not `mounted`: both of them are on the floor. He kneels on it and she is
+    // on her shoulders on it, and neither is stacked on the other.
+    label: "one partner inverted, the other kneeling at their hips",
+    offset: [0, 0, 0.3],
+    yaw: 180,
+    contacts: [
+      { from: "hand.l", to: "hip.r", type: "support", strength: 1 },
+      { from: "hand.r", to: "hip.l", type: "support", strength: 1 },
+      { from: "pelvis", to: "pelvis", type: "surface", strength: 0.7 },
     ],
   },
   head_to_toe: {
@@ -651,7 +878,13 @@ export const ARRANGEMENT_ALIASES = {
   seated_supporting: "straddle_lap",
   standing_embrace: "face_to_face",
   standing_supported_lift: "supported_lift",
-  supported_inversion: "supported_lift",
+  // The four other names the corpus gives a supported inversion. They used to
+  // land on `supported_lift` along with `supported_inversion` itself; they now
+  // follow it to the arrangement written for the shape.
+  supported_inverted_pose: "supported_inversion",
+  male_supporting_inverted_female: "supported_inversion",
+  acrobatic_inverted_support: "supported_inversion",
+  supporting_partner: "supported_inversion",
   partners_side_by_side: "side_by_side",
 };
 
@@ -660,7 +893,19 @@ export function resolveArrangement(name) {
   const direct = ARRANGEMENTS[name];
   if (direct) return { id: name, ...direct };
   const alias = ARRANGEMENT_ALIASES[name];
-  return alias ? { id: alias, ...ARRANGEMENTS[alias] } : null;
+  if (alias) return { id: alias, ...ARRANGEMENTS[alias] };
+  const read = readArrangementName(name);
+  // A solo or group reading is a *successful* read of a name that has no
+  // pairing in it. Returning the default arrangement for those would invent a
+  // partner out of the words "single person", so they come back as nothing.
+  if (!read || !read.id) return null;
+  const base = ARRANGEMENTS[read.id];
+  // `yawFlip` is half a turn from whatever this arrangement already does, not
+  // an absolute heading - the same rule the parser uses for "facing away", and
+  // for the same reason: turning to face a standing partner is half a turn and
+  // turning to face one lying on their back is none.
+  const yaw = read.yawFlip ? ((base.yaw ?? 180) + 180) % 360 : base.yaw;
+  return { id: read.id, ...base, yaw, inferred: true };
 }
 
 /**
@@ -837,7 +1082,11 @@ export function resolveSurface(name) {
   const direct = SURFACES[name];
   if (direct) return { id: name, ...direct };
   const alias = SURFACE_ALIASES[name];
-  return alias ? { id: alias, ...SURFACES[alias] } : { id: "floor", ...SURFACES.floor };
+  if (alias) return { id: alias, ...SURFACES[alias] };
+  const read = readSurfaceName(name);
+  return read
+    ? { id: read, ...SURFACES[read], inferred: true }
+    : { id: "floor", ...SURFACES.floor };
 }
 
 /**
@@ -850,7 +1099,7 @@ export function resolveSurface(name) {
  * hammock was, so I put them on the floor".
  */
 export const isKnownSurface = (name) =>
-  Boolean(name) && (name in SURFACES || name in SURFACE_ALIASES);
+  Boolean(name) && (name in SURFACES || name in SURFACE_ALIASES || Boolean(readSurfaceName(name)));
 
 export const POSTURE_NAMES = Object.keys(POSTURES);
 export const ARRANGEMENT_NAMES = Object.keys(ARRANGEMENTS);

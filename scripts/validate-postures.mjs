@@ -23,7 +23,7 @@ function supportGap(actor, support) {
   if (!resolved) return null;
   let lowest = Infinity;
   for (const volume of actor.volumes) {
-    if (volume.bone !== resolved.bone) continue;
+    if (!resolved.bones.includes(volume.bone)) continue;
     lowest = Math.min(lowest, volume.a[1] - volume.ra, volume.b[1] - volume.rb);
   }
   return Number.isFinite(lowest) ? lowest : null;

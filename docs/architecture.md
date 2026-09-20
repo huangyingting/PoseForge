@@ -36,9 +36,10 @@ One direction, no loops between stages, no stage reaching backwards:
   └───────────────┘   also: warnings[] for anything it could not do
         │
         ▼
-  ┌───────────────┐   src/render/meshBuilder.js   (in a Worker)
-  │     mesh      │   sample field → dual contour → relax → normals → AO
-  └───────────────┘
+  ┌───────────────┐   src/core/humanMesh.js      (in a Worker)
+  │     skin      │   scanned body → bound to the same rig → posed, ~27k tris
+  └───────────────┘   src/render/meshBuilder.js  field → AO for those vertices
+        │             (and the field's own isosurface, if the model won't load)
         │
         ├──────────────▶  src/render/renderer.js   WebGL viewport
         │                 src/render/exporters.js  PNG / SVG
@@ -55,6 +56,8 @@ src/core/          no dependencies, runs in plain Node
   ik.js            two-bone analytic IK with pole hints, aim, blending
   body.js          round cones, the SDF, smooth union, normals
   collision.js     broad/narrow phase, compression budgets, rigid correction
+  gltf.js          GLB container, accessors, node transforms
+  humanMesh.js     scanned body: bind to the rig, skin, smooth, split the eyes
   poseLibrary.js   18 postures, 10 arrangements, 6 surfaces
   scene.js         scene validation and repair
   solver.js        seating, arrangement, the annealed contact loop
@@ -199,5 +202,31 @@ express, and what is on screen is always the result of a full solve rather than
 a patch applied to a previous one.
 
 Replies carry a monotonic request id; anything that is not the newest is stale
-and dropped. This matters because meshing takes ~300ms at the default
-resolution, which is slower than a fast typist.
+and dropped.
+
+The worker answers **twice** to the same request. The first reply skins the
+scanned body and stops — around 5ms an actor, so the picture updates between
+keystrokes rather than between sentences. What it leaves out is the field
+occlusion, ~200ms an actor, which is what darkens every crease and every place
+two bodies touch; the second reply adds it to the very same triangles, so what
+lands is the same pose gaining its shading rather than a different shape.
+Between the two the worker yields to the message queue, which is what lets a
+newer request arrive and cancel the refinement of a pose nobody is looking at
+any more.
+
+Each actor comes back as **parts**, not as one buffer, because a body is
+several materials — the skin, and the white, iris and pupil of each eye. A
+figure that fell back to the field arrives as a single primary part, so both
+paths draw through the same code:
+
+```js
+{ id: string,
+  source: "scanned" | "field 12mm",
+  triangles: number,
+  parts: [{ name, primary, colour, positions, normals, indices, occlusion }] }
+```
+
+`positions` and `normals` are skinned fresh per request and are transferred.
+`indices` and the eyes' baked `occlusion` belong to the cached template and are
+the same arrays every time, so they are **copied** before transfer — giving them
+away would detach the template and every later pose would come back empty.

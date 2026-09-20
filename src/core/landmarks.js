@@ -51,7 +51,13 @@ export const LANDMARKS = {
   knee: { bone: "knee_@", local: [0, 0, 0], mirror: true },
   shin: { bone: "knee_@", local: [0, -0.12, 0], mirror: true },
   ankle: { bone: "ankle_@", local: [0, 0, 0], mirror: true },
-  foot: { bone: "ankle_@", local: [0, -0.02, 0.06], mirror: true },
+  // Two bones, since the foot was split at the ball so the toes could bend.
+  // The sole is half on `ankle_@` - heel and arch - and half on `toe_@`, and a
+  // support that could only see the first half seated the arch on the floor
+  // and left the toes 40mm above it. `also` is that second half: it widens what
+  // counts as this landmark's *surface* without moving the point, which stays
+  // at the ball where the weight goes.
+  foot: { bone: "ankle_@", also: ["toe_@"], local: [0, -0.02, 0.06], mirror: true },
 };
 
 /** Phrase fragments that select a side. */
@@ -73,9 +79,13 @@ export function resolveLandmark(name, defaultSide = null) {
   const bone = entry.bone.includes("@")
     ? entry.bone.replace("@", side ?? "l")
     : entry.bone;
+  // Every bone this landmark's surface lives on, `bone` first. Callers that
+  // want a point use `bone`; callers that want "the lowest bit of her foot"
+  // want all of them.
+  const bones = [bone, ...(entry.also ?? []).map((name) => name.replace("@", side ?? "l"))];
   const local = [...entry.local];
   if (entry.mirror && !entry.bone.includes("@") && side === "r") local[0] = -local[0];
-  return { bone, local, side: side ?? null, base };
+  return { bone, bones, local, side: side ?? null, base };
 }
 
 /**

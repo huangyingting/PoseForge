@@ -30,8 +30,7 @@
 import {
   Color,
   DoubleSide,
-  MeshDepthMaterial,
-  RGBADepthPacking,
+  ShaderMaterial,
   SRGBColorSpace,
   Vector3,
   WebGLRenderTarget,
@@ -102,29 +101,61 @@ function encodePNG(pixels, width, height) {
 /* Vector line art                                                     */
 /* ------------------------------------------------------------------ */
 
-const depthMaterial = new MeshDepthMaterial({
-  depthPacking: RGBADepthPacking,
+/**
+ * Distance from the camera, in metres, packed into three bytes.
+ *
+ * three ships a depth material and a matching `packDepthToRGBA`, and using them
+ * would mean reproducing that packing here in JavaScript to read it back. That
+ * is a contract with three's *internals* rather than its API: the layout has
+ * changed at least once - which byte is the most significant is the opposite of
+ * what it used to be - and when it changes, nothing throws. The depth simply
+ * unpacks to a number near zero, every line in the picture tests as hidden
+ * behind something at the near plane, and the export comes out empty.
+ *
+ * So both halves live here. It also lets the value be what the comparison
+ * actually wants: `-mvPosition.z` is the distance along the view axis in
+ * metres, spread evenly over the range, where window z spends most of its
+ * precision in the first few centimetres in front of the near plane.
+ */
+const depthMaterial = new ShaderMaterial({
   side: DoubleSide,
+  uniforms: { far: { value: 1 } },
+  vertexShader: `
+    varying float vDistance;
+    void main() {
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      vDistance = -mv.z;
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: `
+    uniform float far;
+    varying float vDistance;
+    void main() {
+      float v = clamp(vDistance / far, 0.0, 1.0);
+      float s = v * 255.0;
+      float hi = floor(s);
+      float t = fract(s) * 255.0;
+      gl_FragColor = vec4(hi / 255.0, floor(t) / 255.0, fract(t), 1.0);
+    }`,
 });
 
 /**
- * Render the scene's depth into a readable buffer.
+ * Render the scene's distance from the camera into a readable buffer.
  *
- * `MeshDepthMaterial` with RGBA packing is the standard way to get depth out of
- * WebGL as bytes: a float depth buffer cannot be read back portably, but four
- * channels of 8 bits can, and unpacking them gives back the same window-space z
- * the projection produces.
+ * Four channels of 8 bits can be read back portably where a float depth buffer
+ * cannot, which is the whole reason for the packing above.
  */
 function renderDepth(view, width, height) {
   const { renderer, scene, camera } = view;
   const target = new WebGLRenderTarget(width, height);
   const override = scene.overrideMaterial;
   const background = scene.background;
+  depthMaterial.uniforms.far.value = camera.far;
   scene.overrideMaterial = depthMaterial;
   scene.background = null;
 
-  // White, not the usual black. Packed depth runs from black at the near plane
-  // to white at the far one, so clearing to black would declare every empty
+  // White, not the usual black. Packed distance runs from black at the lens to
+  // white at the far plane, so clearing to black would declare every empty
   // pixel to be a surface pressed against the lens, and every line in the
   // picture would test as hidden behind the background.
   const clearColour = renderer.getClearColor(new Color());
@@ -142,17 +173,12 @@ function renderDepth(view, width, height) {
   scene.background = background;
   target.dispose();
 
-  // three's packDepthToRGBA, run backwards.
+  // Back to metres, in the same units the projected points are measured in.
   const depth = new Float32Array(width * height);
-  const k = 255 / 256;
   for (let i = 0; i < depth.length; i += 1) {
     const o = i * 4;
     depth[i] =
-      (k *
-        (bytes[o] / 255 / 16777216 +
-          bytes[o + 1] / 255 / 65536 +
-          bytes[o + 2] / 255 / 256 +
-          bytes[o + 3] / 255)) || 1;
+      ((bytes[o] + bytes[o + 1] / 255 + bytes[o + 2] / 65025) / 255) * camera.far;
   }
   return depth;
 }
@@ -212,6 +238,26 @@ function silhouetteEdges(mesh, camera) {
 
   const eye = camera.position;
   const triangles = index.count / 3;
+
+  // The scanned model is exported flat-shaded, which splits every vertex: the
+  // body carries 46,658 of them over 13,380 distinct positions. Keyed by index,
+  // every edge would then be used by exactly one triangle, read as a hole in
+  // the surface, and the "line art" would come out as the entire wireframe.
+  // Welding on quantised position - a tenth of a millimetre, far below any real
+  // feature - is what makes an edge shared again.
+  const weld = new Int32Array(count);
+  const seen = new Map();
+  const representative = [];
+  for (let v = 0; v < count; v += 1) {
+    const key = `${Math.round(world[v * 3] * 1e4)},${Math.round(world[v * 3 + 1] * 1e4)},${Math.round(world[v * 3 + 2] * 1e4)}`;
+    let id = seen.get(key);
+    if (id === undefined) {
+      id = representative.length;
+      seen.set(key, id);
+      representative.push(v);
+    }
+    weld[v] = id;
+  }
   // One integer per edge, counting how many of its adjacent triangles face the
   // camera and how many face away, packed as `front * 8 + back`. Counting both
   // rather than tracking a single sign means a non-manifold edge - three
@@ -248,7 +294,10 @@ function silhouetteEdges(mesh, camera) {
       [i1, i2],
       [i2, i0],
     ];
-    for (const [a, b] of pairs) {
+    for (const [p, q] of pairs) {
+      const a = weld[p];
+      const b = weld[q];
+      if (a === b) continue;
       const key = a < b ? a * 4294967296 + b : b * 4294967296 + a;
       edges.set(key, (edges.get(key) ?? 0) + (front ? 8 : 1));
     }
@@ -265,9 +314,11 @@ function silhouetteEdges(mesh, camera) {
     if (!draw) continue;
     const b = key % 4294967296;
     const a = (key - b) / 4294967296;
+    const va = representative[a];
+    const vb = representative[b];
     out.push([
-      [world[a * 3], world[a * 3 + 1], world[a * 3 + 2]],
-      [world[b * 3], world[b * 3 + 1], world[b * 3 + 2]],
+      [world[va * 3], world[va * 3 + 1], world[va * 3 + 2]],
+      [world[vb * 3], world[vb * 3 + 1], world[vb * 3 + 2]],
     ]);
   }
   return out;
@@ -370,8 +421,14 @@ function visibleRuns(from, to, depth, width, height, tolerance) {
 export function exportSVG(view, options = {}) {
   const { renderer, scene, camera } = view;
   const canvas = renderer.domElement;
-  const width = Math.round(options.width ?? canvas.clientWidth ?? canvas.width);
-  const height = Math.round(options.height ?? canvas.clientHeight ?? canvas.height);
+  const canvasWidth = canvas.clientWidth || canvas.width;
+  const canvasHeight = canvas.clientHeight || canvas.height;
+  const width = Math.round(options.width ?? canvasWidth);
+  // Derived from the width rather than read off the canvas, so that a caller
+  // asking for a wider export gets a bigger picture instead of a stretched one.
+  // The depth pass and the projection are both done at this aspect, so getting
+  // it wrong does not merely look wrong - it squashes the whole drawing.
+  const height = Math.round(options.height ?? (width * canvasHeight) / canvasWidth);
   const stroke = options.stroke ?? "#1b1b1b";
   const strokeWidth = options.strokeWidth ?? 1.4;
   const tolerance = options.tolerance ?? 0.02;
@@ -391,6 +448,7 @@ export function exportSVG(view, options = {}) {
 
   scene.traverse((node) => {
     if (!node.isMesh || !node.visible || node.name === "ground") return;
+    if (node.userData.outline === false) return;
     const isProp = node.parent?.name === "props";
     const edges = isProp ? boxEdges(node) : silhouetteEdges(node, camera);
 

@@ -54,6 +54,45 @@ function volumeBounds(volume) {
 }
 
 /**
+ * Bin the volumes into a sparse grid and return a lookup for one point.
+ *
+ * This is the same trick `sampleField` plays on the grid, for callers that walk
+ * a list of arbitrary points instead - the occlusion pass over a scanned mesh,
+ * where fifty thousand vertices each sample the field six times and a pair of
+ * bodies is nearly a hundred primitives. Nothing near a shoulder is also near a
+ * foot, so almost every one of those evaluations is spent proving two distant
+ * parts are still distant.
+ *
+ * The padding is what makes it safe. A caller samples up to `reach` away from
+ * the point it looks up, so a volume is filed under every cell its own bounds
+ * reach once grown by both its blend radius and that reach - which means any
+ * volume absent from a cell was already too far to move the fold for any sample
+ * taken from inside it. Bins keep the volumes in list order, because
+ * `bodyDistance` folds its smooth minimum sequentially.
+ */
+function binVolumes(volumes, reach, cell = 0.25) {
+  const bins = new Map();
+  const key = (i, j, k) => `${i},${j},${k}`;
+  for (const volume of volumes) {
+    const [lo, hi] = volumeBounds(volume);
+    const from = lo.map((v) => Math.floor((v - reach) / cell));
+    const to = hi.map((v) => Math.floor((v + reach) / cell));
+    for (let k = from[2]; k <= to[2]; k += 1) {
+      for (let j = from[1]; j <= to[1]; j += 1) {
+        for (let i = from[0]; i <= to[0]; i += 1) {
+          const id = key(i, j, k);
+          let bin = bins.get(id);
+          if (!bin) bins.set(id, (bin = []));
+          bin.push(volume);
+        }
+      }
+    }
+  }
+  return (p) =>
+    bins.get(key(Math.floor(p[0] / cell), Math.floor(p[1] / cell), Math.floor(p[2] / cell)));
+}
+
+/**
  * Sample the field over a grid, evaluating only the volumes that can reach each
  * block.
  *
@@ -242,7 +281,7 @@ export function buildBodyMesh(volumes, options = {}) {
     positions: positionArray,
     normals,
     indices,
-    occlusion: ao ? occlusionFrom(positionArray, normals, volumes, step) : null,
+    occlusion: ao ? fieldOcclusion(positionArray, normals, volumes, step) : null,
     bounds: [lo, hi],
     resolution: step,
   };
@@ -315,23 +354,57 @@ function stitch(field, cellVertex, dims) {
  * field as everything else, the contact shadow where two bodies meet appears
  * exactly where the solver put the contact. That crease is most of what makes a
  * pair of figures read as touching rather than as two separate renders.
+ *
+ * The samples are measured against the field's value at the vertex rather than
+ * against zero, which costs one more evaluation and buys the ability to shade a
+ * surface that is not the field's own. The scanned body mesh is not: it sits a
+ * centimetre or two inside the field down the outside of an arm, and reading
+ * the raw distance there makes every sample look buried, painting a hard black
+ * stripe the length of the limb. Taking the difference cancels the offset, so
+ * what is measured is curvature and nearby geometry - which is what occlusion
+ * is - instead of which side of the field the vertex happens to be on.
+ *
+ * Each sample is also capped at fully occluded before being summed, and the sum
+ * is turned into a shade through `1 - e^-gain`. An uncapped, ungained sum is
+ * both too weak and unbounded: too weak because a right-angled crease only
+ * blocks a third of the normal's reach and has to read much darker than a third
+ * to look like a crease, and unbounded because the scanned mesh has folds tight
+ * enough - under a breast, the groin, between the thighs - to run any linear
+ * scale far past its own range, where it clamps and turns each of them into a
+ * flat black hole with a hard edge. The exponential gives the gain where it is
+ * needed and approaches full darkness without ever reaching it, so there is no
+ * value at which neighbouring vertices stop differing.
  */
-function occlusionFrom(positions, normals, volumes, step) {
+export function fieldOcclusion(positions, normals, volumes, step, { strength = 0.85, gain = 4 } = {}) {
   const count = positions.length / 3;
   const out = new Float32Array(count);
+  const reach = 5 * step * 1.6;
+  const nearby = binVolumes(volumes, reach);
   const p = [0, 0, 0];
   for (let v = 0; v < count; v += 1) {
+    p[0] = positions[v * 3];
+    p[1] = positions[v * 3 + 1];
+    p[2] = positions[v * 3 + 2];
+    const subset = nearby(p);
+    if (!subset) {
+      out[v] = 1;
+      continue;
+    }
+    const base = bodyDistance(p, subset);
     let occlusion = 0;
+    let total = 0;
     let weight = 1;
     for (let s = 1; s <= 5; s += 1) {
-      const reach = s * step * 1.6;
-      p[0] = positions[v * 3] + normals[v * 3] * reach;
-      p[1] = positions[v * 3 + 1] + normals[v * 3 + 1] * reach;
-      p[2] = positions[v * 3 + 2] + normals[v * 3 + 2] * reach;
-      occlusion += weight * Math.max(0, reach - bodyDistance(p, volumes));
+      const step_ = s * step * 1.6;
+      p[0] = positions[v * 3] + normals[v * 3] * step_;
+      p[1] = positions[v * 3 + 1] + normals[v * 3 + 1] * step_;
+      p[2] = positions[v * 3 + 2] + normals[v * 3 + 2] * step_;
+      const free = (bodyDistance(p, subset) - base) / step_;
+      occlusion += weight * Math.max(0, Math.min(1, 1 - free));
+      total += weight;
       weight *= 0.62;
     }
-    out[v] = Math.max(0, Math.min(1, 1 - occlusion / (step * 3.2)));
+    out[v] = 1 - strength * (1 - Math.exp((-gain * occlusion) / total));
   }
   return out;
 }
