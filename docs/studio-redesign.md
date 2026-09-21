@@ -761,3 +761,35 @@ after rendered adoption as diagnostic data, as with the seated proxy mismatch;
 do not confuse it with the independently passing coarse default or silently
 replace it with the 2 mm rendered result. Capture produces ordinary fixed data
 and must reproduce the full geometry without a guided step.
+
+## Face-to-face reclining pair
+
+The remaining face-to-face reclining layout has a 59 mm rendered primary
+support gap, approximately 221 mm between its declared body-contact regions,
+and complete-figure crossings. Its coarse default also retains a 31 mm support
+gap. Preserve the female supine primary, male forearms-and-knees partner,
+`over_supine` arrangement, original contact and support ownership, default bed,
+and unchanged furniture, regions and quality limits.
+
+First fit the primary's upper-back, buttocks and head to the shared plane with
+whole-figure clearance. Then fit the partner around that grounded figure while
+retaining a recognizable forearm-supported posture and face-to-face orientation.
+Check unclaimed limbs as well as the declared contact; proximity of one regional
+patch cannot certify complete-figure clearance. Evaluate fixed/guided policies
+against the original coarse default and rendered final gates, verify the finite
+bed and any proposed floor variant, and preserve honest missing-model and
+capture/reload behavior. Shared supine grounding may inform the other reclining
+layouts, but each must retain and pass its own original contacts and roles.
+
+The fitted clothed pair retains a roughly 2.5 mm original contact, the primary's
+three 0.7–2.0 mm supports and complete clearance. The partner retains
+its original partner-supported ownership; additionally verify both knees and
+forearms against the shared plane at approximately 2 mm so a numerically close
+body contact cannot stand in for a recognizable supported posture. Relaxed feet
+clear the plane by approximately 8 mm. A guided primary with a fixed partner
+passes both default coarse and final rendered checks on floor and bed; all-fixed
+and both-guided trials retain coarse warnings. Keep this mixed policy explicit,
+retain the primary's raw coarse support discrepancy separately, and use ordinary
+fixed captures for exact replay. A 70 mm shared longitudinal shift brings the
+relaxed feet over the finite mattress rather than measuring only their clipped
+edge. No solver, region, furniture or tolerance changes are needed.

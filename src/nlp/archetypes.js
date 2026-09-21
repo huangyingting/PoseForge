@@ -40,11 +40,13 @@ import { SEATED_EMBRACE_LAYOUT } from "./seatedEmbraceLayout.js";
 import { STANDING_CARRY_LAYOUT } from "./standingCarryLayout.js";
 import { TABLE_SUPPORT_LAYOUT } from "./tableSupportLayout.js";
 import { KNEELING_PAIR_LAYOUT } from "./kneelingPairLayout.js";
+import { RECLINING_PAIR_LAYOUT } from "./recliningPairLayout.js";
 
 /** @type {Archetype[]} */
 export const ARCHETYPES = [
   {
     id: "missionary",
+    layout: RECLINING_PAIR_LAYOUT,
     phrases: ["missionary", "missionary position", "传教士", "传教士体位", "正常体位", "男上女下"],
     label: "one partner lying on their back, the other above them, face to face",
     surface: "bed",
