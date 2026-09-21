@@ -33,6 +33,8 @@ import { HAND_SHAPE_NAMES } from "../core/handPose.js";
 import { FOOT_SHAPE_NAMES } from "../core/footPose.js";
 import { newId } from "./ids.js";
 import { createContactEditor } from "./contactEditor.js";
+import { createPlacementEditor } from "./placementEditor.js";
+import { captureSolvedPose } from "../core/placement.js";
 
 const EXAMPLES = [
   "a woman standing on the floor wearing clothes",
@@ -312,7 +314,36 @@ export function buildPanel(root, handlers) {
     interpretation.details,
     diagnostics.details,
   );
-  figurePane.append(actorHost);
+  let completedActors = null;
+  const captureLayout = el("button", {
+    type: "button",
+    className: "action full",
+    textContent: "Capture current layout",
+    disabled: true,
+    onclick: () => {
+      if (!completedActors || !scene) return;
+      const captures = scene.actors.map((actor, index) =>
+        captureSolvedPose(
+          actor.id == null
+            ? completedActors[index]
+            : completedActors.find((value) => value.id === actor.id),
+        ),
+      );
+      scene.actors.forEach((actor, index) =>
+        Object.assign(actor, captures[index]),
+      );
+      emit();
+    },
+  });
+  figurePane.append(
+    captureLayout,
+    el("p", {
+      className: "hint",
+      textContent:
+        "Keep every figure’s completed placement and joint angles as an editable layout.",
+    }),
+    actorHost,
+  );
   const addFigure = el("button", {
     className: "action full",
     type: "button",
@@ -620,6 +651,12 @@ export function buildPanel(root, handlers) {
       const joints = jointEditor(index);
       const bones = group("Joints");
       bones.body.append(joints.body);
+      const placement = createPlacementEditor(
+        () => scene?.actors?.[index],
+        emit,
+      );
+      const placementGroup = group("Placement");
+      placementGroup.body.append(placement.body);
 
       const title = el("h3", {}, [
         el("span", {
@@ -640,6 +677,7 @@ export function buildPanel(root, handlers) {
           build.field,
           look.details,
           ends.details,
+          placementGroup.details,
           bones.details,
           el("button", {
             className: "text-button danger",
@@ -757,6 +795,8 @@ export function buildPanel(root, handlers) {
         footL,
         footR,
         joints,
+        placement,
+        placementSummary: placementGroup.summary,
         summary: bones.summary,
         title: title.lastChild,
       });
@@ -764,7 +804,19 @@ export function buildPanel(root, handlers) {
   }
 
   return {
-    setSolvedActors(actors) {
+    setSolvedActors(actors, { complete = true } = {}) {
+      completedActors = complete ? actors : null;
+      try {
+        if (
+          !completedActors ||
+          completedActors.length !== scene?.actors?.length
+        )
+          throw new Error("pending");
+        for (const actor of completedActors) captureSolvedPose(actor);
+        captureLayout.disabled = false;
+      } catch {
+        captureLayout.disabled = true;
+      }
       actorControls.forEach((control, index) => {
         const id = scene?.actors?.[index]?.id;
         const actor =
@@ -772,6 +824,7 @@ export function buildPanel(root, handlers) {
             ? actors[index]
             : actors.find((candidate) => candidate.id === id);
         control.joints.setSolved(actor?.joints);
+        control.placement.setSolved(actor, complete);
       });
     },
     showNotes() {
@@ -840,6 +893,8 @@ export function buildPanel(root, handlers) {
     /** Point the override controls at a new scene. */
     setScene(next, swatches) {
       scene = structuredClone(next);
+      completedActors = null;
+      captureLayout.disabled = true;
       contactEditor.setScene(scene);
       syncing = true;
       if (actorControls.length !== scene.actors.length) {
@@ -879,6 +934,10 @@ export function buildPanel(root, handlers) {
         // value out of it.
         control.joints.setSolved(null);
         control.joints.load();
+        control.placement.setSolved(null, false);
+        control.placementSummary.textContent = actor.placement
+          ? "Placement (fixed)"
+          : "Placement";
         const set = Object.keys(actor.joints ?? {}).length;
         control.summary.textContent = set ? `Joints (${set} set)` : "Joints";
         control.title.textContent =

@@ -20,6 +20,7 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 | Visible contact accuracy | Exact triangle-region distances replace the old unlabeled target residual. Seven dressed-model fixtures finish within 4 mm, including both body orders, same-type pairs, kneeling, varied proportions and authored wrist angles. Complete affected limbs are checked for crossings. Ground heights and pinned placement are preserved, and unrelated/self/prop collisions cannot be hidden by a lower aggregate score. |
 | Full scene fidelity | JSON round trips preserve figure properties, joint overrides, hand shapes, contacts and named camera view. Browser reload tests preserve edited height and joints, and the latest unsaved workspace. |
 | Precise joint authoring | Optional fixed mode retains specified channels through seating, contact/collision solving, surface refinement and cancellation, while unedited channels remain free. The editor shows actual solved values and clears stale values while pending. The browser flow verifies fixed values, history, saved reload, JSON export and narrow-screen accessibility. Guided mode remains the default. |
+| Reproducible placement | Optional fixed world placement, per-figure solved-pose capture and atomic whole-layout capture are implemented. Position and XYZ rotation survive solving and serialization while unedited joints can remain guided. Captured recumbent figures retain their support side. Fully fixed hand constraints skip futile trials without hiding unmet contacts. Capturing and reloading the refined standing scene preserves joint positions within 1e-7 m and retains its clear rendered audit. |
 | Safe persistence and imports | Unit tests cover invalid versions, malformed JSON, unsafe keys, unknown scene choices, invalid landmark sides, duplicate IDs, quota errors and corrupt storage. A failed import does not partially add a pack. Re-importing creates fresh IDs. Browser recovery and invalid-import flows pass. |
 | Preset geometry | All 23 entries validate structurally and render. The original eleven reference-study geometry checks still pass. The named-position audit flags 8/12 at the base-model level and 11/12 in the dressed-mesh contact / figure-pair audit. The base count changed with corrected support reporting, not a newly solved pose. Stock standing embrace remains the one clear rendered named entry. |
 | Body-supported placement | Adaptive clearance reduces the seated-pair base support target from 523.7 mm to 3.4 mm. Chair cases pass across all four male/female pairings; bench and stature/build variations have measured support-plane regression tests. A 96-case comparison against `969f4f8` has 12 newly clean cases, no newly flagged cases and 78 unchanged results. Dressed contact failures remain separately reported. |
@@ -37,10 +38,31 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 
 ## Commands and results
 
-- `npm test`: **196 passed**, including the original parser, geometry and
+- `npm test`: **204 passed**, including the original parser, geometry and
   architecture tests, catalog/storage tests, contact-authoring tests, clothing
   checks, triangle/surface-refinement checks and per-preset CLI selection,
   quality-dependent exit status and invalid/empty input.
+- The placement/capture iteration adds **eight regressions** and passes all
+  **204 tests** (111.5 seconds). All catalog rigs can be captured as valid
+  authoring data; this does not certify their existing geometry. Seven rendered
+  contact fixtures pass again, and the complete rendered named audit remains
+  **1/12 clear**, with the same eleven layouts still requiring calibration.
+- The initial two placement browser scenarios passed (1.7 minutes), covering
+  whole-layout capture, pending-state controls, history, save/reload/export,
+  numeric edits, invalid-input feedback, support warnings, automatic reset and
+  a 320 px Axe check. Desktop and narrow-screen screenshots were inspected.
+- The expanded 23-scenario browser run initially passed **22** and failed the
+  fixed-joint scenario: the new placement output reused the joint output's CSS
+  class, so the synchronous pending-angle query selected the placement message.
+  Placement now has its own semantic class with the same shared styling. The
+  test assertion and timeouts were not weakened. The two new placement scenarios
+  passed in that broad run, including precise numeric input and capture at 320 px.
+- After separating the readout classes, the production-build rerun of
+  `tests/browser/joints.spec.js tests/browser/placement.spec.js` passed **3/3**
+  (3.7 minutes). Combined with the 22 successes in the broad run, all **23 distinct
+  browser scenarios** have passed. This is split-run evidence, not a claim that
+  the initial full run was green. The final mobile placement screenshot was
+  inspected with fixed controls enabled.
 - The distant-contact and support-report iteration adds **six regressions** and
   passes all **196 tests** (105.1 seconds). The updated support/CLI assertions
   also pass in a separate six-test run.
@@ -250,3 +272,9 @@ The height-varied case also retains an unsupported balance estimate; the body
 stage does not hide or fix that finding. This is one verified stock-preset
 improvement and broader diagnostics, not a claim that arbitrary body variants
 or every named preset are now solved.
+
+Fixed placement and atomic pose capture now make calibrated layouts reproducible
+as scene data rather than relying on another automatic placement pass. See
+[placement.md](placement.md) for editing, capture, reset and interchange details.
+No built-in pose definition changed in this authoring iteration; the remaining
+eleven rendered named layouts still require calibration and verification.

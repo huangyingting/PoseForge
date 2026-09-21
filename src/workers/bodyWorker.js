@@ -246,6 +246,8 @@ function summarise(solved) {
       posture: actor.spec?.posture,
       stature: actor.skeleton.stature,
       joints: structuredClone(actor.pose.joints),
+      root: structuredClone(actor.pose.root),
+      hands: { ...actor.hands },
       // Surface gaps are measured on the returned rig. Null means that this
       // figure instead expects partner support, or declares no surface support.
       supportBasis: actor.supportBasis,

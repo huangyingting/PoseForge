@@ -6,6 +6,7 @@ import {
   resolveLandmark,
 } from "./landmarks.js";
 import { LIMB_CHAINS, solveTwoBoneIK } from "./ik.js";
+import { CHANNELS } from "./skeleton.js";
 import { clamp, quatRotate, v3dot, v3sub } from "./math.js";
 import {
   standingContactPoses,
@@ -472,6 +473,22 @@ export function* surfaceContactSteps(
           continue;
         }
         if (
+          actor.mobility === 0 &&
+          actor.spec?.jointMode === "fixed" &&
+          [chain.root, chain.mid, chain.end].every((bone) =>
+            CHANNELS.every((channel) => {
+              const range = actor.skeleton.bone(bone).rom[channel];
+              return (
+                range[0] === range[1] ||
+                actor.spec.joints?.[bone]?.[channel] != null
+              );
+            }),
+          )
+        ) {
+          reasons.set(i, "fixed_channels");
+          continue;
+        }
+        if (
           [chain.root, chain.mid, chain.end].some((bone) =>
             actor.loadBearing.has(bone),
           )
@@ -877,6 +894,7 @@ export function* surfaceContactSteps(
         reason: value ? (reasons.get(i) ?? null) : "surface_unavailable",
         blocked:
           reasons.get(i) === "movement_limited" ||
+          reasons.get(i) === "fixed_channels" ||
           reasons.get(i) === "load_bearing",
         unreachable:
           reasons.get(i) === "out_of_reach" ||

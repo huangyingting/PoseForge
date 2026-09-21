@@ -21,6 +21,7 @@ import { HAND_SHAPES } from "./handPose.js";
 import { footJoints, knownFeet } from "./footPose.js";
 import { GARMENT_COLOURS, GARMENT_NAMES } from "./garments.js";
 import { CHANNELS, POSEABLE_BONES, ROM } from "./skeleton.js";
+import { checkPlacement } from "./placement.js";
 import {
   ARRANGEMENT_NAMES,
   POSTURE_NAMES,
@@ -57,6 +58,8 @@ export const JOINT_MODES = ["guided", "fixed"];
  *           FOOT_SHAPES; compiled into `joints` over the posture's own ankles
  * @property {number} [mobility] 0 pinned .. 1 free, how much the solver may move them
  * @property {"guided"|"fixed"} [jointMode] whether specified joint channels may be adjusted
+ * @property {{position:number[], rotation:number[]}} [placement] fixed world position
+ *           in metres and intrinsic XYZ rotation in degrees; omitted is automatic
  * @property {string|string[]} [arms] what the arms are doing, see ARM_POSES; read
  *           from the corpus's vocabulary or a user's, and compiled into `joints`
  * @property {string|string[]} [legs] what the legs are doing, see LEG_POSES
@@ -325,6 +328,11 @@ export function validateScene(scene) {
       note("warning", `${id}: unknown joint mode, used guided`);
       jointMode = "guided";
     }
+    let placement;
+    if (spec.placement != null) {
+      try { placement = checkPlacement(spec.placement); }
+      catch (error) { note("warning", `${id}: ${error.message} Used automatic placement.`); }
+    }
     // Stature outside this range is not a person, and the anthropometric tables
     // that everything else is derived from stop meaning anything.
     let stature = spec.stature;
@@ -364,6 +372,7 @@ export function validateScene(scene) {
       outfit,
       mobility: spec.mobility == null ? undefined : clamp(spec.mobility, 0, 1),
       jointMode,
+      placement,
       // Anything said outright wins: `joints` is the escape hatch for a caller
       // who knows the exact angle they want, and a limb phrase must not
       // silently overrule it.

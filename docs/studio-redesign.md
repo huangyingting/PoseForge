@@ -305,3 +305,38 @@ declared. Partner-supported figures do not receive a fictitious zero or a stale
 floor-gap measurement: their surface residual is null and their declared partner
 contacts remain the relevant checks. Publish that distinction through the worker
 and audit output without moving the pose or changing preset intent.
+
+## Reproducible figure placement
+
+Add optional actor `placement: { position: [x,y,z], rotation: [x,y,z] }` to the
+version-1 scene format. Position is in world metres within -10..10 on each axis;
+rotation is intrinsic XYZ Euler degrees within -180..180. Its presence fixes the
+root transform. Absence retains the existing automatic arrangement and seating.
+Validate complete vectors and reject unknown placement keys at import; malformed
+interactive data receives an explicit warning instead of silently becoming a
+different fixed transform.
+
+Enforce placement on every rig refresh and assign zero root mobility while it is
+active. Joint guidance remains independent. Preserve the transform through
+arrangement, seating, collision/contact solving, refinement and cancellation.
+Fixed roots cannot be granted collision exceptions or pretend to satisfy support
+planes. Bound computational work when an entire affected limb and its root are
+fixed, reporting the unresolved constraint rather than testing identical poses.
+
+Add a collapsed Placement group per figure: Keep placement captures the final
+solved root; six labelled number fields edit its position and rotation; disabling
+it returns to automatic placement. Capture solved pose also stores the actual
+joint channels in fixed mode, making a calibrated layout reproducible without
+manually copying every joint. Capture is unavailable while a solve is pending.
+Capture current layout applies the same operation to every figure atomically,
+so other figures cannot move between separate per-figure capture operations.
+Show actual placement separately from authored values, and preserve unedited
+precision when changing one component. Existing fit-view controls remain useful
+when a figure is deliberately placed outside the current camera frame.
+
+Verify quaternion/Euler round trips, strict imports and defaults, pinned roots
+and freely solving joints, truthful support/contact findings, bounded fixed-pose
+refinement, cancellation, preview keys, history and scene JSON. Exercise capture,
+editing, automatic reset, save/reload/export and narrow-screen accessibility in
+the real browser. This is authoring capability for preset calibration, not proof
+that all existing named geometry is already corrected.

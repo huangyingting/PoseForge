@@ -62,6 +62,7 @@ import {
 } from "./poseLibrary.js";
 import { Skeleton, evaluatePose } from "./skeleton.js";
 import { handShapes } from "./handPose.js";
+import { rootFromPlacement } from "./placement.js";
 
 /** Dempster segment mass fractions, used for the centre of mass. */
 const SEGMENT_MASS = {
@@ -116,8 +117,18 @@ export function createActor(spec, index) {
     stature: spec.stature,
     build: spec.build ?? 1,
   });
-  const posture = resolvePosture(spec.posture) || resolvePosture("standing");
+  let posture = resolvePosture(spec.posture) || resolvePosture("standing");
   const localVolumes = buildBodyVolumes(skeleton, { bust: spec.bust });
+  const defaultOrientation = orientationFromAxes(posture.spineDir, posture.faceDir);
+  const root = spec.placement ? rootFromPlacement(spec.placement) : {
+    position: [0, skeleton.stature * posture.rootHeight, 0], quaternion: defaultOrientation,
+  };
+  if (spec.placement && isRecumbent(posture)) {
+    const originalSide = quatRotate(defaultOrientation, [1, 0, 0])[1];
+    const placedSide = quatRotate(root.quaternion, [1, 0, 0])[1];
+    if (Math.abs(originalSide) > 0.5 && originalSide * placedSide < 0)
+      posture = rollPosture(posture);
+  }
 
   const joints = skeleton.restPose();
   for (const [bone, angles] of Object.entries(posture.joints)) {
@@ -131,10 +142,7 @@ export function createActor(spec, index) {
   }
 
   const pose = {
-    root: {
-      position: [0, skeleton.stature * posture.rootHeight, 0],
-      quaternion: orientationFromAxes(posture.spineDir, posture.faceDir),
-    },
+    root,
     joints,
   };
 
@@ -150,13 +158,24 @@ export function createActor(spec, index) {
     loadBearing: loadBearingBones(skeleton, posture),
     // How freely the solver may move this actor. The partner whose posture is
     // load-bearing stays put; the one on top does the accommodating.
-    mobility: spec.mobility ?? (posture.supports.length >= 2 ? 0.45 : 1),
+    mobility: spec.placement ? 0 : spec.mobility ?? (posture.supports.length >= 2 ? 0.45 : 1),
+    placementFixed: Boolean(spec.placement),
+    placementMobility: spec.mobility ?? (posture.supports.length >= 2 ? 0.45 : 1),
     spec,
   };
 }
 
 /** Refresh an actor's evaluated pose and world-space volumes. */
 export function refresh(actor) {
+  if (actor.spec?.placement) {
+    if (!actor.placementFixed) actor.placementMobility = actor.mobility;
+    actor.pose.root = rootFromPlacement(actor.spec.placement);
+    actor.placementFixed = true;
+    actor.mobility = 0;
+  } else if (actor.placementFixed) {
+    actor.mobility = actor.spec?.mobility ?? actor.placementMobility;
+    actor.placementFixed = false;
+  }
   // Fixed mode holds only explicitly specified channels. The other channels
   // remain available to IK; refreshing also covers restored solver snapshots
   // and the renderer-aware refinement pass.
@@ -786,13 +805,14 @@ export function applyArrangement(primary, secondary, arrangement, surface) {
   const spineAxis = rolls ? v3normalize(secondary.posture.spineDir) : [0, 1, 0];
   const yawDegrees = arrangement.yaw || 0;
   const yaw = quatFromAxisAngle(spineAxis, yawDegrees * (Math.PI / 180));
-  secondary.pose.root.quaternion = quatNormalize(
-    quatMultiply(yaw, secondary.pose.root.quaternion)
-  );
+  if (!secondary.spec.placement)
+    secondary.pose.root.quaternion = quatNormalize(
+      quatMultiply(yaw, secondary.pose.root.quaternion)
+    );
 
   // Rolling a recumbent actor past halfway puts them on their other side, so
   // the landmarks that were holding them up are now the ones in the air.
-  if (rolls && Math.abs(yawDegrees) > 90) {
+  if (!secondary.spec.placement && rolls && Math.abs(yawDegrees) > 90) {
     secondary.posture = rollPosture(secondary.posture);
     secondary.loadBearing = loadBearingBones(secondary.skeleton, secondary.posture);
   }

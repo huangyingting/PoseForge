@@ -278,6 +278,7 @@ function collectNotes(data) {
 }
 function workerFailure(message) {
   ready = false;
+  panel.setSolvedActors([], { complete: false });
   $("show-notes").hidden = false;
   $("panel").setAttribute("aria-busy", "false");
   status("This pose could not be rendered. Choose a preset to try again.");
@@ -308,7 +309,7 @@ worker.onmessage = ({ data }) => {
     SKIN.map((color) => `#${color.toString(16).padStart(6, "0")}`),
   );
   const notes = collectNotes(data);
-  panel.setSolvedActors(data.actors);
+  panel.setSolvedActors(data.actors, { complete: data.stage === "final" });
   $("show-notes").hidden = !notes.length && !data.preview?.issues.length;
   panel.setNotes(notes);
   panel.setContactReport(data.quality.contactDetail ?? []);

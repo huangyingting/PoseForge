@@ -32,6 +32,7 @@ import {
   quatMultiply,
   quatRotate,
 } from "../src/core/math.js";
+import { captureSolvedPose } from "../src/core/placement.js";
 
 const templates = new Map(
   ["male", "female"].map((type) => [
@@ -69,6 +70,56 @@ test("body-model reports are remeasured consistently on the returned pose", () =
   solved.quality.contactDetail.forEach((report, index) =>
     assert.ok(Math.abs(report.distance - measured[index]) < 1e-9),
   );
+});
+
+test("captured complete rigs retain refined standing geometry after save-format normalization", () => {
+  const scene = standingPair(),
+    original = solveScene(checkScene(scene));
+  refineSurfaceContacts(original, forScene(original));
+  const positions = original.actors.map((actor) =>
+    structuredClone(actor.evaluated.positions),
+  );
+  scene.actors.forEach((actor, i) =>
+    Object.assign(actor, captureSolvedPose(original.actors[i])),
+  );
+  const restored = solveScene(checkScene(JSON.parse(JSON.stringify(scene))));
+  refineSurfaceContacts(restored, forScene(restored));
+  assert.equal(restored.quality.unmetContacts, 0);
+  assert.ok(
+    restored.quality.figureSurfaces.every((pair) => pair.intersects === false),
+  );
+  assert.equal(restored.quality.surfaceRefinement.steps, 0);
+  restored.actors.forEach((actor, i) =>
+    actor.evaluated.positions.forEach((point, j) =>
+      point.forEach((value, k) =>
+        assert.ok(Math.abs(value - positions[i][j][k]) < 1e-7),
+      ),
+    ),
+  );
+});
+
+test("fully fixed placements and joint channels skip futile surface candidates and survive cancellation", () => {
+  const scene = base(),
+    original = solveScene(checkScene(scene));
+  scene.actors.forEach((actor, i) =>
+    Object.assign(actor, captureSolvedPose(original.actors[i])),
+  );
+  const solved = solveScene(checkScene(scene)),
+    bodies = forScene(solved),
+    before = poses(solved),
+    quality = structuredClone(solved.quality);
+  const steps = surfaceContactSteps(solved, bodies);
+  steps.next();
+  steps.next();
+  steps.return();
+  assert.deepEqual(poses(solved), before);
+  assert.deepEqual(solved.quality, quality);
+  refineSurfaceContacts(solved, bodies);
+  assert.equal(solved.quality.surfaceRefinement.steps, 0);
+  assert.equal(solved.quality.contactDetail[0].reason, "fixed_channels");
+  assert.equal(solved.quality.contactDetail[0].blocked, true);
+  assert.ok(solved.quality.unmetContacts > 0);
+  assert.deepEqual(poses(solved), before);
 });
 
 test("fixed joint channels survive rendered refinement and cancellation", () => {

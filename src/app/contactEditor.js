@@ -68,6 +68,7 @@ function verdict(report) {
     if (report.reason === "load_bearing")
       return [`Supporting limb · ${gap}`, "warning"];
     if (report.unreachable) return [`Out of reach · ${gap}`, "warning"];
+    if (report.reason === "fixed_channels") return [`Fixed pose · ${gap}`, "warning"];
     if (report.blocked) return [`Movement limited · ${gap}`, "warning"];
     return [gap, "warning"];
   }
