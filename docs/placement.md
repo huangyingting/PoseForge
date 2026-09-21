@@ -86,3 +86,9 @@ layout** can keep that result. Once placement or relevant leg channels are fixed
 the seated correction will not overrule them. Missing meshes cannot grant a
 furniture-clearance exception, even for a previously captured correct layout;
 their remaining coarse estimates and unavailable checks stay visible.
+
+The same authoring rules apply to knee/shin grounding. Foot frames and contacted
+hands are retained during accepted automatic corrections; fixing the relevant
+leg or contacted-arm channels prevents them from being changed. Whole-figure
+floor checks also cover unclaimed hands or other parts, not only the declared
+support regions.

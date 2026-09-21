@@ -50,7 +50,7 @@ and a 2D image you can export. Pose checks report unresolved constraints.
 ```
 npm install
 npm run dev          # webapp on :5173
-npm test             # 246 tests
+npm test             # 257 tests
 node scripts/render-cli.mjs "a woman seated on a chair wearing clothes"
 ```
 
@@ -271,11 +271,12 @@ Euler characteristic — rather than checking that functions return values.
 **Known residuals.** The recorded base-model scene sweep reports 32 of 159
 variants as not fully sound, with a worst residual penetration of 63mm. The
 current base-model named-preset gate flags 7 of 12 definitions. The rendered
-named audit flags 9 of 12, and the complete rendered catalog audit flags 13 of
-23 entries, including four reference studies with measured support gaps. Both
-single seated studies now meet their visible seat and floor supports; furniture
-clearance is checked against the complete drawn figure before reconciling a
-coarse-model overlap.
+named audit flags 9 of 12, and the complete rendered catalog audit flags 11 of
+23 entries, including two reclining reference studies with measured support
+gaps. Both single seated studies and the low/paired kneeling studies now meet
+their visible supports. Furniture clearance is checked against the complete
+drawn figure before reconciling a coarse-model overlap; whole-figure floor
+checks also cover parts outside the declared support regions.
 Rendered support checks retain coarse estimates separately and distinguish
 gaps, penetration and missing geometry. These quality gates remain open despite
 passing structural and browser checks; the CLI and app report the unresolved

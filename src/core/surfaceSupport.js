@@ -136,3 +136,62 @@ export function measureSurfaceSupport(tree, support, surface) {
   }
   return best;
 }
+
+/** Project visible regional geometry near its support plane into contact bounds.
+ * An empty bounds object is measured absence; null means geometry unavailable. */
+export function measureSupportContactBounds(tree, support, surface) {
+  if (!tree || !support || !surface || !finite(tree.min) || !finite(tree.max))
+    return null;
+  const plane = supportPlaneFor(support, surface);
+  if (!Number.isFinite(plane)) return null;
+  const targets = [];
+  for (const prop of surface.props ?? []) {
+    const top = topOf(prop);
+    if (!top) return null;
+    if (Math.abs(top.min[1] - plane) <= 1e-7) targets.push(top);
+  }
+  if (!targets.length) {
+    if (plane !== surface.ground) return null;
+    targets.push(null);
+  }
+  let min = null,
+    max = null;
+  for (const top of targets) {
+    const stack = [tree];
+    while (stack.length) {
+      const node = stack.pop();
+      if (node.min[1] > plane + 0.03 || node.max[1] < plane - 0.03) continue;
+      if (
+        top &&
+        (node.max[0] < top.min[0] ||
+          node.min[0] > top.max[0] ||
+          node.max[2] < top.min[2] ||
+          node.min[2] > top.max[2])
+      )
+        continue;
+      if (!node.triangles) {
+        stack.push(node.left, node.right);
+        continue;
+      }
+      for (const triangle of node.triangles) {
+        let polygon = triangle.points;
+        if (top)
+          for (const axis of [0, 2]) {
+            polygon = clip(polygon, axis, top.min[axis], 1);
+            polygon = clip(polygon, axis, top.max[axis], -1);
+          }
+        polygon = clip(polygon, 1, plane - 0.03, 1);
+        polygon = clip(polygon, 1, plane + 0.03, -1);
+        for (const p of polygon) {
+          min ??= [p[0], p[2]];
+          max ??= [p[0], p[2]];
+          [0, 2].forEach((axis, k) => {
+            min[k] = Math.min(min[k], p[axis]);
+            max[k] = Math.max(max[k], p[axis]);
+          });
+        }
+      }
+    }
+  }
+  return { min, max };
+}

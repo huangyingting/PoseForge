@@ -118,15 +118,33 @@ off-edge seat region can move toward its measured top edge with a 25 mm inward
 margin; its horizontal distance is not misread as a vertical gap.
 
 Corrections are limited to 160 mm vertically and 180 mm horizontally from the
-starting root, with at most 60 mm of vertical foot correction. Up to eight
-seating candidates use the existing shared 32-step budget, after hand/standing
-refinement. The pass respects fixed placement, zero mobility and fixed leg
+starting root. Feet must start within 60 mm of their support plane; target soles
+include 2 mm of clearance. Up to eight seating candidates use the existing
+shared 32-step budget, after hand/standing refinement. The pass respects fixed
+placement, zero mobility and fixed leg
 channels. It preserves close partner contacts, checks every figure/prop pair,
 rejects new self/body violations and below-floor visible auxiliary parts, and
 retains the balance estimate. Cancellation restores accepted intermediate poses
 without publishing their diagnostics. Capture/save/reload can preserve the
 result as an ordinary fixed pose.
 `maxSeatingSteps: 0` disables this phase for a diagnostic comparison.
+
+### Kneeling supports
+
+The next bounded phase handles paired knee or shin supports. It retains foot
+orientation and horizontal placement, using the same 60 mm sole-distance
+eligibility limit and 2 mm target clearance, and holds the world frames of hands
+involved in contacts. Small vertical/forward
+root candidates can ground a low kneel without pushing the heels into the body.
+No preset ID is involved. Cumulative root limits are 60 mm vertically and 40 mm
+horizontally; up to eight candidates use the shared 32-step budget. Set
+`maxKneelingSteps: 0` to isolate the preceding phases.
+
+Fixed placement, zero mobility and fixed channels in the required leg/contacted
+arm chains block this adjustment. Accepted candidates must improve support,
+retain contacts, clear complete figures/furniture and the floor, and not worsen
+self/body collisions or balance. Cancellation restores all actors, including
+earlier hand adjustments, without publishing partial reports.
 
 `quality.propSurfaces` audits every complete figure against each furniture box.
 Crossing triangles and interior vertices are overlaps. Missing geometry and
@@ -183,6 +201,20 @@ The coarse balance estimate now includes finite raised furniture tops alongside
 the ground and excludes deeply buried samples. It still estimates centre of mass
 against contact bounds, not a full support polygon or partner-load simulation.
 Expected partner support and absent surface contact remain distinct.
+
+`quality.renderedBalance` is a separate estimate from declared support regions
+and nearby feet, clipped to finite furniture and the same 30 mm proximity band.
+It uses the existing skeletal centre of mass with these measured contact bounds.
+Support-correction guards use it when available; `quality.balance` retains the
+coarse result. This avoids losing a genuine knee support solely because its
+coarse capsule falls outside that band. Neither estimate certifies force balance.
+
+`quality.floorSurfaces` independently reports each complete drawn figure's
+minimum height and penetration below the studio floor, including parts not named
+as supports. Penetration beyond the existing 20 mm support-quality threshold and
+unavailable geometry are flagged. Raised bed/sofa planes remain separate from
+the studio floor; support candidates retain their stricter whole-figure floor
+guard before acceptance.
 
 `quality.figureSurfaces` is a separate final audit of every pair, including pairs
 with no declared contact. Its `intersects` value is `true`, `false`, or `null`

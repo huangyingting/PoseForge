@@ -2120,7 +2120,6 @@ function resolvePropPenetration(actor, props, surfaceY) {
  * shifting the figure would hide that.
  */
 function balanceOf(actor, surface) {
-  const com = centreOfMass(actor);
   const contactPoints = [];
   for (const volume of actor.volumes) {
     for (const [point, radius] of [
@@ -2135,6 +2134,12 @@ function balanceOf(actor, surface) {
         contactPoints.push([point[0], point[2]]);
     }
   }
+  return balanceFromPoints(actor, contactPoints);
+}
+
+/** Skeletal centre of mass against supplied horizontal contact bounds. */
+export function balanceFromPoints(actor, contactPoints) {
+  const com = centreOfMass(actor);
   if (contactPoints.length === 0) {
     return {
       actor: actor.id,

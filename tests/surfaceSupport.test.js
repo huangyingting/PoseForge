@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import { buildTriangleTree } from "../src/core/meshDistance.js";
-import { measureSurfaceSupport } from "../src/core/surfaceSupport.js";
+import {
+  measureSurfaceSupport,
+  measureSupportContactBounds,
+} from "../src/core/surfaceSupport.js";
 import { buildHumanTemplate, featureRelief } from "../src/core/humanMesh.js";
 import { withGarments } from "../src/core/garments.js";
 import { checkScene } from "../src/core/catalog.js";
@@ -106,6 +109,44 @@ test("missing or invalid support geometry remains unavailable", () => {
   );
   assert.equal(
     measureSurfaceSupport(plane(1), seat, { height: NaN, ground: 0 }),
+    null,
+  );
+});
+
+test("rendered contact bounds clip both the furniture footprint and the proximity band", () => {
+  const patch = triangle([
+    [-1, 0.9, -1],
+    [1, 1.1, -1],
+    [0, 1, 1],
+  ]);
+  const bounds = measureSupportContactBounds(patch, seat, chair);
+  close(bounds.min[0], -0.3);
+  close(bounds.max[0], 0.3);
+  close(bounds.min[1], -0.5);
+  close(bounds.max[1], 0.5);
+  const floor = measureSupportContactBounds(plane(0.01), foot, chair);
+  assert.deepEqual(floor, { min: [-0.1, -0.1], max: [0.1, 0.1] });
+});
+
+test("measured absence of near contact stays distinct from unavailable balance geometry", () => {
+  assert.deepEqual(measureSupportContactBounds(plane(1.1), seat, chair), {
+    min: null,
+    max: null,
+  });
+  assert.deepEqual(measureSupportContactBounds(plane(0.8), seat, chair), {
+    min: null,
+    max: null,
+  });
+  assert.deepEqual(measureSupportContactBounds(plane(1, 2), seat, chair), {
+    min: null,
+    max: null,
+  });
+  assert.equal(measureSupportContactBounds(null, seat, chair), null);
+  assert.equal(
+    measureSupportContactBounds(plane(1), seat, {
+      ...chair,
+      props: [{ center: [0, NaN, 0], size: [1, 1, 1] }],
+    }),
     null,
   );
 });

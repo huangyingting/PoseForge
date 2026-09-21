@@ -1,8 +1,11 @@
 /** Bounded seat/leg candidates that preserve the original foot frames. */
 import { refresh } from "./solver.js";
-import { LIMB_CHAINS, solveTwoBoneIK, anglesFromQuaternion } from "./ik.js";
-import { mat4Multiply, mat4InvertRigid, v3sub } from "./math.js";
-import { orientationFromAxes } from "./poseLibrary.js";
+import { LIMB_CHAINS } from "./ik.js";
+import {
+  captureEndFrame,
+  solveEndFrames,
+  endFramesPreserved,
+} from "./supportFrames.js";
 
 const legs = [LIMB_CHAINS.legL, LIMB_CHAINS.legR];
 export const SEATED_ROOT_LIMIT = 0.16;
@@ -73,21 +76,13 @@ export function seatedSupportFrame(actor, surface, report) {
   return {
     root: structuredClone(actor.pose.root),
     targetRoot,
-    feet: legs.map((chain, i) => {
-      const index = actor.skeleton.boneIndex(chain.end),
-        matrix = actor.evaluated.matrices[index];
-      const position = actor.evaluated.positions[index].slice();
-      position[1] += 0.002 + (feet[i].penetration || -feet[i].gap);
-      return {
+    feet: legs.map((chain, i) =>
+      captureEndFrame(
+        actor,
         chain,
-        matrix: matrix.slice(),
-        position,
-        pole: v3sub(
-          actor.evaluated.positions[actor.skeleton.boneIndex(chain.mid)],
-          actor.evaluated.positions[actor.skeleton.boneIndex(chain.root)],
-        ),
-      };
-    }),
+        0.002 + (feet[i].penetration || -feet[i].gap),
+      ),
+    ),
   };
 }
 
@@ -102,17 +97,7 @@ export function seatedFramePreserved(actor, frame) {
     root.quaternion.every(
       (value, k) => Math.abs(value - frame.root.quaternion[k]) < 1e-7,
     ) &&
-    frame.feet.every(({ chain, matrix, position }) => {
-      const actual =
-        actor.evaluated.matrices[actor.skeleton.boneIndex(chain.end)];
-      return (
-        Math.hypot(...position.map((value, k) => value - actual[12 + k])) <=
-          0.0005 &&
-        actual
-          .slice(0, 12)
-          .every((value, k) => Math.abs(value - matrix[k]) <= 0.0005)
-      );
-    })
+    endFramesPreserved(actor, frame.feet)
   );
 }
 
@@ -138,25 +123,7 @@ export function* seatedSupportPoses(actor, report, frame) {
       continue;
     }
     refresh(trial);
-    for (const { chain, matrix, position, pole } of frame.feet) {
-      solveTwoBoneIK(trial.skeleton, trial.pose, chain, position, {
-        evaluated: trial.evaluated,
-        pole,
-      });
-      refresh(trial);
-      const parent =
-        trial.evaluated.matrices[trial.skeleton.bone(chain.end).parentIndex];
-      const local = mat4Multiply(mat4InvertRigid(parent), matrix);
-      trial.pose.joints[chain.end] = trial.skeleton.clampAngles(
-        chain.end,
-        anglesFromQuaternion(
-          trial.skeleton,
-          chain.end,
-          orientationFromAxes(local.slice(4, 7), local.slice(8, 11)),
-        ),
-      );
-      refresh(trial);
-    }
+    solveEndFrames(trial, frame.feet);
     yield seatedFramePreserved(trial, frame) ? trial.pose : null;
   }
 }

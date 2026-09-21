@@ -61,6 +61,10 @@ function report(solved) {
       intersectingProps: solved.quality.propSurfaces.filter(pair=>pair.intersects===true),
       unavailablePropChecks: solved.quality.propSurfaces.filter(pair=>pair.intersects===null).length,
     } : {}),
+    ...(solved.quality.floorSurfaces ? {
+      floorPenetrationMm: solved.quality.floorSurfaces.map(item => item.penetration == null ? null : Math.round(item.penetration * 1000)),
+      unavailableFloorChecks: solved.quality.floorSurfaces.filter(item => item.penetration == null).length,
+    } : {}),
     unmetContacts: solved.quality.unmetContacts,
     ...(solved.quality.figureSurfaces
       ? {
@@ -79,6 +83,10 @@ function report(solved) {
     supportMeasurement: solved.actors.map((actor) =>
       actor.supportBasis === "surface" ? actor.supportMeasurement ?? "body-model" : null,
     ),
+    ...(solved.quality.renderedBalance ? {
+      bodyBalance: solved.quality.balance,
+      renderedBalance: solved.quality.renderedBalance,
+    } : {}),
     ...(solved.quality.supportSurfaces ? {
       unavailableSupportChecks: solved.quality.supportSurfaces.reduce((sum, item) => sum + item.unavailable, 0),
       supportPenetrationMm: solved.actors.map((actor) => actor.supportPenetration == null ? null : Math.round(actor.supportPenetration * 1000)),

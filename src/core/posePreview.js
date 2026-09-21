@@ -59,6 +59,10 @@ export function solvedPreview(solved, basis = "base") {
     issues.push("Furniture overlap");
   if (solved.quality.propSurfaces?.some((pair) => pair.intersects === null))
     issues.push("Furniture check unavailable");
+  if (solved.quality.floorSurfaces?.some((item) => item.penetration > .02))
+    issues.push("Floor overlap");
+  if (solved.quality.floorSurfaces?.some((item) => item.penetration == null))
+    issues.push("Floor check unavailable");
   if (solved.quality.propPenetration > 0.022 || solved.quality.supportSurfaces?.some((support) => support.penetration > 0.02))
     issues.push("Support overlap");
   if (solved.quality.unmetContacts > 0) issues.push("Unresolved contacts");

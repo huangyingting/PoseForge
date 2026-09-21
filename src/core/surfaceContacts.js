@@ -18,19 +18,29 @@ import {
   measureSceneSafety,
   measureContactTargets,
   measureBodySupportResidual,
+  balanceFromPoints,
 } from "./solver.js";
 import {
   buildTriangleTree,
   refitTriangleTree,
   closestMeshPoints,
 } from "./meshDistance.js";
-import { measureSurfaceSupport } from "./surfaceSupport.js";
+import {
+  measureSurfaceSupport,
+  measureSupportContactBounds,
+} from "./surfaceSupport.js";
 import { measurePropSurface } from "./surfaceProps.js";
+import { SURFACES } from "./poseLibrary.js";
 import {
   seatedSupportFrame,
   seatedFramePreserved,
   seatedSupportPoses,
 } from "./seatedSupports.js";
+import {
+  kneelingSupportFrame,
+  kneelingFramePreserved,
+  kneelingSupportPoses,
+} from "./kneelingSupports.js";
 
 export const SURFACE_CONTACT_TOLERANCE = 0.004;
 const vDistanceSq = (a, b) =>
@@ -281,6 +291,12 @@ export function createSurfaceContactQuery(actors, templates) {
       support,
       surface,
     );
+  query.supportBounds = (index, support, surface) =>
+    measureSupportContactBounds(
+      tree(index, support.landmark, support.side),
+      support,
+      surface,
+    );
   query.prop = (index, prop) =>
     measurePropSurface(tree(index, "", null, true), prop);
   query.lowest = (index) => tree(index, "", null, true)?.min[1] ?? null;
@@ -323,6 +339,42 @@ export function measureRenderedSupports(solved, query) {
           ),
       unavailable,
       supports,
+    };
+  });
+}
+
+export function measureRenderedBalance(solved, query) {
+  return solved.actors.map((actor, index) => {
+    if (actor.supportBasis !== "surface") return null;
+    const supports = new Map(
+      [
+        ...actor.posture.supports,
+        { landmark: "foot", side: "l" },
+        { landmark: "foot", side: "r" },
+      ].map((support) => [
+        `${support.landmark}.${support.side ?? ""}`,
+        support,
+      ]),
+    );
+    const points = [];
+    for (const support of supports.values()) {
+      const bounds = query.supportBounds(index, support, solved.surface);
+      if (!bounds) return null;
+      if (bounds.min) points.push(bounds.min, bounds.max);
+    }
+    return { ...balanceFromPoints(actor, points), basis: "rendered-support" };
+  });
+}
+
+/** The studio floor is distinct from raised bed/sofa support planes. */
+export function measureFloorSurfaces(solved, query) {
+  return solved.actors.map((actor, index) => {
+    const minimumY = query.lowest(index);
+    return {
+      actor: index,
+      minimumY,
+      penetration:
+        minimumY == null ? null : Math.max(0, SURFACES.floor.height - minimumY),
     };
   });
 }
@@ -443,6 +495,9 @@ export function measureSurfaceSafety(
         );
       },
     }),
+    ...(wholeProps
+      ? { renderedBalance: measureRenderedBalance(solved, query) }
+      : {}),
     limbIntersections: groups.map((group) => !!group.result?.intersects),
   };
 }
@@ -525,7 +580,13 @@ function handBodyReach(actor, targetActor, contact, chain) {
 export function* surfaceContactSteps(
   solved,
   templates,
-  { maxPasses = 8, maxSteps = 32, maxBodySteps = 12, maxSeatingSteps = 8 } = {},
+  {
+    maxPasses = 8,
+    maxSteps = 32,
+    maxBodySteps = 12,
+    maxSeatingSteps = 8,
+    maxKneelingSteps = 8,
+  } = {},
 ) {
   const originalPoses = solved.actors.map(clonePose);
   let completed = false;
@@ -959,143 +1020,198 @@ export function* surfaceContactSteps(
     // Ground visible seated supports with preserved foot frames. Furniture
     // proxy exceptions require complete drawn figure/box clearance, not only
     // the seat patch used to propose the candidate.
-    let seatingSteps = 0;
-    for (
-      let index = 0;
-      index < solved.actors.length &&
-      steps < maxSteps &&
-      seatingSteps < maxSeatingSteps;
-      index++
-    ) {
-      const actor = solved.actors[index];
-      const originalSupports = measureRenderedSupports(solved, query);
-      let support = originalSupports[index];
-      const frame = seatedSupportFrame(actor, solved.surface, support);
-      if (
-        !frame ||
-        (support.gap <= SURFACE_CONTACT_TOLERANCE && support.penetration === 0)
-      )
-        continue;
-      const baseline = measureSurfaceSafety(solved, query, {
-        wholeFigures: true,
-        wholeProps: true,
-      });
-      const violations = new Map(
-        baseline.violations.map((v) => [v.key, v.depth]),
-      );
-      let changed = false;
+    const supportSteps = { seatingSteps: 0, kneelingSteps: 0 };
+    const supportStages = [
+      {
+        counter: "seatingSteps",
+        limit: maxSeatingSteps,
+        frame: (actor, report) =>
+          seatedSupportFrame(actor, solved.surface, report),
+        poses: seatedSupportPoses,
+        preserved: seatedFramePreserved,
+        footprint: (report) =>
+          report.supports.find((s) => s.landmark === "buttocks")?.measurement
+            ?.withinFootprint,
+        message:
+          "adjusted seated support against the rendered seat and floor while preserving foot placement.",
+      },
+      {
+        counter: "kneelingSteps",
+        limit: maxKneelingSteps,
+        frame: (actor, report) =>
+          kneelingSupportFrame(
+            actor,
+            solved.surface,
+            report,
+            query,
+            solved.contacts,
+          ),
+        poses: kneelingSupportPoses,
+        preserved: kneelingFramePreserved,
+        footprint: (report) =>
+          report.supports.every((s) => s.measurement?.withinFootprint),
+        message:
+          "adjusted kneeling support against the rendered surface while preserving foot frames and contacted hands.",
+      },
+    ];
+    for (const stage of supportStages) {
       for (
-        let pass = 0;
-        pass < 3 && steps < maxSteps && seatingSteps < maxSeatingSteps;
-        pass++
+        let index = 0;
+        index < solved.actors.length &&
+        steps < maxSteps &&
+        supportSteps[stage.counter] < stage.limit;
+        index++
       ) {
+        const actor = solved.actors[index];
+        const originalSupports = measureRenderedSupports(solved, query);
+        let support = originalSupports[index];
+        const frame = stage.frame(actor, support);
         if (
-          support.gap <= SURFACE_CONTACT_TOLERANCE &&
-          support.penetration === 0
+          !frame ||
+          (support.gap <= SURFACE_CONTACT_TOLERANCE &&
+            support.penetration === 0)
         )
-          break;
-        const original = clonePose(actor),
-          trials = seatedSupportPoses(actor, support, frame);
-        let accepted = false;
-        while (steps < maxSteps && seatingSteps < maxSeatingSteps) {
-          const trial = trials.next();
-          if (trial.done) break;
-          steps++;
-          seatingSteps++;
-          if (trial.value) {
-            actor.pose = trial.value;
-            refresh(actor);
-            const reports = measureRenderedSupports(solved, query),
-              next = reports[index],
-              candidate = solved.contacts.map(query);
-            const supportsSafe = reports.every(
-              (value, k) =>
-                originalSupports[k].basis !== "rendered" ||
-                (value.basis === "rendered" &&
-                  value.gap <=
-                    Math.max(
-                      originalSupports[k].gap,
-                      SURFACE_CONTACT_TOLERANCE,
-                    ) +
-                      1e-7 &&
-                  value.penetration <= originalSupports[k].penetration + 1e-7),
-            );
-            const contactsSafe = candidate.every(
-              (value, k) =>
-                solved.contacts[k].strength <= 0 ||
-                (value &&
-                  !value.intersects &&
-                  measurements[k] &&
-                  value.distance <=
-                    Math.max(
-                      measurements[k].distance,
-                      SURFACE_CONTACT_TOLERANCE,
-                    ) +
-                      1e-7),
-            );
-            const lowest = query.lowest(index);
-            if (
-              lowest != null &&
-              lowest >= solved.surface.ground - 1e-7 &&
-              seatedFramePreserved(actor, frame) &&
-              supportsSafe &&
-              contactsSafe &&
-              next.basis === "rendered" &&
-              next.gap < support.gap - 1e-7 &&
-              next.supports.find((s) => s.landmark === "buttocks").measurement
-                ?.withinFootprint &&
-              measureFigureSurfaces(solved, query).every(
-                (pair) => pair.intersects === false,
-              ) &&
-              measurePropSurfaces(solved, query).every(
-                (pair) => pair.intersects === false,
-              )
-            ) {
-              const safety = measureSurfaceSafety(solved, query, {
-                wholeFigures: true,
-                wholeProps: true,
-              });
-              const balanced = safety.balance.every(
+          continue;
+        const baseline = measureSurfaceSafety(solved, query, {
+          wholeFigures: true,
+          wholeProps: true,
+        });
+        const violations = new Map(
+          baseline.violations.map((v) => [v.key, v.depth]),
+        );
+        let changed = false;
+        for (
+          let pass = 0;
+          pass < 3 &&
+          steps < maxSteps &&
+          supportSteps[stage.counter] < stage.limit;
+          pass++
+        ) {
+          if (
+            support.gap <= SURFACE_CONTACT_TOLERANCE &&
+            support.penetration === 0
+          )
+            break;
+          const original = clonePose(actor),
+            trials = stage.poses(actor, support, frame);
+          let accepted = false;
+          while (
+            steps < maxSteps &&
+            supportSteps[stage.counter] < stage.limit
+          ) {
+            const trial = trials.next();
+            if (trial.done) break;
+            steps++;
+            supportSteps[stage.counter]++;
+            if (trial.value) {
+              actor.pose = trial.value;
+              refresh(actor);
+              const reports = measureRenderedSupports(solved, query),
+                next = reports[index],
+                candidate = solved.contacts.map(query);
+              const supportsSafe = reports.every(
                 (value, k) =>
-                  (!baseline.balance[k].supported || value.supported) &&
-                  (value.offset ?? Infinity) <=
-                    (baseline.balance[k].offset ?? Infinity) + 1e-6,
+                  originalSupports[k].basis !== "rendered" ||
+                  (value.basis === "rendered" &&
+                    value.gap <=
+                      Math.max(
+                        originalSupports[k].gap,
+                        SURFACE_CONTACT_TOLERANCE,
+                      ) +
+                        1e-7 &&
+                    value.penetration <=
+                      originalSupports[k].penetration + 1e-7),
               );
+              const contactsSafe = candidate.every(
+                (value, k) =>
+                  solved.contacts[k].strength <= 0 ||
+                  (value &&
+                    !value.intersects &&
+                    measurements[k] &&
+                    value.distance <=
+                      Math.max(
+                        measurements[k].distance,
+                        SURFACE_CONTACT_TOLERANCE,
+                      ) +
+                        1e-7),
+              );
+              const lowest = query.lowest(index);
               if (
-                balanced &&
-                [
-                  "maxDepth",
-                  "maxSelfDepth",
-                  "maxBodyDepth",
-                  "propPenetration",
-                  "totalDepth",
-                ].every((key) => safety[key] <= baseline[key] + 1e-8) &&
-                safety.violations.every(
-                  (value) =>
-                    value.depth <= (violations.get(value.key) ?? 0) + 1e-8,
+                lowest != null &&
+                lowest >= solved.surface.ground - 1e-7 &&
+                stage.preserved(actor, frame) &&
+                supportsSafe &&
+                contactsSafe &&
+                next.basis === "rendered" &&
+                next.gap < support.gap - 1e-7 &&
+                stage.footprint(next) &&
+                measureFigureSurfaces(solved, query).every(
+                  (pair) => pair.intersects === false,
+                ) &&
+                measurePropSurfaces(solved, query).every(
+                  (pair) => pair.intersects === false,
                 )
               ) {
-                accepted = true;
-                changed = true;
-                support = next;
-                measurements = candidate;
+                const safety = measureSurfaceSafety(solved, query, {
+                  wholeFigures: true,
+                  wholeProps: true,
+                });
+                const balanced = safety.balance.every((value, k) => {
+                  const before =
+                    baseline.renderedBalance?.[k] ?? baseline.balance[k];
+                  const after = safety.renderedBalance?.[k] ?? value;
+                  return (
+                    !(
+                      baseline.renderedBalance?.[k] &&
+                      !safety.renderedBalance?.[k]
+                    ) &&
+                    (!before.supported || after.supported) &&
+                    (after.offset ?? Infinity) <=
+                      (before.offset ?? Infinity) + 1e-6
+                  );
+                });
+                if (
+                  balanced &&
+                  [
+                    "maxDepth",
+                    "maxSelfDepth",
+                    "maxBodyDepth",
+                    "propPenetration",
+                    "totalDepth",
+                  ].every((key) => safety[key] <= baseline[key] + 1e-8) &&
+                  safety.violations.every(
+                    (value) =>
+                      value.depth <= (violations.get(value.key) ?? 0) + 1e-8,
+                  )
+                ) {
+                  accepted = true;
+                  changed = true;
+                  support = next;
+                  measurements = candidate;
+                  candidate.forEach((value, k) => {
+                    if (
+                      value &&
+                      !value.intersects &&
+                      value.distance <= SURFACE_CONTACT_TOLERANCE
+                    )
+                      reasons.delete(k);
+                  });
+                }
               }
             }
+            if (!accepted) {
+              actor.pose = clonePose({ pose: original });
+              refresh(actor);
+            }
+            yield { steps, ...supportSteps };
+            if (accepted) break;
           }
-          if (!accepted) {
-            actor.pose = clonePose({ pose: original });
-            refresh(actor);
-          }
-          yield { steps, seatingSteps };
-          if (accepted) break;
+          trials.return();
+          if (!accepted) break;
         }
-        trials.return();
-        if (!accepted) break;
+        if (changed)
+          adjustments.push(`${actor.label ?? actor.id}: ${stage.message}`);
       }
-      if (changed)
-        adjustments.push(
-          `${actor.label ?? actor.id}: adjusted seated support against the rendered seat and floor while preserving foot placement.`,
-        );
     }
     // Always query the final state again: another contact may move the same arm.
     measurements = solved.contacts.map(query);
@@ -1144,6 +1260,19 @@ export function* surfaceContactSteps(
       yield { steps };
     }
     const warnings = [...(solved.quality.placementWarnings ?? [])];
+    const floorSurfaces = measureFloorSurfaces(solved, query);
+    for (const item of floorSurfaces) {
+      const label =
+        solved.actors[item.actor].label ?? solved.actors[item.actor].id;
+      if (item.penetration == null)
+        warnings.push(
+          `${label}: the complete rendered floor clearance check is unavailable.`,
+        );
+      else if (item.penetration > 0.02)
+        warnings.push(
+          `${label}: the rendered figure extends ${Math.round(item.penetration * 1000)} mm below the floor.`,
+        );
+    }
     const propSurfaces = [];
     for (const pair of propChecks(solved, query)) {
       propSurfaces.push(pair);
@@ -1212,6 +1341,7 @@ export function* surfaceContactSteps(
         contactDetail: detail,
         figureSurfaces,
         propSurfaces,
+        floorSurfaces,
         supportSurfaces,
         adjustments,
         warnings,
@@ -1226,7 +1356,7 @@ export function* surfaceContactSteps(
         surfaceRefinement: {
           steps,
           bodySteps,
-          seatingSteps,
+          ...supportSteps,
           before,
           after: measurements.map((value) => value?.distance ?? null),
         },

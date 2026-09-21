@@ -33,6 +33,12 @@ An information note explains an accepted adjustment. Fixed placement or leg
 channels remain authoritative, and conflicting contacts or furniture block an
 unsafe correction. Capturing the result makes it portable as normal scene data.
 
+Knee/shin-supported figures also have a bounded rendered-support correction.
+The low and paired kneeling references use it to meet the surface while keeping
+contacted hands in place. Fixed placement, fixed required joint channels, missing
+geometry or conflicting contacts can prevent correction; those results remain
+measured and reported rather than silently replacing the requested pose.
+
 Once loaded, a fixed layout remains editable and is not silently reapplied.
 The Composition hint points to **Figures → Placement** to release fixed roots;
 **Joints → Keep edited angles** controls joint locking separately. Changing a

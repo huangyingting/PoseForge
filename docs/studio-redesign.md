@@ -446,6 +446,37 @@ Keep work bounded/yielding and restore poses and reports on cancellation.
 Some shorter figures start just beyond the chair edge. Permit a measured
 horizontal seat correction toward the finite top, with a 25 mm inward margin,
 only within a cumulative 180 mm horizontal and 160 mm vertical root bound.
-Feet retain their original horizontal positions and orientations, with at most
-60 mm of vertical sole correction. Off-edge distances must not be mistaken for
-vertical gaps; use the measured source/target points for that correction.
+Feet retain their original horizontal positions and orientations. Their starting
+sole distance must be within 60 mm; targets add 2 mm of clearance. Off-edge
+distances must not be mistaken for vertical gaps; use the measured source/target
+points for that correction.
+
+### Remaining reference grounding
+
+Measure the reclining and kneeling reference support regions before choosing a
+correction. For kneeling, consider bounded root/leg adjustments from both knee
+or shin measurements, retaining foot frames and any already-close hand contact.
+For a floor recline, the buttocks and supporting forearms must all meet the floor;
+one low foot cannot certify the torso. Keep the visible floor, complete furniture,
+self/partner clearance, fixed-channel and cancellation gates. Do not change a
+pose's declared supports or thresholds just to remove its warning.
+
+The sofa case additionally needs to clear the backrest and honor its declared
+surface planes. A successful single-reference correction must not move another
+figure away from a requested contact. Keep measurements available for every
+rejected or out-of-budget case and verify actual clothed renders.
+
+Retain the coarse balance result, but use a separately labeled rendered-contact
+bounds estimate when complete support regions are available. A taller kneeling
+trial exposed why: after actual knees reached the floor, the coarse capsules
+fell outside their 30 mm contact band and incorrectly lost the support. Use the
+same skeletal centre-of-mass estimate with measured regional contact bounds,
+including nearby feet, without increasing a collision or support tolerance.
+The estimate is still not a force or stability simulation.
+
+A rejected floor-recline trial also showed why the final audit must inspect
+whole-figure floor clearance: its named forearm supports were above the floor
+while an unclaimed hand crossed below it. Report full-mesh minimum height and
+unknown geometry independently of the support set, using the existing 20 mm
+support-quality tolerance for the studio floor. Candidates still require the
+stricter nonpenetrating whole-figure floor guard before they can be accepted.
