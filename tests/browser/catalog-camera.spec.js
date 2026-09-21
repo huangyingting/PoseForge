@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { createHash } from "node:crypto";
 import AxeBuilder from "@axe-core/playwright";
-import { NAMED_PRESETS } from "../../src/core/catalog.js";
+import { NAMED_PRESETS, serializeCatalog } from "../../src/core/catalog.js";
 
 const ready = async (page) => {
   await expect(page.locator("#status")).toContainText("Ready");
@@ -96,12 +96,38 @@ test("every existing named definition loads and renders; known quality notes are
         path: info.outputPath("standing-clearance.png"),
       });
     }
+    if (preset.id === "builtin.named.chair_straddle") {
+      await expect(page.locator(".contact-result.warning")).toHaveCount(0);
+      await expect(page.locator(".contact-result")).toHaveCount(3);
+      await expect(page.locator(".notes .warning, .notes .error")).toHaveCount(
+        0,
+      );
+    }
   }
   await page.getByLabel("Search presets").fill("拥抱");
   await expect(page.locator(".preset-card")).toHaveCount(1);
   await page.getByLabel("Search presets").fill("");
+  // Keep warning navigation covered even after all bundled layouts are fixed.
+  const warning = structuredClone(
+    NAMED_PRESETS.find((p) => p.id === "builtin.named.chair_straddle"),
+  );
+  warning.id = "test.unreachable-contact";
+  warning.title = "Unreachable contact study";
+  for (const actor of warning.scene.actors) {
+    delete actor.placement.mode;
+    actor.jointMode = "fixed";
+  }
+  warning.scene.actors[1].placement.position[0] += 2.5;
+  await page.locator("#catalog-file").setInputFiles({
+    name: "unreachable-contact.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(serializeCatalog([warning])),
+  });
   await page
-    .getByRole("button", { name: "Load Chair straddle", exact: true })
+    .getByRole("button", {
+      name: "Load Unreachable contact study",
+      exact: true,
+    })
     .click();
   await ready(page);
   await expect(page.locator("#show-notes")).toBeVisible();

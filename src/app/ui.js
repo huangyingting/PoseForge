@@ -34,7 +34,7 @@ import { FOOT_SHAPE_NAMES } from "../core/footPose.js";
 import { newId } from "./ids.js";
 import { createContactEditor } from "./contactEditor.js";
 import { createPlacementEditor } from "./placementEditor.js";
-import { captureSolvedPose } from "../core/placement.js";
+import { captureSolvedPose, isFixedPlacement } from "../core/placement.js";
 
 const EXAMPLES = [
   "a woman standing on the floor wearing clothes",
@@ -905,13 +905,23 @@ export function buildPanel(root, handlers) {
       arrangement.select.value = scene.relationship?.arrangement ?? "";
       arrangement.select.disabled = scene.actors.length < 2;
       facing.select.disabled = scene.actors.length < 2;
-      const fixedPlacements = scene.actors.filter(
-        (actor) => actor.placement,
+      const fixedPlacements = scene.actors.filter((actor) =>
+        isFixedPlacement(actor.placement),
       ).length;
-      placementHint.hidden = fixedPlacements === 0;
-      placementHint.textContent = fixedPlacements
-        ? `${fixedPlacements} ${fixedPlacements === 1 ? "figure keeps" : "figures keep"} fixed placement. Change Placement in Figures to allow arrangement and facing adjustments.`
-        : "";
+      const guidedPlacements = scene.actors.filter(
+        (actor) => actor.placement?.mode === "guided",
+      ).length;
+      placementHint.hidden = fixedPlacements + guidedPlacements === 0;
+      placementHint.textContent = [
+        fixedPlacements
+          ? `${fixedPlacements} ${fixedPlacements === 1 ? "figure keeps" : "figures keep"} fixed placement. Change Placement in Figures to allow arrangement and facing adjustments.`
+          : "",
+        guidedPlacements
+          ? `${guidedPlacements} ${guidedPlacements === 1 ? "figure uses" : "figures use"} guided starting placement. The solver may adjust it; reset Placement to use arrangement and facing initialization.`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
       surface.select.value = scene.support?.surface ?? "floor";
       const yaw = scene.relationship?.yaw;
       facing.select.value =
@@ -945,7 +955,9 @@ export function buildPanel(root, handlers) {
         control.joints.load();
         control.placement.setSolved(null, false);
         control.placementSummary.textContent = actor.placement
-          ? "Placement (fixed)"
+          ? isFixedPlacement(actor.placement)
+            ? "Placement (fixed)"
+            : "Placement (guided)"
           : "Placement";
         const set = Object.keys(actor.joints ?? {}).length;
         control.summary.textContent = set ? `Joints (${set} set)` : "Joints";

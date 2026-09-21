@@ -25,6 +25,20 @@ posing instead; the interpretation trace explains when the stock layout was
 skipped. That fallback is not a guarantee that every variation is physically
 resolved.
 
+**Chair straddle** uses a calibrated clothed starting pose for chair and bench,
+with a side camera view and all three original pelvis/hand contacts retained.
+The two surfaces have independently fitted actor poses: seat heights differ
+while the supporting feet stay on the floor. Built-in recipes can declare
+`surfaceVariants` with their own actors and reference height; saved/exported
+presets still contain only the selected ordinary scene.
+
+This entry uses guided placement and joint hints. Its coarse solve remains valid,
+and the authored pose is used for the drawn models only after complete geometry
+checks pass. Capture the completed layout to keep it fixed. Explicit body,
+posture, limb, facing, contact and clothing changes bypass stock calibration;
+unsupported surfaces stay automatic. Missing meshes remain labeled as estimates,
+not certified clearance.
+
 The single seated references now use render-aware grounding: the visible seat
 region and soles are brought toward their supporting surfaces while the feet's
 horizontal placement and orientation are retained. This also applies to matching

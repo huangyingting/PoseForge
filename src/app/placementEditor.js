@@ -2,6 +2,7 @@ import {
   captureSolvedPose,
   placementFromRoot,
   PLACEMENT_POSITION_LIMIT,
+  isFixedPlacement,
 } from "../core/placement.js";
 import { newId } from "./ids.js";
 
@@ -24,10 +25,22 @@ export function createPlacementEditor(getActor, changed) {
     textContent: "Capture solved pose",
     disabled: true,
   });
+  const guide = el("button", {
+    type: "button",
+    className: "action small",
+    textContent: "Use solved pose as guide",
+    disabled: true,
+  });
+  const reset = el("button", {
+    type: "button",
+    className: "action small",
+    textContent: "Reset placement",
+    disabled: true,
+  });
   const hint = el("p", {
     className: "hint",
     textContent:
-      "World position and XYZ rotation. Fixed placement overrides arrangement position and facing; joints may still adjust. Capture solved pose also fixes all joint angles. Reset joints separately to release them. Contacts and support are still checked. Use Fit view if needed.",
+      "World position and XYZ rotation. Authored placement sets the initial position and facing. Fixed placement stays there; guided placement may adjust. Capture fixes all joint angles too; a solved-pose guide leaves them guided. Reset placement to use the arrangement again, and reset joints separately. Contacts and support are still checked. Use Fit view if needed.",
   });
   const feedback = el("p", { className: "hint" });
   feedback.setAttribute("role", "alert");
@@ -75,9 +88,11 @@ export function createPlacementEditor(getActor, changed) {
     }
   function load() {
     const placement = getActor()?.placement;
-    fixed.checked = Boolean(placement);
+    fixed.checked = isFixedPlacement(placement);
     fixed.disabled = !placement && !solvedPlacement;
     capture.disabled = !captured;
+    guide.disabled = !captured;
+    reset.disabled = !placement;
     for (const { key, axis, input } of fields) {
       input.disabled = !placement;
       if (document.activeElement !== input) {
@@ -128,6 +143,23 @@ export function createPlacementEditor(getActor, changed) {
     feedbackKind = null;
     changed();
   });
+  guide.addEventListener("click", () => {
+    if (!captured || !getActor()) return;
+    const pose = structuredClone(captured);
+    pose.placement.mode = "guided";
+    pose.jointMode = "guided";
+    Object.assign(getActor(), pose);
+    feedback.textContent = "";
+    feedbackKind = null;
+    changed();
+  });
+  reset.addEventListener("click", () => {
+    if (!getActor()?.placement) return;
+    delete getActor().placement;
+    feedback.textContent = "";
+    feedbackKind = null;
+    changed();
+  });
   const body = el("div", {}, [
     el("label", { className: "toggle" }, [
       fixed,
@@ -136,7 +168,7 @@ export function createPlacementEditor(getActor, changed) {
     hint,
     ...fields.map(({ field }) => field),
     output,
-    el("div", { className: "buttons" }, [capture]),
+    el("div", { className: "buttons" }, [capture, guide, reset]),
     feedback,
   ]);
   return {

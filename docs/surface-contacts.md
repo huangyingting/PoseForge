@@ -33,9 +33,22 @@ named contact regions do not. In the seated-pair diagnostic, a broad whole-group
 query found 15 mm between a thigh-edge triangle with only 3–4% pelvis influence
 and the other thigh. That is not a pelvic support contact. Correcting only the
 lap target's ownership changes the actual regional measurement from 200 mm to
-about 108 mm, still a failing target, without moving either figure.
+about 108 mm, still a failing target in that automatic pose, without moving either
+figure. The later calibrated chair/bench composition retains this same regional
+definition and brings its actual support contact within 4 mm.
 
 ## Refinement contract
+
+An explicitly guided starting placement may propose its root and authored joint
+hints before iterative refinement. This is one candidate in the shared work
+budget, not a preset-ID shortcut. It must satisfy every positive rendered contact
+within 4 mm, every declared surface support within 4 mm without penetration,
+complete figure/prop/floor clearance, existing self-collision checks and rendered
+support balance. All relevant geometry must be available. Fixed actors and zero
+mobility are retained, rejected trials restore the coarse result, and cancellation
+restores an accepted tentative trial too. `maxGuidedPoseSteps: 0` disables this
+proposal; `surfaceRefinement.guidedPoseSteps` records its work. The existing
+fixed-layout semantics and subsequent bounded refinements are unchanged.
 
 The pass starts from the base solver's pose. It tries bounded IK adjustments,
 small free-wrist turns, and limited horizontal steps for mobile standing or

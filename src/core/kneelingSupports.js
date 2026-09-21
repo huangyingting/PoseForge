@@ -1,5 +1,6 @@
 /** Small knee/shin support corrections with feet and contacted hands retained. */
 import { refresh, chainForBone } from "./solver.js";
+import { isFixedPlacement } from "./placement.js";
 import { LIMB_CHAINS } from "./ik.js";
 import { resolveLandmark } from "./landmarks.js";
 import { quatRotate } from "./math.js";
@@ -16,7 +17,7 @@ const legs = [LIMB_CHAINS.legL, LIMB_CHAINS.legR];
 export function kneelingSupportFrame(actor, surface, report, query, contacts) {
   if (
     actor.mobility <= 0 ||
-    actor.spec?.placement ||
+    isFixedPlacement(actor.spec?.placement) ||
     actor.carried ||
     actor.mountedOn != null ||
     report?.basis !== "rendered" ||

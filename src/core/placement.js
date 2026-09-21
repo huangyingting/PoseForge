@@ -1,18 +1,28 @@
-/** Portable, explicit world placement; omitted placement keeps automatic layout. */
+/** Portable world placement: fixed by default, or an explicit guided start. */
 import { clamp, quatFromEulerXYZ, quatNormalize } from "./math.js";
 import { CHANNELS, POSEABLE_BONES } from "./skeleton.js";
 
 export const PLACEMENT_POSITION_LIMIT = 10;
 const DEG = Math.PI / 180;
 
+export function isFixedPlacement(value) {
+  return Boolean(value && value.mode !== "guided");
+}
+
 export function checkPlacement(value) {
   if (
     !value ||
     typeof value !== "object" ||
     Array.isArray(value) ||
-    Object.keys(value).some((key) => !["position", "rotation"].includes(key))
+    Object.keys(value).some(
+      (key) => !["position", "rotation", "mode"].includes(key),
+    )
   )
-    throw new TypeError("Placement needs only position and rotation vectors.");
+    throw new TypeError(
+      "Placement needs position/rotation vectors and an optional mode.",
+    );
+  if (value.mode !== undefined && !["fixed", "guided"].includes(value.mode))
+    throw new TypeError("Placement mode must be fixed or guided.");
   const result = {};
   for (const [key, limit] of [
     ["position", PLACEMENT_POSITION_LIMIT],
@@ -35,6 +45,7 @@ export function checkPlacement(value) {
       Object.is(number, -0) ? 0 : number,
     );
   }
+  if (value.mode !== undefined) result.mode = value.mode;
   return result;
 }
 

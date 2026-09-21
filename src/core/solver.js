@@ -62,7 +62,7 @@ import {
 } from "./poseLibrary.js";
 import { Skeleton, evaluatePose } from "./skeleton.js";
 import { handShapes } from "./handPose.js";
-import { rootFromPlacement } from "./placement.js";
+import { rootFromPlacement, isFixedPlacement } from "./placement.js";
 
 /** Dempster segment mass fractions, used for the centre of mass. */
 const SEGMENT_MASS = {
@@ -158,8 +158,8 @@ export function createActor(spec, index) {
     loadBearing: loadBearingBones(skeleton, posture),
     // How freely the solver may move this actor. The partner whose posture is
     // load-bearing stays put; the one on top does the accommodating.
-    mobility: spec.placement ? 0 : spec.mobility ?? (posture.supports.length >= 2 ? 0.45 : 1),
-    placementFixed: Boolean(spec.placement),
+    mobility: isFixedPlacement(spec.placement) ? 0 : spec.mobility ?? (posture.supports.length >= 2 ? 0.45 : 1),
+    placementFixed: isFixedPlacement(spec.placement),
     placementMobility: spec.mobility ?? (posture.supports.length >= 2 ? 0.45 : 1),
     spec,
   };
@@ -167,7 +167,7 @@ export function createActor(spec, index) {
 
 /** Refresh an actor's evaluated pose and world-space volumes. */
 export function refresh(actor) {
-  if (actor.spec?.placement) {
+  if (isFixedPlacement(actor.spec?.placement)) {
     if (!actor.placementFixed) actor.placementMobility = actor.mobility;
     actor.pose.root = rootFromPlacement(actor.spec.placement);
     actor.placementFixed = true;

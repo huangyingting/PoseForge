@@ -35,6 +35,7 @@
  */
 
 import { SIDE_FACING_LAYOUT, SPOONING_LAYOUT } from "./presetLayouts.js";
+import { CHAIR_LAP_LAYOUT } from "./chairLapLayout.js";
 
 /** @type {Archetype[]} */
 export const ARCHETYPES = [
@@ -125,6 +126,7 @@ export const ARCHETYPES = [
     phrases: ["on his lap in a chair", "lap dance", "straddling a chair", "椅上跨坐"],
     label: "one partner seated on a chair, the other straddling their lap",
     surface: "chair",
+    layout: CHAIR_LAP_LAYOUT,
     arrangement: "straddle_lap",
     actors: [
       { posture: "seated", bodyType: "male" },

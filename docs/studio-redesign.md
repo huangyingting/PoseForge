@@ -550,3 +550,46 @@ force. Foot frames and the original translation/pitch budgets are unchanged.
 Deduplicate effective candidates after retaining/clamping pitch and forward
 offsets. Otherwise several different input tuples become the same pose after
 an accepted adjustment, wasting the limited budget on repeated failures.
+
+## Remaining paired seated support
+
+The current chair-supported pair has two distinct gaps: the supporting figure
+is about 107 mm above the drawn chair seat, and the partner's pelvis is about
+108 mm from the drawn lap region. Both hand-to-shoulder contacts are already
+within about 2 mm, but complete figure surfaces still cross. Earlier wider-leg
+trials approached the lap while leaving thigh crossings and the chair gap.
+
+Establish a visibly grounded supporting pose, then measure the partner's root,
+pelvic orientation and leg clearance against it. Explore coordinated placement
+and limb adjustments while keeping the original body types, posture roles,
+facing, chair surface and all three contacts. Do not expand anatomical regions,
+change declared support assignments, relax tolerances or certify local contact
+while another part of either figure crosses. Use the public root/joint format
+for reproducible trials. A candidate must pass complete figure/furniture/floor,
+self-collision, support and contact checks before integration, and any automated
+correction must honor fixed settings, work bounds and cancellation.
+
+The successful diagnostic uses an authored stock composition in the public
+root/joint format, with the original contact contract intact. Integrate it via
+the existing calibrated-layout applicability rules, not by overwriting explicit
+body, posture, facing, contact or joint requests. The dressed geometry clears
+the chair even though the coarse body proxy reports estimated overlap; keep
+that discrepancy available and require missing geometry to remain uncertified.
+
+Chair and bench have different seat heights but the same foot-floor plane, so
+a uniform whole-scene height translation cannot validate both. If a bench
+variant is supplied, store its independently verified actor poses and reference
+height as a per-surface layout variant. Continue using the existing simple
+translation path for layouts whose supported planes move together.
+
+The fully fixed fitted pair does not meet the earlier coarse-fallback gate;
+do not publish it as a universally valid fixed default. Add an optional guided
+placement mode: omitted mode remains fixed for backward compatibility, while a
+guided placement seeds the solve without pinning the root. Joint hints remain
+guided too. The coarse solver can adjust its approximation, and a single
+whole-layout rendered proposal may restore the authored hints only after full
+contact/support/figure/furniture/floor/self and rendered-balance validation.
+Missing geometry, fixed settings, zero mobility, budgets and cancellation must
+not be bypassed. Both the coarse default and rendered result must pass before
+the new calibrated entry is delivered. Expose guided starting placement clearly
+in the editor, with capture-to-fixed and reset actions.

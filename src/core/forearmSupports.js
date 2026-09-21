@@ -1,5 +1,6 @@
 /** Bounded pelvis/arm grounding for bilateral forearm-supported reclines. */
 import { refresh, chainForBone } from "./solver.js";
+import { isFixedPlacement } from "./placement.js";
 import { LIMB_CHAINS } from "./ik.js";
 import { resolveLandmark } from "./landmarks.js";
 import { quatRotate } from "./math.js";
@@ -13,7 +14,7 @@ export const FOREARM_WRIST_LIMIT = 0.06;
 export function forearmSupportFrame(actor, report, contacts) {
   if (
     actor.mobility <= 0 ||
-    actor.spec?.placement ||
+    isFixedPlacement(actor.spec?.placement) ||
     actor.carried ||
     actor.mountedOn != null ||
     report?.basis !== "rendered" ||

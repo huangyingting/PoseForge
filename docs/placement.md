@@ -1,8 +1,8 @@
-# Fixed placement and pose capture
+# Placement, guided starting poses and capture
 
 Automatic placement remains the default. Existing scenes do not need new fields.
-The optional controls in **Figures → Placement** are for deliberate layouts that
-must not move when the solver runs again.
+The optional controls in **Figures → Placement** can fix a layout or supply a
+starting pose that the solver may adjust.
 
 Calibrated catalog entries may start with fixed placement and joint channels.
 The Composition hint shows when roots are fixed and where to release them.
@@ -17,6 +17,10 @@ reapply that recipe or certify the changed geometry.
 - **Capture current layout**, above the figure cards, captures every figure in
   one operation. Use it to keep a complete calibrated scene without another
   figure moving between separate captures.
+- **Use solved pose as guide** records the completed root and joint angles as
+  guided preferences. It does not pin the figure or fix those joint channels.
+- **Reset placement** removes either fixed or guided root data. Joint overrides
+  remain separate.
 
 Capture controls are unavailable while a solve is pending. The solved-placement
 readout clears while pending so an old transform cannot be mistaken for the new
@@ -53,10 +57,28 @@ posture. Unknown placement keys, missing components and invalid numbers are
 rejected by catalog import. Use a current build when sharing fixed layouts;
 older builds may not honor the new optional placement field.
 
+For a guided starting transform, add `"mode": "guided"` inside `placement`.
+Omitted mode remains fixed; `"mode": "fixed"` is also accepted. Use a current
+build to import the guided extension. Position/rotation ranges and precision are
+the same in both modes.
+
+Guided placement sets the initial position and facing, ahead of arrangement
+initialization, but remains movable during solving. Its number fields show the
+requested start; **Solved placement** shows the completed result, which can
+differ. Reset placement to use arrangement/facing initialization again. Fixed
+placement still holds the authored root, and fixed joint channels remain fixed.
+
+When rendered geometry is available, a guided root plus its authored joint hints
+can be tried as one whole-layout candidate. It is adopted only when every declared
+contact and support, complete figure/furniture/floor check, self-collision check
+and rendered support-balance estimate passes. Invalid or unavailable checks keep
+the automatically solved pose. Zero mobility is not overridden. Capture turns
+an accepted guide into ordinary fixed root/joint data for exact replay.
+
 ## Returning to automatic behavior
 
-Uncheck **Keep placement** to let the arrangement and solver position the figure
-again. This does not remove joint overrides. Use **Keep edited angles** or
+Uncheck **Keep placement**, or use **Reset placement**, to let the arrangement and
+solver position the figure again. This does not remove joint overrides. Use **Keep edited angles** or
 **Reset all** in Joints to release or remove those separately. Hand-shape choices
 are independent and can be returned to “from the pose.”
 

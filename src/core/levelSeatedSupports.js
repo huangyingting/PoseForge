@@ -1,5 +1,6 @@
 /** Seat/foot corrections when all three supports share one surface plane. */
 import { refresh } from "./solver.js";
+import { isFixedPlacement } from "./placement.js";
 import { LIMB_CHAINS } from "./ik.js";
 import {
   DEG,
@@ -32,7 +33,7 @@ export const LEVEL_SEATED_ARM_LIMIT = 60;
 export function levelSeatedSupportFrame(actor, report) {
   if (
     actor.mobility <= 0 ||
-    actor.spec?.placement ||
+    isFixedPlacement(actor.spec?.placement) ||
     actor.carried ||
     actor.mountedOn != null ||
     report?.basis !== "rendered" ||

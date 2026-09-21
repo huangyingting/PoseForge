@@ -542,10 +542,13 @@ export function applyPresetLayout(scene, definition) {
   const surface = resolveSurface(scene.support?.surface);
   if (!layout.surfaces.includes(surface.id))
     return skip("that support surface has no stock calibration");
-  if (scene.actors.length !== layout.actors.length)
+  // Raised seats can change height while their feet remain on the floor.
+  // Such surfaces need their own authored poses, not a uniform translation.
+  const calibrated = layout.surfaceVariants?.[surface.id] ?? layout;
+  if (scene.actors.length !== calibrated.actors.length)
     return skip("the figure count was changed");
   for (const [index, actor] of scene.actors.entries()) {
-    const reference = layout.actors[index];
+    const reference = calibrated.actors[index];
     if (
       actor.bodyType !== reference.bodyType ||
       actor.posture !== reference.posture ||
@@ -573,13 +576,14 @@ export function applyPresetLayout(scene, definition) {
   }
   const result = structuredClone(scene);
   result.actors = result.actors.map((actor, index) => {
-    const reference = structuredClone(layout.actors[index]);
-    reference.placement.position[1] += surface.height - layout.referenceHeight;
+    const reference = structuredClone(calibrated.actors[index]);
+    reference.placement.position[1] +=
+      surface.height - calibrated.referenceHeight;
     const appearance = {};
     for (const key of ["id", "label", "skinTone", "outfit", "wearing"])
       if (actor[key] != null) appearance[key] = actor[key];
     return { ...actor, ...reference, ...appearance };
   });
-  result.camera ??= structuredClone(layout.camera);
+  result.camera ??= structuredClone(calibrated.camera ?? layout.camera);
   return { scene: result, applied: true };
 }

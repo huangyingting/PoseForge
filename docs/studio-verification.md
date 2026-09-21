@@ -21,9 +21,10 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 | Full scene fidelity | JSON round trips preserve figure properties, joint overrides, hand shapes, contacts and named camera view. Browser reload tests preserve edited height and joints, and the latest unsaved workspace. |
 | Precise joint authoring | Optional fixed mode retains specified channels through seating, contact/collision solving, surface refinement and cancellation, while unedited channels remain free. The editor shows actual solved values and clears stale values while pending. The browser flow verifies fixed values, history, saved reload, JSON export and narrow-screen accessibility. Guided mode remains the default. |
 | Reproducible placement | Optional fixed world placement, per-figure solved-pose capture and atomic whole-layout capture are implemented. Position and XYZ rotation survive solving and serialization while unedited joints can remain guided. Captured recumbent figures retain their support side. Fully fixed hand constraints skip futile trials without hiding unmet contacts. Capturing and reloading the refined standing scene preserves joint positions within 1e-7 m and retains its clear rendered audit. |
+| Guided starting poses | Optional `placement.mode: "guided"` seeds roots without pinning them; omitted mode retains fixed legacy behavior. A one-candidate rendered proposal must pass all declared contacts/supports, whole-figure/furniture/floor clearance, self checks and rendered balance. Fixed companions, zero mobility, invalid hints, missing geometry, budgets, cancellation and capture-to-fixed are tested. Browser controls preserve the requested guide separately from the solved transform through fixed-mode switching, history, save/reload/export and reset, including a 320 px Axe check. |
 | Safe persistence and imports | Unit tests cover invalid versions, malformed JSON, unsafe keys, unknown scene choices, invalid landmark sides, duplicate IDs, quota errors and corrupt storage. A failed import does not partially add a pack. Re-importing creates fresh IDs. Browser recovery and invalid-import flows pass. |
-| Preset geometry | All 23 entries validate structurally and render. The complete rendered catalog audit is now 14/23 clear and 9 flagged. All eleven clothed reference studies pass the rendered audit, including the sofa's seat/foot and complete backrest checks. Nine named layouts still require work; the named subset remains 3/12 clear. |
-| Calibrated stock layouts | Shared recipes supply catalog/text aliases with the same clothed fixed poses. Bed and floor checks retain the lying-facing pair's two body contacts and the cuddle's three torso/hand contacts within 4 mm, no complete-figure crossing, supported balance estimates, support residuals within 20 mm, and lowest rendered surfaces within 4 mm of the support plane. Both recipes pass the base-model gate too. Refinement leaves the authored rigs unchanged. Explicit conflicting body, pose, contact, coverage and surface settings bypass the recipe; portable JSON contains the full pose. |
+| Preset geometry | All 23 entries validate structurally and render. The complete rendered catalog audit is now 15/23 clear and 8 flagged. All eleven clothed reference studies and the calibrated chair-supported pair pass the rendered audit. Eight named layouts still require work; the named subset is now 4/12 clear. The base-model total remains 15/23, with no newly flagged base or rendered entries. |
+| Calibrated stock layouts | Shared recipes supply catalog/text aliases with clothed fixed poses or validated guided hints. The lying-facing and cuddle bed/floor recipes retain their two/three contacts, pass the base-model gate and remain unchanged by refinement. The chair-supported pair has independently fitted chair/bench variants, with all three original contacts within 4 mm, primary seat/foot supports within 4 mm and explicit partner support. Its guided coarse result and rendered result both pass. Conflicting body, pose, contact, coverage and surface settings bypass calibration; portable JSON retains the selected ordinary pose/hints. |
 | Body-supported placement | Adaptive clearance reduces the seated-pair base support target from 523.7 mm to 3.4 mm. Chair cases pass across all four male/female pairings; bench and stature/build variations have measured support-plane regression tests. A 96-case comparison against `969f4f8` has 12 newly clean cases, no newly flagged cases and 78 unchanged results. Dressed contact failures remain separately reported. |
 | Surface-intersection escape | Bidirectional bounded IK trials clear both hand/arm intersections in the seated-support fixture, ending at approximately 2.3 mm and 1.8 mm. The supporting figure, both roots and lower-body joints stay unchanged; individual collision pairs and aggregate residuals cannot worsen. The lap target remains unresolved. |
 | Hand-to-body geometry | Coordinated free-arm reaches clear both standing-embrace hand/arm intersections at approximately 2.2 mm. The complete arms are checked against the entire target figure, including colored auxiliary meshes. The isolated limb stage preserves roots, lower-body joints and the target figure; its remaining body gap is handled separately. Regression tests retain this phase boundary. |
@@ -47,13 +48,37 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 
 ## Commands and results
 
-- `npm test`: **276 passed** (245.8 seconds in the final run), including
+- `npm test`: **292 passed** (255.2 seconds in the final run), including
   calibrated stock-layout
   parity/fallback, bed/floor dressed-mesh checks and CLI camera precedence, plus
   the original parser, geometry and
   architecture tests, catalog/storage tests, contact-authoring tests, clothing
   checks, triangle/surface-refinement checks and per-preset CLI selection,
   quality-dependent exit status and invalid/empty input.
+- The chair-layout/guided-placement iteration adds eight layout/availability
+  regressions and eight guided-placement regressions. Both chair and bench
+  retain the original three contacts within 4 mm, ground the primary seat/feet,
+  and clear complete figures/furniture/floor without changing regions or
+  tolerances. The fixed-pose pilot failed the existing base-model gate and was
+  not delivered as a fixed default. Guided starting poses preserve that gate:
+  the coarse solve can adjust its approximation, and the authored pose is adopted
+  only after complete drawn-geometry validation. Fixed legacy scenes remain fixed.
+- The first final-code full unit run ended with signal termination (exit 143)
+  before its summary and is not counted as a pass. Its process was confirmed
+  terminal before the unchanged-code standalone rerun passed all 292 tests.
+- The production-build selection
+  `tests/browser/chair-lap-layout.spec.js tests/browser/guided-placement.spec.js`
+  passed **3/3 scenarios** (2.7 minutes). It checks chair/bench saving, reload and
+  editable JSON; explicit taller/away/unsupported-surface fallback; guided/fixed
+  behavior, history and reset; and a 320 px accessibility audit. Fresh chair,
+  bench and mobile-guide screenshots were inspected.
+- The unchanged final runtime code subsequently passed the complete
+  production-build browser suite: **34/34 scenarios** (24.7 minutes), exit 0.
+  `test-results/.last-run.json` reports `passed` with no failed tests. This run
+  includes the new chair/bench and guided-placement flows, all library and
+  authoring flows, desktop/mobile/save-dialog accessibility, and corrupt-storage
+  and blocked-WebGL recovery. It does not clear the eight outstanding geometry
+  failures in the separate rendered catalog audit.
 - The shared-plane seating iteration adds ten regressions and checks eighteen
   body/proportion/surface variations. Both sofa body types clear the seat and
   backrest while retaining foot frames. A compensating wrist-frame candidate
@@ -142,10 +167,10 @@ remain unresolved; loading a preset is not proof that its constraints were met.
   authoring/history/save/reload/export, mobile interaction and accessibility
   pass. Fresh screenshots of both calibrated layouts on bed and floor were
   inspected. The production build and all seven contact fixtures pass again.
-- `node scripts/validate-named-presets.mjs --catalog --rendered`: **14/23 clear;
-  9 require review**, with no unavailable support, floor or furniture checks. Its retained base
+- `node scripts/validate-named-presets.mjs --catalog --rendered`: **15/23 clear;
+  8 require review**, with no unavailable support, floor or furniture checks. Its retained base
   results are **15/23 clear**. The named subset is **5/12 base-model clear** and
-  **3/12 rendered clear**. The command exits 1 for the unresolved entries.
+  **4/12 rendered clear**. The command exits 1 for the unresolved entries.
   All eleven reference studies are now rendered-clear. Their original unit gate
   did not check prop overlap or drawn support. The reclined study's base report
   still includes 41 mm of prop overlap; rendered refinement now closes its former
@@ -336,7 +361,7 @@ and the production build are distinct from a hosted deployment.
 
 ## Remaining goal audit
 
-The current complete catalog audit includes nine flagged named layouts. All
+The current complete catalog audit includes eight flagged named layouts. All
 eleven reference studies now pass the rendered support/contact and complete
 figure/furniture/floor checks at their existing quality thresholds.
 
@@ -353,17 +378,20 @@ reported. The older comparisons below retain their original measurement scope.
 Catalog integration, solved-pair diagrams and touch zoom are now implemented and
 verified. Named-preset geometry remains the main unfinished requirement. The
 inherited flags include unreachable contact targets, overlap and support gaps.
-The chair-supported layout no longer starts above the supporting figure's head.
-Its base support target is 3.4 mm away. The two hand/arm intersections initially
-created by bringing the figures together are now cleared by surface refinement,
-but the corrected rendered-region query still reports a 107.5 mm lap gap. Clothed
+The calibrated chair-supported layout now has approximately 2 mm seat/foot
+supports and 2–3 mm partner contacts, with no complete-figure crossing. Its
+independent bench variant also clears the furniture. The earlier automatic
+layout no longer started above the supporting figure's head and had a 3.4 mm
+base support target, but its corrected rendered-region query still measured a
+107.5 mm lap gap after the two hand/arm intersections were cleared. Clothed
 640×640 renders before and after hand refinement were inspected in the placement
 iteration. The later triangle trace found why the broader 15 mm diagnostic was
 misleading: its source was a mid-thigh/shorts-edge triangle admitted by only
 3–4% pelvis skin weight. It was not a pelvic support point. Lap target ownership
 now includes the adjacent thigh bones within the original radius; the source
 pelvis and the regional weight threshold are unchanged. This changes the
-measurement from 200 mm to 107.5 mm, not the pose itself.
+measurement from 200 mm to 107.5 mm, not the pose itself. The later calibration
+changes the actual pose while retaining that same regional definition.
 
 In the placement iteration, only the chair case changed its base joint pose
 among the twelve named entries; the later lap-region correction does not move
@@ -373,8 +401,8 @@ The placement iteration reduced its then-measured lap-region gap from about
 rendered audit expands coverage; it does not imply twelve newly broken presets.
 
 The current named audit reports no base-model flags for spooning, lotus, chair
-straddle, lying-facing and standing embrace. Spooning, lying-facing and standing
-embrace also pass the dressed-mesh and whole-figure audit; the other nine remain
+straddle, lying-facing and standing embrace. Spooning, chair straddle, lying-facing
+and standing embrace also pass the dressed-mesh and whole-figure audit; the other eight remain
 flagged.
 The head-to-toe definition
 still has unmet partner contacts. Its former 489 mm "support gap" was a stale

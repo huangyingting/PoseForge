@@ -31,6 +31,7 @@ import {
 } from "./surfaceSupport.js";
 import { measurePropSurface } from "./surfaceProps.js";
 import { SURFACES } from "./poseLibrary.js";
+import { guidedPoseCandidate } from "./guidedPose.js";
 import {
   seatedSupportFrame,
   seatedFramePreserved,
@@ -598,6 +599,7 @@ export function* surfaceContactSteps(
     maxKneelingSteps = 8,
     maxForearmSteps = 8,
     maxLevelSeatingSteps = 8,
+    maxGuidedPoseSteps = 1,
   } = {},
 ) {
   const originalPoses = solved.actors.map(clonePose);
@@ -610,6 +612,82 @@ export function* surfaceContactSteps(
     const beforeIntersects = measurements.map(
       (value) => value?.intersects ?? false,
     );
+    let steps = 0,
+      guidedPoseSteps = 0;
+    const adjustments = [];
+    if (maxSteps > 0 && maxGuidedPoseSteps > 0) {
+      const poses = guidedPoseCandidate(solved);
+      if (poses) {
+        steps++;
+        guidedPoseSteps++;
+        solved.actors.forEach((actor, i) => {
+          actor.pose = poses[i];
+          refresh(actor);
+        });
+        const candidate = solved.contacts.map(query);
+        const supports = measureRenderedSupports(solved, query);
+        const complete =
+          candidate.every(
+            (value, i) =>
+              solved.contacts[i].strength <= 0 ||
+              (value &&
+                !value.intersects &&
+                Number.isFinite(value.distance) &&
+                value.distance <= SURFACE_CONTACT_TOLERANCE),
+          ) &&
+          supports.every(
+            (support, i) =>
+              solved.actors[i].supportBasis !== "surface" ||
+              (support.basis === "rendered" &&
+                support.unavailable === 0 &&
+                support.penetration === 0 &&
+                support.gap <= SURFACE_CONTACT_TOLERANCE),
+          ) &&
+          measureFloorSurfaces(solved, query).every(
+            (entry) =>
+              entry.minimumY != null &&
+              entry.minimumY >= SURFACES.floor.height - 1e-7,
+          ) &&
+          measureFigureSurfaces(solved, query).every(
+            (pair) => pair.intersects === false,
+          ) &&
+          measurePropSurfaces(solved, query).every(
+            (pair) => pair.intersects === false,
+          );
+        const safety = complete
+          ? measureSurfaceSafety(solved, query, {
+              wholeFigures: true,
+              wholeProps: true,
+            })
+          : null;
+        const safe =
+          safety &&
+          [
+            "maxDepth",
+            "maxSelfDepth",
+            "maxBodyDepth",
+            "propPenetration",
+            "totalDepth",
+          ].every((key) => safety[key] <= 1e-8) &&
+          solved.actors.every(
+            (actor, i) =>
+              actor.supportBasis !== "surface" ||
+              safety.renderedBalance[i]?.supported === true,
+          );
+        if (safe) {
+          measurements = candidate;
+          adjustments.push(
+            "Used the guided starting pose after verifying rendered contacts, supports and complete clearance.",
+          );
+        } else {
+          solved.actors.forEach((actor, i) => {
+            actor.pose = clonePose({ pose: originalPoses[i] });
+            refresh(actor);
+          });
+        }
+        yield { steps, guidedPoseSteps };
+      }
+    }
     const initialRoots = solved.actors.map((actor) => [
       ...actor.pose.root.position,
     ]);
@@ -618,8 +696,7 @@ export function* surfaceContactSteps(
       initialSafety.violations.map((v) => [v.key, v.depth]),
     );
     let currentSafety = initialSafety;
-    let bestScore = score(measurements, solved.contacts),
-      steps = 0;
+    let bestScore = score(measurements, solved.contacts);
     const reasons = new Map();
     for (let pass = 0; pass < maxPasses && steps < maxSteps; pass++) {
       let improved = false;
@@ -907,7 +984,6 @@ export function* surfaceContactSteps(
       root: [...actor.pose.root.position],
       evaluated: actor.evaluated,
     }));
-    const adjustments = [];
     for (
       let i = 0;
       i < solved.contacts.length &&
@@ -1395,6 +1471,7 @@ export function* surfaceContactSteps(
         ).length,
         surfaceRefinement: {
           steps,
+          guidedPoseSteps,
           bodySteps,
           ...supportSteps,
           before,

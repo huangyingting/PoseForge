@@ -12,6 +12,8 @@ import { parseDescription } from "../src/nlp/parser.js";
 import { applyPresetLayout } from "../src/nlp/presetLayouts.js";
 import { solveScene } from "../src/core/solver.js";
 import { solvedPreview } from "../src/core/posePreview.js";
+import { resolveSurface } from "../src/core/poseLibrary.js";
+import { rootFromPlacement } from "../src/core/placement.js";
 import {
   buildHumanTemplate,
   featureRelief,
@@ -87,26 +89,38 @@ for (const definition of calibrated) {
     assert.deepEqual(source, before);
     assert.equal(
       applyPresetLayout(draft(definition), definition).scene.camera.view,
-      "top",
+      definition.layout.camera.view,
     );
   });
 
-  test(`${definition.id}: bed and floor reference layouts differ only by the support-plane translation`, () => {
-    const bed = applyPresetLayout(draft(definition), definition).scene;
-    const floorDraft = draft(definition);
-    floorDraft.support.surface = "floor";
-    const floor = applyPresetLayout(floorDraft, definition);
-    assert.equal(floor.applied, true);
-    const shifted = structuredClone(bed.actors);
-    shifted.forEach((actor) => (actor.placement.position[1] -= 0.55));
-    assert.deepEqual(floor.scene.actors, shifted);
-    assert.deepEqual(floor.scene.camera, bed.camera);
+  test(`${definition.id}: supported surfaces use their own fitted actors or the shared plane translation`, () => {
+    for (const surface of definition.layout.surfaces) {
+      const source = draft(definition);
+      source.support.surface = surface;
+      const result = applyPresetLayout(source, definition);
+      assert.equal(result.applied, true);
+      const reference =
+        definition.layout.surfaceVariants?.[surface] ?? definition.layout;
+      const shifted = structuredClone(reference.actors);
+      shifted.forEach(
+        (actor) =>
+          (actor.placement.position[1] +=
+            resolveSurface(surface).height - reference.referenceHeight),
+      );
+      assert.deepEqual(result.scene.actors, shifted);
+      assert.deepEqual(
+        result.scene.camera,
+        reference.camera ?? definition.layout.camera,
+      );
+    }
   });
 
   test(`${definition.id}: requested variations never inherit or overwrite a stock fixed layout`, () => {
     const variations = [
       (scene) => scene.actors.pop(),
-      (scene) => (scene.actors[0].bodyType = "male"),
+      (scene) =>
+        (scene.actors[0].bodyType =
+          definition.actors[0].bodyType === "male" ? "female" : "male"),
       (scene) => (scene.actors[0].stature = 1.85),
       (scene) => (scene.actors[0].build = 1.1),
       (scene) => (scene.actors[0].bust = 0.8),
@@ -148,17 +162,26 @@ for (const definition of calibrated) {
     }
   });
 
-  test(`${definition.id}: literal floor calibration and taller or away fallback retain the requested settings`, () => {
+  test(`${definition.id}: literal surface calibration and taller or away fallback retain the requested settings`, () => {
     const phrase = definition.phrases[0];
-    const floor = parseDescription(`${phrase} on the floor`);
-    assert.deepEqual(floor.warnings, []);
-    assert.equal(floor.scene.support.surface, "floor");
-    assert.equal(floor.scene.camera.view, "top");
-    assert.ok(floor.scene.actors.every((actor) => actor.placement));
+    for (const surface of definition.layout.surfaces) {
+      const parsed = parseDescription(`${phrase} on the ${surface}`);
+      assert.deepEqual(parsed.warnings, []);
+      assert.equal(parsed.scene.support.surface, surface);
+      assert.equal(
+        parsed.scene.camera.view,
+        definition.layout.surfaceVariants?.[surface]?.camera?.view ??
+          definition.layout.camera.view,
+      );
+      assert.ok(parsed.scene.actors.every((actor) => actor.placement));
+    }
+    const male = definition.actors.findIndex(
+      (actor) => actor.bodyType === "male",
+    );
     for (const [text, check] of [
       [
         `${phrase}, he is tall`,
-        (scene) => assert.equal(scene.actors[1].stature, 1.85),
+        (scene) => assert.equal(scene.actors[male].stature, 1.85),
       ],
       [
         `${phrase}, facing away`,
@@ -249,11 +272,16 @@ const expectedContacts = {
     ["pelvis", "buttocks"],
     ["hand", "waist"],
   ],
+  chair_straddle: [
+    ["pelvis", "lap"],
+    ["hand", "shoulder"],
+    ["hand", "shoulder"],
+  ],
 };
 
 for (const definition of calibrated)
-  for (const surface of ["bed", "floor"])
-    test(`${definition.id}: the clothed ${surface} layout has close contacts, clear figures and supported unchanged rigs`, () => {
+  for (const surface of definition.layout.surfaces)
+    test(`${definition.id}: the clothed ${surface} layout has close contacts, clear figures and the expected authoring policy`, () => {
       const scene = checkScene(
         portable(
           parseDescription(`${definition.phrases[0]} on the ${surface}`).scene,
@@ -269,11 +297,28 @@ for (const definition of calibrated)
       const poses = structuredClone(solved.actors.map((actor) => actor.pose));
       refineSurfaceContacts(solved, bodies);
       assert.deepEqual(solvedPreview(solved).issues, []);
-      assert.deepEqual(
-        solved.actors.map((actor) => actor.pose),
-        poses,
+      const guided = scene.actors.some(
+        (actor) => actor.placement?.mode === "guided",
       );
-      assert.equal(solved.quality.surfaceRefinement.steps, 0);
+      if (guided) {
+        assert.equal(solved.quality.surfaceRefinement.guidedPoseSteps, 1);
+        assert.equal(solved.quality.surfaceRefinement.steps, 1);
+        solved.actors.forEach((actor, i) => {
+          assert.deepEqual(
+            actor.pose.root,
+            rootFromPlacement(scene.actors[i].placement),
+          );
+          for (const [bone, angles] of Object.entries(scene.actors[i].joints))
+            for (const [channel, value] of Object.entries(angles))
+              assert.equal(actor.pose.joints[bone][channel], value);
+        });
+      } else {
+        assert.deepEqual(
+          solved.actors.map((actor) => actor.pose),
+          poses,
+        );
+        assert.equal(solved.quality.surfaceRefinement.steps, 0);
+      }
       assert.equal(solved.quality.unmetContacts, 0);
       assert.deepEqual(
         solved.quality.contactDetail.map(({ from, to }) => [from, to]),
@@ -300,9 +345,24 @@ for (const definition of calibrated)
         "propPenetration",
       ])
         assert.equal(solved.quality[key], 0, key);
-      assert.ok(solved.quality.balance.every((balance) => balance.supported));
+      const partnerSupported = definition.id === "chair_straddle";
+      assert.deepEqual(
+        solved.actors.map((actor) => actor.supportBasis),
+        partnerSupported ? ["surface", "partner"] : ["surface", "surface"],
+      );
+      if (!partnerSupported)
+        assert.ok(solved.quality.balance.every((balance) => balance.supported));
+      else {
+        assert.ok(solved.quality.proxyPropPenetration > 0.05);
+        assert.ok(solved.quality.verifiedPropContacts > 0);
+      }
       assert.equal(solved.quality.supportSurfaces.length, solved.actors.length);
       for (const support of solved.quality.supportSurfaces) {
+        if (support.basis === "partner") {
+          assert.equal(support.gap, null);
+          assert.deepEqual(support.supports, []);
+          continue;
+        }
         assert.equal(support.basis, "rendered");
         assert.equal(support.unavailable, 0);
         assert.ok(
@@ -314,10 +374,22 @@ for (const definition of calibrated)
         );
       }
       solved.actors.forEach((actor, i) => {
-        assert.equal(actor.supportBasis, "surface");
-        assert.equal(actor.supportMeasurement, "rendered");
-        assert.ok(actor.bodySupportResidual <= 0.02);
-        assert.ok(actor.seatResidual <= 0.02);
+        if (actor.supportBasis === "partner") {
+          assert.equal(actor.supportMeasurement, null);
+          assert.equal(actor.bodySupportResidual, null);
+          assert.equal(actor.seatResidual, null);
+          assert.equal(solved.quality.renderedBalance[i], null);
+        } else {
+          assert.equal(actor.supportMeasurement, "rendered");
+          assert.ok(solved.quality.renderedBalance[i]?.supported);
+          if (partnerSupported) {
+            assert.ok(actor.bodySupportResidual > 0.05);
+            assert.ok(actor.seatResidual <= 0.004);
+          } else {
+            assert.ok(actor.bodySupportResidual <= 0.02);
+            assert.ok(actor.seatResidual <= 0.02);
+          }
+        }
         let minY = Infinity;
         for (const part of skinHumanMesh(
           bodies[i],
@@ -329,9 +401,39 @@ for (const definition of calibrated)
         ))
           for (const index of part.indices)
             minY = Math.min(minY, part.positions[index * 3 + 1]);
-        assert.ok(
-          Math.abs(minY - solved.surface.height) <= 0.004,
-          `${surface} lowest surface: ${minY}`,
-        );
+        assert.ok(minY >= -1e-7);
+        if (actor.supportBasis === "surface") {
+          const plane = Math.min(
+            ...solved.quality.supportSurfaces[i].supports.map(
+              (part) => part.measurement.plane,
+            ),
+          );
+          assert.ok(
+            Math.abs(minY - plane) <= 0.004,
+            `${surface} lowest surface: ${minY}`,
+          );
+        }
       });
     });
+
+test("a chair layout without scanned geometry keeps the coarse result and unavailable checks", () => {
+  const definition = ARCHETYPES.find((entry) => entry.id === "chair_straddle");
+  const scene = checkScene(
+    portable(parseDescription(definition.phrases[0]).scene),
+  );
+  const solved = solveScene(scene),
+    poses = structuredClone(solved.actors.map((actor) => actor.pose));
+  refineSurfaceContacts(solved, [null, null]);
+  assert.deepEqual(
+    solved.actors.map((actor) => actor.pose),
+    poses,
+  );
+  assert.ok(solved.quality.propPenetration <= 0.022);
+  assert.equal(solved.quality.verifiedPropContacts, 0);
+  assert.equal(solved.actors[0].supportMeasurement, "body-model");
+  assert.ok(solvedPreview(solved).issues.includes("Support check unavailable"));
+  assert.ok(
+    solvedPreview(solved).issues.includes("Furniture check unavailable"),
+  );
+  assert.ok(solvedPreview(solved).issues.includes("Surface check unavailable"));
+});

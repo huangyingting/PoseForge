@@ -1,5 +1,6 @@
 /** Bounded seat/leg candidates that preserve the original foot frames. */
 import { refresh } from "./solver.js";
+import { isFixedPlacement } from "./placement.js";
 import { LIMB_CHAINS } from "./ik.js";
 import {
   captureEndFrame,
@@ -15,7 +16,7 @@ export const SEATED_FOOT_LIMIT = 0.06;
 export function seatedSupportFrame(actor, surface, report) {
   if (
     actor.mobility <= 0 ||
-    actor.spec?.placement ||
+    isFixedPlacement(actor.spec?.placement) ||
     actor.carried ||
     actor.mountedOn != null ||
     surface.height <= surface.ground ||
