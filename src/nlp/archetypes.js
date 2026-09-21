@@ -36,6 +36,7 @@
 
 import { SIDE_FACING_LAYOUT, SPOONING_LAYOUT } from "./presetLayouts.js";
 import { CHAIR_LAP_LAYOUT } from "./chairLapLayout.js";
+import { SEATED_EMBRACE_LAYOUT } from "./seatedEmbraceLayout.js";
 
 /** @type {Archetype[]} */
 export const ARCHETYPES = [
@@ -108,6 +109,7 @@ export const ARCHETYPES = [
   },
   {
     id: "lotus",
+    layout: SEATED_EMBRACE_LAYOUT,
     phrases: ["lotus position", "lotus", "seated embrace", "莲花式", "观音坐莲", "面对面坐姿"],
     label: "one partner seated, the other in their lap facing them",
     surface: "floor",

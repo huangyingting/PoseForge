@@ -13,7 +13,7 @@ import { applyPresetLayout } from "../src/nlp/presetLayouts.js";
 import { solveScene } from "../src/core/solver.js";
 import { solvedPreview } from "../src/core/posePreview.js";
 import { resolveSurface } from "../src/core/poseLibrary.js";
-import { rootFromPlacement } from "../src/core/placement.js";
+import { rootFromPlacement, captureSolvedPose } from "../src/core/placement.js";
 import {
   buildHumanTemplate,
   featureRelief,
@@ -277,6 +277,13 @@ const expectedContacts = {
     ["hand", "shoulder"],
     ["hand", "shoulder"],
   ],
+  lotus: [
+    ["pelvis", "lap"],
+    ["hand", "shoulder"],
+    ["hand", "shoulder"],
+    ["hand", "upperBack"],
+    ["hand", "upperBack"],
+  ],
 };
 
 for (const definition of calibrated)
@@ -345,14 +352,14 @@ for (const definition of calibrated)
         "propPenetration",
       ])
         assert.equal(solved.quality[key], 0, key);
-      const partnerSupported = definition.id === "chair_straddle";
+      const partnerSupported = definition.arrangement === "straddle_lap";
       assert.deepEqual(
         solved.actors.map((actor) => actor.supportBasis),
         partnerSupported ? ["surface", "partner"] : ["surface", "surface"],
       );
       if (!partnerSupported)
         assert.ok(solved.quality.balance.every((balance) => balance.supported));
-      else {
+      else if (solved.props.length) {
         assert.ok(solved.quality.proxyPropPenetration > 0.05);
         assert.ok(solved.quality.verifiedPropContacts > 0);
       }
@@ -436,4 +443,79 @@ test("a chair layout without scanned geometry keeps the coarse result and unavai
     solvedPreview(solved).issues.includes("Furniture check unavailable"),
   );
   assert.ok(solvedPreview(solved).issues.includes("Surface check unavailable"));
+});
+
+test("the seated embrace captures and reloads all five contacts on floor and bed", () => {
+  for (const surface of ["floor", "bed"]) {
+    const scene = checkScene(
+      portable(parseDescription(`seated embrace on the ${surface}`).scene),
+    );
+    const solved = solveScene(scene),
+      bodies = solved.actors.map(dressed);
+    assert.deepEqual(solvedPreview(solved).issues, []);
+    refineSurfaceContacts(solved, bodies);
+    const positions = solved.actors.map((actor) =>
+      actor.evaluated.positions.map((position) => position.slice()),
+    );
+    scene.actors.forEach((actor, i) =>
+      Object.assign(actor, captureSolvedPose(solved.actors[i])),
+    );
+    assert.ok(
+      scene.actors.every(
+        (actor) =>
+          actor.jointMode === "fixed" && actor.placement.mode !== "guided",
+      ),
+    );
+    const restored = solveScene(checkScene(portable(scene)));
+    refineSurfaceContacts(restored, bodies);
+    assert.deepEqual(solvedPreview(restored).issues, []);
+    assert.equal(restored.quality.surfaceRefinement.guidedPoseSteps, 0);
+    assert.equal(restored.quality.contactDetail.length, 5);
+    assert.ok(
+      restored.quality.contactDetail.every(
+        (contact) =>
+          contact.basis === "rendered" &&
+          !contact.intersects &&
+          contact.surfaceGap <= SURFACE_CONTACT_TOLERANCE,
+      ),
+    );
+    restored.actors.forEach((actor, i) =>
+      actor.evaluated.positions.forEach((position, j) =>
+        position.forEach((value, k) =>
+          assert.ok(Math.abs(value - positions[i][j][k]) < 1e-7),
+        ),
+      ),
+    );
+  }
+});
+
+test("missing geometry cannot certify the seated embrace or replace its coarse result", () => {
+  for (const surface of ["floor", "bed"]) {
+    const solved = solveScene(
+      checkScene(
+        portable(parseDescription(`seated embrace on the ${surface}`).scene),
+      ),
+    );
+    assert.deepEqual(solvedPreview(solved).issues, []);
+    const before = structuredClone(solved.actors.map((actor) => actor.pose));
+    refineSurfaceContacts(solved, [null, null]);
+    assert.deepEqual(
+      solved.actors.map((actor) => actor.pose),
+      before,
+    );
+    assert.equal(solved.actors[0].supportMeasurement, "body-model");
+    assert.equal(solved.actors[1].supportBasis, "partner");
+    assert.equal(solved.actors[1].seatResidual, null);
+    assert.ok(
+      solvedPreview(solved).issues.includes("Surface check unavailable"),
+    );
+    assert.ok(
+      solvedPreview(solved).issues.includes("Support check unavailable"),
+    );
+    assert.ok(
+      !solved.quality.adjustments.some((note) =>
+        note.includes("guided starting pose"),
+      ),
+    );
+  }
 });

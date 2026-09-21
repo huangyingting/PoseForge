@@ -39,6 +39,15 @@ posture, limb, facing, contact and clothing changes bypass stock calibration;
 unsupported surfaces stay automatic. Missing meshes remain labeled as estimates,
 not certified clearance.
 
+**Lotus**, also available as `seated embrace`, uses a calibrated clothed floor
+layout with all five original contacts: lap support, both hands on shoulders,
+and both hands on the upper back. Seat and foot supports share one plane, so
+the verified bed version uses the same scene translated to the mattress top.
+Both use guided placement and joint hints with a side camera view. The primary
+has measured surface support; the partner retains its explicit partner-support
+assignment rather than a fabricated floor residual. The same explicit-edit,
+missing-geometry and capture rules above apply.
+
 The single seated references now use render-aware grounding: the visible seat
 region and soles are brought toward their supporting surfaces while the feet's
 horizontal placement and orientation are retained. This also applies to matching
@@ -250,8 +259,9 @@ Add `--catalog` to include the eleven reference studies as well as the named
 entries. Rendered reports include actual support-region gaps, penetration and
 measurement availability; the separate base result retains the coarse estimate.
 
-Calibrated named layouts live in `src/nlp/presetLayouts.js` and are referenced
-by their archetype's optional `layout` field. Define the body dimensions,
+Calibrated named layouts are data in `src/nlp/presetLayouts.js` or dedicated
+layout modules beside it, referenced by their archetype's optional `layout`
+field. Define the body dimensions,
 coverage, full joint channels, placement, supported surfaces and reference-plane
 height. The shared applicability check runs during both catalog construction and
 text parsing; variations keep their own procedural scene. The result is normal

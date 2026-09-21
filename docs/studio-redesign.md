@@ -593,3 +593,37 @@ Missing geometry, fixed settings, zero mobility, budgets and cancellation must
 not be bypassed. Both the coarse default and rendered result must pass before
 the new calibrated entry is delivered. Expose guided starting placement clearly
 in the editor, with capture-to-fixed and reset actions.
+
+## Floor-supported seated embrace
+
+The remaining floor-seated pair passes the coarse-model gate but fails its drawn
+geometry audit: the supporting seat is approximately 127 mm above the floor,
+the two complete figures cross, and all five declared contacts are unresolved.
+The partner support assignment is intentional and must not become a fictitious
+floor support. Preserve both body types, seated posture roles, floor surface,
+opposing facing, the original support contact, two shoulder contacts and two
+upper-back contacts.
+
+First establish a rendered-grounded supporting figure with both feet retained
+on the floor. Then fit a clothed, non-graphic seated embrace around that stable
+pose using the public placement/joint representation. Check complete figures,
+floor, self-collision, declared supports, all five contacts and rendered balance;
+do not expand contact regions or relax tolerances. A reproducible candidate may
+use the existing guided-layout mechanism only if its coarse default also stays
+clear. Explicit edits must retain the standard calibration fallback rules.
+Supported alternate surfaces require their own measured evidence. Capture,
+save/reload, exported JSON and browser rendering must retain any accepted result.
+
+Independent floor-leg trials grounded the primary but introduced thigh crossings
+in the pair and were rejected. A rigid reorientation of the verified bench pair
+retained its three contacts and complete clearance while bringing the primary
+seat and both feet onto the floor. Its initial balance estimate remained outside
+the support bounds. Small torso changes and separately fitted arm reaches added
+both upper-back contacts while restoring the measured balance estimate; wrist
+and gaze adjustments were also checked against complete geometry.
+
+The final guided floor and translated bed scenes pass both the coarse default
+and rendered gates. Their five contacts measure approximately 1.8–2.5 mm and
+the primary supports approximately 1.8–2.0 mm. Integrate this as portable layout
+data through the existing applicability and guided-candidate validation paths.
+No new solver stage, support assignment, contact region, or tolerance is needed.
