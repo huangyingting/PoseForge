@@ -184,10 +184,11 @@ test("capturing complete rigs round trips through presets without changing place
     );
     const checked = parseCatalog(serializeCatalog([preset]))[0];
     const after = solveScene(checked.scene);
-    assert.notEqual(
-      previewKey(preset.scene),
-      previewKey(BUILTIN_PRESETS.find((entry) => entry.id === id).scene),
-    );
+    const original = BUILTIN_PRESETS.find((entry) => entry.id === id).scene;
+    if (original.actors.every((actor) => actor.placement && actor.jointMode === "fixed"))
+      assert.equal(previewKey(preset.scene), previewKey(original), "capturing an already fixed layout is idempotent");
+    else
+      assert.notEqual(previewKey(preset.scene), previewKey(original));
     after.actors.forEach((actor, i) => {
       assert.deepEqual(
         actor.pose.root.position,

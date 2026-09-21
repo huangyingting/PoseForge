@@ -31,7 +31,10 @@
  *           arrangement's own default, which is the form to prefer
  * @property {Array<{posture:string, bodyType?:string}>} actors
  * @property {Array<object>} [contacts]
+ * @property {object} [layout] Calibrated stock scene data and matching bounds.
  */
+
+import { SIDE_FACING_LAYOUT } from "./presetLayouts.js";
 
 /** @type {Archetype[]} */
 export const ARCHETYPES = [
@@ -168,6 +171,7 @@ export const ARCHETYPES = [
   },
   {
     id: "side_by_side_facing",
+    layout: SIDE_FACING_LAYOUT,
     phrases: ["lying face to face", "facing each other in bed", "侧躺面对面"],
     label: "both lying on their sides, facing each other",
     surface: "bed",

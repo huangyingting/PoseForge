@@ -22,7 +22,8 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 | Precise joint authoring | Optional fixed mode retains specified channels through seating, contact/collision solving, surface refinement and cancellation, while unedited channels remain free. The editor shows actual solved values and clears stale values while pending. The browser flow verifies fixed values, history, saved reload, JSON export and narrow-screen accessibility. Guided mode remains the default. |
 | Reproducible placement | Optional fixed world placement, per-figure solved-pose capture and atomic whole-layout capture are implemented. Position and XYZ rotation survive solving and serialization while unedited joints can remain guided. Captured recumbent figures retain their support side. Fully fixed hand constraints skip futile trials without hiding unmet contacts. Capturing and reloading the refined standing scene preserves joint positions within 1e-7 m and retains its clear rendered audit. |
 | Safe persistence and imports | Unit tests cover invalid versions, malformed JSON, unsafe keys, unknown scene choices, invalid landmark sides, duplicate IDs, quota errors and corrupt storage. A failed import does not partially add a pack. Re-importing creates fresh IDs. Browser recovery and invalid-import flows pass. |
-| Preset geometry | All 23 entries validate structurally and render. The original eleven reference-study geometry checks still pass. The named-position audit flags 8/12 at the base-model level and 11/12 in the dressed-mesh contact / figure-pair audit. The base count changed with corrected support reporting, not a newly solved pose. Stock standing embrace remains the one clear rendered named entry. |
+| Preset geometry | All 23 entries validate structurally and render. The original eleven reference-study geometry checks still pass. The named-position audit flags 7/12 at the base-model level and 10/12 in the dressed-mesh contact / figure-pair audit. Stock standing embrace and the calibrated lying-facing layout pass the rendered gate. |
+| Calibrated stock layouts | A shared recipe supplies catalog/text aliases with the same clothed fixed pose. Bed and floor checks retain both original body contacts within 4 mm, no complete-figure crossing, supported balance estimates, support residuals within 20 mm, and lowest rendered surfaces within 4 mm of the support plane. Refinement leaves the authored rigs unchanged. Explicit conflicting body, pose, contact, coverage and surface settings bypass the recipe; portable JSON contains the full pose. |
 | Body-supported placement | Adaptive clearance reduces the seated-pair base support target from 523.7 mm to 3.4 mm. Chair cases pass across all four male/female pairings; bench and stature/build variations have measured support-plane regression tests. A 96-case comparison against `969f4f8` has 12 newly clean cases, no newly flagged cases and 78 unchanged results. Dressed contact failures remain separately reported. |
 | Surface-intersection escape | Bidirectional bounded IK trials clear both hand/arm intersections in the seated-support fixture, ending at approximately 2.3 mm and 1.8 mm. The supporting figure, both roots and lower-body joints stay unchanged; individual collision pairs and aggregate residuals cannot worsen. The lap target remains unresolved. |
 | Hand-to-body geometry | Coordinated free-arm reaches clear both standing-embrace hand/arm intersections at approximately 2.2 mm. The complete arms are checked against the entire target figure, including colored auxiliary meshes. The isolated limb stage preserves roots, lower-body joints and the target figure; its remaining body gap is handled separately. Regression tests retain this phase boundary. |
@@ -34,14 +35,28 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 | Description feedback | Unread text warnings survive worker rendering and draft reload. Catalog captions no longer overwrite the original text command. Pending poses do not retain stale quality notes. |
 | Exports | Real PNG, transparent PNG, SVG and JSON downloaded. PNG pixels decoded: opaque image content present; background corner alpha is 255 for standard PNG and 0 for transparent PNG. JSON is re-importable. |
 | Runtime | Every new preset rendered in a production build without page errors, console errors or failed requests in the normal-path browser test. Missing WebGL leaves the editor usable. An intentionally failed model download produces an estimated contact, and its warning does not leak into a healthy model. Rapid preset changes publish only the final scene; cancellation restores discarded rigs. |
-| CLI interoperability | The CLI renders built-in IDs and exported catalog files using the same surface-refinement pass. Clothed examples rendered successfully at 640×480 and 320×480. Lighting/framing remain separate implementations. |
+| CLI interoperability | The CLI renders built-in IDs and exported catalog files using the same surface-refinement pass. Clothed examples rendered successfully at 640×480 and 320×480. A seven-render PNG regression confirms saved-camera defaults, explicit view precedence and malformed stored-camera fallback for raw diagnostic scenes. Lighting/framing remain separate implementations. |
 
 ## Commands and results
 
-- `npm test`: **204 passed**, including the original parser, geometry and
+- `npm test`: **213 passed** (128.1 seconds in the final rerun), including calibrated stock-layout
+  parity/fallback, bed/floor dressed-mesh checks and CLI camera precedence, plus
+  the original parser, geometry and
   architecture tests, catalog/storage tests, contact-authoring tests, clothing
   checks, triangle/surface-refinement checks and per-preset CLI selection,
   quality-dependent exit status and invalid/empty input.
+- The calibrated-layout browser flow passes: card loading and literal floor
+  input have two non-warning contacts, active top view and the fixed-placement
+  hint. Taller and facing-away requests retain their settings without stock
+  placement locks. Both bed and floor screenshots were inspected, with clothed
+  figures fully framed. The CLI camera regression also compares actual
+  PNG outputs rather than checking only argument parsing.
+- `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/google/chrome/chrome npm run test:browser`:
+  **24/24 passed** in the full production-build run (16.4 minutes) after the
+  calibrated layout was integrated. This includes all prior authoring, camera,
+  placement, persistence, export, mobile/accessibility and recovery scenarios,
+  plus the new calibrated-layout flow. The production build passed as part of
+  this run. Older split-run results below describe their respective iterations.
 - The placement/capture iteration adds **eight regressions** and passes all
   **204 tests** (111.5 seconds). All catalog rigs can be captured as valid
   authoring data; this does not certify their existing geometry. Seven rendered
@@ -148,10 +163,10 @@ remain unresolved; loading a preset is not proof that its constraints were met.
   `kneeling_straddle`), four surfaces (floor/chair/bench/sofa), and all four
   male/female body-type pairings. It compares overlap, support gap and unresolved
   targets with the parent commit, not just the intended chair fixture.
-- `node scripts/validate-named-presets.mjs`: **4/12 without base-model flags;
-  8 require review**. `node scripts/validate-named-presets.mjs --rendered`:
-  **1/12 without rendered-contact flags; 11 require review**. The complete
-  rendered audit ran again after the distant-contact and final-support fixes.
+- `node scripts/validate-named-presets.mjs`: **5/12 without base-model flags;
+  7 require review**. `node scripts/validate-named-presets.mjs --rendered`:
+  **2/12 without rendered-contact flags; 10 require review**. Both full audits
+  ran again after the calibrated lying-facing layout was integrated.
   It uses the same dressed-template construction and refinement as the viewport,
   and prints base targets, surface gaps and intersection flags separately.
 - After the lap-region correction, individual rendered audits for
@@ -219,8 +234,9 @@ The placement iteration reduced its then-measured lap-region gap from about
 rendered audit expands coverage; it does not imply twelve newly broken presets.
 
 The current named audit reports no base-model flags for spooning, lotus, chair
-straddle and standing embrace. Standing embrace also passes the dressed-mesh and
-whole-figure audit; the other eleven remain flagged. The head-to-toe definition
+straddle, lying-facing and standing embrace. Lying-facing and standing embrace
+also pass the dressed-mesh and whole-figure audit; the other ten remain flagged.
+The head-to-toe definition
 still has unmet partner contacts. Its former 489 mm "support gap" was a stale
 floor-clamp displacement on a figure assigned partner support, not a measured
 gap to its partner. It now has a null surface residual and retains its contact
@@ -276,5 +292,16 @@ or every named preset are now solved.
 Fixed placement and atomic pose capture now make calibrated layouts reproducible
 as scene data rather than relying on another automatic placement pass. See
 [placement.md](placement.md) for editing, capture, reset and interchange details.
-No built-in pose definition changed in this authoring iteration; the remaining
-eleven rendered named layouts still require calibration and verification.
+No built-in pose definition changed in that authoring iteration; eleven rendered
+named layouts still required calibration and verification at that point.
+
+The subsequent lying-facing calibration now supplies fixed placement and full
+joint channels through a shared stock recipe. Its original postures, facing,
+contacts, tolerances and anatomical regions are unchanged. The two rendered
+contact gaps round to 3 mm and 2 mm, with no figure crossing or unavailable check.
+The support residuals round to 10 mm and 8 mm; these are within the 20 mm gate,
+not zero. Real bed and floor mesh tests verify both support planes, and no
+refinement step changes the fixed rig. Alias parity, recipe purity, appearance
+preservation, explicit camera precedence, portable round trips and variation
+fallback are covered. The remaining ten rendered named layouts still require
+calibration; compatible stock data is not a solution for arbitrary body variants.

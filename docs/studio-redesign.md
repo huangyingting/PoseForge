@@ -340,3 +340,32 @@ refinement, cancellation, preview keys, history and scene JSON. Exercise capture
 editing, automatic reset, save/reload/export and narrow-screen accessibility in
 the real browser. This is authoring capability for preset calibration, not proof
 that all existing named geometry is already corrected.
+
+## Calibrated reference layouts
+
+Use the authoring representation itself for verified stock layouts: fixed world
+placement, fixed adjustable channels, declared body dimensions, relaxed hand
+shapes and studio clothing. Do not remove contact constraints, enlarge anatomical
+regions or relax quality thresholds to qualify a layout.
+
+The first calibrated case is the non-graphic clothed lying-facing pair. Keep its
+stable preset ID, aliases, actor postures, arrangement and two body contacts. A
+shared data recipe must be used by both catalog construction and literal named
+text input, so loading a card and typing its name do not create different rigs.
+Bed and floor differ only by a common vertical translation from the recipe's
+reference plane; verify both. Prefer a top view for this low, overlapping layout
+so both figures are visible, and let explicit camera choices keep precedence.
+
+Recipes apply only to matching stock roles, dimensions, outfit coverage,
+arrangement/facing and contacts. Explicit joint/limb/placement edits, changed body
+dimensions/types, different coverage or unsupported surfaces use procedural
+posing instead, with that choice in the interpretation trace. Never overwrite a
+user's requested variation with a fixed stock transform. Saved scene data remains
+self-contained and editable, without a dependency on a runtime recipe ID.
+
+Fixed layouts need a visible Composition hint directing users to Placement in
+Figures when an arrangement/facing change cannot move locked figures. CLI scene
+and preset rendering should honor a saved named camera view unless `--view`
+overrides it. Verify aliases, stock/parser equivalence, conditional fallback,
+round trips, real clothed surfaces, rendered support-plane clearance, preview
+quality and actual browser loading before promoting the calibrated data.

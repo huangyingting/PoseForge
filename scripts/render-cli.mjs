@@ -94,10 +94,6 @@ const VIEWS = {
 // anything between the thighs is occluded from all four and the one that is
 // not - `top`, on a supine figure - sees it edge-on. This is the same argument
 // `--at` and `--span` are already here for.
-const named = flag("view", "three_quarter");
-const VIEW = VIEWS[named] ??
-  (named.includes(",") ? named.split(",").map(Number) : null) ??
-  VIEWS.three_quarter;
 
 // The first two of `SKIN` in `src/render/renderer.js`, in the 0..1 the shader
 // here wants. East Asian rather than northern European: green within a dozen
@@ -147,6 +143,16 @@ function sceneInput() {
   return parseDescription(text);
 }
 const parsed = sceneInput();
+const savedView = parsed.scene.camera?.view;
+const named = flag(
+  "view",
+  typeof savedView === "string" && Object.hasOwn(VIEWS, savedView)
+    ? savedView
+    : "three_quarter",
+);
+const VIEW = VIEWS[named] ??
+  (named.includes(",") ? named.split(",").map(Number) : null) ??
+  VIEWS.three_quarter;
 const solved = solveScene(parsed.scene);
 
 /**

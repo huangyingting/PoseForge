@@ -50,10 +50,16 @@ test("all catalog support readouts describe the returned rig and each support's 
 });
 
 test("guided lying-pair feedback follows final support geometry rather than the last clamp amount", () => {
-  const preset = BUILTIN_PRESETS.find(
-    (entry) => entry.id === "builtin.named.side_by_side_facing",
-  );
-  const solved = solveScene(checkScene(preset.scene));
+  // Keep this procedural regression independent of calibrated catalog data.
+  const solved = solveScene(checkScene({
+    actors: [
+      { bodyType: "female", posture: "side_lying", wearing: ["top", "shorts"] },
+      { bodyType: "male", posture: "side_lying", wearing: ["top", "shorts"] },
+    ],
+    support: { surface: "bed" },
+    relationship: { arrangement: "face_to_face" },
+    contacts: [],
+  }));
   assert.equal(solved.actors[1].spec.jointMode, "guided");
   const gaps = solved.actors.map((actor) => supportGap(actor, solved.surface));
   assert.equal(

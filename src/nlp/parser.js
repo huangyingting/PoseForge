@@ -26,6 +26,7 @@ import { validateScene } from "../core/scene.js";
 import { resolveArrangement } from "../core/poseLibrary.js";
 import { ARCHETYPES_BY_ID, ARCHETYPE_ENTRIES } from "./archetypes.js";
 import { FILLER, LEXICON } from "./lexicon.js";
+import { applyPresetLayout } from "./presetLayouts.js";
 
 const CJK = /[㐀-䶿一-鿿]/;
 const WORDY = /[a-z0-9]/;
@@ -663,7 +664,12 @@ export function parseDescription(text) {
     contacts: [...(base?.contacts ?? []), ...contacts],
   };
 
-  const checked = validateScene(draft);
+  const layout = applyPresetLayout(draft, base);
+  if (layout.applied)
+    say("layout", base.id, null, "used the calibrated clothed reference layout");
+  else if (base?.layout)
+    say("layout", "automatic", null, `stock layout not applied: ${layout.reason}`);
+  const checked = validateScene(layout.scene);
   for (const issue of checked.issues) warnings.push(issue.message);
 
   return {

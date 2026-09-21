@@ -14,6 +14,21 @@ aliases remain searchable. Some inherited definitions have unresolved geometry;
 **Pose notes** badges and the viewport's **Pose checks** shortcut make that visible.
 Loading successfully does not mean every physical constraint was satisfied.
 
+**Side by side facing** now uses a calibrated clothed reference layout. Loading
+its card or typing one of its aliases (including `lying face to face` and
+`侧躺面对面`) gives the same fixed placement and joint angles, with a top camera
+view. Adding `on the floor` translates that reference to the floor. Explicit
+body-size, posture, limb, facing, contact or clothing variations use automatic
+posing instead; the interpretation trace explains when the stock layout was
+skipped. That fallback is not a guarantee that every variation is physically
+resolved.
+
+Once loaded, a fixed layout remains editable and is not silently reapplied.
+The Composition hint points to **Figures → Placement** to release fixed roots;
+**Joints → Keep edited angles** controls joint locking separately. Changing a
+fixed scene's support surface in the editor does not reposition its roots:
+adjust placement, unlock it, or apply a fresh description for that surface.
+
 Diagrams use shared world coordinates from a solve, including props, relative
 height, facing and contact placement. They are prepared in a separate worker as
 cards enter view. A selected scene supplies its final refined pose, which also
@@ -188,6 +203,20 @@ intersections. The latter preserves base results alongside surface measurements;
 passing the base gate alone is not sufficient. Add `--preset <built-in-id>` to
 audit a single definition or resume an interrupted long audit. Invalid or empty
 selections fail instead of reporting success for zero cases.
+
+Calibrated named layouts live in `src/nlp/presetLayouts.js` and are referenced
+by their archetype's optional `layout` field. Define the body dimensions,
+coverage, full joint channels, placement, supported surfaces and reference-plane
+height. The shared applicability check runs during both catalog construction and
+text parsing; variations keep their own procedural scene. The result is normal
+portable scene data, not a saved recipe ID. Verify real dressed geometry and
+fallback behavior before extending the supported cases. Do not weaken contact
+or clearance thresholds to certify a stock recipe.
+
+The CLI renderer honors the scene's saved `camera.view`. Pass `--view front`
+(or another named/vector view) to override it for a particular render.
+Raw diagnostic scenes with unrecognized stored camera values use the
+three-quarter view; strict catalog imports still require valid named views.
 
 Adding a new underlying posture or arrangement is an engine extension: author
 its joint and support/contact contract in the pose library and verify it with

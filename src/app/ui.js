@@ -298,6 +298,7 @@ export function buildPanel(root, handlers) {
   });
   const surface = picker("Surface", SURFACE_NAMES);
   const facing = picker("Facing", ["as written", "toward", "away"]);
+  const placementHint = el("p", { className: "hint", hidden: true });
   const actorHost = el("div");
   const contactEditor = createContactEditor((next) => {
     scene = next;
@@ -307,6 +308,7 @@ export function buildPanel(root, handlers) {
     arrangement.field,
     surface.field,
     facing.field,
+    placementHint,
   ]);
   scenePane.append(
     section("Composition", overrides),
@@ -903,6 +905,13 @@ export function buildPanel(root, handlers) {
       arrangement.select.value = scene.relationship?.arrangement ?? "";
       arrangement.select.disabled = scene.actors.length < 2;
       facing.select.disabled = scene.actors.length < 2;
+      const fixedPlacements = scene.actors.filter(
+        (actor) => actor.placement,
+      ).length;
+      placementHint.hidden = fixedPlacements === 0;
+      placementHint.textContent = fixedPlacements
+        ? `${fixedPlacements} ${fixedPlacements === 1 ? "figure keeps" : "figures keep"} fixed placement. Change Placement in Figures to allow arrangement and facing adjustments.`
+        : "";
       surface.select.value = scene.support?.surface ?? "floor";
       const yaw = scene.relationship?.yaw;
       facing.select.value =

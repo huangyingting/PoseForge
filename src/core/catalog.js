@@ -7,6 +7,7 @@ import {
   resolveArrangement,
 } from "./poseLibrary.js";
 import { ARCHETYPES } from "../nlp/archetypes.js";
+import { applyPresetLayout } from "../nlp/presetLayouts.js";
 import { HAIR_STYLES } from "./hair.js";
 import { GARMENT_COLOURS } from "./garments.js";
 import { HAND_SHAPE_NAMES } from "./handPose.js";
@@ -436,7 +437,7 @@ export function presetFromArchetype(definition) {
       ? (baseYaw + 180) % 360
       : baseYaw
     : definition.yaw;
-  const checked = validateScene({
+  const draft = {
     title,
     description: definition.phrases[0],
     actors: definition.actors.map((actor, index) => ({
@@ -452,8 +453,9 @@ export function presetFromArchetype(definition) {
     },
     support: { surface: definition.surface },
     contacts: structuredClone(definition.contacts ?? []),
-    camera: { view: "three_quarter" },
-  });
+    camera: definition.layout?.camera ?? { view: "three_quarter" },
+  };
+  const checked = validateScene(applyPresetLayout(draft, definition).scene);
   if (checked.issues.length)
     throw new Error(
       `${definition.id}: ${checked.issues.map((issue) => issue.message).join(" ")}`,
