@@ -687,3 +687,38 @@ versus 127/159, with no newly flagged cases and the same 63 mm worst residual.
 Its tracked unmet targets rise from 94 to 98; blocked/unreachable targets remain
 separately reported. This improves geometry selection without certifying every
 requested contact or making the remaining 25 synthetic cases sound.
+
+## Table-supported pair
+
+The current table layout has an approximately 188 mm rendered support gap for
+the bent figure, 3/6 mm foot/floor penetrations, an 87 mm body-contact gap and
+one roughly 80 mm hand gap. Complete figure surfaces cross despite a clear
+coarse overlap estimate. The posture declares chest and hips on the table top
+and both feet on the floor; hands are not declared supports. Preserve those
+roles, the table geometry, original body types, same-direction facing and all
+three partner contacts.
+
+Fit the primary trunk to both finite tabletop support regions while keeping
+feet grounded and complete legs/arms clear of the table. Then fit the standing
+partner and hand contacts without losing those supports. Do not substitute hand
+supports, enlarge regions, relax tolerances or certify local contacts while
+another part crosses. Portable fixed data or existing validated guided hints
+must pass both coarse and rendered gates. Explicit edits keep the standard
+calibration fallback. Alternate surfaces require independent support evidence;
+a table-height shift cannot also move feet that remain on the floor.
+
+The support trace shows that the initial 188 mm hip gap is mostly horizontal:
+the hip region is outside the back edge, while the chest is only about 21 mm
+above the top. Moving the trunk forward, retaining grounded foot frames and
+fitting the arms closes the original four supports. Full-mesh checks reject
+the first solutions because the shorts/upper thighs, then an elbow, enter the
+table. A rearward primary stance and a clear elbow route resolve those crossings;
+the partner's wider stance keeps the legs and feet separate.
+
+The resulting clothed composition retains approximately 1.5–2.5 mm partner
+contacts and 1.8–2.0 mm surface supports. Both-fixed data still fails the coarse
+gate, and both-guided data loses a coarse support. A fixed primary plus guided
+partner passes both representations through the existing whole-layout validation
+path. Keep that mixed policy explicit in the editor and portable data; do not
+waive the coarse gate or publish an unavailable rendered check as clearance.
+No solver, region, furniture dimension or quality tolerance changes are needed.

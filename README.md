@@ -50,7 +50,7 @@ and a 2D image you can export. Pose checks report unresolved constraints.
 ```
 npm install
 npm run dev          # webapp on :5173
-npm test             # 319 tests
+npm test             # 327 tests
 node scripts/render-cli.mjs "a woman seated on a chair wearing clothes"
 ```
 
@@ -270,14 +270,16 @@ Euler characteristic — rather than checking that functions return values.
 
 **Known residuals.** The current base-model scene sweep reports 25 of 159
 variants as not fully sound, with a worst residual penetration of 63mm. The
-current base-model named-preset gate flags 6 of 12 definitions. The rendered
-named audit flags 6 of 12, and the complete rendered catalog audit flags 6 of
+current base-model named-preset gate flags 5 of 12 definitions. The rendered
+named audit flags 5 of 12, and the complete rendered catalog audit flags 5 of
 23 entries. All eleven clothed reference studies now pass that rendered audit,
 including the sofa recline's seat/foot and backrest checks. The chair-supported
 pair has verified chair/bench starting poses, and the seated embrace retains all
 five contacts on floor/bed. Their coarse fallbacks remain clear, and their drawn
 poses are used only after full geometry validation. Standing carry also retains
-all five contacts on floor/bed as fixed data passing both representations. Furniture
+all five contacts on floor/bed as fixed data passing both representations. The
+table pair keeps a fixed support figure and validated partner guide, with six
+surface supports and three close contacts. Furniture
 clearance is checked against the complete drawn figure before reconciling a
 coarse-model overlap; whole-figure floor
 checks also cover parts outside the declared support regions.

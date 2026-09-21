@@ -38,6 +38,7 @@ import { SIDE_FACING_LAYOUT, SPOONING_LAYOUT } from "./presetLayouts.js";
 import { CHAIR_LAP_LAYOUT } from "./chairLapLayout.js";
 import { SEATED_EMBRACE_LAYOUT } from "./seatedEmbraceLayout.js";
 import { STANDING_CARRY_LAYOUT } from "./standingCarryLayout.js";
+import { TABLE_SUPPORT_LAYOUT } from "./tableSupportLayout.js";
 
 /** @type {Archetype[]} */
 export const ARCHETYPES = [
@@ -138,6 +139,7 @@ export const ARCHETYPES = [
   },
   {
     id: "bent_over_table",
+    layout: TABLE_SUPPORT_LAYOUT,
     phrases: [
       "bent over the table", "bent over a desk", "over the edge of the bed",
       "俯身桌上", "趴在桌上", "扶桌后入",

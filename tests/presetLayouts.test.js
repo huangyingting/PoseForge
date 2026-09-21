@@ -291,6 +291,11 @@ const expectedContacts = {
     ["hand", "shoulder"],
     ["hand", "shoulder"],
   ],
+  bent_over_table: [
+    ["pelvis", "buttocks"],
+    ["hand", "hip"],
+    ["hand", "hip"],
+  ],
 };
 
 for (const definition of calibrated)
@@ -601,6 +606,106 @@ test("standing carry without scanned geometry remains fixed and labels its check
     );
     assert.ok(
       solvedPreview(solved).issues.includes("Support check unavailable"),
+    );
+  }
+});
+
+test("the mixed table layout retains four tabletop/floor supports and two partner foot supports through capture", () => {
+  const scene = checkScene(
+    portable(parseDescription("bent over the table").scene),
+  );
+  assert.equal(scene.actors[0].jointMode, "fixed");
+  assert.equal(scene.actors[0].placement.mode, undefined);
+  assert.equal(scene.actors[1].jointMode, "guided");
+  assert.equal(scene.actors[1].placement.mode, "guided");
+  const solved = solveScene(scene),
+    bodies = solved.actors.map(dressed);
+  assert.deepEqual(solvedPreview(solved).issues, []);
+  const fixedPrimary = structuredClone(solved.actors[0].pose);
+  refineSurfaceContacts(solved, bodies);
+  assert.deepEqual(solvedPreview(solved).issues, []);
+  assert.deepEqual(solved.actors[0].pose, fixedPrimary);
+  assert.deepEqual(
+    solved.actors.map((actor) => actor.supportBasis),
+    ["surface", "surface"],
+  );
+  assert.deepEqual(
+    solved.quality.supportSurfaces.map((report) =>
+      report.supports.map((support) => [
+        support.landmark,
+        support.measurement.plane,
+      ]),
+    ),
+    [
+      [
+        ["chest", 0.75],
+        ["hips", 0.75],
+        ["foot", 0],
+        ["foot", 0],
+      ],
+      [
+        ["foot", 0],
+        ["foot", 0],
+      ],
+    ],
+  );
+  assert.ok(
+    solved.quality.supportSurfaces.every(
+      (report) =>
+        report.gap <= 0.004 &&
+        report.penetration === 0 &&
+        report.unavailable === 0 &&
+        report.supports.every((support) => support.measurement.withinFootprint),
+    ),
+  );
+  const positions = solved.actors.map((actor) =>
+    actor.evaluated.positions.map((point) => point.slice()),
+  );
+  scene.actors.forEach((actor, i) =>
+    Object.assign(actor, captureSolvedPose(solved.actors[i])),
+  );
+  const restored = solveScene(checkScene(portable(scene)));
+  refineSurfaceContacts(restored, bodies);
+  assert.deepEqual(solvedPreview(restored).issues, []);
+  assert.equal(restored.quality.surfaceRefinement.steps, 0);
+  restored.actors.forEach((actor, i) =>
+    actor.evaluated.positions.forEach((point, j) =>
+      point.forEach((value, k) =>
+        assert.ok(Math.abs(value - positions[i][j][k]) < 1e-7),
+      ),
+    ),
+  );
+});
+
+test("missing geometry cannot certify or replace the table layout's coarse pose", () => {
+  for (const missing of ["partner", "all"]) {
+    const solved = solveScene(
+      checkScene(portable(parseDescription("bent over the table").scene)),
+    );
+    assert.deepEqual(solvedPreview(solved).issues, []);
+    const before = structuredClone(solved.actors.map((actor) => actor.pose));
+    const bodies = solved.actors.map(dressed);
+    refineSurfaceContacts(
+      solved,
+      missing === "all" ? [null, null] : [bodies[0], null],
+    );
+    assert.deepEqual(
+      solved.actors.map((actor) => actor.pose),
+      before,
+    );
+    assert.ok(
+      solvedPreview(solved).issues.includes("Surface check unavailable"),
+    );
+    assert.ok(
+      solvedPreview(solved).issues.includes("Support check unavailable"),
+    );
+    assert.ok(
+      solvedPreview(solved).issues.includes("Furniture check unavailable"),
+    );
+    assert.ok(
+      !solved.quality.adjustments.some((note) =>
+        note.includes("guided starting pose"),
+      ),
     );
   }
 });

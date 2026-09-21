@@ -56,6 +56,15 @@ partner support with no floor residual. These fixed defaults pass both coarse
 and rendered checks without refinement movement. Body, pose, facing, contact,
 clothing or unsupported-surface variations retain the standard automatic fallback.
 
+**Bent over table** uses mixed placement: the supported figure keeps its fitted
+root and joints, while the standing partner uses a validated guided start. The
+primary chest and hips rest on the finite table top; all four feet stay on the
+floor. All three original partner contacts are retained. The recipe supports
+the table only; other surfaces keep their own automatic scene rather than
+translating feet along with a tabletop. Both coarse and rendered checks pass.
+Capture the completed layout to freeze both figures. Explicit variations and
+missing geometry retain the same fallback and availability rules as other recipes.
+
 The single seated references now use render-aware grounding: the visible seat
 region and soles are brought toward their supporting surfaces while the feet's
 horizontal placement and orientation are retained. This also applies to matching
