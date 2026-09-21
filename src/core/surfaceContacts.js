@@ -46,6 +46,11 @@ import {
   forearmFramePreserved,
   forearmSupportPoses,
 } from "./forearmSupports.js";
+import {
+  levelSeatedSupportFrame,
+  levelSeatedFramePreserved,
+  levelSeatedSupportPoses,
+} from "./levelSeatedSupports.js";
 
 export const SURFACE_CONTACT_TOLERANCE = 0.004;
 const vDistanceSq = (a, b) =>
@@ -592,6 +597,7 @@ export function* surfaceContactSteps(
     maxSeatingSteps = 8,
     maxKneelingSteps = 8,
     maxForearmSteps = 8,
+    maxLevelSeatingSteps = 8,
   } = {},
 ) {
   const originalPoses = solved.actors.map(clonePose);
@@ -1026,7 +1032,12 @@ export function* surfaceContactSteps(
     // Ground visible support sets with bounded, pose-specific corrections. Furniture
     // proxy exceptions require complete drawn figure/box clearance, not only
     // the seat patch used to propose the candidate.
-    const supportSteps = { seatingSteps: 0, kneelingSteps: 0, forearmSteps: 0 };
+    const supportSteps = {
+      seatingSteps: 0,
+      kneelingSteps: 0,
+      forearmSteps: 0,
+      levelSeatingSteps: 0,
+    };
     const supportStages = [
       {
         counter: "seatingSteps",
@@ -1070,6 +1081,17 @@ export function* surfaceContactSteps(
           report.supports.every((s) => s.measurement?.withinFootprint),
         message:
           "adjusted reclining support against the rendered surface while retaining lower-body joints and clearing the hands.",
+      },
+      {
+        counter: "levelSeatingSteps",
+        limit: maxLevelSeatingSteps,
+        frame: levelSeatedSupportFrame,
+        poses: levelSeatedSupportPoses,
+        preserved: levelSeatedFramePreserved,
+        footprint: (report) =>
+          report.supports.every((s) => s.measurement?.withinFootprint),
+        message:
+          "adjusted seated support on a shared surface while preserving foot frames.",
       },
     ];
     for (const stage of supportStages) {

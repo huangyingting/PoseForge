@@ -22,7 +22,7 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 | Precise joint authoring | Optional fixed mode retains specified channels through seating, contact/collision solving, surface refinement and cancellation, while unedited channels remain free. The editor shows actual solved values and clears stale values while pending. The browser flow verifies fixed values, history, saved reload, JSON export and narrow-screen accessibility. Guided mode remains the default. |
 | Reproducible placement | Optional fixed world placement, per-figure solved-pose capture and atomic whole-layout capture are implemented. Position and XYZ rotation survive solving and serialization while unedited joints can remain guided. Captured recumbent figures retain their support side. Fully fixed hand constraints skip futile trials without hiding unmet contacts. Capturing and reloading the refined standing scene preserves joint positions within 1e-7 m and retains its clear rendered audit. |
 | Safe persistence and imports | Unit tests cover invalid versions, malformed JSON, unsafe keys, unknown scene choices, invalid landmark sides, duplicate IDs, quota errors and corrupt storage. A failed import does not partially add a pack. Re-importing creates fresh IDs. Browser recovery and invalid-import flows pass. |
-| Preset geometry | All 23 entries validate structurally and render. The complete rendered catalog audit is now 13/23 clear and 10 flagged. Both single seated references, the low/paired kneeling studies and the forearm-supported floor-rest study pass visible support and complete furniture/floor checks. The sofa recline and nine named layouts still require work; the named subset remains 3/12 clear. |
+| Preset geometry | All 23 entries validate structurally and render. The complete rendered catalog audit is now 14/23 clear and 9 flagged. All eleven clothed reference studies pass the rendered audit, including the sofa's seat/foot and complete backrest checks. Nine named layouts still require work; the named subset remains 3/12 clear. |
 | Calibrated stock layouts | Shared recipes supply catalog/text aliases with the same clothed fixed poses. Bed and floor checks retain the lying-facing pair's two body contacts and the cuddle's three torso/hand contacts within 4 mm, no complete-figure crossing, supported balance estimates, support residuals within 20 mm, and lowest rendered surfaces within 4 mm of the support plane. Both recipes pass the base-model gate too. Refinement leaves the authored rigs unchanged. Explicit conflicting body, pose, contact, coverage and surface settings bypass the recipe; portable JSON contains the full pose. |
 | Body-supported placement | Adaptive clearance reduces the seated-pair base support target from 523.7 mm to 3.4 mm. Chair cases pass across all four male/female pairings; bench and stature/build variations have measured support-plane regression tests. A 96-case comparison against `969f4f8` has 12 newly clean cases, no newly flagged cases and 78 unchanged results. Dressed contact failures remain separately reported. |
 | Surface-intersection escape | Bidirectional bounded IK trials clear both hand/arm intersections in the seated-support fixture, ending at approximately 2.3 mm and 1.8 mm. The supporting figure, both roots and lower-body joints stay unchanged; individual collision pairs and aggregate residuals cannot worsen. The lap target remains unresolved. |
@@ -37,6 +37,7 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 | Kneeling grounding | Generic knee/shin correction brings the low kneel to approximately 1 mm and both paired kneeling supports to approximately 2 mm, preserving the pair's hand contact. Sixteen body/proportion/posture/floor-or-bed variations meet visible supports within 4 mm. Fixed settings, contacted wrists, cumulative motion bounds, missing meshes and cancellation are covered. |
 | Complete floor clearance | Every drawn figure is checked against the studio floor, including unclaimed hands and other parts. Penetration beyond the existing 20 mm support-quality threshold and unavailable geometry remain visible. This exposed a 24 mm hand/floor crossing in the floor-rest study; the forearm correction now clears it while closing the 100 mm support gap. Accepted support candidates retain the stricter whole-figure nonpenetration guard. |
 | Forearm-supported grounding | The floor-rest reference meets its visible pelvis/forearm supports within approximately 2 mm with complete floor clearance. Twelve male/female proportion/surface cases finish within 4 mm on floor and bed, with no self/prop overlap flags. Lower-body and trunk joints, root heading and horizontal position remain unchanged. Fixed arm channels, positive arm contacts, obstacles, bounded work, capture/reload and cancellation are covered. |
+| Shared-plane seated grounding | The sofa recline meets its visible seat/foot supports within 4 mm and clears the complete backrest. Eighteen male/female proportion/floor/bed/sofa cases meet the same 4 mm target within eight candidates. Foot frames and trunk/head/hand-tip/toe-tip angles are retained; optional free-arm compensation prevents hands crossing the surface during lowering. A translated heading, quarter-turned sofa, fixed settings, close hand contact, obstacles, capture and cancellation are covered. |
 | Complete furniture clearance | Every drawn figure/box pair is checked, including visible auxiliary triangles and interior vertices. Missing or orientation-unverified surfaces cannot certify clearance. Verified coarse prop exceptions retain their raw depths and counts; actual crossings and unavailable checks appear in the UI/CLI. |
 | Anatomical region selection | Lap queries now include declared thigh-owned surfaces while retaining the original radius and regional weight threshold. Synthetic patches verify both sides, pose/stature/heading changes and exclusion of distant knee surfaces, unrelated bones and small weight tails. The seated lap gap is now measured at 107.5 mm, not reported as fixed. |
 | Description feedback | Unread text warnings survive worker rendering and draft reload. Catalog captions no longer overwrite the original text command. Pending poses do not retain stale quality notes. |
@@ -46,13 +47,34 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 
 ## Commands and results
 
-- `npm test`: **266 passed** (217.4 seconds in the final run), including
+- `npm test`: **276 passed** (245.8 seconds in the final run), including
   calibrated stock-layout
   parity/fallback, bed/floor dressed-mesh checks and CLI camera precedence, plus
   the original parser, geometry and
   architecture tests, catalog/storage tests, contact-authoring tests, clothing
   checks, triangle/surface-refinement checks and per-preset CLI selection,
   quality-dependent exit status and invalid/empty input.
+- The shared-plane seating iteration adds ten regressions and checks eighteen
+  body/proportion/surface variations. Both sofa body types clear the seat and
+  backrest while retaining foot frames. A compensating wrist-frame candidate
+  resolves below-surface hands in floor/bed and tall-male cases; fixed arm
+  channels remain authoritative. Deduplicating effective retained-pitch/forward
+  candidates lets the tall female sofa case meet 4 mm within the same eight-step
+  phase budget. Translation/rotation, finite furniture, close partner contact,
+  independent movement bounds, capture/reload and cancellation are covered.
+  The clothed diagnostic sofa render was inspected. No preset data, furniture
+  dimensions or quality tolerance was changed.
+- The shared-plane seating production-build browser selection
+  `tests/browser/level-seated-supports.spec.js tests/browser/reclining-supports.spec.js tests/browser/seated-supports.spec.js tests/browser/kneeling-supports.spec.js tests/browser/placement.spec.js tests/browser/catalog-camera.spec.js tests/browser/studio.spec.js:284`
+  passes **13/13 scenarios** (10.5 minutes), using the Chrome path below. The new
+  sofa flow checks both body types, a bed edit and return to sofa, capture,
+  save/reload and JSON export with no page/console/request errors. Both fresh
+  sofa screenshots were inspected. The reference-study scenario now requires
+  all eleven references to have no warning/error pose notes after rendering;
+  it also checks camera/material controls and desktop overflow. Named entries,
+  preview recovery/cache behavior, touch camera, placement and earlier support
+  flows pass in the same run. This is a targeted selection, not a new full-suite
+  claim. The production build and all seven contact fixtures pass again.
 - The forearm-support iteration adds nine regressions, including the twelve
   body/proportion/floor-or-bed cases and a translated/rotated reference. The
   stock floor-rest pose closes its approximately 100 mm support gap to 2 mm and
@@ -120,13 +142,15 @@ remain unresolved; loading a preset is not proof that its constraints were met.
   authoring/history/save/reload/export, mobile interaction and accessibility
   pass. Fresh screenshots of both calibrated layouts on bed and floor were
   inspected. The production build and all seven contact fixtures pass again.
-- `node scripts/validate-named-presets.mjs --catalog --rendered`: **13/23 clear;
-  10 require review**, with no unavailable support, floor or furniture checks. Its retained base
+- `node scripts/validate-named-presets.mjs --catalog --rendered`: **14/23 clear;
+  9 require review**, with no unavailable support, floor or furniture checks. Its retained base
   results are **15/23 clear**. The named subset is **5/12 base-model clear** and
   **3/12 rendered clear**. The command exits 1 for the unresolved entries.
-  This extends the audit to the reference studies; their original unit gate did
-  not check prop overlap or drawn support. The reclined study's base report
-  includes 41 mm of prop overlap, separately from its 98 mm drawn support gap.
+  All eleven reference studies are now rendered-clear. Their original unit gate
+  did not check prop overlap or drawn support. The reclined study's base report
+  still includes 41 mm of prop overlap; rendered refinement now closes its former
+  98 mm support gap and clears the complete backrest. Raw proxy disagreements
+  remain separately available rather than being mistaken for visible crossings.
 - The cuddle recipe adds seven instances of the shared stock-layout
   regressions. Every calibrated alias shares catalog geometry, requested
   variations bypass the recipe, and real bed/floor meshes retain their original
@@ -312,20 +336,19 @@ and the production build are distinct from a hosted deployment.
 
 ## Remaining goal audit
 
-The current complete catalog audit includes ten flagged entries: nine named
-layouts and the sofa reclining reference. The latter retains a 98 mm rendered
-support gap, a sofa-back crossing and approximately 41 mm of coarse support
-overlap.
+The current complete catalog audit includes nine flagged named layouts. All
+eleven reference studies now pass the rendered support/contact and complete
+figure/furniture/floor checks at their existing quality thresholds.
 
 The seated female/male gaps of 78/108 mm are now corrected to approximately 2 mm.
 The low-kneel gap of 27 mm is now approximately 1 mm; the paired-kneel maximum
 of 23 mm is now approximately 2 mm, with foot frames and contacted hands retained.
 The floor-rest study's approximately 100 mm support gap is now approximately
 2 mm, and its previously unclaimed 24 mm hand/floor crossing is cleared. Its
-undeclared elevated feet retain their lower-body pose. The sofa reference still
-needs seating and orientation work against its visible support and backrest;
-its pose was not changed by the forearm correction. The older comparisons below
-retain their original measurement scope.
+undeclared elevated feet retain their lower-body pose. The separate sofa phase
+now closes its former 98 mm seat gap to below 4 mm and clears the backrest while
+retaining foot frames. Its raw coarse prop/balance estimates remain separately
+reported. The older comparisons below retain their original measurement scope.
 
 Catalog integration, solved-pair diagrams and touch zoom are now implemented and
 verified. Named-preset geometry remains the main unfinished requirement. The

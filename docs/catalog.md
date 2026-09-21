@@ -45,6 +45,13 @@ the existing lower-body pose rather than assigning new foot supports. Both body
 types and tested floor/bed proportions are covered; fixed arm channels or
 partner contacts on the supporting arms prevent free wrist reshaping.
 
+The **Slow afternoon** reference uses shared-plane seating to ground the seat
+while keeping its feet on the sofa cushion and clearing the backrest. The same
+support contract works on tested floor and bed variants. Pitch/forward changes
+and optional free-arm compensation are bounded; fixed placement and required
+channels remain authoritative. Capturing the corrected pose stores ordinary
+root/joint data, not a special-case catalog override.
+
 Once loaded, a fixed layout remains editable and is not silently reapplied.
 The Composition hint points to **Figures → Placement** to release fixed roots;
 **Joints → Keep edited angles** controls joint locking separately. Changing a

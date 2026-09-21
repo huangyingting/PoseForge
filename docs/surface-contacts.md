@@ -170,6 +170,30 @@ individual or aggregate collisions or rendered balance. Capture and cancellation
 use the same rules as the other support phases. This is a bounded geometric
 correction, not a force or joint-load simulation.
 
+### Shared-plane seated supports
+
+Seat/foot support sets on one plane use a separate bounded phase. A damped seat
+correction retains both foot frames while trying small forward offsets and pitch
+toward upright. This handles cushion-supported feet without reinterpreting them
+as floor supports. Root movement remains within the existing 160 mm vertical and
+180 mm horizontal seating limits. Pitch is at most 30 degrees toward upright,
+never beyond it; sideways root movement, yaw and roll are not introduced.
+
+When vertical lowering needs hand clearance, a compensating candidate retains
+the current wrist frames. Fixed arm channels block that candidate, while fixed
+leg channels, fixed placement or zero mobility block the phase. Trunk/head and
+hand/toe-tip joint angles remain unchanged; free arm changes are capped at 60
+degrees per channel from the phase's initial pose. The complete floor, furniture,
+figure, contact and collision guards remain authoritative.
+
+Accepted pitch/forward offsets persist across passes. Equivalent candidates
+after that retention/clamping are tried only once, avoiding repeated failures
+within the eight-candidate phase limit and shared 32-step budget. Use
+`maxLevelSeatingSteps: 0` for a diagnostic comparison;
+`surfaceRefinement.levelSeatingSteps` reports its work. Capture/reload and
+cancellation use the same representation and restoration rules as other phases.
+Coarse prop/balance disagreements remain available beside the measured results.
+
 `quality.propSurfaces` audits every complete figure against each furniture box.
 Crossing triangles and interior vertices are overlaps. Missing geometry and
 unverified orientation—including a box enclosed by a shell—cannot certify

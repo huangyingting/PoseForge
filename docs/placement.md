@@ -99,3 +99,10 @@ retaining lower-body and trunk joints. Fixed placement or required arm channels
 block this phase, as do positive partner contacts on the supporting arms. Capture
 stores the resulting root and joint pose using the same portable representation;
 it does not replace the pose's declared supports or hand shapes.
+
+When seat and feet share one plane, automatic seating can include a bounded
+forward move and pitch toward upright while preserving foot frames. Free wrists
+may be retained during lowering to prevent below-surface hands. Trunk/head and
+hand/toe-tip angles stay unchanged; fixed arms block that compensation, and fixed
+legs or placement block the shared-plane phase. Capture stores the resulting
+pitch and limb adjustments, so save/reload does not solve them a different way.

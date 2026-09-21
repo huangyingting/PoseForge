@@ -296,6 +296,7 @@ test("reference studies render, camera and material work, desktop has no overflo
   for (const preset of STUDIO_PRESETS) {
     await load(page, preset.title);
     await expect(page.locator("#scene-title")).toHaveText(preset.title);
+    await expect(page.locator(".notes .warning, .notes .error")).toHaveCount(0);
   }
   await load(page, "Side by side");
   await page.getByRole("button", { name: "Front", exact: true }).click();

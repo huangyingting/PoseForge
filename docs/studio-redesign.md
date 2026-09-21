@@ -509,4 +509,44 @@ floor-or-bed combinations within 4 mm without increasing the eight-candidate or
 shared 32-step budgets. The original floor-rest study now measures approximately
 2 mm at its supports with the whole figure above the floor. Translation/heading,
 fixed authoring, positive arm contacts, obstacles, capture and cancellation have
-explicit regression coverage. The separate sofa/backrest problem remains open.
+explicit regression coverage. The separate sofa/backrest work follows below.
+
+#### Same-plane seated supports and backrest clearance
+
+The sofa reference has its seat and both feet assigned to the cushion plane.
+Its soles already measure about 2 mm from that plane, but the seat is about
+98 mm above it and the torso intersects the backrest. A previous pelvis drop
+with forward translation retained the feet but did not clear the backrest.
+Investigate bounded forward/pitch adjustments together with visible-seat
+grounding and leg IK that retains the foot frames. Do not reinterpret the sofa's
+declared feet as floor supports or change its furniture geometry to hide the
+crossing.
+
+Use support measurements and local figure axes rather than a preset ID.
+Require complete furniture, floor, self and partner clearance; preserve fixed
+placement/channels and close contacts. Any accepted correction must remain
+within cumulative translation/orientation bounds and the shared candidate
+budget, restore poses on cancellation, and survive capture/reload. Compare
+both body types, sizes and relevant surfaces, including the existing seated
+chair/bench cases, before delivery.
+
+The diagnostic male/female trials support a shared-plane seating phase with
+cumulative limits of 160 mm vertical movement, 180 mm forward movement, and
+30 degrees of pitch toward—but never beyond—upright. Retain the original foot
+frames with only their existing near-plane height correction, and leave the
+trunk/head joint angles unchanged. Keep an accepted pitch/forward offset across
+subsequent gap-closing passes rather than undoing its backrest clearance.
+Use at most eight candidates within the existing shared 32-step budget.
+
+The wider floor/bed and tall-male trials exposed a free-hand clearance limit:
+lowering the seat could leave a hand below the supporting plane. A compensating
+candidate retains the current wrist frames during vertical lowering; it does
+not anchor hands behind the figure throughout a large forward move. This keeps
+the trunk/head joints unchanged while allowing required free arm channels to
+adjust within a cumulative 60-degree per-channel limit. Fixed arm channels
+block that compensating candidate, and all complete-surface guards remain in
+force. Foot frames and the original translation/pitch budgets are unchanged.
+
+Deduplicate effective candidates after retaining/clamping pitch and forward
+offsets. Otherwise several different input tuples become the same pose after
+an accepted adjustment, wasting the limited budget on repeated failures.
