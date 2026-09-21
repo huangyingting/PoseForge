@@ -270,8 +270,8 @@ Euler characteristic — rather than checking that functions return values.
 
 **Known residuals.** The current base-model scene sweep reports 25 of 159
 variants as not fully sound, with a worst residual penetration of 63mm. The
-current base-model named-preset gate flags 5 of 12 definitions. The rendered
-named audit flags 5 of 12, and the complete rendered catalog audit flags 5 of
+current base-model named-preset gate flags 4 of 12 definitions. The rendered
+named audit flags 4 of 12, and the complete rendered catalog audit flags 4 of
 23 entries. All eleven clothed reference studies now pass that rendered audit,
 including the sofa recline's seat/foot and backrest checks. The chair-supported
 pair has verified chair/bench starting poses, and the seated embrace retains all
@@ -279,7 +279,9 @@ five contacts on floor/bed. Their coarse fallbacks remain clear, and their drawn
 poses are used only after full geometry validation. Standing carry also retains
 all five contacts on floor/bed as fixed data passing both representations. The
 table pair keeps a fixed support figure and validated partner guide, with six
-surface supports and three close contacts. Furniture
+surface supports and three close contacts. The hands-and-knees pair also retains
+six supports and three contacts on floor/bed, with palm-down hands and both
+figures' starting poses checked by the existing rendered validation. Furniture
 clearance is checked against the complete drawn figure before reconciling a
 coarse-model overlap; whole-figure floor
 checks also cover parts outside the declared support regions.

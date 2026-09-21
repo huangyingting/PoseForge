@@ -11,7 +11,7 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 | --- | --- |
 | Male and female figure presentation | Licensed meshes retained; tops/shorts, softer skin and lighting, skin-tone control, natural/clay modes, and shadow-catching ground. Desktop and mobile renders inspected. A contrasting-skin diagnostic confirmed skin was peeking through opaque garments; the corrected rendering removes those artifacts. |
 | Clothing follows poses | Geometry tests skin studio outfits onto both body types in standing, seated and kneeling poses, check finite bounded vertices, retained garment meshes and covered anatomy. Opaque garments hide fully covered skin faces while retaining exposed head/lower-leg geometry and preserving the original cached template. Existing garment weight and hem tests also pass. |
-| Braced hands | Finger and thumb rotations now cancel the models' native rest curl against their measured palm plane. Both models and both hands retain joint origins, phalanx lengths and finite skinning through asymmetric posed wrists. Drawn thumbs extend about 3.6 mm beyond the palm instead of 43–49 mm; the other hand shapes and unselected hand remain unchanged. This corrects the shared hand shape, not the still-unresolved paired layout. |
+| Braced hands | Finger and thumb rotations now cancel the models' native rest curl against their measured palm plane. Both models and both hands retain joint origins, phalanx lengths and finite skinning through asymmetric posed wrists. Drawn thumbs extend about 3.6 mm beyond the palm instead of 43–49 mm; the other hand shapes and unselected hand remain unchanged. The later kneeling-pair recipe also retains downward-facing palms and forward-pointing fingers. |
 | Responsive studio | Browser checks at 1440×1000, 390×844 and 320-pixel width; library, studio and inspector remain reachable. Named positions have a direct collection filter. Long text does not cause page overflow; zoom buttons stay reachable on narrow screens. |
 | Keyboard and accessibility | Native dialogs, labeled inputs, keyboard camera controls, focus retained after loading cards, and visible focus. Axe WCAG 2 A/AA and 2.1 AA checks return no violations on desktop, mobile, figure inspector and save dialog. This is an automated audit, not an accessibility certification. |
 | Extensible catalog | 23 entries: eleven reference studies plus all twelve existing named definitions. Original aliases, postures, facing, surfaces and contacts are preserved. All/Positions/Saved/Favorites, categories, search, CRUD, reload and import/export work. Built-ins remain immutable. |
@@ -26,10 +26,11 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 | Reproducible placement | Optional fixed world placement, per-figure solved-pose capture and atomic whole-layout capture are implemented. Position and XYZ rotation survive solving and serialization while unedited joints can remain guided. Captured recumbent figures retain their support side. Fully fixed hand constraints skip futile trials without hiding unmet contacts. Capturing and reloading the refined standing scene preserves joint positions within 1e-7 m and retains its clear rendered audit. |
 | Guided starting poses | Optional `placement.mode: "guided"` seeds roots without pinning them; omitted mode retains fixed legacy behavior. A one-candidate rendered proposal must pass all declared contacts/supports, whole-figure/furniture/floor clearance, self checks and rendered balance. Fixed companions, zero mobility, invalid hints, missing geometry, budgets, cancellation and capture-to-fixed are tested. Browser controls preserve the requested guide separately from the solved transform through fixed-mode switching, history, save/reload/export and reset, including a 320 px Axe check. |
 | Safe persistence and imports | Unit tests cover invalid versions, malformed JSON, unsafe keys, unknown scene choices, invalid landmark sides, duplicate IDs, quota errors and corrupt storage. A failed import does not partially add a pack. Re-importing creates fresh IDs. Browser recovery and invalid-import flows pass. |
-| Preset geometry | All 23 entries validate structurally and render. The complete rendered catalog audit is now 18/23 clear and 5 flagged. All eleven clothed reference studies and seven named layouts, including the table-supported pair, pass the rendered audit. Five named layouts still require work. The base-model total is 17/23, with 7/12 named entries clear and no newly flagged base or rendered entries. |
+| Preset geometry | All 23 entries validate structurally and render. The complete rendered catalog audit is now 19/23 clear and 4 flagged. All eleven clothed reference studies and eight named layouts, including the hands-and-knees pair, pass the rendered audit. Four named layouts still require work. The base-model total is 18/23, with 8/12 named entries clear and no newly flagged base or rendered entries. |
 | Calibrated stock layouts | Shared recipes supply catalog/text aliases with clothed fixed poses or validated guided hints. The lying-facing and cuddle bed/floor recipes retain their two/three contacts, pass the base-model gate and remain unchanged by refinement. The chair-supported pair has independently fitted chair/bench variants. The seated embrace has verified floor/bed variants retaining all five original contacts. Both guided pairs retain primary seat/foot supports within 4 mm and explicit partner support; their coarse defaults and rendered results pass. Conflicting body, pose, contact, coverage and surface settings bypass calibration; portable JSON retains the selected ordinary pose/hints. |
 | Standing carry | Fixed floor/bed recipes preserve standing/lifted roles and all five contacts, including the original body-to-hand support direction. Contacts are approximately 2.4–3.7 mm, both carrier feet are approximately 2.0–3.0 mm from their plane, and complete figures/furniture/floor are clear. Both representations pass without refinement movement. Captured geometry is retained within 1e-7 m; absent meshes remain uncertified. |
 | Table-supported pair | The fixed primary has chest/hips on the finite table top and feet on the floor; the standing partner has a validated guided start and two floor supports. All six supports are approximately 1.8–2.0 mm and all three original partner contacts approximately 1.5–2.5 mm. Complete figures/table/floor are clear, both representations pass, capture retains the geometry within 1e-7 m, and missing partner/all geometry remains uncertified. |
+| Hands-and-knees pair | Both guided floor/bed defaults pass the independent coarse gate and existing whole-layout rendered adoption. Original postures/body types, four primary and two partner supports, and all three original contacts are retained. Six rendered supports are approximately 2 mm, three contacts approximately 2.5 mm, and complete figures/furniture/floor remain clear. Both palms face down. Capture replays geometry within 1e-7 m; missing either model preserves the coarse pose and remains uncertified. The final primary's raw 24.5 mm coarse knee discrepancy remains separately reported, not hidden or used as the rendered support distance. |
 | Body-supported placement | Adaptive clearance reduces the seated-pair base support target from 523.7 mm to 3.4 mm. Chair cases pass across all four male/female pairings; bench and stature/build variations have measured support-plane regression tests. A 96-case comparison against `969f4f8` has 12 newly clean cases, no newly flagged cases and 78 unchanged results. Dressed contact failures remain separately reported. |
 | Surface-intersection escape | Bidirectional bounded IK trials clear both hand/arm intersections in the seated-support fixture, ending at approximately 2.3 mm and 1.8 mm. The supporting figure, both roots and lower-body joints stay unchanged; individual collision pairs and aggregate residuals cannot worsen. The lap target remains unresolved. |
 | Hand-to-body geometry | Coordinated free-arm reaches clear both standing-embrace hand/arm intersections at approximately 2.2 mm. The complete arms are checked against the entire target figure, including colored auxiliary meshes. The isolated limb stage preserves roots, lower-body joints and the target figure; its remaining body gap is handled separately. Regression tests retain this phase boundary. |
@@ -53,16 +54,64 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 
 ## Commands and results
 
+- The hands-and-knees iteration adds ten layout regressions. The focused
+  `node --test tests/presetLayouts.test.js` run passes **59/59 tests**
+  (84.5 seconds), preserving every original contact, support and figure role.
+  Floor/bed defaults pass the existing coarse gate, then adopt the authored
+  guide only after complete rendered validation. Tests directly measure the
+  coarse default supports before adoption and retain the different raw coarse
+  residual after adoption. No solver, contact-region, furniture or quality
+  tolerance changes are needed. Both palms face down; all six supports are
+  approximately 2 mm and the three contacts approximately 2.5 mm. Captures retain
+  geometry within 1e-7 m without a guide, and missing primary/partner/all models
+  on both surfaces preserve the coarse pose with explicit unavailable checks.
+- An initial focused run was interrupted and is not counted as a pass. The next
+  run exposed a new test reading `bodySupportResidual` before rendered reporting
+  populates it; it was corrected to call `measureBodySupportResidual` directly.
+  The complete 59-test rerun above passed without weakening the coarse gate.
+- `node scripts/validate-named-presets.mjs --catalog --rendered` now reports
+  **19/23 clear**, including **8/12 named layouts**. The retained base results
+  are **18/23 clear**, also **8/12 named**. No previously clear entry became
+  flagged, and no figure, support, floor or furniture check is unavailable.
+  The four remaining rendered failures keep the audit's exit status at 1.
+  All seven contact fixtures pass on the new recipe, exit 0.
+- The complete `npm test` run on the kneeling-pair recipe passes **343/343 tests**
+  (336.7 seconds), including the new ten layout regressions, every previously
+  calibrated layout and the existing solver, support/contact, clothing, parser,
+  persistence, preview and CLI checks.
+- The standalone production-build browser selection
+  `tests/browser/kneeling-pair-layout.spec.js` passes **2/2 scenarios**
+  (2.3 minutes). It verifies floor/bed support and contact measurements, guided
+  defaults, saved reload/export, exact fixed capture/reload, and explicit
+  height/facing/other-surface fallbacks. Fresh floor and bed screenshots were
+  inspected. Normal-path page/console/request errors are empty, the production
+  build passes and the last-run marker reports no failed tests.
+- The initial combined browser command ended with signal 143 after eight
+  scenarios passed, before the ninth finished; it is not a completed-suite pass.
+  Its preview server remained alive and caused an immediate port-conflict
+  rejection of the first retry. The owned preview process was then stopped and
+  confirmed terminal. Browser checks were split into shorter unchanged-code
+  batches with the original timeouts; the two-scenario result above is complete.
+- The subsequent production-build batch
+  `tests/browser/catalog-camera.spec.js tests/browser/hand-shapes.spec.js tests/browser/guided-placement.spec.js`
+  passes **7/7 scenarios** (5.3 minutes), exit 0. Together with the completed
+  kneeling-pair batch, **9/9 targeted browser scenarios pass**. All twelve named
+  entries, preview recovery/cache behavior, saved previews, mobile camera and
+  guided-placement controls, and both hand-shape save/export flows pass on the
+  final code. The last-run marker is `passed` with no failed tests. These are
+  completed targeted batches, not a new full-browser-suite claim.
+
 - The brace-hand correction adds six geometric regressions in
   `tests/handPose.test.js`. All **6/6 pass**, checking both models, mirrored
   hands, transformed/asymmetric arm frames, unchanged local joint translations
   and lengths, non-mutating posing, the other named hand shapes, and actual
   drawn palm/thumb/finger extents. The initial plane tests failed on both
   models before the correction. Diagnostic clothed full-figure and hand-close
-  renders were inspected. A palm-down solo candidate now has four approximately
-  2 mm rendered supports, but its coarse knee residual remains approximately
-  25 mm and the paired candidates still have unresolved partner-hand crossings.
-  These candidates are not added to the built-in catalog.
+  renders were inspected. At that milestone, a palm-down solo candidate had four
+  approximately 2 mm rendered supports, but its coarse knee residual remained
+  approximately 25 mm and the paired candidates had unresolved hand crossings.
+  Those initial candidates were not added to the built-in catalog; the later
+  guided hands-and-knees iteration above completes the pair.
 - The complete rendered catalog audit on the brace correction retains
   **18/23 clear**, including **7/12 named layouts**. The same five entries
   remain flagged, with no newly flagged or unavailable checks. The base-model
@@ -296,7 +345,7 @@ remain unresolved; loading a preset is not proof that its constraints were met.
   authoring/history/save/reload/export, mobile interaction and accessibility
   pass. Fresh screenshots of both calibrated layouts on bed and floor were
   inspected. The production build and all seven contact fixtures pass again.
-- `node scripts/validate-named-presets.mjs --catalog --rendered`: **18/23 clear;
+- At the table-layout milestone, `node scripts/validate-named-presets.mjs --catalog --rendered`: **18/23 clear;
   5 require review**, with no unavailable figure, support, floor or furniture checks. Its retained base
   results are **17/23 clear**. The named subset is **7/12 base-model clear** and
   **7/12 rendered clear**. The command exits 1 for the unresolved entries.
@@ -490,7 +539,7 @@ and the production build are distinct from a hosted deployment.
 
 ## Remaining goal audit
 
-The current complete catalog audit includes five flagged named layouts. All
+The current complete catalog audit includes four flagged named layouts. All
 eleven reference studies now pass the rendered support/contact and complete
 figure/furniture/floor checks at their existing quality thresholds.
 
@@ -544,10 +593,18 @@ partner foot supports at approximately 1.8–2.0 mm, with three approximately
 1.5–2.5 mm partner contacts. Both figures and the complete table remain clear.
 Its fixed primary and guided partner pass both the coarse and rendered gates.
 
+The hands-and-knees pair now retains palm-down braced hands, all six declared
+supports at approximately 2 mm and all three contacts at approximately 2.5 mm.
+Both figures use validated guided starting poses on floor and bed. The coarse
+default and rendered final checks pass independently; the final raw coarse
+knee discrepancy remains visible as diagnostic data. Complete figure, mattress
+and floor checks pass, and captured poses replay without guided adoption.
+
 The current named audit reports no base-model flags for spooning, lotus, chair
-straddle, lying-facing, standing embrace, standing carry and the table pair.
-All seven also pass the dressed-mesh and whole-figure audit; the other five remain
-flagged: missionary, cowgirl, reverse cowgirl, doggy style and head-to-toe.
+straddle, lying-facing, standing embrace, standing carry, the table pair and
+the hands-and-knees pair. All eight also pass the dressed-mesh and whole-figure
+audit; the other four remain flagged: missionary, cowgirl, reverse cowgirl and
+head-to-toe.
 The head-to-toe definition
 still has unmet partner contacts. Its former 489 mm "support gap" was a stale
 floor-clamp displacement on a figure assigned partner support, not a measured

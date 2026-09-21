@@ -10,7 +10,7 @@ import {
 import { ARCHETYPES } from "../src/nlp/archetypes.js";
 import { parseDescription } from "../src/nlp/parser.js";
 import { applyPresetLayout } from "../src/nlp/presetLayouts.js";
-import { solveScene } from "../src/core/solver.js";
+import { solveScene, measureBodySupportResidual } from "../src/core/solver.js";
 import { solvedPreview } from "../src/core/posePreview.js";
 import { resolveSurface } from "../src/core/poseLibrary.js";
 import { rootFromPlacement, captureSolvedPose } from "../src/core/placement.js";
@@ -18,7 +18,10 @@ import {
   buildHumanTemplate,
   featureRelief,
   skinHumanMesh,
+  bindCorrections,
+  poseJoints,
 } from "../src/core/humanMesh.js";
+import { v3cross, v3dot, v3normalize, v3sub } from "../src/core/math.js";
 import { withGarments } from "../src/core/garments.js";
 import { withHair } from "../src/core/hair.js";
 import {
@@ -263,6 +266,11 @@ function dressed(actor) {
 }
 
 const expectedContacts = {
+  doggy_style: [
+    ["pelvis", "buttocks"],
+    ["hand", "hip"],
+    ["hand", "hip"],
+  ],
   side_by_side_facing: [
     ["chest", "chest"],
     ["pelvis", "pelvis"],
@@ -313,6 +321,12 @@ for (const definition of calibrated)
         [],
         "stock layout must also pass the base-model gate",
       );
+      for (const actor of solved.actors)
+        if (actor.supportBasis === "surface")
+          assert.ok(
+            measureBodySupportResidual(actor, solved.surface) <= 0.02,
+            "coarse default supports must pass before rendered adoption",
+          );
       const poses = structuredClone(solved.actors.map((actor) => actor.pose));
       refineSurfaceContacts(solved, bodies);
       assert.deepEqual(solvedPreview(solved).issues, []);
@@ -411,7 +425,15 @@ for (const definition of calibrated)
             else assert.ok(actor.bodySupportResidual <= 0.02);
             assert.ok(actor.seatResidual <= 0.004);
           } else {
-            assert.ok(actor.bodySupportResidual <= 0.02);
+            if (actor.spec.placement?.mode === "guided") {
+              // A rendered guide may disagree with the coarse approximation.
+              // Its coarse DEFAULT still passes above; retain the final raw
+              // measurement without mistaking it for the rendered support.
+              assert.equal(
+                actor.bodySupportResidual,
+                measureBodySupportResidual(actor, solved.surface),
+              );
+            } else assert.ok(actor.bodySupportResidual <= 0.02);
             assert.ok(actor.seatResidual <= 0.02);
           }
         }
@@ -461,6 +483,222 @@ test("a chair layout without scanned geometry keeps the coarse result and unavai
     solvedPreview(solved).issues.includes("Furniture check unavailable"),
   );
   assert.ok(solvedPreview(solved).issues.includes("Surface check unavailable"));
+});
+
+test("the kneeling pair retains palm-down hands, six supports and all three original contacts on floor and bed", () => {
+  for (const surface of ["floor", "bed"]) {
+    const scene = checkScene(
+      portable(parseDescription(`doggy style on the ${surface}`).scene),
+    );
+    assert.ok(
+      scene.actors.every(
+        (actor) =>
+          actor.jointMode === "guided" && actor.placement.mode === "guided",
+      ),
+    );
+    assert.deepEqual(
+      scene.actors.map((actor) => [actor.posture, actor.bodyType]),
+      [
+        ["all_fours", "female"],
+        ["kneeling", "male"],
+      ],
+    );
+    assert.equal(scene.relationship.arrangement, "rear_alignment");
+    const solved = solveScene(scene),
+      bodies = solved.actors.map(dressed);
+    assert.deepEqual(
+      solvedPreview(solved).issues,
+      [],
+      "coarse default passes independently",
+    );
+    assert.ok(
+      solved.actors.every(
+        (actor) => measureBodySupportResidual(actor, solved.surface) <= 0.02,
+      ),
+    );
+    refineSurfaceContacts(solved, bodies);
+    assert.deepEqual(solvedPreview(solved).issues, []);
+    assert.equal(solved.quality.surfaceRefinement.steps, 1);
+    assert.equal(solved.quality.surfaceRefinement.guidedPoseSteps, 1);
+    assert.deepEqual(
+      solved.contacts.map(
+        ({ fromActor, toActor, from, to, fromSide, toSide, strength }) => [
+          fromActor,
+          toActor,
+          from,
+          to,
+          fromSide ?? null,
+          toSide ?? null,
+          strength,
+        ],
+      ),
+      [
+        [1, 0, "pelvis", "buttocks", null, null, 0.9],
+        [1, 0, "hand", "hip", "l", "l", 0.7],
+        [1, 0, "hand", "hip", "r", "r", 0.7],
+      ],
+    );
+    assert.deepEqual(
+      solved.quality.supportSurfaces.map((entry) =>
+        entry.supports.map(({ landmark, side }) => [landmark, side]),
+      ),
+      [
+        [
+          ["knee", "l"],
+          ["knee", "r"],
+          ["hand", "l"],
+          ["hand", "r"],
+        ],
+        [
+          ["knee", "l"],
+          ["knee", "r"],
+        ],
+      ],
+    );
+    assert.ok(
+      solved.quality.supportSurfaces.every(
+        (entry) =>
+          entry.unavailable === 0 &&
+          entry.penetration === 0 &&
+          entry.gap <= 0.004 &&
+          entry.supports.every(
+            ({ measurement }) =>
+              measurement.withinFootprint &&
+              measurement.plane === resolveSurface(surface).height,
+          ),
+      ),
+    );
+    assert.ok(
+      solved.quality.contactDetail.every(
+        (contact) =>
+          !contact.intersects &&
+          contact.surfaceGap >= 0.001 &&
+          contact.surfaceGap <= 0.004,
+      ),
+    );
+    assert.ok(
+      solved.quality.figureSurfaces.every((pair) => pair.intersects === false),
+    );
+    assert.ok(
+      solved.quality.propSurfaces.every((pair) => pair.intersects === false),
+    );
+    assert.ok(
+      solved.quality.floorSurfaces.every((entry) => entry.penetration === 0),
+    );
+    assert.ok(solved.quality.renderedBalance.every((entry) => entry.supported));
+    const primary = solved.actors[0],
+      template = bodies[0];
+    assert.ok(
+      primary.bodySupportResidual > 0.02 && primary.bodySupportResidual < 0.026,
+      "retain the raw knee proxy discrepancy after accepting measured supports",
+    );
+    assert.equal(
+      primary.bodySupportResidual,
+      measureBodySupportResidual(primary, solved.surface),
+    );
+    const world = poseJoints(
+      template,
+      primary.skeleton,
+      primary.evaluated,
+      bindCorrections(template, primary.skeleton),
+      primary.hands,
+    );
+    const at = (name) =>
+      world[template.joints.findIndex((joint) => joint.name === name)].slice(
+        12,
+        15,
+      );
+    for (const side of ["l", "r"]) {
+      assert.equal(primary.hands[side], "brace");
+      const wrist = at(`hand_${side}`),
+        along = v3normalize(v3sub(at(`middle_01_${side}`), wrist));
+      let normal = v3normalize(
+        v3cross(along, v3sub(at(`pinky_01_${side}`), at(`index_01_${side}`))),
+      );
+      if (v3dot(v3sub(at(`thumb_01_${side}`), wrist), normal) < 0)
+        normal = normal.map((n) => -n);
+      assert.ok(
+        normal[1] < -0.999,
+        "supporting palms must face down, not stand on an edge",
+      );
+      assert.ok(
+        along[2] > 0.999,
+        "supporting fingers point forward along the shared plane",
+      );
+    }
+  }
+});
+
+test("capturing the kneeling pair retains its complete rendered geometry without guided adoption", () => {
+  for (const surface of ["floor", "bed"]) {
+    const scene = checkScene(
+      portable(parseDescription(`doggy style on the ${surface}`).scene),
+    );
+    const solved = solveScene(scene),
+      bodies = solved.actors.map(dressed);
+    refineSurfaceContacts(solved, bodies);
+    assert.deepEqual(solvedPreview(solved).issues, []);
+    const positions = solved.actors.map((actor) =>
+      actor.evaluated.positions.map((point) => point.slice()),
+    );
+    scene.actors.forEach((actor, i) =>
+      Object.assign(actor, captureSolvedPose(solved.actors[i])),
+    );
+    assert.ok(
+      scene.actors.every(
+        (actor) =>
+          actor.jointMode === "fixed" && actor.placement.mode !== "guided",
+      ),
+    );
+    const restored = solveScene(checkScene(portable(scene)));
+    refineSurfaceContacts(restored, bodies);
+    assert.deepEqual(solvedPreview(restored).issues, []);
+    assert.equal(restored.quality.surfaceRefinement.steps, 0);
+    assert.equal(restored.quality.surfaceRefinement.guidedPoseSteps, 0);
+    restored.actors.forEach((actor, i) =>
+      actor.evaluated.positions.forEach((point, j) =>
+        point.forEach((value, k) =>
+          assert.ok(Math.abs(value - positions[i][j][k]) < 1e-7),
+        ),
+      ),
+    );
+  }
+});
+
+test("missing either model cannot certify the kneeling guide or replace its coarse pose", () => {
+  for (const surface of ["floor", "bed"])
+    for (const missing of ["primary", "partner", "all"]) {
+      const solved = solveScene(
+        checkScene(
+          portable(parseDescription(`doggy style on the ${surface}`).scene),
+        ),
+      );
+      assert.deepEqual(solvedPreview(solved).issues, []);
+      const poses = structuredClone(solved.actors.map((actor) => actor.pose));
+      const bodies = solved.actors
+        .map(dressed)
+        .map((body, i) =>
+          missing === "all" || (missing === "primary" ? i === 0 : i === 1)
+            ? null
+            : body,
+        );
+      refineSurfaceContacts(solved, bodies);
+      assert.deepEqual(
+        solved.actors.map((actor) => actor.pose),
+        poses,
+      );
+      assert.ok(
+        solvedPreview(solved).issues.includes("Surface check unavailable"),
+      );
+      assert.ok(
+        solvedPreview(solved).issues.includes("Support check unavailable"),
+      );
+      assert.ok(
+        !solved.quality.adjustments.some((note) =>
+          note.includes("guided starting pose"),
+        ),
+      );
+    }
 });
 
 test("the seated embrace captures and reloads all five contacts on floor and bed", () => {

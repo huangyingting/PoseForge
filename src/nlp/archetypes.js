@@ -39,6 +39,7 @@ import { CHAIR_LAP_LAYOUT } from "./chairLapLayout.js";
 import { SEATED_EMBRACE_LAYOUT } from "./seatedEmbraceLayout.js";
 import { STANDING_CARRY_LAYOUT } from "./standingCarryLayout.js";
 import { TABLE_SUPPORT_LAYOUT } from "./tableSupportLayout.js";
+import { KNEELING_PAIR_LAYOUT } from "./kneelingPairLayout.js";
 
 /** @type {Archetype[]} */
 export const ARCHETYPES = [
@@ -88,6 +89,7 @@ export const ARCHETYPES = [
   },
   {
     id: "doggy_style",
+    layout: KNEELING_PAIR_LAYOUT,
     phrases: ["doggy style", "doggy", "从后面跪姿", "后入式", "狗爬式"],
     label: "one partner on hands and knees, the other kneeling behind",
     surface: "bed",

@@ -748,3 +748,16 @@ grounding the lowest thumb triangles leaves the palm visibly hovering. Fit the
 brace finger rotations from each model's measured palm plane, keeping joint
 origins, lengths, skinning and the other named hand shapes intact. Verify both
 models, both hands and posed/mirrored frames before refitting the paired layout.
+
+The corrected clothed pair now has six approximately 2 mm rendered supports,
+three original contacts within 3 mm and complete figure/floor clearance. A
+uniform bed translation also clears the unchanged finite mattress. Both figures
+need guided starting placement: the default coarse solve passes independently,
+and the existing whole-layout proposal accepts the authored geometry only after
+checking every rendered contact, support, figure, prop, floor and balance bound.
+Fixed or mixed trials retain a coarse support/contact warning and are not stock
+defaults. Preserve the primary's approximately 25 mm raw coarse knee residual
+after rendered adoption as diagnostic data, as with the seated proxy mismatch;
+do not confuse it with the independently passing coarse default or silently
+replace it with the 2 mm rendered result. Capture produces ordinary fixed data
+and must reproduce the full geometry without a guided step.
