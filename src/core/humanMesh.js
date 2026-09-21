@@ -711,6 +711,48 @@ function measureFingers(joints) {
         joint.side = side;
       }
     }
+    measureBrace(joints, byName, side, dorsal);
+  }
+}
+
+/**
+ * A braced hand is flat in the model's palm frame, not a small added curl on
+ * top of its rest pose. Both bundled scans already curl their fingers and
+ * oppose the thumb at rest; fixed degree offsets left the thumb several
+ * centimetres below the palm. Fit rotations once in bind space, root to tip,
+ * retaining the spread, every joint origin and every phalanx length.
+ */
+function measureBrace(joints, byName, side, normal) {
+  const world = new Map();
+  for (const finger of FINGERS) {
+    for (let segment = 1; segment <= 3; segment++) {
+      const joint = byName.get(`${finger}_0${segment}_${side}`);
+      if (!joint?.curl) continue;
+      const parent = joints[joint.parent];
+      if (!parent) continue;
+      const fan = joint.splay ? fingerSplay("brace", finger) : 0;
+      let local = fan
+        ? mat4Multiply(joint.localRest, mat4Compose([0, 0, 0], quatFromAxisAngle(joint.splay, fan * Math.PI / 180)))
+        : joint.localRest;
+      const current = mat4Multiply(world.get(parent.index) ?? parent.rest, local);
+      const child = byName.get(`${finger}_0${segment + 1}_${side}`);
+      const restDirection = child
+        ? v3sub(child.rest.slice(12, 15), joint.rest.slice(12, 15))
+        : v3sub(joint.rest.slice(12, 15), parent.rest.slice(12, 15));
+      const direction = mat4TransformUnit(current, mat4TransformUnit(joint.inverseBind, restDirection));
+      const height = v3dot(direction, normal);
+      const tangent = direction.map((value, i) => value - normal[i] * height);
+      if (v3len(tangent) > 1e-8) {
+        const inverse = mat4InvertRigid(current);
+        const rotation = quatFromUnitVectors(
+          v3normalize(mat4TransformUnit(inverse, direction)),
+          v3normalize(mat4TransformUnit(inverse, tangent)),
+        );
+        local = mat4Multiply(local, mat4Compose([0, 0, 0], rotation));
+      }
+      joint.brace = local;
+      world.set(joint.index, mat4Multiply(world.get(parent.index) ?? parent.rest, local));
+    }
   }
 }
 
@@ -835,6 +877,7 @@ const REST_HANDS = { l: "relaxed", r: "relaxed" };
 function curled(joint, hands) {
   if (!joint.curl) return joint.localRest;
   const shape = hands?.[joint.side] ?? "relaxed";
+  if (shape === "brace" && joint.brace) return joint.brace;
   const degrees = fingerFlexion(shape, joint.finger, joint.segment);
   const fan = joint.splay ? fingerSplay(shape, joint.finger) : 0;
   if (!degrees && !fan) return joint.localRest;

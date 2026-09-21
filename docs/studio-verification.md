@@ -11,6 +11,7 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 | --- | --- |
 | Male and female figure presentation | Licensed meshes retained; tops/shorts, softer skin and lighting, skin-tone control, natural/clay modes, and shadow-catching ground. Desktop and mobile renders inspected. A contrasting-skin diagnostic confirmed skin was peeking through opaque garments; the corrected rendering removes those artifacts. |
 | Clothing follows poses | Geometry tests skin studio outfits onto both body types in standing, seated and kneeling poses, check finite bounded vertices, retained garment meshes and covered anatomy. Opaque garments hide fully covered skin faces while retaining exposed head/lower-leg geometry and preserving the original cached template. Existing garment weight and hem tests also pass. |
+| Braced hands | Finger and thumb rotations now cancel the models' native rest curl against their measured palm plane. Both models and both hands retain joint origins, phalanx lengths and finite skinning through asymmetric posed wrists. Drawn thumbs extend about 3.6 mm beyond the palm instead of 43–49 mm; the other hand shapes and unselected hand remain unchanged. This corrects the shared hand shape, not the still-unresolved paired layout. |
 | Responsive studio | Browser checks at 1440×1000, 390×844 and 320-pixel width; library, studio and inspector remain reachable. Named positions have a direct collection filter. Long text does not cause page overflow; zoom buttons stay reachable on narrow screens. |
 | Keyboard and accessibility | Native dialogs, labeled inputs, keyboard camera controls, focus retained after loading cards, and visible focus. Axe WCAG 2 A/AA and 2.1 AA checks return no violations on desktop, mobile, figure inspector and save dialog. This is an automated audit, not an accessibility certification. |
 | Extensible catalog | 23 entries: eleven reference studies plus all twelve existing named definitions. Original aliases, postures, facing, surfaces and contacts are preserved. All/Positions/Saved/Favorites, categories, search, CRUD, reload and import/export work. Built-ins remain immutable. |
@@ -52,6 +53,37 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 
 ## Commands and results
 
+- The brace-hand correction adds six geometric regressions in
+  `tests/handPose.test.js`. All **6/6 pass**, checking both models, mirrored
+  hands, transformed/asymmetric arm frames, unchanged local joint translations
+  and lengths, non-mutating posing, the other named hand shapes, and actual
+  drawn palm/thumb/finger extents. The initial plane tests failed on both
+  models before the correction. Diagnostic clothed full-figure and hand-close
+  renders were inspected. A palm-down solo candidate now has four approximately
+  2 mm rendered supports, but its coarse knee residual remains approximately
+  25 mm and the paired candidates still have unresolved partner-hand crossings.
+  These candidates are not added to the built-in catalog.
+- The complete rendered catalog audit on the brace correction retains
+  **18/23 clear**, including **7/12 named layouts**. The same five entries
+  remain flagged, with no newly flagged or unavailable checks. The base-model
+  result is still **17/23 clear**. All seven contact fixtures pass, exit 0.
+- `npm test` on the brace correction passes **333/333 tests** (318.7 seconds),
+  including all six new geometric regressions and the existing calibrated
+  layout, support/contact, clothing, persistence and CLI checks.
+- The production-build selection
+  `tests/browser/hand-shapes.spec.js tests/browser/catalog-camera.spec.js`
+  passes **6/6 scenarios** (4.4 minutes), run without concurrent geometry jobs.
+  Both models change their drawn geometry when bracing, retain the same mesh
+  signature through saved reload and one-sided edits, and export the intended
+  hand shape. All twelve named entries, preview recovery, saved previews and
+  mobile camera controls pass again. Normal-path browser errors and failed
+  requests are empty. The first run passed all four existing scenarios but
+  failed the two new export assertions: the editor deliberately serializes
+  identical sides as `"brace"`, not a two-sided object. The assertion was
+  corrected to the existing public format; the full six-scenario rerun passed
+  without application changes. The production build and last-run marker pass.
+  This is a targeted browser run, not a new full-suite claim.
+
 - The table-layout iteration adds eight layout regressions. The focused
   `node --test tests/presetLayouts.test.js` run passes **49/49 tests**
   (53.7 seconds), retaining the original coarse gate. The primary chest and
@@ -68,7 +100,7 @@ remain unresolved; loading a preset is not proof that its constraints were met.
   changes are part of this iteration.
 - All seven `node scripts/validate-surface-contacts.mjs` fixtures pass again
   on the final table-layout code, exit 0.
-- The final production-build browser selection
+- The table-layout iteration's final production-build browser selection
   `tests/browser/catalog-camera.spec.js tests/browser/table-support-layout.spec.js tests/browser/chair-lap-layout.spec.js tests/browser/seated-embrace-layout.spec.js tests/browser/standing-carry-layout.spec.js tests/browser/preset-layouts.spec.js tests/browser/guided-placement.spec.js tests/browser/placement.spec.js`
   passes **17/17 scenarios** (16.7 minutes), exit 0, run separately from the
   geometry jobs. All named entries, preview recovery/cache behavior, mobile
@@ -116,7 +148,7 @@ remain unresolved; loading a preset is not proof that its constraints were met.
   production build passed as part of this run. This is a targeted selection,
   not a new full-browser-suite claim.
 
-- `npm test`: **327 passed** (340.8 seconds in the final run), including
+- At the table-layout milestone, `npm test`: **327 passed** (340.8 seconds), including
   calibrated stock-layout
   parity/fallback, bed/floor dressed-mesh checks and CLI camera precedence, plus
   the original parser, geometry and

@@ -722,3 +722,29 @@ partner passes both representations through the existing whole-layout validation
 path. Keep that mixed policy explicit in the editor and portable data; do not
 waive the coarse gate or publish an unavailable rendered check as clearance.
 No solver, region, furniture dimension or quality tolerance changes are needed.
+
+## Hands-and-knees paired layout
+
+The remaining hands-and-knees pair has approximately 36/24 mm rendered support
+gaps, a roughly 20 mm primary support penetration into the mattress, and a 74 mm
+body-contact gap. All three partner contacts are unresolved and complete figures
+cross. Preserve the primary's two knee/two hand supports, the partner's two knee
+supports, the original body types, rear alignment and three partner contacts.
+
+Establish a clothed primary with four measured supports and complete clearance
+of its surface, including unclaimed feet and other geometry. Fit the kneeling
+partner without crowding either figure's legs or losing those supports. Check
+both the default bed and any proposed floor translation against the finite
+furniture and original support contract. Fixed or guided portable data must pass
+both coarse and rendered gates. Keep explicit variations, missing models,
+capture/reload and exported data honest; no region or tolerance changes may
+substitute for a corrected pose.
+
+The initial support fit is not visually sufficient: its palms face sideways.
+Lowering the shoulders allows a palm-down arm frame, but exposes a second
+problem in the shared `brace` hand shape. The models' curled rest fingers and
+opposed thumb remain below the palm despite the small brace flexion values;
+grounding the lowest thumb triangles leaves the palm visibly hovering. Fit the
+brace finger rotations from each model's measured palm plane, keeping joint
+origins, lengths, skinning and the other named hand shapes intact. Verify both
+models, both hands and posed/mirrored frames before refitting the paired layout.

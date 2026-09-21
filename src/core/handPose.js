@@ -3,7 +3,7 @@
  *
  * The rig has always had fingers - thirty joints per body, `index_01_l` through
  * `thumb_03_r` - and has never moved one of them. Every figure in every pose
- * held the scan's A-pose hand: fingers straight, slightly splayed, identical on
+ * held the scan's A-pose hand: a slight curl and splay, identical on
  * a woman gripping a partner's hip and a man taking his whole weight on his
  * palms. It is the single most visible thing a posed figure gets wrong, because
  * a hand is where a viewer looks to read what someone is *doing*.
@@ -27,12 +27,12 @@
  * The shapes a hand in this system can be in.
  *
  * `relaxed` is not "straight". An unloaded hand rests with a curl in it, and
- * the flat-fingered hand the scan ships is what makes an idle figure read as a
+ * the unchanging hand the scan ships is what makes an idle figure read as a
  * mannequin; the numbers below are a hand hanging at the side.
  *
- * `brace` is the only one that goes past straight. A palm taking body weight
- * hyperextends a few degrees at the knuckle, and without that the fingers of a
- * figure on all fours curl faintly into the floor.
+ * `brace` is a load-bearing, flat hand. The renderer measures each model's
+ * palm plane and cancels its native finger/thumb curl for this shape; a small
+ * numeric extension is retained below as a fallback for unmeasured rigs.
  *
  * `fingers` and `thumb` are flexion in degrees per phalanx, proximal to distal.
  * A shape may name a single finger to override the common `fingers` row - that
