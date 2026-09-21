@@ -55,6 +55,16 @@ function report(solved) {
     overlapMm: Math.round(solved.quality.maxDepth * 1000),
     propOverlapMm: Math.round(solved.quality.propPenetration * 1000),
     unmetContacts: solved.quality.unmetContacts,
+    ...(solved.quality.figureSurfaces
+      ? {
+          intersectingFigures: solved.quality.figureSurfaces
+            .filter((pair) => pair.intersects === true)
+            .map((pair) => [pair.fromActor, pair.toActor]),
+          unavailableFigureChecks: solved.quality.figureSurfaces.filter(
+            (pair) => pair.intersects === null,
+          ).length,
+        }
+      : {}),
     supportGapMm: solved.actors.map((actor) =>
       Math.round((actor.seatResidual ?? 0) * 1000),
     ),

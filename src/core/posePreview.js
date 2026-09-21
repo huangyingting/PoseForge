@@ -49,6 +49,10 @@ export function previewKey(scene) {
 export function solvedPreview(solved, basis = "base") {
   const issues = [];
   if (solved.quality.maxDepth > 0.022) issues.push("Body overlap");
+  if (solved.quality.figureSurfaces?.some((pair) => pair.intersects === true))
+    issues.push("Surface overlap");
+  if (solved.quality.figureSurfaces?.some((pair) => pair.intersects === null))
+    issues.push("Surface check unavailable");
   if (solved.quality.propPenetration > 0.022) issues.push("Support overlap");
   if (solved.quality.unmetContacts > 0) issues.push("Unresolved contacts");
   if (solved.actors.some((actor) => (actor.seatResidual ?? 0) > 0.02))

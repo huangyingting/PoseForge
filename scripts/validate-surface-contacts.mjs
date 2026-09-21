@@ -130,6 +130,7 @@ for (const [name, change, shouldReach] of cases) {
   const reaches =
     !report.intersects &&
     solved.quality.limbIntersections.every((hit) => !hit) &&
+    solved.quality.figureSurfaces.every((pair) => pair.intersects === false) &&
     report.surfaceGap <= SURFACE_CONTACT_TOLERANCE;
   const ok = safe && improves && (!shouldReach || reaches);
   if (!ok) failures++;
@@ -145,6 +146,7 @@ for (const [name, change, shouldReach] of cases) {
       steps: solved.quality.surfaceRefinement.steps,
       proxyDepthMm: solved.quality.proxyMaxDepth * 1000,
       verifiedProxyContacts: solved.quality.verifiedProxyContacts,
+      figureSurfaces: solved.quality.figureSurfaces,
       rootShiftMm: solved.actors.map(
         (a, i) =>
           Math.hypot(...a.pose.root.position.map((v, k) => v - roots[i][k])) *

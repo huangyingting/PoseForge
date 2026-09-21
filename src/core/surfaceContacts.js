@@ -8,6 +8,10 @@ import {
 import { LIMB_CHAINS, solveTwoBoneIK } from "./ik.js";
 import { clamp, quatRotate, v3dot, v3sub } from "./math.js";
 import {
+  standingContactPoses,
+  standingFramePreserved,
+} from "./standingContacts.js";
+import {
   chainForBone,
   refresh,
   measureSceneSafety,
@@ -162,16 +166,37 @@ export function createSurfaceContactQuery(actors, templates) {
       };
       cache.set(index, entry);
     }
-    const key = whole ? [...whole].sort().join("|") : `${name}.${side ?? ""}`;
+    const figure = whole === true;
+    const key = figure
+      ? "$figure"
+      : whole
+        ? [...whole].sort().join("|")
+        : `${name}.${side ?? ""}`;
     if (!entry.trees.has(key)) {
       const definition = whole
         ? { bones: whole, anchor: [0, 0, 0], radius: Infinity, whole: true }
         : region(actor, name, side);
       if (!definition?.anchor) return null;
-      const regions = topology(template, definition);
+      const regions = figure
+        ? entry.parts.map((part) => part.indices)
+        : topology(template, definition);
       const parts = [];
+      let unavailable = false;
       entry.parts.forEach((part, i) => {
         if (!regions[i]?.length) return;
+        if (figure) {
+          if (
+            regions[i].some(
+              (vertex) =>
+                !Number.isFinite(part.positions[vertex * 3]) ||
+                !Number.isFinite(part.positions[vertex * 3 + 1]) ||
+                !Number.isFinite(part.positions[vertex * 3 + 2]),
+            )
+          )
+            unavailable = true;
+          parts.push({ positions: part.positions, indices: regions[i] });
+          return;
+        }
         const indices = [],
           radiusSq = definition.radius ** 2;
         for (let j = 0; j < regions[i].length; j += 3) {
@@ -190,9 +215,11 @@ export function createSurfaceContactQuery(actors, templates) {
         if (indices.length) parts.push({ positions: part.positions, indices });
       });
       const treeKey = `${index}:${key}`;
-      const result = whole
-        ? refitTriangleTree(wholeTrees.get(treeKey), parts)
-        : buildTriangleTree(parts);
+      const result = unavailable
+        ? null
+        : whole
+          ? refitTriangleTree(wholeTrees.get(treeKey), parts)
+          : buildTriangleTree(parts);
       if (whole) wholeTrees.set(treeKey, result);
       entry.trees.set(key, result);
     }
@@ -222,8 +249,29 @@ export function createSurfaceContactQuery(actors, templates) {
       tree(group.toActor, "", null, group.toBones),
       crossingsOnly,
     );
+  query.figures = (fromActor, toActor, crossingsOnly = false) =>
+    closest(
+      tree(fromActor, "", null, true),
+      tree(toActor, "", null, true),
+      crossingsOnly,
+    );
   return query;
 }
+
+function* figureChecks(solved, query) {
+  for (let fromActor = 0; fromActor < solved.actors.length; fromActor++)
+    for (let toActor = fromActor + 1; toActor < solved.actors.length; toActor++)
+      yield {
+        fromActor,
+        toActor,
+        intersects: query.figures(fromActor, toActor, true)?.intersects ?? null,
+      };
+}
+
+/** Every rendered figure pair, including pairs with no declared contact. */
+export const measureFigureSurfaces = (solved, query) => [
+  ...figureChecks(solved, query),
+];
 
 function limbGroup(contact, actors) {
   const a = chainForBone(
@@ -264,28 +312,39 @@ function contactLimbGroups(solved) {
 
 /** Coarse limb overlap may be superseded only by complete, outward-facing,
  * non-intersecting rendered limb surfaces. Self/prop/other-body checks remain. */
-export function measureSurfaceSafety(solved, query) {
+export function measureSurfaceSafety(
+  solved,
+  query,
+  { wholeFigures = false } = {},
+) {
   const groups = contactLimbGroups(solved).map((group) => ({
     ...group,
     result: query.limbs(group, true),
   }));
-  const verifiedPair = (contact) =>
-    groups.some(
-      (group) =>
-        group.result &&
-        !group.result.intersects &&
-        ((contact.bodyA === group.fromActor &&
-          contact.bodyB === group.toActor &&
-          group.fromBones.has(contact.volumeA.bone) &&
-          group.toBones.has(contact.volumeB.bone)) ||
-          (contact.bodyB === group.fromActor &&
-            contact.bodyA === group.toActor &&
-            group.fromBones.has(contact.volumeB.bone) &&
-            group.toBones.has(contact.volumeA.bone))) &&
-        // Only proxy overlaps need an exact nearest pair and its orientation.
-        // The cheaper crossing-only traversal still checks every affected limb.
-        query.limbs(group)?.facing,
-    );
+  const verifiedPair = (contact) => {
+    if (
+      groups.some(
+        (group) =>
+          group.result &&
+          !group.result.intersects &&
+          ((contact.bodyA === group.fromActor &&
+            contact.bodyB === group.toActor &&
+            group.fromBones.has(contact.volumeA.bone) &&
+            group.toBones.has(contact.volumeB.bone)) ||
+            (contact.bodyB === group.fromActor &&
+              contact.bodyA === group.toActor &&
+              group.fromBones.has(contact.volumeB.bone) &&
+              group.toBones.has(contact.volumeA.bone))) &&
+          // Only proxy overlaps need an exact nearest pair and its orientation.
+          // The cheaper crossing-only traversal still checks every affected limb.
+          query.limbs(group)?.facing,
+      )
+    )
+      return true;
+    if (!wholeFigures) return false;
+    const result = query.figures(contact.bodyA, contact.bodyB);
+    return !!result && !result.intersects && result.facing;
+  };
   return {
     ...measureSceneSafety(solved, { verifiedPair }),
     limbIntersections: groups.map((group) => !!group.result?.intersects),
@@ -370,7 +429,7 @@ function handBodyReach(actor, targetActor, contact, chain) {
 export function* surfaceContactSteps(
   solved,
   templates,
-  { maxPasses = 8, maxSteps = 32 } = {},
+  { maxPasses = 8, maxSteps = 32, maxBodySteps = 12 } = {},
 ) {
   const originalPoses = solved.actors.map(clonePose);
   let completed = false;
@@ -657,6 +716,134 @@ export function* surfaceContactSteps(
       }
       if (!improved) break;
     }
+    let bodySteps = 0;
+    let bodyBaseline;
+    const bodyFrames = solved.actors.map((actor) => ({
+      root: [...actor.pose.root.position],
+      evaluated: actor.evaluated,
+    }));
+    const adjustments = [];
+    for (
+      let i = 0;
+      i < solved.contacts.length &&
+      steps < maxSteps &&
+      bodySteps < maxBodySteps;
+      i++
+    ) {
+      const contact = solved.contacts[i],
+        actor = solved.actors[contact.fromActor],
+        measured = measurements[i];
+      if (
+        solved.surface.id !== "floor" ||
+        contact.strength <= 0 ||
+        !measured ||
+        measured.intersects ||
+        measured.distance <= SURFACE_CONTACT_TOLERANCE ||
+        measured.distance > 0.04 ||
+        resolveLandmark(contact.from, contact.fromSide)?.bone !== "pelvis" ||
+        chainForBone(resolveLandmark(contact.to, contact.toSide)?.bone ?? "")
+      )
+        continue;
+      const upperIndex = solved.contacts.findIndex(
+        (other, k) =>
+          other.strength > 0 &&
+          other.fromActor === contact.fromActor &&
+          other.toActor === contact.toActor &&
+          resolveLandmark(other.from, other.fromSide)?.bone.startsWith(
+            "spine",
+          ) &&
+          measurements[k] &&
+          !measurements[k].intersects &&
+          measurements[k].distance <= SURFACE_CONTACT_TOLERANCE,
+      );
+      if (upperIndex < 0) continue;
+      const trials = standingContactPoses(
+        actor,
+        measured,
+        measurements[upperIndex].from,
+      );
+      const original = clonePose(actor);
+      while (steps < maxSteps && bodySteps < maxBodySteps) {
+        const trial = trials.next();
+        if (trial.done) break;
+        steps++;
+        bodySteps++;
+        bodyBaseline ??= measureSurfaceSafety(solved, query, {
+          wholeFigures: true,
+        });
+        let accepted = false;
+        if (trial.value) {
+          actor.pose = trial.value;
+          refresh(actor);
+          const candidate = solved.contacts.map(query),
+            candidateScore = score(candidate, solved.contacts);
+          const contactsSafe = candidate.every(
+            (value, k) =>
+              solved.contacts[k].strength <= 0 ||
+              (value &&
+                !value.intersects &&
+                measurements[k] &&
+                (measurements[k].intersects ||
+                  value.distance <=
+                    Math.max(
+                      measurements[k].distance,
+                      SURFACE_CONTACT_TOLERANCE,
+                    ) +
+                      1e-7)),
+          );
+          if (
+            standingFramePreserved(actor, bodyFrames[contact.fromActor]) &&
+            contactsSafe &&
+            candidateScore < bestScore - 1e-10 &&
+            measureFigureSurfaces(solved, query).every(
+              (pair) => pair.intersects === false,
+            )
+          ) {
+            const safety = measureSurfaceSafety(solved, query, {
+              wholeFigures: true,
+            });
+            const violations = new Map(
+              bodyBaseline.violations.map((value) => [value.key, value.depth]),
+            );
+            const balanced = safety.balance.every(
+              (value, k) =>
+                (!bodyBaseline.balance[k].supported || value.supported) &&
+                (value.offset ?? Infinity) <=
+                  (bodyBaseline.balance[k].offset ?? Infinity) + 1e-6,
+            );
+            if (
+              balanced &&
+              [
+                "maxDepth",
+                "maxSelfDepth",
+                "maxBodyDepth",
+                "propPenetration",
+                "totalDepth",
+              ].every((key) => safety[key] <= bodyBaseline[key] + 1e-8) &&
+              safety.violations.every(
+                (value) =>
+                  value.depth <= (violations.get(value.key) ?? 0) + 1e-8,
+              )
+            ) {
+              accepted = true;
+              measurements = candidate;
+              bestScore = candidateScore;
+              reasons.delete(i);
+              adjustments.push(
+                `${actor.label ?? actor.id}: adjusted the standing stance to improve body contacts while preserving hand placement.`,
+              );
+            }
+          }
+        }
+        if (!accepted) {
+          actor.pose = clonePose({ pose: original });
+          refresh(actor);
+        }
+        yield { steps };
+        if (accepted) break;
+      }
+      trials.return();
+    }
     // Always query the final state again: another contact may move the same arm.
     measurements = solved.contacts.map(query);
     const targetDistances = measureContactTargets(solved);
@@ -697,7 +884,25 @@ export function* surfaceContactSteps(
           false,
       };
     });
+    const figureSurfaces = [];
+    for (const pair of figureChecks(solved, query)) {
+      figureSurfaces.push(pair);
+      yield { steps };
+    }
     const warnings = [...(solved.quality.placementWarnings ?? [])];
+    for (const pair of figureSurfaces) {
+      const names = [pair.fromActor, pair.toActor]
+        .map((index) => solved.actors[index].label ?? solved.actors[index].id)
+        .join(" and ");
+      if (pair.intersects)
+        warnings.push(
+          `${names}: rendered figure surfaces intersect outside or within the contact regions; adjust the pose.`,
+        );
+      else if (pair.intersects === null)
+        warnings.push(
+          `${names}: the complete figure surface check is unavailable.`,
+        );
+    }
     for (const item of detail) {
       if (item.strength === 0) continue;
       if (!Number.isFinite(item.distance))
@@ -713,23 +918,30 @@ export function* surfaceContactSteps(
           `${item.from} to ${item.to}: ${Math.round(item.distance * 1000)}mm ${item.basis === "rendered" ? "between rendered surfaces" : "from the body-model target"}.`,
         );
     }
-    Object.assign(solved.quality, measureSurfaceSafety(solved, query), {
-      contactDetail: detail,
-      warnings,
-      unmetContacts: detail.filter(
-        (item) =>
-          item.strength > 0 &&
-          (!Number.isFinite(item.distance) ||
-            item.intersects ||
-            item.distance >
-              (item.basis === "rendered" ? SURFACE_CONTACT_TOLERANCE : 0.06)),
-      ).length,
-      surfaceRefinement: {
-        steps,
-        before,
-        after: measurements.map((value) => value?.distance ?? null),
+    Object.assign(
+      solved.quality,
+      measureSurfaceSafety(solved, query, { wholeFigures: true }),
+      {
+        contactDetail: detail,
+        figureSurfaces,
+        adjustments,
+        warnings,
+        unmetContacts: detail.filter(
+          (item) =>
+            item.strength > 0 &&
+            (!Number.isFinite(item.distance) ||
+              item.intersects ||
+              item.distance >
+                (item.basis === "rendered" ? SURFACE_CONTACT_TOLERANCE : 0.06)),
+        ).length,
+        surfaceRefinement: {
+          steps,
+          bodySteps,
+          before,
+          after: measurements.map((value) => value?.distance ?? null),
+        },
       },
-    });
+    );
     completed = true;
     return solved;
   } finally {

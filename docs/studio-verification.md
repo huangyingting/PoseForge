@@ -21,10 +21,12 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 | Full scene fidelity | JSON round trips preserve figure properties, joint overrides, hand shapes, contacts and named camera view. Browser reload tests preserve edited height and joints, and the latest unsaved workspace. |
 | Precise joint authoring | Optional fixed mode retains specified channels through seating, contact/collision solving, surface refinement and cancellation, while unedited channels remain free. The editor shows actual solved values and clears stale values while pending. The browser flow verifies fixed values, history, saved reload, JSON export and narrow-screen accessibility. Guided mode remains the default. |
 | Safe persistence and imports | Unit tests cover invalid versions, malformed JSON, unsafe keys, unknown scene choices, invalid landmark sides, duplicate IDs, quota errors and corrupt storage. A failed import does not partially add a pack. Re-importing creates fresh IDs. Browser recovery and invalid-import flows pass. |
-| Preset geometry | All 23 entries validate structurally and render. The original eleven reference-study geometry checks still pass. The named-position audit flags 9/12 at the base-model level and 12/12 in the dressed-mesh contact audit. These receive pose notes rather than a claim of physical correctness. |
+| Preset geometry | All 23 entries validate structurally and render. The original eleven reference-study geometry checks still pass. The named-position audit flags 9/12 at the base-model level and 11/12 in the dressed-mesh contact / figure-pair audit. Stock standing embrace is now clear; remaining findings stay visible as pose notes. |
 | Body-supported placement | Adaptive clearance reduces the seated-pair base support target from 523.7 mm to 3.4 mm. Chair cases pass across all four male/female pairings; bench and stature/build variations have measured support-plane regression tests. A 96-case comparison against `969f4f8` has 12 newly clean cases, no newly flagged cases and 78 unchanged results. Dressed contact failures remain separately reported. |
 | Surface-intersection escape | Bidirectional bounded IK trials clear both hand/arm intersections in the seated-support fixture, ending at approximately 2.3 mm and 1.8 mm. The supporting figure, both roots and lower-body joints stay unchanged; individual collision pairs and aggregate residuals cannot worsen. The lap target remains unresolved. |
-| Hand-to-body geometry | Coordinated free-arm reaches clear both standing-embrace hand/arm intersections at approximately 2.2 mm. The complete arms are checked against the entire target figure, including colored auxiliary meshes. Regression tests cover distant crossings, both contact directions, explicit angles, fixed channels, bounded work and cancellation. Roots, lower-body joints and the target figure remain unchanged; the separate body gap is still flagged. |
+| Hand-to-body geometry | Coordinated free-arm reaches clear both standing-embrace hand/arm intersections at approximately 2.2 mm. The complete arms are checked against the entire target figure, including colored auxiliary meshes. The isolated limb stage preserves roots, lower-body joints and the target figure; its remaining body gap is handled separately. Regression tests retain this phase boundary. |
+| Supported standing contacts | A bounded stance/torso correction closes the stock standing pair's remaining body gap, with all four gaps within 4 mm and no figure/figure surface crossing. The target figure stays fixed, wrist frames and foot height/orientation are preserved, and balance/self/prop/per-pair guards pass. Tests cover a translated/rotated custom-ID copy, fixed trunk channels, pinned/explicit end joints, third-figure collisions, missing geometry, budgets and cancellation. |
+| Whole-figure diagnostics | Every rendered figure pair is audited, even without declared contacts. Crossings and unavailable checks are distinct in pose notes, catalog labels and the named CLI audit. Complete drawn geometry includes unowned auxiliary triangles. Missing/nonfinite geometry cannot certify clearance or reconcile a proxy overlap. Self/prop/support checks remain separately reported. |
 | Anatomical region selection | Lap queries now include declared thigh-owned surfaces while retaining the original radius and regional weight threshold. Synthetic patches verify both sides, pose/stature/heading changes and exclusion of distant knee surfaces, unrelated bones and small weight tails. The seated lap gap is now measured at 107.5 mm, not reported as fixed. |
 | Description feedback | Unread text warnings survive worker rendering and draft reload. Catalog captions no longer overwrite the original text command. Pending poses do not retain stale quality notes. |
 | Exports | Real PNG, transparent PNG, SVG and JSON downloaded. PNG pixels decoded: opaque image content present; background corner alpha is 255 for standard PNG and 0 for transparent PNG. JSON is re-importable. |
@@ -33,10 +35,14 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 
 ## Commands and results
 
-- `npm test`: **179 passed**, including the original parser, geometry and
+- `npm test`: **190 passed**, including the original parser, geometry and
   architecture tests, catalog/storage tests, contact-authoring tests, clothing
   checks, triangle/surface-refinement checks and per-preset CLI selection,
   quality-dependent exit status and invalid/empty input.
+- The whole-figure/standing-body iteration adds **11 regressions** and passes
+  all **190 tests** (99.8 seconds), including the rendered CLI's successful
+  stock standing result. All seven existing contact fixtures pass again with
+  an added requirement that every rendered figure pair is available and clear.
 - After the hand-to-body changes and query optimizations, the complete
   **179-test run passed** (33.1 seconds), including eight new regressions. The
   focused surface/region/triangle suite passed all **29 tests**. The seven
@@ -62,13 +68,16 @@ remain unresolved; loading a preset is not proof that its constraints were met.
   **3/3 scenarios** (4.5 minutes). The all-twelve catalog scenario passed in
   2.3 minutes with its original readiness timeout and no page, console or
   request failures. The precise-joint flow passed in 1.8 minutes, including
-  history, save/reload, export and narrow-screen accessibility. The complete
-  21-scenario result below belongs to the preceding precise-authoring iteration;
-  this latest run is the targeted three-scenario gate, not a new full-suite run.
+  history, save/reload, export and narrow-screen accessibility. That iteration
+  used a targeted three-scenario gate; the subsequent complete run is below.
 - `npm run build`: **passed**; also rebuilt by the browser test configuration.
 - `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/google/chrome/chrome npm run test:browser`:
-  **21 passed** in the complete production-build run after precise-joint
-  authoring was added (12.9 minutes).
+  **21 passed** in the complete production-build run after whole-figure
+  diagnostics and standing-body refinement (13.6 minutes). The all-named-entry
+  scenario now also requires four non-warning standing contacts and the stance
+  adjustment note, and captures the clothed standing viewport. That screenshot
+  and the independent CLI render were inspected. The earlier precise-authoring
+  full-suite run also passed all 21 scenarios (12.9 minutes).
 - After the body-supported placement and intersection-escape changes,
   `npm run test:browser -- tests/browser/catalog-camera.spec.js tests/browser/authoring.spec.js`
   with the same Chrome path: **8 passed**, with one cold-start readiness timeout
@@ -101,18 +110,20 @@ remain unresolved; loading a preset is not proof that its constraints were met.
   targets with the parent commit, not just the intended chair fixture.
 - `node scripts/validate-named-presets.mjs`: **3/12 without base-model flags;
   9 require review**. `node scripts/validate-named-presets.mjs --rendered`:
-  **0/12 without rendered-contact flags; 12 require review**. The complete
-  rendered audit ran again after the hand-to-body and query-performance changes.
+  **1/12 without rendered-contact flags; 11 require review**. The complete
+  rendered audit ran again after whole-figure checks and standing-body refinement.
   It uses the same dressed-template construction and refinement as the viewport,
   and prints base targets, surface gaps and intersection flags separately.
 - After the lap-region correction, individual rendered audits for
   `builtin.named.chair_straddle` and `builtin.named.lotus` both correctly remain
   nonzero. Their lap-region gaps are approximately 108 mm and 24 mm respectively;
   the chair case's hand contacts remain clear at approximately 2 mm.
-- After coordinated hand-to-body refinement, the individual rendered audit for
-  `builtin.named.standing_embrace` still exits 1 honestly: the two hand gaps are
-  approximately 2.2 mm without crossings, chest is about 1 mm, and the pelvic
-  gap remains about 10 mm. A clothed 640×640 CLI render was inspected.
+- At the preceding hand-only iteration, the individual rendered audit for
+  `builtin.named.standing_embrace` exited 1: the two hand gaps were
+  approximately 2.2 mm without crossings, chest was about 1 mm, and the pelvic
+  gap remained about 10 mm. In the new whole-body iteration it exits 0, with
+  all four gaps within the 4 mm threshold, no figure crossing and no unavailable
+  check. A new clothed 640×640 CLI render was inspected.
 - `git diff --check`: **passed**.
 
 The browser runner uses installed Chrome and software WebGL (SwiftShader).
@@ -168,8 +179,9 @@ The placement iteration reduced its then-measured lap-region gap from about
 rendered audit expands coverage; it does not imply twelve newly broken presets.
 
 The current named audit reports no base-model flags for lotus, chair straddle
-and standing embrace; all twelve definitions remain flagged by the dressed-mesh
-contact pass. The head-to-toe definition also retains its roughly 489 mm support
+and standing embrace. Standing embrace now also passes the dressed-mesh and
+whole-figure audit; the other eleven remain flagged. The head-to-toe definition
+retains its roughly 489 mm support
 gap. Next work needs both accurate anatomical regions and collision-safe contact
 refinement, not only the base solver. This is not a claim that every arbitrary
 combination of poses, builds and surfaces is satisfiable.
@@ -187,10 +199,27 @@ intersections or unmet hand contacts. None was substituted into the bundled
 catalog, and no collision/contact threshold was relaxed. Full-body clearance
 and reliable supported placement remain unfinished work.
 
-The later standing-hand improvement does not yet include a universal final
-figure/figure triangle audit. An independent whole-figure query detects a toe
-crossing after the hands are clear. A coupled root/torso/stance experiment found
-candidates with all four local gaps under 3 mm and no figure/figure triangle
-crossings, but that experiment has not been integrated or accepted as production
-behavior. End-frame/support preservation, authored constraints, bounded search
-and whole-scene regressions are still required before adopting it.
+The standing-pair experiment is now integrated behind support, authoring and
+complete figure-clearance checks. In the stock case, a 6.7 mm root movement plus
+a small stance/torso correction clears the pre-existing toe crossing and brings
+all four contact gaps within 4 mm. It does not change any bundled preset data.
+The final figure audit also reports crossings outside declared contact regions
+elsewhere; local close contacts no longer imply whole-figure clearance.
+
+A six-case comparison isolates the body stage after free-arm refinement. No
+individual or aggregate collision violation worsened, and no new figure crossing
+was introduced. The non-stock variants still require calibration:
+
+| Standing pair | Unmet contacts before body stage | After | Body correction accepted |
+| --- | ---: | ---: | --- |
+| Stock female/male | 1 | 0 | Yes |
+| Reversed body types | 4 | 4 | No |
+| Female pair | 2 | 2 | No |
+| Male pair | 3 | 3 | No |
+| Heights 1.55 / 1.90 m | 2 | 2 | No |
+| Builds 0.9 / 1.1 | 3 | 3 | No |
+
+The height-varied case also retains an unsupported balance estimate; the body
+stage does not hide or fix that finding. This is one verified stock-preset
+improvement and broader diagnostics, not a claim that arbitrary body variants
+or every named preset are now solved.

@@ -252,6 +252,12 @@ function collectNotes(data) {
     level: "warning",
     message,
   }));
+  notes.push(
+    ...(data.quality.adjustments ?? []).map((message) => ({
+      level: "info",
+      message,
+    })),
+  );
   if (data.quality.maxDepth > 0.022)
     notes.push({
       level: data.quality.maxDepth > 0.045 ? "error" : "warning",

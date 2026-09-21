@@ -3,7 +3,10 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 import { buildHumanTemplate, skinHumanMesh } from "../src/core/humanMesh.js";
 import { createActor, refresh } from "../src/core/solver.js";
-import { createSurfaceContactQuery } from "../src/core/surfaceContacts.js";
+import {
+  createSurfaceContactQuery,
+  measureFigureSurfaces,
+} from "../src/core/surfaceContacts.js";
 import { resolveLandmark } from "../src/core/landmarks.js";
 import { quatFromAxisAngle, quatMultiply } from "../src/core/math.js";
 
@@ -213,5 +216,50 @@ test("limb-to-body checks catch crossings outside the named patch, including col
     });
     assert.equal(reverse.regionIntersects, false);
     assert.equal(reverse.limbIntersects, true);
+    assert.equal(query.figures(0, 1, true).intersects, true);
+    assert.deepEqual(measureFigureSurfaces({ actors }, query), [
+      { fromActor: 0, toActor: 1, intersects: true },
+    ]);
   }
+});
+
+test("whole-figure audits cover pairs without contacts and keep unavailable geometry distinct", () => {
+  const actors = [...pair(), pair()[0]],
+    source = patchTemplate();
+  actors[2].pose.root.position[0] += 2;
+  refresh(actors[2]);
+  const query = createSurfaceContactQuery(actors, [source, null, source]);
+  assert.deepEqual(measureFigureSurfaces({ actors }, query), [
+    { fromActor: 0, toActor: 1, intersects: null },
+    { fromActor: 0, toActor: 2, intersects: false },
+    { fromActor: 1, toActor: 2, intersects: null },
+  ]);
+  const invalid = patchTemplate();
+  invalid.submeshes[0].positions[0] = NaN;
+  assert.equal(
+    createSurfaceContactQuery(actors, [source, invalid, source]).figures(0, 1),
+    null,
+  );
+});
+
+test("whole figures include drawn auxiliary triangles without any core-bone ownership", () => {
+  const actors = pair(),
+    source = patchTemplate(),
+    target = patchTemplate();
+  for (const template of [source, target]) {
+    const part = template.submeshes[0];
+    part.weights.fill(0);
+    part.primary = false;
+    part.colour = [0.2, 0.3, 0.4];
+  }
+  target.submeshes[0].positions[2] -= 0.03;
+  target.submeshes[0].positions[5] += 0.03;
+  target.submeshes[0].positions[8] += 0.03;
+  const query = createSurfaceContactQuery(actors, [source, target]);
+  assert.equal(
+    query(contact),
+    null,
+    "unowned triangles are not an anatomical contact patch",
+  );
+  assert.equal(query.figures(0, 1, true).intersects, true);
 });

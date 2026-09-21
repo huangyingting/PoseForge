@@ -47,3 +47,26 @@ test("an invalid audit selection cannot silently pass an empty set", () => {
     assert.equal(result.stdout, "");
   }
 });
+
+test("the standing rendered audit passes only with close contacts and available clear figure surfaces", () => {
+  const result = run(
+    "--rendered",
+    "--preset",
+    "builtin.named.standing_embrace",
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const report = JSON.parse(result.stdout.trim().split("\n")[0]);
+  assert.deepEqual(report.issues, []);
+  assert.equal(report.unmetContacts, 0);
+  assert.equal(report.unavailableFigureChecks, 0);
+  assert.deepEqual(report.intersectingFigures, []);
+  assert.equal(report.contacts.length, 4);
+  assert.ok(
+    report.contacts.every(
+      (contact) =>
+        contact.basis === "rendered" &&
+        contact.surfaceMm <= 4 &&
+        !contact.intersects,
+    ),
+  );
+});

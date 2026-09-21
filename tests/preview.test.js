@@ -89,6 +89,21 @@ test("preview keys ignore labels/camera/metadata, normalize defaults and still d
   assert.notEqual(previewKey(a), previewKey(b));
 });
 
+test("catalog quality distinguishes whole-figure crossings and unavailable surface checks", () => {
+  const solved = solveScene(checkScene(scene()));
+  solved.quality.figureSurfaces = [
+    { fromActor: 0, toActor: 1, intersects: true },
+  ];
+  assert.ok(solvedPreview(solved).issues.includes("Surface overlap"));
+  solved.quality.figureSurfaces[0].intersects = null;
+  assert.ok(solvedPreview(solved).issues.includes("Surface check unavailable"));
+  assert.ok(!solvedPreview(solved).issues.includes("Surface overlap"));
+  solved.quality.figureSurfaces[0].intersects = false;
+  assert.ok(
+    !solvedPreview(solved).issues.includes("Surface check unavailable"),
+  );
+});
+
 function worker() {
   return {
     sent: [],

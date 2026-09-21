@@ -2,21 +2,36 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import { BUILTIN_PRESETS, checkScene } from "../src/core/catalog.js";
-import { buildHumanTemplate, featureRelief } from "../src/core/humanMesh.js";
+import {
+  buildHumanTemplate,
+  featureRelief,
+  skinHumanMesh,
+} from "../src/core/humanMesh.js";
 import { withGarments } from "../src/core/garments.js";
 import {
   solveScene,
+  createActor,
   refresh,
   measureSceneSafety,
   measureContactTargets,
 } from "../src/core/solver.js";
 import {
   createSurfaceContactQuery,
+  measureFigureSurfaces,
   measureSurfaceSafety,
   refineSurfaceContacts,
   surfaceContactSteps,
   SURFACE_CONTACT_TOLERANCE,
 } from "../src/core/surfaceContacts.js";
+import {
+  standingContactPoses,
+  standingFramePreserved,
+} from "../src/core/standingContacts.js";
+import {
+  quatFromAxisAngle,
+  quatMultiply,
+  quatRotate,
+} from "../src/core/math.js";
 
 const templates = new Map(
   ["male", "female"].map((type) => [
@@ -165,7 +180,7 @@ test("coupled hand-to-back reaches clear complete arms without worsening unrelat
     initial = measureSurfaceSafety(solved, query),
     before = solved.contacts.map(query);
   assert.deepEqual(initial.limbIntersections, [true, true]);
-  refineSurfaceContacts(solved, bodies);
+  refineSurfaceContacts(solved, bodies, { maxBodySteps: 0 });
   const hands = solved.quality.contactDetail.filter((c) => c.from === "hand");
   assert.equal(hands.length, 2);
   for (const hand of hands) {
@@ -222,6 +237,271 @@ test("coupled hand-to-back reaches clear complete arms without worsening unrelat
     solved.quality.unmetContacts > 0,
     "the remaining body gap must not be hidden",
   );
+});
+
+test("standing body contacts close with complete figure clearance and preserved support and wrist frames", () => {
+  const solved = solveScene(checkScene(standingPair())),
+    bodies = forScene(solved);
+  refineSurfaceContacts(solved, bodies, { maxBodySteps: 0 });
+  const before = poses(solved),
+    actor = solved.actors[1],
+    evaluation = actor.evaluated;
+  const query = createSurfaceContactQuery(solved.actors, bodies);
+  assert.equal(
+    measureFigureSurfaces(solved, query)[0].intersects,
+    true,
+    "fixture must expose the crossing outside the hand patches",
+  );
+  const initial = measureSurfaceSafety(solved, query, { wholeFigures: true });
+  const lowest = () => {
+    let height = Infinity;
+    for (const part of skinHumanMesh(
+      bodies[1],
+      actor.skeleton,
+      actor.evaluated,
+    ))
+      for (let i = 1; i < part.positions.length; i += 3)
+        height = Math.min(height, part.positions[i]);
+    return height;
+  };
+  const groundBefore = lowest();
+  refineSurfaceContacts(solved, bodies);
+  assert.equal(solved.quality.unmetContacts, 0);
+  assert.ok(
+    solved.quality.contactDetail.every(
+      (contact) =>
+        !contact.intersects && contact.surfaceGap <= SURFACE_CONTACT_TOLERANCE,
+    ),
+  );
+  assert.deepEqual(solved.quality.figureSurfaces, [
+    { fromActor: 0, toActor: 1, intersects: false },
+  ]);
+  assert.equal(query.figures(0, 1).intersects, false);
+  assert.equal(query.figures(0, 1).facing, true);
+  assert.ok(solved.quality.surfaceRefinement.bodySteps > 0);
+  assert.ok(solved.quality.surfaceRefinement.steps <= 32);
+  assert.deepEqual(solved.actors[0].pose, before[0]);
+  assert.ok(
+    Math.hypot(
+      ...actor.pose.root.position.map(
+        (value, i) => value - before[1].root.position[i],
+      ),
+    ) <= 0.04,
+  );
+  assert.ok(Math.abs(lowest() - groundBefore) <= 0.0005);
+  for (const name of ["ankle_l", "ankle_r", "wrist_l", "wrist_r"]) {
+    const index = actor.skeleton.boneIndex(name),
+      old = evaluation.matrices[index],
+      current = actor.evaluated.matrices[index];
+    current
+      .slice(0, 12)
+      .forEach((value, i) =>
+        assert.ok(Math.abs(value - old[i]) <= 0.0005, name),
+      );
+    assert.ok(
+      Math.abs(current[13] - old[13]) <= 0.0005,
+      `${name} support height`,
+    );
+    if (name.startsWith("wrist"))
+      assert.ok(
+        Math.hypot(
+          ...current.slice(12, 15).map((value, i) => value - old[12 + i]),
+        ) <= 0.0005,
+      );
+  }
+  assert.ok(solved.quality.balance.every((balance) => balance.supported));
+  for (const key of ["maxSelfDepth", "propPenetration", "totalDepth"])
+    assert.ok(solved.quality[key] <= initial[key] + 1e-8, key);
+});
+
+test("canceling a standing-body candidate restores the complete original rig and quality", () => {
+  const solved = solveScene(checkScene(standingPair())),
+    before = poses(solved),
+    quality = structuredClone(solved.quality);
+  const steps = surfaceContactSteps(solved, forScene(solved));
+  let moved = false;
+  for (let i = 0; i < 64; i++) {
+    const step = steps.next();
+    assert.equal(
+      step.done,
+      false,
+      "body candidate must yield before publishing",
+    );
+    if (
+      solved.actors[1].pose.root.position.some(
+        (value, k) => value !== before[1].root.position[k],
+      )
+    ) {
+      moved = true;
+      break;
+    }
+  }
+  assert.ok(moved);
+  assert.deepEqual(solved.quality, quality);
+  steps.return();
+  assert.deepEqual(poses(solved), before);
+  assert.deepEqual(solved.quality, quality);
+});
+
+test("standing refinement follows the shared world frame rather than preset identity", () => {
+  const solved = solveScene(checkScene(standingPair())),
+    bodies = forScene(solved);
+  refineSurfaceContacts(solved, bodies, { maxBodySteps: 0 });
+  const heading = quatFromAxisAngle([0, 1, 0], 0.8);
+  solved.actors.forEach((actor, i) => {
+    actor.id = `custom-standing-${i}`;
+    actor.pose.root.position = quatRotate(
+      heading,
+      actor.pose.root.position,
+    ).map((value, k) => value + [1.2, 0, -0.7][k]);
+    actor.pose.root.quaternion = quatMultiply(
+      heading,
+      actor.pose.root.quaternion,
+    );
+    refresh(actor);
+  });
+  refineSurfaceContacts(solved, bodies);
+  assert.equal(solved.quality.unmetContacts, 0);
+  assert.ok(
+    solved.quality.figureSurfaces.every((pair) => pair.intersects === false),
+  );
+  assert.ok(solved.quality.balance.every((balance) => balance.supported));
+});
+
+test("a collision with an unrelated third figure rejects standing-body candidates within budget", () => {
+  const solved = solveScene(checkScene(standingPair()));
+  refineSurfaceContacts(solved, forScene(solved), { maxBodySteps: 0 });
+  const blocker = createActor(
+    { ...solved.actors[0].spec, id: "blocker", mobility: 0 },
+    2,
+  );
+  blocker.pose = structuredClone(solved.actors[0].pose);
+  blocker.pose.root.position[0] += 0.015;
+  refresh(blocker);
+  solved.actors.push(blocker);
+  const before = poses(solved),
+    bodies = forScene(solved);
+  assert.equal(
+    createSurfaceContactQuery(solved.actors, bodies).figures(0, 2, true)
+      .intersects,
+    true,
+  );
+  refineSurfaceContacts(solved, bodies, { maxBodySteps: 2 });
+  assert.deepEqual(poses(solved), before);
+  assert.equal(solved.quality.surfaceRefinement.bodySteps, 2);
+  assert.ok(solved.quality.surfaceRefinement.steps <= 32);
+  assert.ok(
+    solved.quality.figureSurfaces.some(
+      (pair) => pair.toActor === 2 && pair.intersects,
+    ),
+  );
+});
+
+test("standing candidates preserve fixed trunk channels without mutating the input rig", () => {
+  const solved = solveScene(checkScene(standingPair())),
+    bodies = forScene(solved);
+  refineSurfaceContacts(solved, bodies, { maxBodySteps: 0 });
+  const actor = solved.actors[1],
+    fixed = actor.pose.joints.spine01.flexion;
+  actor.spec.jointMode = "fixed";
+  actor.spec.joints = { spine01: { flexion: fixed } };
+  const before = poses(solved),
+    query = createSurfaceContactQuery(solved.actors, bodies);
+  const lower = query(
+    solved.contacts.find((contact) => contact.from === "pelvis"),
+  );
+  const upper = query(
+    solved.contacts.find((contact) => contact.from === "chest"),
+  ).from;
+  let candidates = 0,
+    preserved = 0;
+  for (const pose of standingContactPoses(actor, lower, upper)) {
+    candidates++;
+    if (pose) {
+      preserved++;
+      assert.equal(pose.joints.spine01.flexion, fixed);
+    }
+    assert.deepEqual(poses(solved), before);
+  }
+  assert.equal(candidates, 18);
+  assert.ok(
+    preserved > 0,
+    "fixture must exercise non-null constrained candidates",
+  );
+});
+
+test("cumulative standing bounds independently reject root, foot and wrist drift", () => {
+  const actor = solveScene(checkScene(standingPair())).actors[1];
+  const baseline = {
+    root: [...actor.pose.root.position],
+    evaluated: actor.evaluated,
+  };
+  const frame = (trial, name) =>
+    trial.evaluated.matrices[trial.skeleton.boneIndex(name)];
+  for (const change of [
+    (trial) => {
+      trial.pose.root.position[0] += 0.041;
+    },
+    (trial) => {
+      trial.pose.root.position[1] -= 0.021;
+    },
+    (trial) => {
+      frame(trial, "ankle_l")[12] += 0.071;
+    },
+    (trial) => {
+      frame(trial, "ankle_l")[13] += 0.0006;
+    },
+    (trial) => {
+      frame(trial, "wrist_l")[12] += 0.0006;
+    },
+    (trial) => {
+      frame(trial, "wrist_l")[0] += 0.0006;
+    },
+  ]) {
+    const trial = {
+      ...actor,
+      pose: structuredClone(actor.pose),
+      evaluated: structuredClone(actor.evaluated),
+    };
+    assert.equal(standingFramePreserved(trial, baseline), true);
+    change(trial);
+    assert.equal(standingFramePreserved(trial, baseline), false);
+  }
+});
+
+test("body trials respect pinned and authored placement, missing surfaces and explicit budgets", () => {
+  const original = solveScene(checkScene(standingPair())),
+    bodies = forScene(original);
+  refineSurfaceContacts(original, bodies, { maxBodySteps: 0 });
+  for (const constraint of [
+    "pinned",
+    "wrist",
+    "ankle",
+    "missing",
+    "zero budget",
+  ]) {
+    const solved = solveScene(checkScene(standingPair()));
+    solved.actors.forEach((actor, i) => {
+      actor.pose = structuredClone(original.actors[i].pose);
+      refresh(actor);
+    });
+    const actor = solved.actors[1];
+    if (constraint === "pinned") actor.mobility = 0;
+    if (["wrist", "ankle"].includes(constraint)) {
+      const bone = `${constraint}_l`;
+      actor.spec.joints = { [bone]: structuredClone(actor.pose.joints[bone]) };
+    }
+    const before = poses(solved);
+    refineSurfaceContacts(
+      solved,
+      constraint === "missing" ? [null, bodies[1]] : bodies,
+      constraint === "zero budget" ? { maxSteps: 0 } : {},
+    );
+    assert.deepEqual(poses(solved), before, constraint);
+    assert.equal(solved.quality.surfaceRefinement.bodySteps, 0, constraint);
+    if (constraint === "missing")
+      assert.equal(solved.quality.figureSurfaces[0].intersects, null);
+  }
 });
 
 test("canceling a compound hand candidate restores the rig and unpublished quality", () => {
@@ -405,6 +685,7 @@ test("coarse overlaps are reconciled only with clear complete limb meshes; missi
   const unverified = measureSurfaceSafety(
     solved,
     createSurfaceContactQuery(solved.actors, [null, bodies[1]]),
+    { wholeFigures: true },
   );
   assert.equal(unverified.verifiedProxyContacts, 0);
   assert.equal(unverified.maxDepth, unverified.proxyMaxDepth);

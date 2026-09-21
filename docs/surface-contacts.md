@@ -57,9 +57,11 @@ Explicit wrist settings or forearm rotation disable these compound trials;
 fixed channels are still enforced by every refresh. Each candidate uses one
 step of the shared budget and yields for cancellation, restoring rejected rigs.
 
-A coarse capsule can report overlap even when the visible limbs are separate.
-Such a discrepancy is reconciled only for the declared limb pair, after checking
-the complete visible limbs for triangle crossings and outward-facing clearance.
+A coarse capsule can report overlap even when visible surfaces are separate.
+During free-limb refinement, a discrepancy is reconciled for the declared limb
+pair after checking complete visible limbs and outward-facing clearance. The
+whole-body stage and final report can also use a complete figure/figure check,
+including all drawn auxiliary triangles without anatomical bone ownership.
 Raw proxy depths remain in `quality.proxyMaxDepth`/`proxyTotalDepth`; the count
 of reconciled contacts is `verifiedProxyContacts`. Missing geometry cannot grant
 an exception. Self-collisions, props and unrelated body pairs remain guarded.
@@ -87,6 +89,24 @@ stale work. Cancellation restores the canceled job's original rig. The CLI uses
 the same implementation synchronously. Neither path deforms rendered vertices
 independently of the skeleton or modifies cached templates.
 
+After free-limb refinement, mobile upright figures supported by both feet on the
+floor can try a coordinated lower-body correction. A nearby pelvic contact and
+an already-close torso contact define the move and counter-rotation. The source
+root moves at most 28 mm horizontally per trial and 40 mm across the body phase.
+Outward/back foot-step components of 20–35 mm can clear toes; total foot travel
+is capped at 70 mm, with a root drop capped at 20 mm if needed for reach. Wrist world positions
+and ankle/wrist orientations are retained to within 0.5 mm / 0.0005 per matrix
+component. Feet keep their height. Explicit wrist/ankle settings disable these
+trials, and fixed channels are enforced through every IK refresh.
+
+These trials consume the same 32-step budget, with at most 12 body trials by
+default (`maxBodySteps: 0` isolates the preceding limb phase). They must improve
+contact error without worsening an already-close contact, self/prop/per-pair
+violations or the existing balance estimate. Every rendered figure pair must be
+available and clear before accepting a whole-body candidate. Cancellation also
+restores accepted intermediate body changes. The UI explains an automatic stance
+adjustment separately from geometry warnings.
+
 `jointMode: "fixed"` is enforced by the shared rig refresh during every trial and
 rollback. Specified channels remain exact through refinement and cancellation;
 unmodified channels can still participate in a correction. A fixed arm may leave
@@ -105,11 +125,18 @@ says **Estimated target** and never presents that value as a measured surface
 contact. Supporting limbs, limited reach and unresolved movement receive their
 own feedback. All reports are remeasured on the final returned pose.
 
+`quality.figureSurfaces` is a separate final audit of every pair, including pairs
+with no declared contact. Its `intersects` value is `true`, `false`, or `null`
+when geometry is unavailable. Crossings and unknown checks appear in viewport
+notes, catalog quality labels and the named-preset CLI audit. This is a triangle
+surface check, not a replacement for self-collision, furniture, support or solid
+containment checks; raw body-model diagnostics remain available.
+
 ## Measured cases
 
 `node scripts/validate-surface-contacts.mjs` checks real dressed model geometry.
 All seven fixtures must reach the 4 mm threshold without newly unresolved
-collisions or intersections of the affected limbs.
+collisions, affected-limb crossings or any figure/figure surface crossings.
 
 | Fixture | Initial visible gap | Final visible gap |
 | --- | ---: | ---: |
@@ -128,15 +155,22 @@ roots and lower-body joints remain unchanged, and no unresolved collision pair
 worsens. The separate lap-region target still fails; resolving the hands does
 not make the whole preset pass.
 
-The dressed standing-embrace regression likewise starts with both hands/arms
-crossing the target. Coordinated reaches finish at approximately 2.2 mm on both
-sides, with clear complete arms, unchanged roots/lower bodies/target figure and
-no worsened self, prop or individual unresolved collision pair. Its chest gap
-stays near 1 mm and its pelvic gap near 10 mm. That remaining contact still fails.
-A separate whole-figure diagnostic also detects a pre-existing toe crossing;
-the current limb-contact audit must not be read as universal figure clearance.
+The dressed standing-embrace regression starts with both hands/arms crossing the
+target. Its limb-only stage finishes near 2.2 mm on both sides but leaves a 10 mm
+pelvic gap and a toe crossing. The coordinated body stage then moves the source
+root approximately 6.7 mm and finishes with all four gaps within 4 mm, no rendered
+figure crossing, unchanged wrist frames and supported feet. The target figure
+does not move. A translated and rotated custom-ID copy also passes; fixed trunk
+channels, pinned placement, explicit end joints, third-figure collisions,
+missing meshes, budget limits and cancellation have separate regression checks.
+
+A six-case body-stage comparison found no newly worsened violations. Only the
+stock proportions became fully solved. Reversed body types, same-type pairs,
+different heights and different builds retained their prior geometry findings
+without an accepted body correction. These remain calibration work, not evidence
+that every variant is now solved.
 
 These are specified fixtures, not proof that arbitrary conflicting contacts can
-all be satisfied. Region boundaries depend on skin weights, and collision
-assessment outside the refined limb pair still uses the body model. The pass
-does not simulate soft tissue, cloth, grasp forces or full-body motion planning.
+all be satisfied. Region boundaries depend on skin weights; self, prop and
+balance checks still use the body model. The pass does not simulate soft tissue,
+cloth, grasp forces or general full-body motion planning.

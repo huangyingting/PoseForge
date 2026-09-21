@@ -249,3 +249,30 @@ and vertex coordinates instead of sorting a new hierarchy for every candidate.
 Return a new tree identity so query caches cannot reuse stale measurements;
 rebuild if topology changes or geometry becomes unavailable. Validate against
 fresh trees, including large moves and missing triangles restored later.
+
+## Supported whole-body contact refinement
+
+Local contact success is not whole-figure clearance. Run a final rendered
+figure/figure crossing audit over every pair, independent of declared contacts.
+Use every drawn triangle, including auxiliary parts without a recognized core
+bone. Missing geometry is unknown, never a verified clear pair. Expose crossings
+in pose notes, catalog quality labels and the command-line audit. Keep raw
+body-model diagnostics; reconcile an overlap only with complete clear geometry
+and outward-facing nearest surfaces. Self and furniture checks remain separate.
+
+For upright, mobile, two-foot-supported figures on the floor, a small lower-body
+gap may require a coordinated stance and torso correction. Probe bounded root
+translations toward the existing lower contact, counter-rotate the lower spine
+around an already-close upper contact, and preserve wrist world frames through
+IK. Small outward/back steps may clear overlapping toes; ankles retain their
+world height and orientation, with only a bounded root drop if reach requires it.
+Derive candidates from geometry and support declarations, not a preset ID.
+
+Accept only an improved contact score with complete, available figure clearance,
+no worsened local contact, self/furniture/per-pair violation or balance, and
+preserved end frames. Respect pinned placement, explicit wrist/ankle angles and
+fixed channels. Use the existing candidate budget, yield between trials and
+restore the entire original rig on cancellation. Retain a zero-body-trial option
+for diagnostic isolation of the free-limb phase. Validate the clothed stock
+standing scene, other body types/proportions, authored constraints, multi-figure
+collisions, cancellation, missing geometry and browser responsiveness.

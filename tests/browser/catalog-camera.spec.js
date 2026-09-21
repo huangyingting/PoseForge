@@ -37,6 +37,16 @@ test("every existing named definition loads and renders; known quality notes are
       "data-basis",
       "refined",
     );
+    if (preset.id === "builtin.named.standing_embrace") {
+      await expect(page.locator(".contact-result.warning")).toHaveCount(0);
+      await expect(page.locator(".contact-result")).toHaveCount(4);
+      await expect(page.getByText(/adjusted the standing stance/)).toHaveCount(
+        1,
+      );
+      await page.screenshot({
+        path: info.outputPath("standing-clearance.png"),
+      });
+    }
   }
   await page.getByLabel("Search presets").fill("拥抱");
   await expect(page.locator(".preset-card")).toHaveCount(1);

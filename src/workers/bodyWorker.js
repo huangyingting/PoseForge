@@ -234,6 +234,8 @@ function summarise(solved) {
       propPenetration: solved.quality.propPenetration,
       unmetContacts: solved.quality.unmetContacts,
       contactDetail: solved.quality.contactDetail,
+      figureSurfaces: solved.quality.figureSurfaces,
+      adjustments: solved.quality.adjustments,
       balance: solved.quality.balance,
       warnings: solved.quality.warnings,
     },
