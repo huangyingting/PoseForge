@@ -92,3 +92,10 @@ hands are retained during accepted automatic corrections; fixing the relevant
 leg or contacted-arm channels prevents them from being changed. Whole-figure
 floor checks also cover unclaimed hands or other parts, not only the declared
 support regions.
+
+Forearm-supported reclines can also receive a bounded automatic correction before
+capture. It moves the pelvis vertically and adjusts free arms/wrists while
+retaining lower-body and trunk joints. Fixed placement or required arm channels
+block this phase, as do positive partner contacts on the supporting arms. Capture
+stores the resulting root and joint pose using the same portable representation;
+it does not replace the pose's declared supports or hand shapes.

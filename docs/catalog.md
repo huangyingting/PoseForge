@@ -39,6 +39,12 @@ contacted hands in place. Fixed placement, fixed required joint channels, missin
 geometry or conflicting contacts can prevent correction; those results remain
 measured and reported rather than silently replacing the requested pose.
 
+The **Floor study** also uses a generic pelvis/forearm support correction, with
+bounded arm and wrist adjustments and a complete-hand floor check. It retains
+the existing lower-body pose rather than assigning new foot supports. Both body
+types and tested floor/bed proportions are covered; fixed arm channels or
+partner contacts on the supporting arms prevent free wrist reshaping.
+
 Once loaded, a fixed layout remains editable and is not silently reapplied.
 The Composition hint points to **Figures → Placement** to release fixed roots;
 **Joints → Keep edited angles** controls joint locking separately. Changing a

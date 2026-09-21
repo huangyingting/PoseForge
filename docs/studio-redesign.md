@@ -480,3 +480,33 @@ while an unclaimed hand crossed below it. Report full-mesh minimum height and
 unknown geometry independently of the support set, using the existing 20 mm
 support-quality tolerance for the studio floor. Candidates still require the
 stricter nonpenetrating whole-figure floor guard before they can be accepted.
+
+#### Forearm-supported recline correction
+
+The floor-rest study needs a coordinated pelvis/arm correction: its visible
+pelvis is about 100 mm above the floor, while forearms are only about 12 mm
+above it and an unclaimed hand already extends about 24 mm below it. Lowering
+the complete rig cannot satisfy that support set. Explore a bounded pelvis
+translation with arm IK retaining nearby wrist locations, followed by limited
+wrist orientation corrections to clear the complete hands. Feet are not
+declared supports in this study and must not be forced down from their elevated
+position as if it were a seated-foot contract.
+
+Measure both forearms, the pelvis and the whole figure after every candidate.
+Do not accept a close forearm while fingertips remain below the surface, or
+trade the floor crossing for self/partner/furniture overlap. Any implementation
+must retain the existing contact/support thresholds, declared supports, fixed
+placement and authored-channel rules, shared work budget and cancellation
+behavior. Test both body types, proportion/surface variations and portable
+capture before promoting a corrected reference.
+
+The implemented candidate pass uses measured gaps independently for each arm,
+with small outward wrist offsets and anatomical wrist flexion trials. It retains
+already-accepted lateral hand clearance: the tall female floor trial previously
+spent its last candidates retrying narrower positions that reintroduced
+self-overlap. Retaining the clearance brings all twelve tested body/proportion/
+floor-or-bed combinations within 4 mm without increasing the eight-candidate or
+shared 32-step budgets. The original floor-rest study now measures approximately
+2 mm at its supports with the whole figure above the floor. Translation/heading,
+fixed authoring, positive arm contacts, obstacles, capture and cancellation have
+explicit regression coverage. The separate sofa/backrest problem remains open.

@@ -146,6 +146,30 @@ retain contacts, clear complete figures/furniture and the floor, and not worsen
 self/body collisions or balance. Cancellation restores all actors, including
 earlier hand adjustments, without publishing partial reports.
 
+### Forearm-supported reclines
+
+The next phase handles a pelvis and two forearm supports sharing a plane. It
+lowers the pelvis toward its measured support, uses arm IK with an outward elbow
+direction, and adjusts free wrists so fingers do not extend below the surface.
+Only the arm joints and root height can change; lower-body/trunk joints, root
+heading and horizontal position remain unchanged. Undeclared elevated feet are
+not forced onto the surface.
+
+Cumulative root-height change is limited to 160 mm, wrist displacement to 60 mm,
+and each wrist-angle change to 60 degrees within anatomical limits. At most eight
+candidates consume the shared 32-step budget. Accepted lateral hand clearance
+is retained across passes rather than retrying a narrower, colliding position.
+`maxForearmSteps: 0` disables this phase, and `surfaceRefinement.forearmSteps`
+reports its work.
+
+Fixed placement, zero mobility, fixed required arm channels, missing support
+geometry, and positive partner contacts on either supporting arm block the
+correction. The common support-stage guards still require improved support,
+complete figure/furniture/floor clearance, retained contacts, and no worsened
+individual or aggregate collisions or rendered balance. Capture and cancellation
+use the same rules as the other support phases. This is a bounded geometric
+correction, not a force or joint-load simulation.
+
 `quality.propSurfaces` audits every complete figure against each furniture box.
 Crossing triangles and interior vertices are overlaps. Missing geometry and
 unverified orientation—including a box enclosed by a shell—cannot certify
