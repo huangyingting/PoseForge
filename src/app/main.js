@@ -269,11 +269,14 @@ function collectNotes(data) {
       message: `The body model overlaps its support by ${Math.round(data.quality.propPenetration * 1000)} mm.`,
     });
   for (const actor of data.actors)
-    if (actor.seatResidual > 0.02)
+    if (actor.seatResidual > 0.02) {
+      const kind = actor.supportMeasurement === "rendered" &&
+        actor.supportPenetration >= actor.seatResidual - 1e-9 ? "support penetration" : "support gap";
       notes.push({
         level: "warning",
-        message: `${actor.label} has a ${Math.round(actor.seatResidual * 1000)} mm support gap.`,
+        message: `${actor.label} has a ${Math.round(actor.seatResidual * 1000)} mm ${actor.supportMeasurement ? `${actor.supportMeasurement} ` : ""}${kind}.`,
       });
+    }
   return notes;
 }
 function workerFailure(message) {

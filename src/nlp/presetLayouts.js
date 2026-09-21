@@ -12,11 +12,11 @@ export const SIDE_FACING_LAYOUT = {
     {
       posture: "side_lying",
       bodyType: "female",
+      wearing: ["top", "shorts"],
+      outfit: "sage",
       stature: 1.66,
       build: 1,
       bust: 1,
-      wearing: ["top", "shorts"],
-      outfit: "sage",
       placement: {
         position: [-0.2, 0.721685741, 0],
         rotation: [84, 90, 0],
@@ -75,7 +75,7 @@ export const SIDE_FACING_LAYOUT = {
         },
         shoulder_r: {
           flexion: 150,
-          abduction: -10,
+          abduction: 0,
           rotation: 0,
         },
         elbow_r: {
@@ -137,11 +137,11 @@ export const SIDE_FACING_LAYOUT = {
     {
       posture: "side_lying",
       bodyType: "male",
+      wearing: ["top", "shorts"],
+      outfit: "navy",
       stature: 1.78,
       build: 1,
       bust: 0,
-      wearing: ["top", "shorts"],
-      outfit: "navy",
       placement: {
         position: [0.05, 0.713872438, 0.025],
         rotation: [82, -90, 0],
@@ -273,11 +273,11 @@ export const SPOONING_LAYOUT = {
     {
       posture: "side_lying",
       bodyType: "female",
+      wearing: ["top", "shorts"],
+      outfit: "sage",
       stature: 1.66,
       build: 1,
       bust: 1,
-      wearing: ["top", "shorts"],
-      outfit: "sage",
       placement: {
         position: [0, 0.721685741, 0],
         rotation: [84, 90, 0],
@@ -336,7 +336,7 @@ export const SPOONING_LAYOUT = {
         },
         shoulder_r: {
           flexion: 95,
-          abduction: -10,
+          abduction: 0,
           rotation: 0,
         },
         elbow_r: {
@@ -398,14 +398,14 @@ export const SPOONING_LAYOUT = {
     {
       posture: "side_lying",
       bodyType: "male",
+      wearing: ["top", "shorts"],
+      outfit: "navy",
       stature: 1.78,
       build: 1,
       bust: 0,
-      wearing: ["top", "shorts"],
-      outfit: "navy",
       placement: {
-        position: [-0.237, 0.733, -0.025],
-        rotation: [84, 90, 0],
+        position: [-0.238, 0.7085, -0.025],
+        rotation: [80, 90, 0],
       },
       jointMode: "fixed",
       joints: {
@@ -440,17 +440,17 @@ export const SPOONING_LAYOUT = {
           rotation: 0,
         },
         shoulder_l: {
-          flexion: 13.02759192,
-          abduction: 7.41384049,
-          rotation: 20.67179031,
+          flexion: 10.18899471,
+          abduction: 10.71098418,
+          rotation: 18.83705095,
         },
         elbow_l: {
-          flexion: 87.63674365,
+          flexion: 90.51135697,
           abduction: 0,
           rotation: 0,
         },
         wrist_l: {
-          flexion: 10,
+          flexion: 0,
           abduction: 0,
           rotation: 0,
         },
@@ -461,7 +461,7 @@ export const SPOONING_LAYOUT = {
         },
         shoulder_r: {
           flexion: 170,
-          abduction: -10,
+          abduction: 14,
           rotation: 0,
         },
         elbow_r: {
@@ -476,7 +476,7 @@ export const SPOONING_LAYOUT = {
         },
         hip_l: {
           flexion: 20,
-          abduction: 6,
+          abduction: 10,
           rotation: 0,
         },
         knee_l: {
@@ -496,7 +496,7 @@ export const SPOONING_LAYOUT = {
         },
         hip_r: {
           flexion: 20,
-          abduction: -6,
+          abduction: -10,
           rotation: 0,
         },
         knee_r: {

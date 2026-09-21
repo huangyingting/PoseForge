@@ -130,10 +130,29 @@ cutoff: distant declared targets must remain in scoring and reporting. The
 per-step movement bounds and collision allowances remain unchanged.
 
 An actor's `supportBasis` is `surface`, `partner`, or `none`. For surface support,
-`seatResidual` is the final maximum declared-plane error, with the existing 2 mm
-numerical floor. For the other bases it is null: it is not a zero-distance surface
-contact. Partner contact reports still determine whether the requested placement
-was reached. The worker and CLI preserve this distinction.
+the base solve's `seatResidual` is the maximum coarse declared-plane error with
+its existing 2 mm numerical floor. After rendered refinement, `supportMeasurement`
+identifies `rendered` or `body-model`: a complete visible measurement replaces
+`seatResidual`, while `bodySupportResidual` preserves a fresh coarse measurement
+of the same final rig. Missing geometry keeps the coarse estimate, marks support
+availability explicitly and cannot certify support. For partner/none support,
+these surface residuals remain null, not a zero-distance surface contact.
+Partner contact reports still determine whether the requested placement was reached.
+
+`quality.supportSurfaces` contains each declared support region's measurement.
+The region ownership/radius rules are unchanged. The floor uses the lowest
+drawn regional point relative to its plane. Furniture checks clip triangles to
+the finite top footprint, including points along clipped edges; an entirely
+off-edge region uses its distance to the nearest top edge. Penetration is retained
+instead of treating a triangle crossing as zero-distance success. The existing
+20 mm support-quality limit applies, with penetration distinguished from gaps in
+previews, worker metadata, UI notes and the CLI. These checks report geometry;
+they do not move the rig, simulate furniture deformation or certify stability.
+
+The coarse balance estimate now includes finite raised furniture tops alongside
+the ground and excludes deeply buried samples. It still estimates centre of mass
+against contact bounds, not a full support polygon or partner-load simulation.
+Expected partner support and absent surface contact remain distinct.
 
 `quality.figureSurfaces` is a separate final audit of every pair, including pairs
 with no declared contact. Its `intersects` value is `true`, `false`, or `null`

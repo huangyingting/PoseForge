@@ -36,10 +36,18 @@ test("every existing named definition loads and renders; known quality notes are
         this.addEventListener("message", ({ data }) => {
           if (data.stage === "final")
             window.__latestSupportReport = data.actors.map(
-              ({ label, supportBasis, seatResidual }) => ({
+              ({
                 label,
                 supportBasis,
                 seatResidual,
+                supportMeasurement,
+                supportPenetration,
+              }) => ({
+                label,
+                supportBasis,
+                seatResidual,
+                supportMeasurement,
+                supportPenetration,
               }),
             );
         });
@@ -61,10 +69,16 @@ test("every existing named definition loads and renders; known quality notes are
     const support = await page.evaluate(() => window.__latestSupportReport);
     expect(support).toHaveLength(preset.scene.actors.length);
     for (const actor of support) {
-      if (actor.supportBasis === "surface" && actor.seatResidual > 0.02)
+      if (actor.supportBasis === "surface" && actor.seatResidual > 0.02) {
+        const kind =
+          actor.supportMeasurement === "rendered" &&
+          actor.supportPenetration >= actor.seatResidual - 1e-9
+            ? "support penetration"
+            : "support gap";
         await expect(page.locator(".notes")).toContainText(
-          `${actor.label} has a ${Math.round(actor.seatResidual * 1000)} mm support gap.`,
+          `${actor.label} has a ${Math.round(actor.seatResidual * 1000)} mm ${actor.supportMeasurement ? `${actor.supportMeasurement} ` : ""}${kind}.`,
         );
+      }
       if (actor.supportBasis === "partner") {
         expect(actor.seatResidual).toBeNull();
         await expect(page.locator(".notes")).not.toContainText(

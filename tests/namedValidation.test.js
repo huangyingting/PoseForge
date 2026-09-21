@@ -52,6 +52,18 @@ test("an invalid audit selection cannot silently pass an empty set", () => {
   }
 });
 
+test("the explicit catalog audit scope includes reference studies without changing named-only selection", () => {
+  const id = "builtin.standing-female";
+  const result = run("--catalog", "--preset", id);
+  assert.equal(result.status, 0, result.stderr);
+  const lines = result.stdout.trim().split("\n");
+  assert.equal(JSON.parse(lines[0]).id, id);
+  assert.match(lines[1], /^1\/1 catalog presets have no base-model quality flags/);
+  const namedOnly = run("--preset", id);
+  assert.equal(namedOnly.status, 1);
+  assert.match(namedOnly.stderr, /Unknown named preset/);
+});
+
 test("the standing rendered audit passes only with close contacts and available clear figure surfaces", () => {
   const result = run(
     "--rendered",
@@ -63,6 +75,8 @@ test("the standing rendered audit passes only with close contacts and available 
   assert.deepEqual(report.issues, []);
   assert.equal(report.unmetContacts, 0);
   assert.equal(report.unavailableFigureChecks, 0);
+  assert.equal(report.unavailableSupportChecks, 0);
+  assert.deepEqual(report.supportMeasurement, ["rendered", "rendered"]);
   assert.deepEqual(report.intersectingFigures, []);
   assert.equal(report.contacts.length, 4);
   assert.ok(

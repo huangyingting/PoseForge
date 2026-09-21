@@ -17,12 +17,14 @@ import {
   refresh,
   measureSceneSafety,
   measureContactTargets,
+  measureBodySupportResidual,
 } from "./solver.js";
 import {
   buildTriangleTree,
   refitTriangleTree,
   closestMeshPoints,
 } from "./meshDistance.js";
+import { measureSurfaceSupport } from "./surfaceSupport.js";
 
 export const SURFACE_CONTACT_TOLERANCE = 0.004;
 const vDistanceSq = (a, b) =>
@@ -202,6 +204,10 @@ export function createSurfaceContactQuery(actors, templates) {
           radiusSq = definition.radius ** 2;
         for (let j = 0; j < regions[i].length; j += 3) {
           const tri = [regions[i][j], regions[i][j + 1], regions[i][j + 2]];
+          if (tri.some((v) => ![0, 1, 2].every((k) => Number.isFinite(part.positions[v * 3 + k])))) {
+            unavailable = true;
+            continue;
+          }
           if (
             tri.some(
               (v) =>
@@ -256,7 +262,34 @@ export function createSurfaceContactQuery(actors, templates) {
       tree(toActor, "", null, true),
       crossingsOnly,
     );
+  query.support = (index, support, surface) =>
+    measureSurfaceSupport(tree(index, support.landmark, support.side), support, surface);
   return query;
+}
+
+/** Keep the coarse estimate available when a support's mesh is missing. */
+export function measureRenderedSupports(solved, query) {
+  return solved.actors.map((actor, index) => {
+    if (actor.supportBasis !== "surface")
+      return { actor: index, basis: actor.supportBasis, gap: null, bodyGap: null, penetration: null, unavailable: 0, supports: [] };
+    const supports = actor.posture.supports.map((support) => ({
+      ...support,
+      measurement: query.support(index, support, solved.surface),
+    }));
+    const unavailable = supports.filter((support) => !support.measurement).length;
+    const bodyGap = measureBodySupportResidual(actor, solved.surface);
+    return {
+      actor: index,
+      basis: unavailable ? "body-model" : "rendered",
+      gap: unavailable
+        ? bodyGap
+        : Math.max(0, ...supports.map((support) => support.measurement.gap)),
+      bodyGap,
+      penetration: unavailable ? null : Math.max(0, ...supports.map((support) => support.measurement.penetration)),
+      unavailable,
+      supports,
+    };
+  });
 }
 
 function* figureChecks(solved, query) {
@@ -936,12 +969,24 @@ export function* surfaceContactSteps(
           `${item.from} to ${item.to}: ${Math.round(item.distance * 1000)}mm ${item.basis === "rendered" ? "between rendered surfaces" : "from the body-model target"}.`,
         );
     }
+    const supportSurfaces = measureRenderedSupports(solved, query);
+    for (const entry of supportSurfaces) {
+      const actor = solved.actors[entry.actor];
+      actor.bodySupportResidual = entry.bodyGap;
+      actor.supportMeasurement = entry.basis === "rendered" || entry.basis === "body-model"
+        ? entry.basis : null;
+      actor.seatResidual = entry.gap;
+      actor.supportPenetration = entry.penetration;
+      if (entry.unavailable)
+        warnings.push(`${actor.label ?? actor.id}: rendered support geometry is unavailable; the support gap is a body-model estimate.`);
+    }
     Object.assign(
       solved.quality,
       measureSurfaceSafety(solved, query, { wholeFigures: true }),
       {
         contactDetail: detail,
         figureSurfaces,
+        supportSurfaces,
         adjustments,
         warnings,
         unmetContacts: detail.filter(

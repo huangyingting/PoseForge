@@ -205,6 +205,9 @@ intersections. The latter preserves base results alongside surface measurements;
 passing the base gate alone is not sufficient. Add `--preset <built-in-id>` to
 audit a single definition or resume an interrupted long audit. Invalid or empty
 selections fail instead of reporting success for zero cases.
+Add `--catalog` to include the eleven reference studies as well as the named
+entries. Rendered reports include actual support-region gaps, penetration and
+measurement availability; the separate base result retains the coarse estimate.
 
 Calibrated named layouts live in `src/nlp/presetLayouts.js` and are referenced
 by their archetype's optional `layout` field. Define the body dimensions,

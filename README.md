@@ -31,6 +31,7 @@ node scripts/validate-surface-contacts.mjs
 # Existing named definitions still have geometry issues; this audit reports them:
 node scripts/validate-named-presets.mjs
 node scripts/validate-named-presets.mjs --rendered
+node scripts/validate-named-presets.mjs --catalog --rendered
 npm run build
 npx playwright install chromium
 npm run test:browser
@@ -43,14 +44,14 @@ New bundled studies are non-graphic references. The existing engine documentatio
 below includes its broader vocabulary and historical measurements; those are
 not claims that every composition is geometrically valid.
 
-Type a sentence describing how two people are positioned. Get a correct 3D render
-of it, and a 2D image you can export.
+Type a sentence describing how figures are positioned to get a 3D pose preview
+and a 2D image you can export. Pose checks report unresolved constraints.
 
 ```
 npm install
 npm run dev          # webapp on :5173
-npm test             # 108 tests
-node scripts/render-cli.mjs "she is bent over the table, he stands behind her"
+npm test             # 231 tests
+node scripts/render-cli.mjs "a woman seated on a chair wearing clothes"
 ```
 
 The pipeline is one direction, end to end:
@@ -63,6 +64,11 @@ The pipeline is one direction, end to end:
 ---
 
 ## What this is, and what it replaces
+
+This section records the original SDF engine design. The current studio also
+uses skinned human meshes and clothing, with separate coarse and rendered
+contact/support measurements. See [studio verification](docs/studio-verification.md)
+for current coverage and outstanding geometry issues.
 
 `../SexPoses` renders human poses in 3D too. This is a rebuild aimed at three
 things it could not do: read a description, collide bodies properly, and draw a
@@ -77,15 +83,15 @@ surface rather than a pile of primitives.
 | **Surface** | primitives interpenetrating at the joints | watertight manifold isosurface, no visible seams |
 | **Ambient occlusion** | none | sampled from the same field |
 | **Export** | canvas PNG, `SVGRenderer` | PNG and SVG from the browser, plus a headless CLI renderer |
-| **Verification** | none | 108 unit tests + 4 validators that measure geometry |
+| **Initial engine verification** | none | 108 unit tests + 4 validators; see the current studio report for later coverage |
 
 The central design decision is the one in the third and fourth rows. In the
 reference system, the thing you see and the thing that collides are two
 different approximations of a body, so a hand can rest visibly inside a thigh
 while the solver believes it is a clear 60mm away — the thigh is not in the
-collision set at all. Here there is one surface. If two bodies overlap on
-screen, the solver saw that overlap; if the solver says a hand touches a hip,
-it touches the hip you can see.
+collision set at all. The SDF path derives its surface from that collision field.
+The later skinned-mesh path requires its separate rendered measurements;
+a small coarse target error is not proof of visible contact or grounded support.
 
 ---
 
@@ -251,6 +257,7 @@ npm run test:browser                       # production-build interaction checks
 node scripts/validate-surface-contacts.mjs  # clothed visible-surface contact fixtures
 node scripts/validate-named-presets.mjs     # inherited named-preset quality gate
 node scripts/validate-named-presets.mjs --rendered # dressed-mesh contact gate
+node scripts/validate-named-presets.mjs --catalog --rendered # every catalog entry, including drawn supports
 node scripts/validate-text.mjs             # parser and geometry corpus
 node scripts/validate-scenes.mjs           # base-model scene sweep
 node scripts/validate-postures.mjs         # single-figure support constraints
@@ -263,14 +270,15 @@ Euler characteristic — rather than checking that functions return values.
 
 **Known residuals.** The recorded base-model scene sweep reports 32 of 159
 variants as not fully sound, with a worst residual penetration of 63mm. The
-separate base-model named-preset gate flags 9 of 12 inherited definitions for
-unresolved contacts, overlap or support gaps. The rendered-contact audit flags
-all 12; a small base-model target error is not proof of visible contact. These
-quality gates remain open despite passing structural and browser checks. Every
-unmet contact appears in the solve
-result, and both the CLI and app report unresolved constraints.
+current base-model named-preset gate flags 7 of 12 definitions. The rendered
+named audit flags 9 of 12, and the complete rendered catalog audit flags 15 of
+23 entries, including six reference studies with measured support gaps.
+Rendered support checks retain coarse estimates separately and distinguish
+gaps, penetration and missing geometry. These quality gates remain open despite
+passing structural and browser checks; the CLI and app report the unresolved
+constraints.
 
-The worst support gap is 30mm, in `inverted`: the skull reaches the rig's own
+The historical single-posture model audit's worst support gap was 30mm, in `inverted`: the skull reaches the rig's own
 `headTop` now that it is a head rather than a ball, so in a shoulder stand the
 head touches the floor first and the shoulders sit above it. That is the
 posture being right, not the seating being wrong.

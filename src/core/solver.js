@@ -263,6 +263,19 @@ function supportLowestY(actor, landmark) {
   return point ? { y: lowest, point } : null;
 }
 
+/** Coarse support residual on the current rig, independent of rendered data. */
+export function measureBodySupportResidual(actor, surface) {
+  if (actor.carried || actor.mountedOn != null || !actor.posture.supports.length)
+    return null;
+  let residual = 0;
+  for (const support of actor.posture.supports) {
+    const found = supportLowestY(actor, support);
+    if (found)
+      residual = Math.max(residual, Math.abs(found.y - supportPlaneFor(support, surface)));
+  }
+  return residual > 0.002 ? residual : 0;
+}
+
 /**
  * Which supports a whole-body rotation should be fitted to.
  *
@@ -1482,16 +1495,7 @@ export function solveScene(scene, options = {}) {
     // Partner-supported figures are not constrained to the surface plane.
     actor.supportBasis = actor.carried || actor.mountedOn != null
       ? "partner" : actor.posture.supports.length ? "surface" : "none";
-    actor.seatResidual = null;
-    if (actor.supportBasis === "surface") {
-      let residual = 0;
-      for (const support of actor.posture.supports) {
-        const found = supportLowestY(actor, support);
-        if (found)
-          residual = Math.max(residual, Math.abs(found.y - supportPlaneFor(support, surface)));
-      }
-      actor.seatResidual = residual > 0.002 ? residual : 0;
-    }
+    actor.seatResidual = measureBodySupportResidual(actor, surface);
   }
 
   // Say what could not be done. A pose where the chests never met is a
@@ -1549,7 +1553,7 @@ export function solveScene(scene, options = {}) {
         blocked: Boolean(entry.blocked),
         unreachable: Boolean(entry.unreachable || entry.blocked),
       })),
-      balance: actors.map((actor) => balanceOf(actor, surface.ground)),
+      balance: actors.map((actor) => balanceOf(actor, surface)),
       convergence: history,
       warnings,
       placementWarnings,
@@ -1806,7 +1810,7 @@ export function measureSceneSafety(solved, { verifiedPair = () => false } = {}) 
     maxSelfDepth: Math.max(0, ...contacts.filter(p => p.self).map(p => p.depth)),
     maxBodyDepth: Math.max(0, ...contacts.filter(p => !p.self).map(p => p.depth)),
     propPenetration: Math.max(0, ...props.map(p => p.depth)),
-    balance: solved.actors.map(actor => balanceOf(actor, solved.surface.ground)) };
+    balance: solved.actors.map(actor => balanceOf(actor, solved.surface)) };
 }
 
 /** Final body-model target errors, separate from rendered surface distances. */
@@ -2112,7 +2116,7 @@ function resolvePropPenetration(actor, props, surfaceY) {
  * some interactions are genuinely supported by the partner, and silently
  * shifting the figure would hide that.
  */
-function balanceOf(actor, surfaceY) {
+function balanceOf(actor, surface) {
   const com = centreOfMass(actor);
   const contactPoints = [];
   for (const volume of actor.volumes) {
@@ -2120,11 +2124,23 @@ function balanceOf(actor, surfaceY) {
       [volume.a, volume.ra],
       [volume.b, volume.rb],
     ]) {
-      if (point[1] - radius < surfaceY + 0.03) contactPoints.push([point[0], point[2]]);
+      // Seats and other raised supports contribute alongside the floor. Their
+      // finite footprint matters: being at chair height beside a chair is not
+      // seated support. Deep penetration is not a valid support point either.
+      const plane = surfaceUnder(point, surface);
+      if (Math.abs(point[1] - radius - plane) < 0.03)
+        contactPoints.push([point[0], point[2]]);
     }
   }
   if (contactPoints.length === 0) {
-    return { actor: actor.id, supported: false, offset: null, note: "supported by partner" };
+    return {
+      actor: actor.id,
+      supported: false,
+      offset: null,
+      note: actor.carried || actor.mountedOn != null
+        ? "supported by partner"
+        : "no measured surface support",
+    };
   }
   let minX = Infinity;
   let maxX = -Infinity;

@@ -301,8 +301,22 @@ for (const definition of calibrated)
       ])
         assert.equal(solved.quality[key], 0, key);
       assert.ok(solved.quality.balance.every((balance) => balance.supported));
+      assert.equal(solved.quality.supportSurfaces.length, solved.actors.length);
+      for (const support of solved.quality.supportSurfaces) {
+        assert.equal(support.basis, "rendered");
+        assert.equal(support.unavailable, 0);
+        assert.ok(
+          support.supports.every(
+            (part) =>
+              part.measurement.gap <= 0.02 &&
+              part.measurement.penetration === 0,
+          ),
+        );
+      }
       solved.actors.forEach((actor, i) => {
         assert.equal(actor.supportBasis, "surface");
+        assert.equal(actor.supportMeasurement, "rendered");
+        assert.ok(actor.bodySupportResidual <= 0.02);
         assert.ok(actor.seatResidual <= 0.02);
         let minY = Infinity;
         for (const part of skinHumanMesh(

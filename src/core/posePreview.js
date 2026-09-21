@@ -53,9 +53,13 @@ export function solvedPreview(solved, basis = "base") {
     issues.push("Surface overlap");
   if (solved.quality.figureSurfaces?.some((pair) => pair.intersects === null))
     issues.push("Surface check unavailable");
-  if (solved.quality.propPenetration > 0.022) issues.push("Support overlap");
+  if (solved.quality.supportSurfaces?.some((support) => support.unavailable > 0))
+    issues.push("Support check unavailable");
+  if (solved.quality.propPenetration > 0.022 || solved.quality.supportSurfaces?.some((support) => support.penetration > 0.02))
+    issues.push("Support overlap");
   if (solved.quality.unmetContacts > 0) issues.push("Unresolved contacts");
-  if (solved.actors.some((actor) => (actor.seatResidual ?? 0) > 0.02))
+  if (solved.actors.some((actor) => (actor.seatResidual ?? 0) > 0.02 &&
+      !(actor.supportMeasurement === "rendered" && actor.supportPenetration >= actor.seatResidual - 1e-9)))
     issues.push("Support gap");
   return {
     basis,

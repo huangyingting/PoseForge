@@ -391,3 +391,36 @@ an open upper hand with adjusted shoulder/wrist channels resolve those without
 changing target definitions or thresholds. Keep this base check in every
 calibrated bed/floor regression so a future visually clear pose does not silently
 degrade the fallback representation.
+
+### Seated partner-support reference
+
+Calibrate the clothed chair-supported pair with its original seated/astride
+postures and three contact constraints intact. Start from measured fixed rigs;
+check the supported pelvis against the declared lap region, both hands against
+their shoulder targets, complete figure clearance, and furniture/self collisions.
+Keep the primary figure's seat and feet supported. Partner support must remain
+explicit, with a null surface residual for the carried figure rather than a
+fictitious floor gap or a false zero-distance surface claim.
+
+Only publish a recipe after both coarse and dressed-mesh checks pass and renders
+show a plausible seated relationship. Limit any stock recipe to the furniture
+and dimensions actually verified; a vertical translation alone is not sufficient
+when seat height changes the primary figure's foot contact with the floor.
+Retain automatic fallback for unsupported surfaces and user-authored variations.
+
+The seated balance diagnostic also needs its actual support surface. For each
+coarse contact sample, use the furniture top under its horizontal footprint (or
+the ground), and require proximity rather than counting deeply buried samples.
+This is a report correction, not a pose adjustment or a physical stability
+simulation. Independently test chair/bench contact, elevated and off-furniture
+figures, and the distinction between expected partner support and no measured
+surface support. Keep the current centre-of-mass/bounds estimate explicit.
+
+The chair trial revealed a separate rendered-support gap: a coarse residual
+near zero coexisted with roughly 93 mm between the drawn seat region and chair.
+Final rendered reports must therefore measure each declared support on the
+drawn mesh, retain the coarse residual separately, and distinguish unavailable
+geometry. Furniture tops have finite footprints; floor supports use their own
+plane. Include penetration and off-edge cases rather than calling an intersecting
+or absent region a zero-distance success. Do not promote the trial chair pose
+until visible seat/foot support passes as well as partner contact and clearance.

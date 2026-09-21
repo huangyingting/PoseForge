@@ -1,6 +1,6 @@
 /** Report the inherited definitions' quality; schema validity alone is not success. */
 import { readFileSync } from "node:fs";
-import { NAMED_PRESETS, checkScene } from "../src/core/catalog.js";
+import { BUILTIN_PRESETS, NAMED_PRESETS, checkScene } from "../src/core/catalog.js";
 import { solveScene } from "../src/core/solver.js";
 import { solvedPreview } from "../src/core/posePreview.js";
 import { buildHumanTemplate, featureRelief } from "../src/core/humanMesh.js";
@@ -9,14 +9,16 @@ import { withHair } from "../src/core/hair.js";
 import { refineSurfaceContacts } from "../src/core/surfaceContacts.js";
 
 const rendered = process.argv.includes("--rendered");
+const scope = process.argv.includes("--catalog") ? "catalog" : "named";
+const source = scope === "catalog" ? BUILTIN_PRESETS : NAMED_PRESETS;
 const presetOption = process.argv.indexOf("--preset");
 const requested = presetOption < 0 ? null : process.argv[presetOption + 1];
 if (presetOption >= 0 && (!requested || requested.startsWith("--")))
-  throw new Error("--preset needs a built-in named preset ID.");
+  throw new Error(`--preset needs a built-in ${scope} preset ID.`);
 const presets = requested
-  ? NAMED_PRESETS.filter((preset) => preset.id === requested)
-  : NAMED_PRESETS;
-if (!presets.length) throw new Error(`Unknown named preset: ${requested}`);
+  ? source.filter((preset) => preset.id === requested)
+  : source;
+if (!presets.length) throw new Error(`Unknown ${scope} preset: ${requested}`);
 const raw = new Map(),
   dressed = new Map();
 function template(actor) {
@@ -69,6 +71,13 @@ function report(solved) {
     supportGapMm: solved.actors.map((actor) =>
       actor.seatResidual == null ? null : Math.round(actor.seatResidual * 1000),
     ),
+    supportMeasurement: solved.actors.map((actor) =>
+      actor.supportBasis === "surface" ? actor.supportMeasurement ?? "body-model" : null,
+    ),
+    ...(solved.quality.supportSurfaces ? {
+      unavailableSupportChecks: solved.quality.supportSurfaces.reduce((sum, item) => sum + item.unavailable, 0),
+      supportPenetrationMm: solved.actors.map((actor) => actor.supportPenetration == null ? null : Math.round(actor.supportPenetration * 1000)),
+    } : {}),
   };
 }
 
@@ -107,6 +116,6 @@ for (const preset of presets) {
   );
 }
 console.log(
-  `${presets.length - flagged}/${presets.length} named presets have no ${rendered ? "rendered-contact" : "base-model"} quality flags; ${flagged} require review.`,
+  `${presets.length - flagged}/${presets.length} ${scope} presets have no ${rendered ? "rendered-contact" : "base-model"} quality flags; ${flagged} require review.`,
 );
 process.exitCode = flagged ? 1 : 0;

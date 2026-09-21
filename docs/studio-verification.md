@@ -22,7 +22,7 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 | Precise joint authoring | Optional fixed mode retains specified channels through seating, contact/collision solving, surface refinement and cancellation, while unedited channels remain free. The editor shows actual solved values and clears stale values while pending. The browser flow verifies fixed values, history, saved reload, JSON export and narrow-screen accessibility. Guided mode remains the default. |
 | Reproducible placement | Optional fixed world placement, per-figure solved-pose capture and atomic whole-layout capture are implemented. Position and XYZ rotation survive solving and serialization while unedited joints can remain guided. Captured recumbent figures retain their support side. Fully fixed hand constraints skip futile trials without hiding unmet contacts. Capturing and reloading the refined standing scene preserves joint positions within 1e-7 m and retains its clear rendered audit. |
 | Safe persistence and imports | Unit tests cover invalid versions, malformed JSON, unsafe keys, unknown scene choices, invalid landmark sides, duplicate IDs, quota errors and corrupt storage. A failed import does not partially add a pack. Re-importing creates fresh IDs. Browser recovery and invalid-import flows pass. |
-| Preset geometry | All 23 entries validate structurally and render. The original eleven reference-study geometry checks still pass. The named-position audit flags 7/12 at the base-model level and 9/12 in the dressed-mesh contact / figure-pair audit. Stock standing embrace, the calibrated lying-facing layout and the side-lying cuddle pass the rendered gate. |
+| Preset geometry | All 23 entries validate structurally and render. The original eleven reference-study unit checks still pass, but they do not cover every quality flag. The complete rendered catalog audit is 8/23 clear and 15 flagged, including six reference studies with visible support gaps. The named subset remains 3/12 clear; standing embrace and the two calibrated side-lying layouts pass. |
 | Calibrated stock layouts | Shared recipes supply catalog/text aliases with the same clothed fixed poses. Bed and floor checks retain the lying-facing pair's two body contacts and the cuddle's three torso/hand contacts within 4 mm, no complete-figure crossing, supported balance estimates, support residuals within 20 mm, and lowest rendered surfaces within 4 mm of the support plane. Both recipes pass the base-model gate too. Refinement leaves the authored rigs unchanged. Explicit conflicting body, pose, contact, coverage and surface settings bypass the recipe; portable JSON contains the full pose. |
 | Body-supported placement | Adaptive clearance reduces the seated-pair base support target from 523.7 mm to 3.4 mm. Chair cases pass across all four male/female pairings; bench and stature/build variations have measured support-plane regression tests. A 96-case comparison against `969f4f8` has 12 newly clean cases, no newly flagged cases and 78 unchanged results. Dressed contact failures remain separately reported. |
 | Surface-intersection escape | Bidirectional bounded IK trials clear both hand/arm intersections in the seated-support fixture, ending at approximately 2.3 mm and 1.8 mm. The supporting figure, both roots and lower-body joints stay unchanged; individual collision pairs and aggregate residuals cannot worsen. The lap target remains unresolved. |
@@ -30,7 +30,8 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 | Supported standing contacts | A bounded stance/torso correction closes the stock standing pair's remaining body gap, with all four gaps within 4 mm and no figure/figure surface crossing. The target figure stays fixed, wrist frames and foot height/orientation are preserved, and balance/self/prop/per-pair guards pass. Tests cover a translated/rotated custom-ID copy, fixed trunk channels, pinned/explicit end joints, third-figure collisions, missing geometry, budgets and cancellation. |
 | Whole-figure diagnostics | Every rendered figure pair is audited, even without declared contacts. Crossings and unavailable checks are distinct in pose notes, catalog labels and the named CLI audit. Complete drawn geometry includes unowned auxiliary triangles. Missing/nonfinite geometry cannot certify clearance or reconcile a proxy overlap. Self/prop/support checks remain separately reported. |
 | Persistent contact constraints | Body-region targets stay measurable beyond the former one-stature collision-search margin. A distant authored pair can approach instead of becoming an empty success; pinned figures remain pinned with unresolved contacts reported. Movement caps, overlap guards and saturated scoring are unchanged. |
-| Final support reporting | Guided and fixed figures are measured on the returned rig against each declared support's own plane. Surface, expected partner support and no declared support are distinguished; a partner-assigned figure has a null surface residual, not a fictitious zero or a stale clamp displacement. All catalog entries are checked against independently computed support distances. |
+| Final support reporting | Each declared region is now measured on drawn triangles against its floor or finite furniture top. Regional gaps and penetration are distinct; off-edge, clipped-edge and unavailable cases are covered. A fresh coarse residual is retained separately. Partner/none support remains null, never a fictitious zero. Fixed rigs do not move during measurement. |
+| Coarse balance estimates | Chair and bench tops contribute alongside the floor within their finite footprints. Floating, buried and off-chair fixtures remain unsupported; expected partner support remains distinct from absent surface contact. This is still a centre-of-mass/contact-bounds estimate, not a stability simulation. |
 | Anatomical region selection | Lap queries now include declared thigh-owned surfaces while retaining the original radius and regional weight threshold. Synthetic patches verify both sides, pose/stature/heading changes and exclusion of distant knee surfaces, unrelated bones and small weight tails. The seated lap gap is now measured at 107.5 mm, not reported as fixed. |
 | Description feedback | Unread text warnings survive worker rendering and draft reload. Catalog captions no longer overwrite the original text command. Pending poses do not retain stale quality notes. |
 | Exports | Real PNG, transparent PNG, SVG and JSON downloaded. PNG pixels decoded: opaque image content present; background corner alpha is 255 for standard PNG and 0 for transparent PNG. JSON is re-importable. |
@@ -39,19 +40,43 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 
 ## Commands and results
 
-- `npm test`: **220 passed** (134.7 seconds in the final rerun), including
+- `npm test`: **231 passed** (132.7 seconds in the final rerun), including
   calibrated stock-layout
   parity/fallback, bed/floor dressed-mesh checks and CLI camera precedence, plus
   the original parser, geometry and
   architecture tests, catalog/storage tests, contact-authoring tests, clothing
   checks, triangle/surface-refinement checks and per-preset CLI selection,
   quality-dependent exit status and invalid/empty input.
+- The rendered-support iteration adds three coarse balance regressions, seven
+  drawn-support regressions and an explicit whole-catalog CLI scope check.
+  Tests cover finite furniture tops and clipped edges, off-edge distance,
+  penetration (including one of multiple candidate tops), unavailable/nonfinite
+  data, repeated measurement and cancellation. A fixed clothed seat fixture
+  distinguishes its visible gap from an apparently grounded coarse model.
+  Both calibrated bed/floor recipes now require every declared drawn support
+  region to be available, without penetration, and within the existing 20 mm
+  limit; their minimum-surface, contact and clearance gates remain unchanged.
+- `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/google/chrome/chrome npm run test:browser`:
+  **25/25 passed** in the full production-build run (17.5 minutes) after the
+  rendered-support changes. The catalog scenario checks displayed support gaps
+  and penetration against the final worker metadata, including null partner
+  support. Both corrected bed/floor flows, missing-model recovery, fixed
+  authoring/history/save/reload/export, mobile interaction and accessibility
+  pass. Fresh screenshots of both calibrated layouts on bed and floor were
+  inspected. The production build and all seven contact fixtures pass again.
+- `node scripts/validate-named-presets.mjs --catalog --rendered`: **8/23 clear;
+  15 require review**, with no unavailable support checks. Its retained base
+  results are **15/23 clear**. The named subset is **5/12 base-model clear** and
+  **3/12 rendered clear**. The command exits 1 for the unresolved entries.
+  This extends the audit to the reference studies; their original unit gate did
+  not check prop overlap or drawn support. The reclined study's base report
+  includes 41 mm of prop overlap, separately from its 98 mm drawn support gap.
 - The cuddle recipe adds seven instances of the shared stock-layout
   regressions. Every calibrated alias shares catalog geometry, requested
   variations bypass the recipe, and real bed/floor meshes retain their original
   contacts and clearance. Base-model checks now run before rendered refinement
   for both recipes. The initial 220-test pass preceded the final coarse-model
-  adjustments; the complete 134.7-second rerun above verifies the final data.
+  adjustments; its complete 134.7-second rerun verified that iteration's data.
 - The final cuddle iteration's production-build browser selection
   `tests/browser/catalog-camera.spec.js tests/browser/placement.spec.js tests/browser/preset-layouts.spec.js`
   passes **8/8 scenarios** (7.2 minutes). It covers every named entry, preview
@@ -231,6 +256,22 @@ and the production build are distinct from a hosted deployment.
 
 ## Remaining goal audit
 
+The current complete catalog audit includes fifteen flagged entries, not only
+the nine named layouts. Six reference studies have newly measured support gaps:
+
+| Reference study | Maximum rendered support gap | Other rendered flags |
+| --- | ---: | --- |
+| Seated female | 78 mm | None |
+| Seated male | 108 mm | None |
+| Reclined | 98 mm | Coarse support overlap remains |
+| Low kneel | 27 mm | None |
+| Floor rest | 100 mm | None |
+| Paired kneel | 23 mm | None |
+
+These are uncovered geometry limitations, not six newly moved poses. Their
+seating and limb contact need correction against the visible surfaces. The
+older comparisons below retain their original measurement scope.
+
 Catalog integration, solved-pair diagrams and touch zoom are now implemented and
 verified. Named-preset geometry remains the main unfinished requirement. The
 inherited flags include unreachable contact targets, overlap and support gaps.
@@ -320,18 +361,18 @@ The subsequent lying-facing calibration now supplies fixed placement and full
 joint channels through a shared stock recipe. Its original postures, facing,
 contacts, tolerances and anatomical regions are unchanged. The two rendered
 contact gaps round to 3 mm and 2 mm, with no figure crossing or unavailable check.
-The support residuals round to 10 mm and 8 mm; these are within the 20 mm gate,
+Its then-reported coarse support residuals round to 10 mm and 8 mm; these are within the 20 mm gate,
 not zero. Real bed and floor mesh tests verify both support planes, and no
 refinement step changes the fixed rig. Alias parity, recipe purity, appearance
 preservation, explicit camera precedence, portable round trips and variation
 fallback are covered. Ten rendered named layouts still required calibration at
 that point; compatible stock data is not a solution for arbitrary body variants.
 
-The same-direction side-lying cuddle is now authored through the same data path.
-Its three original contact constraints and all aliases are preserved. The final
-bed/floor regressions measure torso gaps of approximately 1.70 mm and 1.74 mm,
+The original same-direction side-lying cuddle calibration used the same data path.
+Its three original contact constraints and all aliases were preserved. That
+iteration's bed/floor regressions measured torso gaps of approximately 1.70 mm and 1.74 mm,
 and an open-hand gap of 1.52 mm, with clear complete figures and zero reported
-rendered-reconciled body/self/prop overlap. Support residuals are approximately
+rendered-reconciled body/self/prop overlap. Its coarse support residuals were approximately
 9.7 mm and 18.8 mm; lowest dressed surfaces are approximately 2.45 mm and 1.38 mm
 above the plane. Both balance estimates are supported. The pose is fixed and
 unchanged by refinement, including its captured upper-arm angles and open hand.
@@ -345,3 +386,29 @@ drawn surfaces remain clear. Both calibrated recipes now have a base-model
 regression assertion as well as their stricter rendered-contact checks. No
 contact, anatomical region or tolerance changed to obtain either result.
 Nine rendered named layouts remain unresolved after this calibration.
+
+The following seated calibration exposed a measurement blind spot. A diagnostic
+trial closed its three partner contacts and cleared the figures, but the drawn
+seated region remained about 93 mm above the chair despite a near-zero coarse
+support residual. It was not added to the catalog. The new regional rendered
+support measurement reports approximately 107 mm for the unchanged stock chair
+case and preserves its body-model estimate separately. Coarse pelvic components
+had been counted as seat supports even when they did not represent the visible
+clothed seat contact. Actual seat and foot calibration remains unfinished.
+
+The stronger support check also exposed a roughly 22 mm shoulder gap in the
+lying-facing recipe and a roughly 37 mm hip/thigh gap in the cuddle recipe.
+The fixed poses were adjusted without changing thresholds: the lying-facing
+lower shoulder was lowered, and the cuddle's second figure was tilted/lowered,
+its lower arm adjusted and its upper hand recaptured. Both bed/floor recipes
+again pass their base and rendered gates, including every declared support,
+full-figure clearance, unchanged refinement and the original minimum-surface
+checks. This is a measured support correction, not a claim that all catalog
+furniture contact or arbitrary body variations are solved.
+
+The corrected lying-facing contacts remain approximately 2.6 mm and 2.4 mm;
+its maximum drawn support gaps are approximately 18 mm and 15 mm. The corrected
+cuddle contacts are approximately 2.5 mm, 1.5 mm and 3.9 mm; its maximum drawn
+support gaps are approximately 16 mm and 14 mm. The respective lowest dressed
+surfaces remain within 4 mm of their planes, and no regional support penetration
+or unavailable check is admitted by these recipe regressions.

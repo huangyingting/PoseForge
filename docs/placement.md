@@ -72,3 +72,10 @@ support exception. The rendered refinement pass skips futile candidates when
 both the relevant joints and root are fixed, and labels the remaining hand
 constraint **Fixed pose**. This is an authoring tool, not a physics simulation
 or proof that every bundled layout is already correct.
+
+Final support notes identify rendered gaps or penetration when mesh measurements
+are available. These check each declared support region against the floor or
+finite furniture top, not just the lowest vertex of the entire figure. A hand
+near the floor does not establish that the seated region meets its chair.
+The coarse estimate remains available separately; missing mesh data is labeled
+as an estimate, and expected partner support has no surface-gap measurement.

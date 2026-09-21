@@ -235,6 +235,7 @@ function summarise(solved) {
       unmetContacts: solved.quality.unmetContacts,
       contactDetail: solved.quality.contactDetail,
       figureSurfaces: solved.quality.figureSurfaces,
+      supportSurfaces: solved.quality.supportSurfaces,
       adjustments: solved.quality.adjustments,
       balance: solved.quality.balance,
       warnings: solved.quality.warnings,
@@ -252,6 +253,9 @@ function summarise(solved) {
       // figure instead expects partner support, or declares no surface support.
       supportBasis: actor.supportBasis,
       seatResidual: actor.seatResidual,
+      supportMeasurement: actor.supportMeasurement,
+      supportPenetration: actor.supportPenetration,
+      bodySupportResidual: actor.bodySupportResidual,
     })),
   };
 }
