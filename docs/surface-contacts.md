@@ -125,6 +125,16 @@ says **Estimated target** and never presents that value as a measured surface
 contact. Supporting limbs, limited reach and unresolved movement receive their
 own feedback. All reports are remeasured on the final returned pose.
 
+Body-model region distances do not use the collision detector's finite proximity
+cutoff: distant declared targets must remain in scoring and reporting. The
+per-step movement bounds and collision allowances remain unchanged.
+
+An actor's `supportBasis` is `surface`, `partner`, or `none`. For surface support,
+`seatResidual` is the final maximum declared-plane error, with the existing 2 mm
+numerical floor. For the other bases it is null: it is not a zero-distance surface
+contact. Partner contact reports still determine whether the requested placement
+was reached. The worker and CLI preserve this distinction.
+
 `quality.figureSurfaces` is a separate final audit of every pair, including pairs
 with no declared contact. Its `intersects` value is `true`, `false`, or `null`
 when geometry is unavailable. Crossings and unknown checks appear in viewport

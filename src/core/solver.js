@@ -1078,7 +1078,11 @@ function contactSeparation(actors, contact) {
   let best = null;
   for (const volumeA of setA) {
     for (const volumeB of setB) {
-      const hit = capsuleContact(volumeA, volumeB, reach);
+      // A contact is a persistent constraint, not a collision broad-phase
+      // query. A finite search margin could erase distant targets from the
+      // score/report and make a widely separated pair appear settled. Motion
+      // remains bounded independently by `reach` in solveBodyContact.
+      const hit = capsuleContact(volumeA, volumeB, Infinity);
       // `depth` is positive when overlapping and negative by the size of the
       // gap otherwise, so the largest depth is the closest pair.
       if (hit && (!best || hit.depth > best.depth)) best = hit;
@@ -1453,14 +1457,13 @@ export function solveScene(scene, options = {}) {
   // better source for it than the solved geometry.
   for (const actor of actors) {
     actor.hands = handShapes(actor, contacts);
-    // Fixed angles can make independently reachable support planes conflict.
-    // Report the final returned pose, not a transient ground-clamp correction.
-    // Mounted/carried figures may legitimately rest on a partner instead.
-    if (
-      actor.spec?.jointMode === "fixed" &&
-      Object.keys(actor.spec.joints ?? {}).length > 0 &&
-      !actor.carried && actor.mountedOn == null
-    ) {
+    // A clamp displacement describes one correction, not the final support
+    // gaps. Re-measure guided and fixed poses after any snapshot restoration.
+    // Partner-supported figures are not constrained to the surface plane.
+    actor.supportBasis = actor.carried || actor.mountedOn != null
+      ? "partner" : actor.posture.supports.length ? "surface" : "none";
+    actor.seatResidual = null;
+    if (actor.supportBasis === "surface") {
       let residual = 0;
       for (const support of actor.posture.supports) {
         const found = supportLowestY(actor, support);

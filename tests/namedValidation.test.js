@@ -17,7 +17,11 @@ test("the named audit selects one entry and its exit status matches the quality 
   assert.equal(clean.status, 0, clean.stderr);
   const lines = clean.stdout.trim().split("\n");
   assert.equal(lines.length, 2);
-  assert.equal(JSON.parse(lines[0]).id, "builtin.named.chair_straddle");
+  const cleanReport = JSON.parse(lines[0]);
+  assert.equal(cleanReport.id, "builtin.named.chair_straddle");
+  assert.deepEqual(cleanReport.supportBasis, ["surface", "partner"]);
+  assert.equal(typeof cleanReport.supportGapMm[0], "number");
+  assert.equal(cleanReport.supportGapMm[1], null);
   assert.match(
     lines[1],
     /^1\/1 named presets have no base-model quality flags/,

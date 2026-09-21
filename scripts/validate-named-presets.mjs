@@ -65,8 +65,9 @@ function report(solved) {
           ).length,
         }
       : {}),
+    supportBasis: solved.actors.map((actor) => actor.supportBasis),
     supportGapMm: solved.actors.map((actor) =>
-      Math.round((actor.seatResidual ?? 0) * 1000),
+      actor.seatResidual == null ? null : Math.round(actor.seatResidual * 1000),
     ),
   };
 }

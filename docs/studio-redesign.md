@@ -276,3 +276,32 @@ restore the entire original rig on cancellation. Retain a zero-body-trial option
 for diagnostic isolation of the free-limb phase. Validate the clothed stock
 standing scene, other body types/proportions, authored constraints, multi-figure
 collisions, cancellation, missing geometry and browser responsiveness.
+
+## Preserve distant contact constraints
+
+Pose calibration exposed a solver blind spot: the body-contact distance query
+used one average stature as a collision-search margin. If placement or a later
+correction put a pair farther apart, a valid declared contact returned no measurement,
+disappeared from scoring/reporting and could trigger a false settled state.
+
+Contact measurement must be independent of broad-phase collision proximity.
+Measure the closest declared body regions at any finite separation, keeping
+the existing movement cap, overlap guards, mobility constraints and saturated
+score. This lets a movable pair approach from a poor initial placement and keeps
+a pinned distant pair explicitly unresolved. Verify final report/target
+consistency, zero-iteration placement, scene intent and pose-level regressions
+before using calibration candidates that previously lost their contacts.
+
+## Final support readouts
+
+The floor-clamp displacement is transient correction data, not the final gap
+between every declared support and its plane. Recompute support residuals from
+the returned rig for guided as well as fixed figures. Measure each support
+against its own plane (for example, chair seat versus floor), retaining the
+existing 2 mm numerical floor and 20 mm visible-warning threshold.
+
+Record whether support is expected from the surface, another figure, or is not
+declared. Partner-supported figures do not receive a fictitious zero or a stale
+floor-gap measurement: their surface residual is null and their declared partner
+contacts remain the relevant checks. Publish that distinction through the worker
+and audit output without moving the pose or changing preset intent.

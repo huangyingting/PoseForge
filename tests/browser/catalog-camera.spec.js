@@ -25,6 +25,27 @@ test("every existing named definition loads and renders; known quality notes are
     if (message.type() === "error") errors.push(message.text());
   });
   page.on("requestfailed", (request) => failures.push(request.url()));
+  // Observe only the public support metadata, not mesh buffers or storage.
+  // UI assertions should track the returned pose, not require a catalog defect
+  // (such as today's particular floating gap) to remain forever.
+  await page.addInitScript(() => {
+    const NativePoseWorker = window.Worker;
+    window.Worker = class extends NativePoseWorker {
+      constructor(...args) {
+        super(...args);
+        this.addEventListener("message", ({ data }) => {
+          if (data.stage === "final")
+            window.__latestSupportReport = data.actors.map(
+              ({ label, supportBasis, seatResidual }) => ({
+                label,
+                supportBasis,
+                seatResidual,
+              }),
+            );
+        });
+      }
+    };
+  });
   await page.goto("/");
   await ready(page);
   for (const preset of NAMED_PRESETS) {
@@ -37,6 +58,20 @@ test("every existing named definition loads and renders; known quality notes are
       "data-basis",
       "refined",
     );
+    const support = await page.evaluate(() => window.__latestSupportReport);
+    expect(support).toHaveLength(preset.scene.actors.length);
+    for (const actor of support) {
+      if (actor.supportBasis === "surface" && actor.seatResidual > 0.02)
+        await expect(page.locator(".notes")).toContainText(
+          `${actor.label} has a ${Math.round(actor.seatResidual * 1000)} mm support gap.`,
+        );
+      if (actor.supportBasis === "partner") {
+        expect(actor.seatResidual).toBeNull();
+        await expect(page.locator(".notes")).not.toContainText(
+          `${actor.label} has a `,
+        );
+      }
+    }
     if (preset.id === "builtin.named.standing_embrace") {
       await expect(page.locator(".contact-result.warning")).toHaveCount(0);
       await expect(page.locator(".contact-result")).toHaveCount(4);

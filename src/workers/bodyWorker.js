@@ -246,10 +246,10 @@ function summarise(solved) {
       posture: actor.spec?.posture,
       stature: actor.skeleton.stature,
       joints: structuredClone(actor.pose.joints),
-      // Non-zero means the posture's declared supports do not match its own
-      // geometry closely enough to seat it, and the figure is floating by this
-      // much. The viewport surfaces it rather than hiding it.
-      seatResidual: actor.seatResidual ?? 0,
+      // Surface gaps are measured on the returned rig. Null means that this
+      // figure instead expects partner support, or declares no surface support.
+      supportBasis: actor.supportBasis,
+      seatResidual: actor.seatResidual,
     })),
   };
 }
