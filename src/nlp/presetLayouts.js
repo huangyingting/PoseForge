@@ -262,6 +262,267 @@ export const SIDE_FACING_LAYOUT = {
   ],
 };
 
+export const SPOONING_LAYOUT = {
+  referenceHeight: 0.55,
+  surfaces: ["bed", "floor"],
+  yaw: 0,
+  camera: {
+    view: "top",
+  },
+  actors: [
+    {
+      posture: "side_lying",
+      bodyType: "female",
+      stature: 1.66,
+      build: 1,
+      bust: 1,
+      wearing: ["top", "shorts"],
+      outfit: "sage",
+      placement: {
+        position: [0, 0.721685741, 0],
+        rotation: [84, 90, 0],
+      },
+      jointMode: "fixed",
+      joints: {
+        spine01: {
+          flexion: 0.8,
+          abduction: 0,
+          rotation: 0,
+        },
+        spine02: {
+          flexion: 0.8,
+          abduction: 0,
+          rotation: 0,
+        },
+        spine03: {
+          flexion: 0.8,
+          abduction: 0,
+          rotation: 0,
+        },
+        neck: {
+          flexion: -30,
+          abduction: 5,
+          rotation: 0,
+        },
+        head: {
+          flexion: 0,
+          abduction: 0,
+          rotation: 0,
+        },
+        clavicle_l: {
+          flexion: 0,
+          abduction: 0,
+          rotation: 0,
+        },
+        shoulder_l: {
+          flexion: 95,
+          abduction: -20,
+          rotation: 0,
+        },
+        elbow_l: {
+          flexion: 90,
+          abduction: 0,
+          rotation: 0,
+        },
+        wrist_l: {
+          flexion: 0,
+          abduction: 0,
+          rotation: 0,
+        },
+        clavicle_r: {
+          flexion: 0,
+          abduction: 0,
+          rotation: 0,
+        },
+        shoulder_r: {
+          flexion: 95,
+          abduction: -10,
+          rotation: 0,
+        },
+        elbow_r: {
+          flexion: 100,
+          abduction: 0,
+          rotation: 0,
+        },
+        wrist_r: {
+          flexion: 0,
+          abduction: 0,
+          rotation: 0,
+        },
+        hip_l: {
+          flexion: 25,
+          abduction: 6,
+          rotation: 0,
+        },
+        knee_l: {
+          flexion: 40,
+          abduction: 0,
+          rotation: 0,
+        },
+        ankle_l: {
+          flexion: 0,
+          abduction: 0,
+          rotation: 0,
+        },
+        toe_l: {
+          flexion: 0,
+          abduction: 0,
+          rotation: 0,
+        },
+        hip_r: {
+          flexion: 25,
+          abduction: -6,
+          rotation: 0,
+        },
+        knee_r: {
+          flexion: 40,
+          abduction: 0,
+          rotation: 0,
+        },
+        ankle_r: {
+          flexion: 0,
+          abduction: 0,
+          rotation: 0,
+        },
+        toe_r: {
+          flexion: 0,
+          abduction: 0,
+          rotation: 0,
+        },
+      },
+      hands: {
+        l: "relaxed",
+        r: "relaxed",
+      },
+    },
+    {
+      posture: "side_lying",
+      bodyType: "male",
+      stature: 1.78,
+      build: 1,
+      bust: 0,
+      wearing: ["top", "shorts"],
+      outfit: "navy",
+      placement: {
+        position: [-0.237, 0.733, -0.025],
+        rotation: [84, 90, 0],
+      },
+      jointMode: "fixed",
+      joints: {
+        spine01: {
+          flexion: -3.4,
+          abduction: 0,
+          rotation: 0,
+        },
+        spine02: {
+          flexion: -3.4,
+          abduction: 0,
+          rotation: 0,
+        },
+        spine03: {
+          flexion: -3.4,
+          abduction: 0,
+          rotation: 0,
+        },
+        neck: {
+          flexion: 30,
+          abduction: 5,
+          rotation: 0,
+        },
+        head: {
+          flexion: 0,
+          abduction: 0,
+          rotation: 0,
+        },
+        clavicle_l: {
+          flexion: 0,
+          abduction: 0,
+          rotation: 0,
+        },
+        shoulder_l: {
+          flexion: 13.02759192,
+          abduction: 7.41384049,
+          rotation: 20.67179031,
+        },
+        elbow_l: {
+          flexion: 87.63674365,
+          abduction: 0,
+          rotation: 0,
+        },
+        wrist_l: {
+          flexion: 10,
+          abduction: 0,
+          rotation: 0,
+        },
+        clavicle_r: {
+          flexion: 0,
+          abduction: 0,
+          rotation: 0,
+        },
+        shoulder_r: {
+          flexion: 170,
+          abduction: -10,
+          rotation: 0,
+        },
+        elbow_r: {
+          flexion: 90,
+          abduction: 0,
+          rotation: 0,
+        },
+        wrist_r: {
+          flexion: 0,
+          abduction: 0,
+          rotation: 0,
+        },
+        hip_l: {
+          flexion: 20,
+          abduction: 6,
+          rotation: 0,
+        },
+        knee_l: {
+          flexion: 40,
+          abduction: 0,
+          rotation: 0,
+        },
+        ankle_l: {
+          flexion: 0,
+          abduction: 0,
+          rotation: 0,
+        },
+        toe_l: {
+          flexion: 0,
+          abduction: 0,
+          rotation: 0,
+        },
+        hip_r: {
+          flexion: 20,
+          abduction: -6,
+          rotation: 0,
+        },
+        knee_r: {
+          flexion: 40,
+          abduction: 0,
+          rotation: 0,
+        },
+        ankle_r: {
+          flexion: 0,
+          abduction: 0,
+          rotation: 0,
+        },
+        toe_r: {
+          flexion: 0,
+          abduction: 0,
+          rotation: 0,
+        },
+      },
+      hands: {
+        l: "open",
+        r: "relaxed",
+      },
+    },
+  ],
+};
+
 /** Apply authored defaults only when they cannot overrule a requested variation. */
 export function applyPresetLayout(scene, definition) {
   const layout = definition?.layout;

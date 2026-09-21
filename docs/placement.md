@@ -6,9 +6,9 @@ must not move when the solver runs again.
 
 Calibrated catalog entries may start with fixed placement and joint channels.
 The Composition hint shows when roots are fixed and where to release them.
-The lying-facing reference is currently calibrated for stock body dimensions
-on bed and floor; changing a loaded fixed scene does not reapply that recipe or
-certify the changed geometry.
+The lying-facing and side-lying cuddle references are currently calibrated for
+stock body dimensions on bed and floor; changing a loaded fixed scene does not
+reapply that recipe or certify the changed geometry.
 
 - **Keep placement** captures the figure's completed world position and rotation.
   Joints remain guided unless their angle settings are fixed separately.

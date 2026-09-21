@@ -14,10 +14,12 @@ aliases remain searchable. Some inherited definitions have unresolved geometry;
 **Pose notes** badges and the viewport's **Pose checks** shortcut make that visible.
 Loading successfully does not mean every physical constraint was satisfied.
 
-**Side by side facing** now uses a calibrated clothed reference layout. Loading
-its card or typing one of its aliases (including `lying face to face` and
-`侧躺面对面`) gives the same fixed placement and joint angles, with a top camera
-view. Adding `on the floor` translates that reference to the floor. Explicit
+**Side by side facing** and **Spooning** use calibrated clothed reference
+layouts. Loading a card or typing one of its aliases (including `lying face to
+face`, `侧躺面对面`, `spooning` and `侧卧后抱`) gives the same fixed placement and
+joint angles, with a top camera view. Adding `on the floor` translates that
+reference to the floor. The side-lying cuddle retains its three torso/hand
+contacts and its same-direction arrangement. Explicit
 body-size, posture, limb, facing, contact or clothing variations use automatic
 posing instead; the interpretation trace explains when the stock layout was
 skipped. That fallback is not a guarantee that every variation is physically

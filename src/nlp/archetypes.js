@@ -34,7 +34,7 @@
  * @property {object} [layout] Calibrated stock scene data and matching bounds.
  */
 
-import { SIDE_FACING_LAYOUT } from "./presetLayouts.js";
+import { SIDE_FACING_LAYOUT, SPOONING_LAYOUT } from "./presetLayouts.js";
 
 /** @type {Archetype[]} */
 export const ARCHETYPES = [
@@ -95,6 +95,7 @@ export const ARCHETYPES = [
   },
   {
     id: "spooning",
+    layout: SPOONING_LAYOUT,
     phrases: ["spooning", "spoons position", "侧卧后抱", "汤匙式"],
     label: "both on their sides, one curled behind the other",
     surface: "bed",

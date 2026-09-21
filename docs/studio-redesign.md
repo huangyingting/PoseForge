@@ -344,7 +344,7 @@ that all existing named geometry is already corrected.
 ## Calibrated reference layouts
 
 Use the authoring representation itself for verified stock layouts: fixed world
-placement, fixed adjustable channels, declared body dimensions, relaxed hand
+placement, fixed adjustable channels, declared body dimensions, natural hand
 shapes and studio clothing. Do not remove contact constraints, enlarge anatomical
 regions or relax quality thresholds to qualify a layout.
 
@@ -369,3 +369,25 @@ and preset rendering should honor a saved named camera view unless `--view`
 overrides it. Verify aliases, stock/parser equivalence, conditional fallback,
 round trips, real clothed surfaces, rendered support-plane clearance, preview
 quality and actual browser loading before promoting the calibrated data.
+
+### Same-direction side-lying reference
+
+Extend the calibrated-layout path to the clothed side-lying cuddle only after
+verifying its original three contacts: chest to upper back, pelvis to buttocks,
+and the upper hand to waist. Keep its same-direction arrangement and side-lying
+postures. Author the resting arms and curled legs with fixed placement, then
+capture a collision-free reaching hand if procedural refinement can provide it.
+Do not discard the hand constraint or widen any target region to certify it.
+
+Require the same full-figure, self/prop, balance, support-plane and contact gates
+as the lying-facing recipe, including bed/floor translation and unchanged
+refinement. Reuse the stock-layout application and variation rules; verify all
+literal aliases, editable round trips, and actual clothed browser output. Treat
+an experimental pose as diagnostic data until it passes those gates.
+
+Require the base-model gate too. The first surface-clear cuddle candidate still
+had a coarse lower-thigh overlap and a hand-target miss. A smaller hip bend and
+an open upper hand with adjusted shoulder/wrist channels resolve those without
+changing target definitions or thresholds. Keep this base check in every
+calibrated bed/floor regression so a future visually clear pose does not silently
+degrade the fallback representation.
