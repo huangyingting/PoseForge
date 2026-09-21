@@ -97,13 +97,15 @@ test("every existing named definition loads and renders; known quality notes are
       });
     }
     if (
-      ["builtin.named.chair_straddle", "builtin.named.lotus"].includes(
-        preset.id,
-      )
+      [
+        "builtin.named.chair_straddle",
+        "builtin.named.lotus",
+        "builtin.named.standing_carry",
+      ].includes(preset.id)
     ) {
       await expect(page.locator(".contact-result.warning")).toHaveCount(0);
       await expect(page.locator(".contact-result")).toHaveCount(
-        preset.id === "builtin.named.lotus" ? 5 : 3,
+        preset.id === "builtin.named.chair_straddle" ? 3 : 5,
       );
       await expect(page.locator(".notes .warning, .notes .error")).toHaveCount(
         0,

@@ -43,12 +43,12 @@ test("contact targets, figure names and custom behavior survive save, reload, ex
   await page.getByLabel("Figure name", { exact: true }).nth(1).press("Tab");
   await ready(page);
   await page.getByRole("button", { name: "Scene", exact: true }).click();
-  await expect(contact.getByLabel("Moving figure")).toHaveValue("0");
+  await expect(contact.getByLabel("First figure")).toHaveValue("0");
   await expect(
-    contact.getByLabel("Moving figure").locator("option:checked"),
+    contact.getByLabel("First figure").locator("option:checked"),
   ).toHaveText("Alex (1)");
   await expect(
-    contact.getByLabel("Target figure").locator("option:checked"),
+    contact.getByLabel("Second figure").locator("option:checked"),
   ).toHaveText("Sam (2)");
   await page.getByLabel("Contact behavior").selectOption("automatic");
   await ready(page);
@@ -57,16 +57,16 @@ test("contact targets, figure names and custom behavior survive save, reload, ex
   await ready(page);
   await expect(page.locator(".contact-defaults")).toBeHidden();
   await contact
-    .getByLabel("Target body part", { exact: true })
+    .getByLabel("Second body part", { exact: true })
     .selectOption("hand.l");
   await ready(page);
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await ready(page);
-  await expect(contact.getByLabel("Target body part")).toHaveValue("forearm.l");
+  await expect(contact.getByLabel("Second body part")).toHaveValue("forearm.l");
   await page.getByRole("button", { name: "Redo", exact: true }).click();
   await ready(page);
-  await expect(contact.getByLabel("Target body part")).toHaveValue("hand.l");
-  await contact.getByLabel("Target body part").selectOption("forearm.l");
+  await expect(contact.getByLabel("Second body part")).toHaveValue("hand.l");
+  await contact.getByLabel("Second body part").selectOption("forearm.l");
   await ready(page);
   await page.locator("#save-preset").click();
   await page.getByLabel("Preset name").fill("My partner gesture");
@@ -77,7 +77,7 @@ test("contact targets, figure names and custom behavior survive save, reload, ex
   await page.reload();
   await ready(page);
   await expect(page.getByLabel("Contact behavior")).toHaveValue("custom");
-  await expect(contact.getByLabel("Target body part")).toHaveValue("forearm.l");
+  await expect(contact.getByLabel("Second body part")).toHaveValue("forearm.l");
   await expect(contact.locator(".contact-result")).toContainText(
     "Close contact",
   );
@@ -119,15 +119,17 @@ test("new studies have independent figures and contacts can be added, swapped an
     .click();
   await ready(page);
   const row = page.getByRole("group", { name: "Contact 1", exact: true });
-  await row.getByLabel("Moving figure").selectOption("1");
+  await row.getByLabel("First figure").selectOption("1");
   await ready(page);
-  await expect(row.getByLabel("Target figure")).toHaveValue("0");
+  await expect(row.getByLabel("Second figure")).toHaveValue("0");
   await expect(
-    row.getByLabel("Target figure").locator('option[value="1"]'),
+    row.getByLabel("Second figure").locator('option[value="1"]'),
   ).toBeDisabled();
-  await row.getByLabel("Body part", { exact: true }).selectOption("hand.l");
+  await row
+    .getByLabel("First body part", { exact: true })
+    .selectOption("hand.l");
   await ready(page);
-  await row.getByLabel("Target body part").selectOption("forearm.r");
+  await row.getByLabel("Second body part").selectOption("forearm.r");
   await ready(page);
   await row.getByLabel("Pull strength").evaluate((input) => {
     input.value = "0.5";
@@ -154,6 +156,82 @@ test("new studies have independent figures and contacts can be added, swapped an
   await expect(
     page.getByRole("button", { name: "+ Add contact", exact: true }),
   ).toBeFocused();
+});
+
+test("body-first contacts retain their endpoint order through the editor, saved reload and export", async ({
+  page,
+}, info) => {
+  test.setTimeout(240_000);
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  const preset = structuredClone(
+    BUILTIN_PRESETS.find((p) => p.id === "builtin.named.standing_embrace"),
+  );
+  preset.id = "example.body-first";
+  preset.title = "Body-first gesture";
+  preset.scene.contacts = preset.scene.contacts.map((contact) => ({
+    ...contact,
+    from: contact.to,
+    to: contact.from,
+    fromActor: contact.toActor,
+    toActor: contact.fromActor,
+  }));
+  await page.goto("/");
+  await ready(page);
+  await page.locator("#catalog-file").setInputFiles({
+    name: "body-first.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(serializeCatalog([preset])),
+  });
+  await page
+    .getByRole("button", { name: "Load Body-first gesture", exact: true })
+    .click();
+  await ready(page);
+  const row = page.getByRole("group", { name: "Contact 1", exact: true });
+  await expect(row.getByLabel("First figure")).toHaveValue("0");
+  await expect(row.getByLabel("Second figure")).toHaveValue("1");
+  await expect(row.getByLabel("First body part")).toHaveValue("back");
+  await expect(row.getByLabel("Second body part")).toHaveValue(
+    preset.scene.contacts[0].to,
+  );
+  await expect(page.locator(".contact-result")).toHaveCount(4);
+  await expect(page.locator(".contact-result.warning")).toHaveCount(0);
+  await expect(page.locator(".notes .warning, .notes .error")).toHaveCount(0);
+  await page.locator("#save-preset").click();
+  await page.getByLabel("Preset name").fill("Saved body-first gesture");
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Update preset", exact: true })
+    .click();
+  await ready(page);
+  await page.reload();
+  await ready(page);
+  await expect(page.locator(".contact-result.warning")).toHaveCount(0);
+  const restored = await exportedScene(page);
+  expect(restored.contacts).toEqual(preset.scene.contacts);
+  await page.keyboard.press("Escape");
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.getByRole("button", { name: "Edit", exact: false }).last().click();
+  await row.scrollIntoViewIfNeeded();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await page.screenshot({
+    path: info.outputPath("body-first-contacts-mobile.png"),
+  });
+  expect(errors).toEqual([]);
 });
 
 test("removing a figure remaps surviving contacts and invalid imported sides cannot enter the library", async ({

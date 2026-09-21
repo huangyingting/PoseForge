@@ -48,6 +48,14 @@ has measured surface support; the partner retains its explicit partner-support
 assignment rather than a fabricated floor residual. The same explicit-edit,
 missing-geometry and capture rules above apply.
 
+**Standing carry** has a calibrated clothed floor/bed layout with fixed placement
+and joint angles. It retains the standing/lifted posture roles and all five
+contacts, including the two supports written from the carried figure to the
+carrier's hands. Both carrier feet meet their surface; the carried figure keeps
+partner support with no floor residual. These fixed defaults pass both coarse
+and rendered checks without refinement movement. Body, pose, facing, contact,
+clothing or unsupported-surface variations retain the standard automatic fallback.
+
 The single seated references now use render-aware grounding: the visible seat
 region and soles are brought toward their supporting surfaces while the feet's
 horizontal placement and orientation are retained. This also applies to matching
@@ -117,11 +125,17 @@ Choose **New study** for one clothed figure with no automatic contacts, or load
 name each figure, choose postures and adjust appearance. Add a second figure
 before opening **Scene → Partner contacts**.
 
-**Add contact** creates a moving-figure/body-part pair and a target-figure/body-part
-pair. Choose the two sides explicitly, then adjust **Pull strength** if needed.
-Changing the moving figure to the current target swaps the figure roles so a
+**Add contact** creates a first-figure/body-part pair and a second-figure/body-part
+pair. Choose both endpoints explicitly, then adjust **Pull strength** if needed.
+Changing the first figure to the current second figure swaps the figure roles so a
 contact never accidentally points back to the same person. Removing a figure
 removes contacts involving it and preserves the remaining references.
+
+These fields describe which parts should meet, not a promise that only the first
+figure moves. A body-to-hand request can adjust the second figure's free hand,
+just as the equivalent hand-to-body request does. The stored endpoint order,
+sides and row feedback remain unchanged. Placement and joint controls still
+determine which roots and angles are held fixed.
 
 **Arrangement + my contacts** includes the arrangement's existing contacts,
 shown above your editable list. **My contacts only** suppresses those defaults

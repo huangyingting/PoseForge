@@ -68,7 +68,8 @@ function verdict(report) {
     if (report.reason === "load_bearing")
       return [`Supporting limb · ${gap}`, "warning"];
     if (report.unreachable) return [`Out of reach · ${gap}`, "warning"];
-    if (report.reason === "fixed_channels") return [`Fixed pose · ${gap}`, "warning"];
+    if (report.reason === "fixed_channels")
+      return [`Fixed pose · ${gap}`, "warning"];
     if (report.blocked) return [`Movement limited · ${gap}`, "warning"];
     return [gap, "warning"];
   }
@@ -110,7 +111,7 @@ export function createContactEditor(onChange) {
       node("p", {
         className: "hint",
         textContent:
-          "Choose which parts should meet. Results measure visible surfaces when available; body-model estimates are labeled.",
+          "Choose which parts should meet. A free limb may adjust on either side. Results measure visible surfaces when available; body-model estimates are labeled.",
       }),
       mode.field,
       help,
@@ -155,10 +156,10 @@ export function createContactEditor(onChange) {
     rows = [];
     host.replaceChildren();
     for (const [index] of (scene.contacts ?? []).entries()) {
-      const fromActor = selectField("Moving figure", []);
-      const toActor = selectField("Target figure", []);
-      const fromPoint = selectField("Body part", POINTS);
-      const toPoint = selectField("Target body part", POINTS);
+      const fromActor = selectField("First figure", []);
+      const toActor = selectField("Second figure", []);
+      const fromPoint = selectField("First body part", POINTS);
+      const toPoint = selectField("Second body part", POINTS);
       const strength = node("input", {
         type: "range",
         min: 0,
@@ -190,7 +191,7 @@ export function createContactEditor(onChange) {
         fromPoint.field,
         node("div", {
           className: "contact-direction",
-          textContent: "↓ reaches toward",
+          textContent: "↔ meets",
         }),
         toActor.field,
         toPoint.field,

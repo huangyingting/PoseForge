@@ -284,6 +284,13 @@ const expectedContacts = {
     ["hand", "upperBack"],
     ["hand", "upperBack"],
   ],
+  standing_carry: [
+    ["chest", "chest"],
+    ["buttocks", "hand"],
+    ["buttocks", "hand"],
+    ["hand", "shoulder"],
+    ["hand", "shoulder"],
+  ],
 };
 
 for (const definition of calibrated)
@@ -352,14 +359,19 @@ for (const definition of calibrated)
         "propPenetration",
       ])
         assert.equal(solved.quality[key], 0, key);
-      const partnerSupported = definition.arrangement === "straddle_lap";
+      const partnerSupported = ["straddle_lap", "supported_lift"].includes(
+        definition.arrangement,
+      );
+      const primarySeated = solved.actors[0].posture.supports.some(
+        (support) => support.landmark === "buttocks",
+      );
       assert.deepEqual(
         solved.actors.map((actor) => actor.supportBasis),
         partnerSupported ? ["surface", "partner"] : ["surface", "surface"],
       );
       if (!partnerSupported)
         assert.ok(solved.quality.balance.every((balance) => balance.supported));
-      else if (solved.props.length) {
+      else if (primarySeated && solved.props.length) {
         assert.ok(solved.quality.proxyPropPenetration > 0.05);
         assert.ok(solved.quality.verifiedPropContacts > 0);
       }
@@ -390,7 +402,8 @@ for (const definition of calibrated)
           assert.equal(actor.supportMeasurement, "rendered");
           assert.ok(solved.quality.renderedBalance[i]?.supported);
           if (partnerSupported) {
-            assert.ok(actor.bodySupportResidual > 0.05);
+            if (primarySeated) assert.ok(actor.bodySupportResidual > 0.05);
+            else assert.ok(actor.bodySupportResidual <= 0.02);
             assert.ok(actor.seatResidual <= 0.004);
           } else {
             assert.ok(actor.bodySupportResidual <= 0.02);
@@ -516,6 +529,78 @@ test("missing geometry cannot certify the seated embrace or replace its coarse r
       !solved.quality.adjustments.some((note) =>
         note.includes("guided starting pose"),
       ),
+    );
+  }
+});
+
+test("the fixed standing carry preserves support direction and captured geometry on floor and bed", () => {
+  for (const surface of ["floor", "bed"]) {
+    const scene = checkScene(
+      portable(parseDescription(`standing carry on the ${surface}`).scene),
+    );
+    const solved = solveScene(scene),
+      bodies = solved.actors.map(dressed);
+    assert.deepEqual(solvedPreview(solved).issues, []);
+    refineSurfaceContacts(solved, bodies);
+    assert.deepEqual(solvedPreview(solved).issues, []);
+    assert.deepEqual(
+      solved.quality.contactDetail.slice(1, 3).map((contact) => ({
+        from: contact.from,
+        to: contact.to,
+        fromActor: contact.fromActor,
+        toActor: contact.toActor,
+        toSide: contact.toSide,
+      })),
+      ["l", "r"].map((side) => ({
+        from: "buttocks",
+        to: "hand",
+        fromActor: 1,
+        toActor: 0,
+        toSide: side,
+      })),
+    );
+    const positions = solved.actors.map((actor) =>
+      actor.evaluated.positions.map((point) => point.slice()),
+    );
+    scene.actors.forEach((actor, i) =>
+      Object.assign(actor, captureSolvedPose(solved.actors[i])),
+    );
+    const restored = solveScene(checkScene(portable(scene)));
+    refineSurfaceContacts(restored, bodies);
+    assert.deepEqual(solvedPreview(restored).issues, []);
+    assert.equal(restored.quality.surfaceRefinement.steps, 0);
+    restored.actors.forEach((actor, i) =>
+      actor.evaluated.positions.forEach((point, j) =>
+        point.forEach((value, k) =>
+          assert.ok(Math.abs(value - positions[i][j][k]) < 1e-7),
+        ),
+      ),
+    );
+  }
+});
+
+test("standing carry without scanned geometry remains fixed and labels its checks unavailable", () => {
+  for (const surface of ["floor", "bed"]) {
+    const solved = solveScene(
+      checkScene(
+        portable(parseDescription(`standing carry on the ${surface}`).scene),
+      ),
+    );
+    assert.deepEqual(solvedPreview(solved).issues, []);
+    const poses = structuredClone(solved.actors.map((actor) => actor.pose));
+    refineSurfaceContacts(solved, [null, null]);
+    assert.deepEqual(
+      solved.actors.map((actor) => actor.pose),
+      poses,
+    );
+    assert.equal(solved.actors[0].supportMeasurement, "body-model");
+    assert.equal(solved.actors[1].supportBasis, "partner");
+    assert.equal(solved.actors[1].seatResidual, null);
+    assert.ok(
+      solvedPreview(solved).issues.includes("Surface check unavailable"),
+    );
+    assert.ok(
+      solvedPreview(solved).issues.includes("Support check unavailable"),
     );
   }
 });

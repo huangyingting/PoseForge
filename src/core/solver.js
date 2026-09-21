@@ -63,6 +63,7 @@ import {
 import { Skeleton, evaluatePose } from "./skeleton.js";
 import { handShapes } from "./handPose.js";
 import { rootFromPlacement, isFixedPlacement } from "./placement.js";
+import { LIMB_LANDMARKS, limbFirstContact } from "./contactOrientation.js";
 
 /** Dempster segment mass fractions, used for the centre of mass. */
 const SEGMENT_MASS = {
@@ -1003,6 +1004,19 @@ function limbThroughBulk(actor, group) {
   return worst;
 }
 
+/** Supporting arms may approach a partner, but not bury themselves in them. */
+function limbIntoPartner(actor, group, partner) {
+  let worst = 0;
+  for (const volume of actor.volumes) {
+    if (volume.group !== group) continue;
+    for (const other of partner.volumes) {
+      const hit = capsuleContact(volume, other);
+      if (hit && hit.depth > worst) worst = hit.depth;
+    }
+  }
+  return worst;
+}
+
 function solveContactIK(actor, contact, targetActor) {
   const resolved = resolveLandmark(contact.from, contact.fromSide ?? null);
   if (!resolved) return null;
@@ -1039,6 +1053,9 @@ function solveContactIK(actor, contact, targetActor) {
   // if it costs nothing, and otherwise back the weight off until it does.
   const group = actor.volumes.find((volume) => volume.bone === chain.end)?.group ?? null;
   const ceiling = group ? Math.max(limbThroughBulk(actor, group), COMPRESSION.default) : Infinity;
+  const partnerCeiling = group && contact.type === "support"
+    ? Math.max(limbIntoPartner(actor, group, targetActor), COMPRESSION.declaredContact)
+    : Infinity;
   const restore = [chain.root, chain.mid, chain.end]
     .filter((bone) => actor.pose.joints[bone])
     .map((bone) => [bone, { ...actor.pose.joints[bone] }]);
@@ -1052,7 +1069,10 @@ function solveContactIK(actor, contact, targetActor) {
       weight: weight * scale,
     });
     refresh(actor);
-    if (ceiling === Infinity || limbThroughBulk(actor, group) <= ceiling) break;
+    if (
+      (ceiling === Infinity || limbThroughBulk(actor, group) <= ceiling) &&
+      (partnerCeiling === Infinity || limbIntoPartner(actor, group, targetActor) <= partnerCeiling + 1e-8)
+    ) break;
     for (const [bone, angles] of restore) actor.pose.joints[bone] = { ...angles };
     refresh(actor);
     scale *= 0.4;
@@ -1219,8 +1239,6 @@ function alignToContacts(primary, secondary, arrangement) {
   return v3mul(sum, 1 / votes);
 }
 
-const LIMB_LANDMARKS = new Set(["hand", "foot", "forearm", "knee", "shin", "elbow", "ankle"]);
-
 /** Split "hand.l" into a base landmark and a side. */
 function splitLandmark(reference) {
   const [base, side] = String(reference).split(".");
@@ -1339,6 +1357,7 @@ export function solveScene(scene, options = {}) {
   let contactReports = [];
   let best = null;
   let bestScore = Infinity;
+  let bestWithinOverlapBudget = false;
   let bestReports = [];
   for (let iteration = 0; iteration < iterations; iteration += 1) {
     const relaxation = 1 - iteration / (iterations * 1.6);
@@ -1346,13 +1365,14 @@ export function solveScene(scene, options = {}) {
     // 4a. contacts
     contactReports = [];
     for (const contact of contacts) {
-      const from = actors[contact.fromActor];
-      const to = actors[contact.toActor];
+      const driven = limbFirstContact(contact);
+      const from = actors[driven.fromActor];
+      const to = actors[driven.toActor];
       if (!from || !to) continue;
-      const report = LIMB_LANDMARKS.has(splitLandmark(contact.from).base)
-        ? solveContactIK(from, contact, to)
+      const report = LIMB_LANDMARKS.has(splitLandmark(driven.from).base)
+        ? solveContactIK(from, driven, to)
         : solveBodyContact(actors, contact, relaxation);
-      if (report) contactReports.push(report);
+      if (report) contactReports.push({ ...report, contact });
     }
 
     // 4b. the ground, before anything is measured
@@ -1372,9 +1392,17 @@ export function solveScene(scene, options = {}) {
     const bodyContacts = detectContacts(bodies, { declared: declaredKeys, selfCollision: true });
     const propContacts = detectPropContacts(bodies, props);
 
-    const score = sceneScore(penetrationReport(bodyContacts), contactReports, propContacts);
-    if (score < bestScore) {
+    const penetration = penetrationReport(bodyContacts);
+    const score = sceneScore(penetration, contactReports, propContacts);
+    const withinOverlapBudget = penetration.maxDepth <= BODY_OVERLAP_BUDGET;
+    // The existing body-overlap gate is the first selection criterion. Rank
+    // candidates within the same class by the original aggregate score.
+    if (
+      !best || (withinOverlapBudget && !bestWithinOverlapBudget) ||
+      (withinOverlapBudget === bestWithinOverlapBudget && score < bestScore)
+    ) {
       bestScore = score;
+      bestWithinOverlapBudget = withinOverlapBudget;
       best = actors.map(snapshotActor);
       bestReports = contactReports;
     }
@@ -1453,7 +1481,13 @@ export function solveScene(scene, options = {}) {
   let bodies = actors.map((actor) => ({ id: actor.id, volumes: actor.volumes }));
   let finalContacts = detectContacts(bodies, { declared: declaredKeys, selfCollision: true });
   let finalProps = detectPropContacts(bodies, props);
-  if (best && bestScore < sceneScore(penetrationReport(finalContacts), contactReports, finalProps)) {
+  const finalPenetration = penetrationReport(finalContacts);
+  const finalWithinOverlapBudget = finalPenetration.maxDepth <= BODY_OVERLAP_BUDGET;
+  if (best && (
+    (bestWithinOverlapBudget && !finalWithinOverlapBudget) ||
+    (bestWithinOverlapBudget === finalWithinOverlapBudget &&
+      bestScore < sceneScore(finalPenetration, contactReports, finalProps))
+  )) {
     actors.forEach((actor, index) => restoreActor(actor, best[index]));
     bodies = actors.map((actor) => ({ id: actor.id, volumes: actor.volumes }));
     finalContacts = detectContacts(bodies, { declared: declaredKeys, selfCollision: true });
@@ -1718,6 +1752,9 @@ function settleOntoMount(actor, mount, surface) {
  */
 const LIMB_TOLERANCE = 0.045;
 
+// Same existing body-overlap boundary used by the catalog and scene audit.
+const BODY_OVERLAP_BUDGET = 0.022;
+
 /**
  * How bad a scene is, as one number, so competing iterations can be ranked.
  *
@@ -1766,17 +1803,18 @@ function restoreActor(actor, snapshot) {
 /**
  * Re-measure a contact without moving anything, for reporting a restored state.
  *
- * Deliberately the same measure `solveBodyContact` drives, so the score ranks
+ * Deliberately the same measure the body or limb contact stage drives, so the score ranks
  * iterates by how well they met the contacts rather than by a quantity nothing
  * was ever trying to minimise.
  */
 function measureContact(actors, contact) {
-  if (LIMB_LANDMARKS.has(contact.from)) {
-    const actor = actors[contact.fromActor], target = actors[contact.toActor];
-    const current = landmarkPoint(actor, contact.from, contact.fromSide ?? null);
-    const surface = current && landmarkSurface(target, contact.to, current, {
+  const driven = limbFirstContact(contact);
+  if (LIMB_LANDMARKS.has(driven.from)) {
+    const actor = actors[driven.fromActor], target = actors[driven.toActor];
+    const current = landmarkPoint(actor, driven.from, driven.fromSide ?? null);
+    const surface = current && landmarkSurface(target, driven.to, current, {
       offset: actor.skeleton.stature * 0.018,
-      defaultSide: contact.toSide ?? null,
+      defaultSide: driven.toSide ?? null,
     });
     return surface ? { contact, distance: v3dist(current, surface.point) } : null;
   }

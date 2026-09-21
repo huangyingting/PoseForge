@@ -627,3 +627,63 @@ and rendered gates. Their five contacts measure approximately 1.8–2.5 mm and
 the primary supports approximately 1.8–2.0 mm. Integrate this as portable layout
 data through the existing applicability and guided-candidate validation paths.
 No new solver stage, support assignment, contact region, or tolerance is needed.
+
+## Standing carry and contact endpoint direction
+
+The standing-carry audit retains its standing/lifted roles and five contacts,
+but reports a roughly 57 mm rendered chest gap, crossed hand regions, and about
+6 mm of primary foot/floor penetration. Its two supporting contacts are written
+from the carried figure's buttocks to the carrier's hands. Rendered refinement
+currently rejects those body-first contacts as having no free source limb even
+though the opposite endpoint is an arm.
+
+The coarse contact loop also sends a body-first/hand-second constraint to whole-
+body translation rather than arm IK. Use the same internal limb-first orientation
+there and in its final target measurements, while returning the authored contact
+descriptor. Equivalent hand/body and body/hand inputs should produce the same
+coarse pose without changing which contacts affect initial arrangement alignment.
+
+Allow the existing bounded limb pass to operate from the limb endpoint when the
+authored first endpoint is not a limb. This is an internal working orientation,
+not a rewrite of scene intent: original actors, region names, sides, strength,
+source indices and report order must remain intact. Retain the existing choice
+for limb-first contacts, all fixed/load-bearing guards, collision checks, shared
+work budgets and cancellation. Check reversed standing hand/back contacts and
+unavailable geometry before relying on the change for a carried composition.
+
+Then fit the clothed carried pair with both primary feet on the floor, all five
+original contacts within 4 mm, complete figure/furniture/floor clearance, self
+checks and the existing rendered balance estimate. Partner support must remain
+distinct from a floor support. Any portable calibration must also pass its coarse
+default and preserve the standard explicit-edit fallback, capture and save/reload
+contracts. Do not enlarge contact regions or change tolerances to pass the pose.
+
+The contact editor must describe endpoints neutrally as first/second figure and
+body part, with a "meets" relationship. "Moving figure" and "reaches toward"
+would incorrectly promise which endpoint can move. Preserve stored order and
+verify the same order through UI selection, saved reload, export and mobile
+accessibility for a body-first hand contact.
+
+The successful diagnostic starts from a verified standing pair, lifts the free
+legs into the carried posture, then fits the supporting hands and shoulder grips.
+Several higher placements and palm-orientation trials introduced torso/arm
+crossings or self-collisions and were rejected. The selected clothed composition
+retains complete clearance, approximately 2.4–3.7 mm contacts and 2.0–3.0 mm foot
+supports, with a supported carrier balance estimate. Hand shape and gaze were
+inspected in the rendered pose. Both the floor and uniformly translated bed
+versions pass as ordinary fixed data, so this layout needs no guided fallback.
+
+The initial endpoint change produced three newly flagged combinations in the
+unchanged 159-case coarse scene sweep. Do not deliver that regression. Supporting
+arm IK now retains a per-limb partner-overlap ceiling as well as the existing
+self-bulk ceiling. Snapshot inspection also found a returned 38 mm overlap even
+though that run had reached 13 mm, and a self-crossing result despite an earlier
+clear iterate. Use the existing 22 mm body-overlap gate as the first snapshot
+selection criterion; retain the original aggregate score within each class.
+Keep reporting collisions when every candidate is outside the gate.
+
+Compared directly with `2ebcf21`, the revised sweep is 134/159 geometrically sound
+versus 127/159, with no newly flagged cases and the same 63 mm worst residual.
+Its tracked unmet targets rise from 94 to 98; blocked/unreachable targets remain
+separately reported. This improves geometry selection without certifying every
+requested contact or making the remaining 25 synthetic cases sound.

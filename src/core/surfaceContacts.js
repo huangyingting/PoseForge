@@ -32,6 +32,7 @@ import {
 import { measurePropSurface } from "./surfaceProps.js";
 import { SURFACES } from "./poseLibrary.js";
 import { guidedPoseCandidate } from "./guidedPose.js";
+import { limbFirstContact } from "./contactOrientation.js";
 import {
   seatedSupportFrame,
   seatedFramePreserved,
@@ -701,8 +702,13 @@ export function* surfaceContactSteps(
     for (let pass = 0; pass < maxPasses && steps < maxSteps; pass++) {
       let improved = false;
       for (let i = 0; i < solved.contacts.length && steps < maxSteps; i++) {
-        const contact = solved.contacts[i];
-        let measured = measurements[i];
+        const authoredContact = solved.contacts[i];
+        const contact = limbFirstContact(authoredContact);
+        // Reports and scoring retain authored direction; motion uses the free
+        // limb's directed query so approach vectors and normals stay correct.
+        const motionMeasurement = () =>
+          contact === authoredContact ? measurements[i] : query(contact);
+        let measured = motionMeasurement();
         if (
           !measured ||
           (!measured.intersects &&
@@ -839,7 +845,7 @@ export function* surfaceContactSteps(
             yield { steps };
             if (accepted) break;
           }
-          measured = measurements[i];
+          measured = motionMeasurement();
           if (
             !measured.intersects &&
             measured.distance <= SURFACE_CONTACT_TOLERANCE
@@ -932,7 +938,7 @@ export function* surfaceContactSteps(
         // statures. Both feet/knees keep their height and relative support. Do
         // not slide seated figures off furniture or move an explicitly pinned
         // actor, and cap displacement from the original composition.
-        const remaining = measurements[i];
+        const remaining = motionMeasurement();
         if (
           (remaining.intersects ||
             remaining.distance > SURFACE_CONTACT_TOLERANCE) &&

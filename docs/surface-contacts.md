@@ -39,6 +39,15 @@ definition and brings its actual support contact within 4 mm.
 
 ## Refinement contract
 
+Body-first/limb-second contacts use an internal limb-first working orientation
+in both the coarse IK loop and rendered refinement. For example, back-to-hand
+can adjust the same hand as hand-to-back. The authored endpoints, sides, source
+indices, strengths and report order are retained; motion queries use the working
+orientation so their approach vectors and normals point the right way. Existing
+limb-first and body/body choices are unchanged. Fixed channels, load-bearing
+limbs, missing geometry, collision guards, shared budgets and cancellation still
+apply. This is not permission to move an otherwise constrained limb.
+
 An explicitly guided starting placement may propose its root and authored joint
 hints before iterative refinement. This is one candidate in the shared work
 budget, not a preset-ID shortcut. It must satisfy every positive rendered contact

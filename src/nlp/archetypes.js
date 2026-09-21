@@ -37,6 +37,7 @@
 import { SIDE_FACING_LAYOUT, SPOONING_LAYOUT } from "./presetLayouts.js";
 import { CHAIR_LAP_LAYOUT } from "./chairLapLayout.js";
 import { SEATED_EMBRACE_LAYOUT } from "./seatedEmbraceLayout.js";
+import { STANDING_CARRY_LAYOUT } from "./standingCarryLayout.js";
 
 /** @type {Archetype[]} */
 export const ARCHETYPES = [
@@ -151,6 +152,7 @@ export const ARCHETYPES = [
   },
   {
     id: "standing_carry",
+    layout: STANDING_CARRY_LAYOUT,
     phrases: [
       "standing carry", "carried against the wall", "picked up and held",
       "站立抱起", "壁咚抱起", "抱起来",
