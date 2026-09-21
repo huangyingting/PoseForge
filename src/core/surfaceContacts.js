@@ -25,6 +25,12 @@ import {
   closestMeshPoints,
 } from "./meshDistance.js";
 import { measureSurfaceSupport } from "./surfaceSupport.js";
+import { measurePropSurface } from "./surfaceProps.js";
+import {
+  seatedSupportFrame,
+  seatedFramePreserved,
+  seatedSupportPoses,
+} from "./seatedSupports.js";
 
 export const SURFACE_CONTACT_TOLERANCE = 0.004;
 const vDistanceSq = (a, b) =>
@@ -204,7 +210,14 @@ export function createSurfaceContactQuery(actors, templates) {
           radiusSq = definition.radius ** 2;
         for (let j = 0; j < regions[i].length; j += 3) {
           const tri = [regions[i][j], regions[i][j + 1], regions[i][j + 2]];
-          if (tri.some((v) => ![0, 1, 2].every((k) => Number.isFinite(part.positions[v * 3 + k])))) {
+          if (
+            tri.some(
+              (v) =>
+                ![0, 1, 2].every((k) =>
+                  Number.isFinite(part.positions[v * 3 + k]),
+                ),
+            )
+          ) {
             unavailable = true;
             continue;
           }
@@ -263,7 +276,14 @@ export function createSurfaceContactQuery(actors, templates) {
       crossingsOnly,
     );
   query.support = (index, support, surface) =>
-    measureSurfaceSupport(tree(index, support.landmark, support.side), support, surface);
+    measureSurfaceSupport(
+      tree(index, support.landmark, support.side),
+      support,
+      surface,
+    );
+  query.prop = (index, prop) =>
+    measurePropSurface(tree(index, "", null, true), prop);
+  query.lowest = (index) => tree(index, "", null, true)?.min[1] ?? null;
   return query;
 }
 
@@ -271,12 +291,22 @@ export function createSurfaceContactQuery(actors, templates) {
 export function measureRenderedSupports(solved, query) {
   return solved.actors.map((actor, index) => {
     if (actor.supportBasis !== "surface")
-      return { actor: index, basis: actor.supportBasis, gap: null, bodyGap: null, penetration: null, unavailable: 0, supports: [] };
+      return {
+        actor: index,
+        basis: actor.supportBasis,
+        gap: null,
+        bodyGap: null,
+        penetration: null,
+        unavailable: 0,
+        supports: [],
+      };
     const supports = actor.posture.supports.map((support) => ({
       ...support,
       measurement: query.support(index, support, solved.surface),
     }));
-    const unavailable = supports.filter((support) => !support.measurement).length;
+    const unavailable = supports.filter(
+      (support) => !support.measurement,
+    ).length;
     const bodyGap = measureBodySupportResidual(actor, solved.surface);
     return {
       actor: index,
@@ -285,7 +315,12 @@ export function measureRenderedSupports(solved, query) {
         ? bodyGap
         : Math.max(0, ...supports.map((support) => support.measurement.gap)),
       bodyGap,
-      penetration: unavailable ? null : Math.max(0, ...supports.map((support) => support.measurement.penetration)),
+      penetration: unavailable
+        ? null
+        : Math.max(
+            0,
+            ...supports.map((support) => support.measurement.penetration),
+          ),
       unavailable,
       supports,
     };
@@ -305,6 +340,24 @@ function* figureChecks(solved, query) {
 /** Every rendered figure pair, including pairs with no declared contact. */
 export const measureFigureSurfaces = (solved, query) => [
   ...figureChecks(solved, query),
+];
+
+function* propChecks(solved, query) {
+  for (let index = 0; index < solved.actors.length; index++)
+    for (let k = 0; k < solved.props.length; k++) {
+      const prop = solved.props[k],
+        result = query.prop(index, prop);
+      yield {
+        actor: index,
+        prop: k,
+        kind: prop.kind,
+        intersects: result?.intersects ?? null,
+        reason: result ? result.reason : "surface_unavailable",
+      };
+    }
+}
+export const measurePropSurfaces = (solved, query) => [
+  ...propChecks(solved, query),
 ];
 
 function limbGroup(contact, actors) {
@@ -349,7 +402,7 @@ function contactLimbGroups(solved) {
 export function measureSurfaceSafety(
   solved,
   query,
-  { wholeFigures = false } = {},
+  { wholeFigures = false, wholeProps = false } = {},
 ) {
   const groups = contactLimbGroups(solved).map((group) => ({
     ...group,
@@ -380,7 +433,16 @@ export function measureSurfaceSafety(
     return !!result && !result.intersects && result.facing;
   };
   return {
-    ...measureSceneSafety(solved, { verifiedPair }),
+    ...measureSceneSafety(solved, {
+      verifiedPair,
+      verifiedProp: (contact) => {
+        if (!wholeProps) return false;
+        const result = query.prop(contact.bodyIndex, contact.prop);
+        return (
+          !!result && result.intersects === false && result.facing === true
+        );
+      },
+    }),
     limbIntersections: groups.map((group) => !!group.result?.intersects),
   };
 }
@@ -463,7 +525,7 @@ function handBodyReach(actor, targetActor, contact, chain) {
 export function* surfaceContactSteps(
   solved,
   templates,
-  { maxPasses = 8, maxSteps = 32, maxBodySteps = 12 } = {},
+  { maxPasses = 8, maxSteps = 32, maxBodySteps = 12, maxSeatingSteps = 8 } = {},
 ) {
   const originalPoses = solved.actors.map(clonePose);
   let completed = false;
@@ -894,6 +956,147 @@ export function* surfaceContactSteps(
       }
       trials.return();
     }
+    // Ground visible seated supports with preserved foot frames. Furniture
+    // proxy exceptions require complete drawn figure/box clearance, not only
+    // the seat patch used to propose the candidate.
+    let seatingSteps = 0;
+    for (
+      let index = 0;
+      index < solved.actors.length &&
+      steps < maxSteps &&
+      seatingSteps < maxSeatingSteps;
+      index++
+    ) {
+      const actor = solved.actors[index];
+      const originalSupports = measureRenderedSupports(solved, query);
+      let support = originalSupports[index];
+      const frame = seatedSupportFrame(actor, solved.surface, support);
+      if (
+        !frame ||
+        (support.gap <= SURFACE_CONTACT_TOLERANCE && support.penetration === 0)
+      )
+        continue;
+      const baseline = measureSurfaceSafety(solved, query, {
+        wholeFigures: true,
+        wholeProps: true,
+      });
+      const violations = new Map(
+        baseline.violations.map((v) => [v.key, v.depth]),
+      );
+      let changed = false;
+      for (
+        let pass = 0;
+        pass < 3 && steps < maxSteps && seatingSteps < maxSeatingSteps;
+        pass++
+      ) {
+        if (
+          support.gap <= SURFACE_CONTACT_TOLERANCE &&
+          support.penetration === 0
+        )
+          break;
+        const original = clonePose(actor),
+          trials = seatedSupportPoses(actor, support, frame);
+        let accepted = false;
+        while (steps < maxSteps && seatingSteps < maxSeatingSteps) {
+          const trial = trials.next();
+          if (trial.done) break;
+          steps++;
+          seatingSteps++;
+          if (trial.value) {
+            actor.pose = trial.value;
+            refresh(actor);
+            const reports = measureRenderedSupports(solved, query),
+              next = reports[index],
+              candidate = solved.contacts.map(query);
+            const supportsSafe = reports.every(
+              (value, k) =>
+                originalSupports[k].basis !== "rendered" ||
+                (value.basis === "rendered" &&
+                  value.gap <=
+                    Math.max(
+                      originalSupports[k].gap,
+                      SURFACE_CONTACT_TOLERANCE,
+                    ) +
+                      1e-7 &&
+                  value.penetration <= originalSupports[k].penetration + 1e-7),
+            );
+            const contactsSafe = candidate.every(
+              (value, k) =>
+                solved.contacts[k].strength <= 0 ||
+                (value &&
+                  !value.intersects &&
+                  measurements[k] &&
+                  value.distance <=
+                    Math.max(
+                      measurements[k].distance,
+                      SURFACE_CONTACT_TOLERANCE,
+                    ) +
+                      1e-7),
+            );
+            const lowest = query.lowest(index);
+            if (
+              lowest != null &&
+              lowest >= solved.surface.ground - 1e-7 &&
+              seatedFramePreserved(actor, frame) &&
+              supportsSafe &&
+              contactsSafe &&
+              next.basis === "rendered" &&
+              next.gap < support.gap - 1e-7 &&
+              next.supports.find((s) => s.landmark === "buttocks").measurement
+                ?.withinFootprint &&
+              measureFigureSurfaces(solved, query).every(
+                (pair) => pair.intersects === false,
+              ) &&
+              measurePropSurfaces(solved, query).every(
+                (pair) => pair.intersects === false,
+              )
+            ) {
+              const safety = measureSurfaceSafety(solved, query, {
+                wholeFigures: true,
+                wholeProps: true,
+              });
+              const balanced = safety.balance.every(
+                (value, k) =>
+                  (!baseline.balance[k].supported || value.supported) &&
+                  (value.offset ?? Infinity) <=
+                    (baseline.balance[k].offset ?? Infinity) + 1e-6,
+              );
+              if (
+                balanced &&
+                [
+                  "maxDepth",
+                  "maxSelfDepth",
+                  "maxBodyDepth",
+                  "propPenetration",
+                  "totalDepth",
+                ].every((key) => safety[key] <= baseline[key] + 1e-8) &&
+                safety.violations.every(
+                  (value) =>
+                    value.depth <= (violations.get(value.key) ?? 0) + 1e-8,
+                )
+              ) {
+                accepted = true;
+                changed = true;
+                support = next;
+                measurements = candidate;
+              }
+            }
+          }
+          if (!accepted) {
+            actor.pose = clonePose({ pose: original });
+            refresh(actor);
+          }
+          yield { steps, seatingSteps };
+          if (accepted) break;
+        }
+        trials.return();
+        if (!accepted) break;
+      }
+      if (changed)
+        adjustments.push(
+          `${actor.label ?? actor.id}: adjusted seated support against the rendered seat and floor while preserving foot placement.`,
+        );
+    }
     // Always query the final state again: another contact may move the same arm.
     measurements = solved.contacts.map(query);
     const targetDistances = measureContactTargets(solved);
@@ -941,6 +1144,21 @@ export function* surfaceContactSteps(
       yield { steps };
     }
     const warnings = [...(solved.quality.placementWarnings ?? [])];
+    const propSurfaces = [];
+    for (const pair of propChecks(solved, query)) {
+      propSurfaces.push(pair);
+      const label =
+        solved.actors[pair.actor].label ?? solved.actors[pair.actor].id;
+      if (pair.intersects === true)
+        warnings.push(
+          `${label}: the rendered figure intersects the ${pair.kind}; adjust the pose.`,
+        );
+      else if (pair.intersects === null)
+        warnings.push(
+          `${label}: the complete rendered ${pair.kind} clearance check is unavailable.`,
+        );
+      yield { steps };
+    }
     for (const pair of figureSurfaces) {
       const names = [pair.fromActor, pair.toActor]
         .map((index) => solved.actors[index].label ?? solved.actors[index].id)
@@ -973,19 +1191,27 @@ export function* surfaceContactSteps(
     for (const entry of supportSurfaces) {
       const actor = solved.actors[entry.actor];
       actor.bodySupportResidual = entry.bodyGap;
-      actor.supportMeasurement = entry.basis === "rendered" || entry.basis === "body-model"
-        ? entry.basis : null;
+      actor.supportMeasurement =
+        entry.basis === "rendered" || entry.basis === "body-model"
+          ? entry.basis
+          : null;
       actor.seatResidual = entry.gap;
       actor.supportPenetration = entry.penetration;
       if (entry.unavailable)
-        warnings.push(`${actor.label ?? actor.id}: rendered support geometry is unavailable; the support gap is a body-model estimate.`);
+        warnings.push(
+          `${actor.label ?? actor.id}: rendered support geometry is unavailable; the support gap is a body-model estimate.`,
+        );
     }
     Object.assign(
       solved.quality,
-      measureSurfaceSafety(solved, query, { wholeFigures: true }),
+      measureSurfaceSafety(solved, query, {
+        wholeFigures: true,
+        wholeProps: true,
+      }),
       {
         contactDetail: detail,
         figureSurfaces,
+        propSurfaces,
         supportSurfaces,
         adjustments,
         warnings,
@@ -1000,6 +1226,7 @@ export function* surfaceContactSteps(
         surfaceRefinement: {
           steps,
           bodySteps,
+          seatingSteps,
           before,
           after: measurements.map((value) => value?.distance ?? null),
         },

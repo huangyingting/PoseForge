@@ -25,6 +25,14 @@ posing instead; the interpretation trace explains when the stock layout was
 skipped. That fallback is not a guarantee that every variation is physically
 resolved.
 
+The single seated references now use render-aware grounding: the visible seat
+region and soles are brought toward their supporting surfaces while the feet's
+horizontal placement and orientation are retained. This also applies to matching
+custom seated scenes within the motion/joint limits, without a preset-ID check.
+An information note explains an accepted adjustment. Fixed placement or leg
+channels remain authoritative, and conflicting contacts or furniture block an
+unsafe correction. Capturing the result makes it portable as normal scene data.
+
 Once loaded, a fixed layout remains editable and is not silently reapplied.
 The Composition hint points to **Figures → Placement** to release fixed roots;
 **Joints → Keep edited angles** controls joint locking separately. Changing a

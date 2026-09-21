@@ -64,7 +64,8 @@ whole-body stage and final report can also use a complete figure/figure check,
 including all drawn auxiliary triangles without anatomical bone ownership.
 Raw proxy depths remain in `quality.proxyMaxDepth`/`proxyTotalDepth`; the count
 of reconciled contacts is `verifiedProxyContacts`. Missing geometry cannot grant
-an exception. Self-collisions, props and unrelated body pairs remain guarded.
+an exception. Self-collisions and unrelated body pairs remain guarded. Furniture
+proxy reconciliation has a separate complete-figure/box check, described below.
 The guard compares individual unresolved collision pairs as well as aggregate
 depths, so a smaller maximum cannot hide a newly introduced collision elsewhere.
 
@@ -99,13 +100,42 @@ and ankle/wrist orientations are retained to within 0.5 mm / 0.0005 per matrix
 component. Feet keep their height. Explicit wrist/ankle settings disable these
 trials, and fixed channels are enforced through every IK refresh.
 
-These trials consume the same 32-step budget, with at most 12 body trials by
-default (`maxBodySteps: 0` isolates the preceding limb phase). They must improve
-contact error without worsening an already-close contact, self/prop/per-pair
-violations or the existing balance estimate. Every rendered figure pair must be
-available and clear before accepting a whole-body candidate. Cancellation also
-restores accepted intermediate body changes. The UI explains an automatic stance
-adjustment separately from geometry warnings.
+These standing-body trials consume the same 32-step budget, with at most 12
+body trials by default (`maxBodySteps: 0` isolates the preceding limb phase).
+They must improve contact error without worsening an already-close contact,
+self/prop/per-pair violations or the existing balance estimate. Every rendered
+figure pair must be available and clear before accepting a whole-body candidate.
+Cancellation also restores accepted intermediate body changes. The UI explains
+an automatic stance adjustment separately from geometry warnings.
+
+### Seated supports
+
+Figures with a seat and two foot supports on a higher surface can use the drawn
+support measurements for bounded grounding. The pelvis follows the measured
+seat target while two-bone IK retains both foot frames, including orientation,
+with small vertical corrections to put the soles near the floor. A nearby
+off-edge seat region can move toward its measured top edge with a 25 mm inward
+margin; its horizontal distance is not misread as a vertical gap.
+
+Corrections are limited to 160 mm vertically and 180 mm horizontally from the
+starting root, with at most 60 mm of vertical foot correction. Up to eight
+seating candidates use the existing shared 32-step budget, after hand/standing
+refinement. The pass respects fixed placement, zero mobility and fixed leg
+channels. It preserves close partner contacts, checks every figure/prop pair,
+rejects new self/body violations and below-floor visible auxiliary parts, and
+retains the balance estimate. Cancellation restores accepted intermediate poses
+without publishing their diagnostics. Capture/save/reload can preserve the
+result as an ordinary fixed pose.
+`maxSeatingSteps: 0` disables this phase for a diagnostic comparison.
+
+`quality.propSurfaces` audits every complete figure against each furniture box.
+Crossing triangles and interior vertices are overlaps. Missing geometry and
+unverified orientation—including a box enclosed by a shell—cannot certify
+clearance. A coarse prop collision is reconciled only after a complete,
+outward-facing clear result. `proxyPropPenetration` and `verifiedPropContacts`
+retain the raw discrepancy and reconciliation count. Actual furniture crossings
+and unavailable checks remain visible in previews, UI notes and CLI reports.
+This does not replace self-collision checks or silently relocate authored rigs.
 
 `jointMode: "fixed"` is enforced by the shared rig refresh during every trial and
 rollback. Specified channels remain exact through refinement and cancellation;

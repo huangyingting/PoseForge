@@ -56,6 +56,11 @@ function report(solved) {
     issues: solvedPreview(solved).issues,
     overlapMm: Math.round(solved.quality.maxDepth * 1000),
     propOverlapMm: Math.round(solved.quality.propPenetration * 1000),
+    ...(solved.quality.propSurfaces ? {
+      proxyPropOverlapMm: Math.round(solved.quality.proxyPropPenetration * 1000),
+      intersectingProps: solved.quality.propSurfaces.filter(pair=>pair.intersects===true),
+      unavailablePropChecks: solved.quality.propSurfaces.filter(pair=>pair.intersects===null).length,
+    } : {}),
     unmetContacts: solved.quality.unmetContacts,
     ...(solved.quality.figureSurfaces
       ? {

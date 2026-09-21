@@ -79,3 +79,10 @@ finite furniture top, not just the lowest vertex of the entire figure. A hand
 near the floor does not establish that the seated region meets its chair.
 The coarse estimate remains available separately; missing mesh data is labeled
 as an estimate, and expected partner support has no surface-gap measurement.
+
+An automatic seated figure may be lowered/repositioned against the drawn seat
+while leg IK keeps its foot frames. **Capture solved pose** or **Capture current
+layout** can keep that result. Once placement or relevant leg channels are fixed,
+the seated correction will not overrule them. Missing meshes cannot grant a
+furniture-clearance exception, even for a previously captured correct layout;
+their remaining coarse estimates and unavailable checks stay visible.

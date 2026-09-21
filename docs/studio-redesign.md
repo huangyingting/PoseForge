@@ -424,3 +424,28 @@ geometry. Furniture tops have finite footprints; floor supports use their own
 plane. Include penetration and off-edge cases rather than calling an intersecting
 or absent region a zero-distance success. Do not promote the trial chair pose
 until visible seat/foot support passes as well as partner contact and clearance.
+
+### Render-aware seated grounding
+
+Use the drawn support measurements to propose bounded seated corrections, rather
+than lowering a root against the coarse pelvic field alone. A candidate lowers
+the seat region and solves both legs toward their existing foot frames, with
+small vertical corrections for sole contact. Keep authored placement/fixed leg
+channels authoritative. Reject candidates that worsen partner contacts,
+self/body collisions, furniture penetration, support gaps or measured balance.
+The initial acceptance cases are the single seated reference figures; the same
+support contract should work independently of preset IDs and dimensions.
+
+Before reconciling a coarse furniture overlap, verify the complete drawn figure
+against the actual box, including interior vertices and all visible auxiliary
+parts. A missing, crossing, contained or orientation-unverified surface cannot
+grant clearance. Preserve raw proxy prop depths alongside rendered verdicts,
+and audit every figure/prop pair rather than only declared support patches.
+Keep work bounded/yielding and restore poses and reports on cancellation.
+
+Some shorter figures start just beyond the chair edge. Permit a measured
+horizontal seat correction toward the finite top, with a 25 mm inward margin,
+only within a cumulative 180 mm horizontal and 160 mm vertical root bound.
+Feet retain their original horizontal positions and orientations, with at most
+60 mm of vertical sole correction. Off-edge distances must not be mistaken for
+vertical gaps; use the measured source/target points for that correction.

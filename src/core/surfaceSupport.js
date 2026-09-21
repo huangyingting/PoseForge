@@ -107,6 +107,8 @@ export function measureSurfaceSupport(tree, support, surface) {
       penetration: Math.max(0, -delta),
       plane,
       prop: null,
+      propIndex: null,
+      withinFootprint: true,
     };
   }
   let best = null;
@@ -120,6 +122,10 @@ export function measureSurfaceSupport(tree, support, surface) {
       penetration: point ? Math.max(0, -delta) : 0,
       plane,
       prop: prop.kind,
+      propIndex: (surface.props ?? []).indexOf(prop),
+      withinFootprint: Boolean(point),
+      point: point ?? nearest.from,
+      target: point ? [point[0], plane, point[2]] : nearest.to,
     };
     if (
       !best ||

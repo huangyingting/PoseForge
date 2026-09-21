@@ -1786,7 +1786,7 @@ function measureContact(actors, contact) {
 }
 
 /** Recheck safety after a renderer-aware correction, using the solver's rules. */
-export function measureSceneSafety(solved, { verifiedPair = () => false } = {}) {
+export function measureSceneSafety(solved, { verifiedPair = () => false, verifiedProp = () => false } = {}) {
   const declared = new Set();
   for (const contact of solved.contacts) {
     const a = resolveLandmark(contact.from, contact.fromSide)?.bone;
@@ -1801,7 +1801,8 @@ export function measureSceneSafety(solved, { verifiedPair = () => false } = {}) 
   const contacts = rawContacts.filter(contact => contact.self || !verifiedPair(contact));
   const report = penetrationReport(contacts);
   const raw = penetrationReport(rawContacts);
-  const props = detectPropContacts(bodies, solved.props);
+  const rawProps = detectPropContacts(bodies, solved.props);
+  const props = rawProps.filter(contact => !verifiedProp(contact));
   return { ...report,
     proxyMaxDepth: raw.maxDepth, proxyTotalDepth: raw.totalDepth,
     verifiedProxyContacts: rawContacts.length - contacts.length,
@@ -1810,6 +1811,8 @@ export function measureSceneSafety(solved, { verifiedPair = () => false } = {}) 
     maxSelfDepth: Math.max(0, ...contacts.filter(p => p.self).map(p => p.depth)),
     maxBodyDepth: Math.max(0, ...contacts.filter(p => !p.self).map(p => p.depth)),
     propPenetration: Math.max(0, ...props.map(p => p.depth)),
+    proxyPropPenetration: Math.max(0, ...rawProps.map(p => p.depth)),
+    verifiedPropContacts: rawProps.length - props.length,
     balance: solved.actors.map(actor => balanceOf(actor, solved.surface)) };
 }
 
