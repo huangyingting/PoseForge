@@ -222,6 +222,21 @@ anywhere, so no contact and no collision reports them.
   *unsolved* error; `0.5` lands halfway.
 - `solveAim` turns the head without moving the pelvis.
 
+## Fixed authored channels
+
+Figures default to `jointMode: "guided"`, preserving the original behavior of
+joint edits as initial hints. In `fixed` mode, every rig refresh reapplies the
+channels in the validated `spec.joints` table, clamped to the rig's limits. That
+single enforcement point covers initial seating, contact/collision iterations,
+snapshot restoration and the rendered-surface pass. Unspecified channels and
+root placement remain available to the solver; the input scene is not mutated.
+
+An impossible target stays unmet instead of changing a fixed angle. For fixed
+figures with their own surface supports, the final support-plane residual is
+remeasured on the returned pose. Mounted/carried figures retain their distinct
+partner-support behavior. The worker sends the actual solved joint table so the
+editor can distinguish requested values from returned values in either mode.
+
 ## Saying what it could not do
 
 Every contact left further than 60mm apart produces a warning naming the contact

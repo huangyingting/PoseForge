@@ -727,6 +727,11 @@ input[type="color"] {
 input[type="checkbox"] {
   accent-color: var(--accent);
 }
+.solved-joints {
+  display: block;
+  margin: 10px 0;
+  overflow-wrap: anywhere;
+}
 .examples {
   display: flex;
   flex-wrap: wrap;

@@ -33,6 +33,7 @@ import {
 
 /** Body presets the actor spec accepts. */
 export const BODY_TYPES = ["female", "male", "neutral"];
+export const JOINT_MODES = ["guided", "fixed"];
 
 /**
  * @typedef {object} ActorSpec
@@ -55,6 +56,7 @@ export const BODY_TYPES = ["female", "male", "neutral"];
  * @property {string|{l?:string,r?:string}} [feet] foot shape name, see
  *           FOOT_SHAPES; compiled into `joints` over the posture's own ankles
  * @property {number} [mobility] 0 pinned .. 1 free, how much the solver may move them
+ * @property {"guided"|"fixed"} [jointMode] whether specified joint channels may be adjusted
  * @property {string|string[]} [arms] what the arms are doing, see ARM_POSES; read
  *           from the corpus's vocabulary or a user's, and compiled into `joints`
  * @property {string|string[]} [legs] what the legs are doing, see LEG_POSES
@@ -318,6 +320,11 @@ export function validateScene(scene) {
     // because this is the field a control panel writes and a person hand-edits,
     // and it is the only one the skeleton would accept and then ignore.
     const written = checkJoints(spec.joints, id, note);
+    let jointMode = spec.jointMode ?? "guided";
+    if (!JOINT_MODES.includes(jointMode)) {
+      note("warning", `${id}: unknown joint mode, used guided`);
+      jointMode = "guided";
+    }
     // Stature outside this range is not a person, and the anthropometric tables
     // that everything else is derived from stop meaning anything.
     let stature = spec.stature;
@@ -356,6 +363,7 @@ export function validateScene(scene) {
       wearing,
       outfit,
       mobility: spec.mobility == null ? undefined : clamp(spec.mobility, 0, 1),
+      jointMode,
       // Anything said outright wins: `joints` is the escape hatch for a caller
       // who knows the exact angle they want, and a limb phrase must not
       // silently overrule it.

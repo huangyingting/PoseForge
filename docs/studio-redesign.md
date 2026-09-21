@@ -191,3 +191,27 @@ Check posed/scaled rigs, unchanged source geometry, existing contact fixtures
 and the actual clothed seated pair. The broad 15 mm diagnostic was a thigh-edge
 contact admitted by a small pelvis-weight influence; it is not evidence that
 the requested pelvic support is already close.
+
+## Precise joint authoring
+
+Joint controls currently supply hints that the solver may change. During seated
+layout authoring, a requested hip abduction of 65 degrees was returned near 38
+degrees, so saving the requested angles alone does not make that pose reproducible.
+Add an explicit per-figure `jointMode`: `guided` retains today's behavior;
+`fixed` preserves only the angle channels present in the scene's `joints` table.
+Unspecified channels, other joints and figure placement may still adjust. All
+angles remain subject to the existing range-of-motion validation.
+
+Expose **Keep edited angles** inside the joint editor, with a clear warning that
+fixed values can leave contacts or supports unresolved. Also show the selected
+joint's actual solved angles from the worker, separately from the requested
+sliders. Clear stale solved values while a new scene is pending. Save/import,
+draft reload, previews and undo/redo must preserve the mode. Existing presets
+remain guided unless their data explicitly chooses otherwise.
+
+Enforce fixed channels at every rig refresh so seating, IK, collision correction,
+surface refinement and restored snapshots cannot silently overwrite them. Test
+both preserved and free channels, invalid imports, default compatibility,
+rendered refinement/cancellation, and the browser editor's actual solved values.
+This is authoring control, not a claim that fixed constraints always admit a
+collision-free solution. The unresolved named-preset geometry gate stays open.

@@ -59,6 +59,11 @@ stale work. Cancellation restores the canceled job's original rig. The CLI uses
 the same implementation synchronously. Neither path deforms rendered vertices
 independently of the skeleton or modifies cached templates.
 
+`jointMode: "fixed"` is enforced by the shared rig refresh during every trial and
+rollback. Specified channels remain exact through refinement and cancellation;
+unmodified channels can still participate in a correction. A fixed arm may leave
+an unreachable or movement-limited target, which remains reported normally.
+
 ## Readouts
 
 `basis: "rendered"` means `surfaceGap` is the distance between the selected

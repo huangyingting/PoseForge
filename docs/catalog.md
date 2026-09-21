@@ -77,6 +77,26 @@ retain their height. The collision check uses the rendered limbs to resolve
 coarse-model discrepancies at the declared contact, while retaining the raw
 diagnostic and checks for other body parts and furniture.
 
+## Keep precise joint edits
+
+Open **Figures → Joints** to edit angle channels. The sliders show the requested
+values; **Solved** shows the selected joint's actual rig angles after the worker
+finishes. While a new scene is pending, stale solved values are cleared.
+
+By default, edits are **guided** hints: seating, contacts and collision handling
+can change them. Enable **Keep edited angles** to use **fixed** mode for that
+figure. Only channels present in `joints` are held; unedited channels, other joints
+and whole-figure placement remain free. For example,
+`"jointMode": "fixed", "joints": {"elbow_l": {"flexion": 60}}` holds that flexion
+but does not freeze the elbow's other channels or the figure's location.
+
+Turning the option off returns to guided behavior without deleting the edits.
+Reset controls remove explicit overrides; values derived from named limb or foot
+shapes may still apply. Fixed mode cannot make conflicting constraints possible:
+review contact and support warnings if a pose does not fit. The mode survives
+save, JSON export/import, draft reload and scene history. Use the current app/CLI
+for fixed-joint presets; older releases treated joint values only as hints.
+
 ## Use saved presets from the command line
 
 The headless renderer accepts both raw scene JSON and exported catalog files:
@@ -142,6 +162,7 @@ working starter. All dimensions are in meters and joint angles are degrees.
 | `skinTone` | Six-digit hex color, independent of body type |
 | `wearing`, `outfit` | Known garment names and a named fabric color from `garments.js` |
 | `joints` | Bone names → `flexion`, `abduction`, `rotation`; angles must fit the rig's joint limits |
+| `jointMode` | `guided` (default) allows solver adjustments; `fixed` preserves the channels specified in `joints`, not the entire figure |
 | `hands`, `feet` | A named shape for both sides, or `{ "l": "…", "r": "…" }` |
 | `camera.view` | `three_quarter`, `front`, `side`, `top`; free orbit and zoom are temporary viewport settings |
 | `relationship.contactMode` | `automatic` (the default) adds arrangement contacts; `custom` uses only `scene.contacts`, including an empty list |

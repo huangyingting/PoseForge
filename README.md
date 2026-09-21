@@ -10,6 +10,10 @@ Figure/contact editing, favorites, saved presets, undo/redo and JSON import/expo
 let you build a personal library. The viewport supports drag/keyboard orbit,
 pinch/wheel/button zoom, natural and clay materials, and PNG/SVG export.
 
+The joint editor shows both requested and solved angles. **Keep edited angles**
+preserves specified channels when authoring precise poses; unedited channels and
+placement remain adjustable, and conflicting constraints stay visible as notes.
+
 Start from **New study**, name your figures, and use **Scene → Partner contacts**
 to author gestures with figure/body-part pickers and measured target feedback.
 Choose **My contacts only** to build a composition without the arrangement's

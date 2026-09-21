@@ -243,6 +243,7 @@ function summarise(solved) {
       bodyType: actor.bodyType,
       posture: actor.spec?.posture,
       stature: actor.skeleton.stature,
+      joints: structuredClone(actor.pose.joints),
       // Non-zero means the posture's declared supports do not match its own
       // geometry closely enough to seat it, and the figure is floating by this
       // much. The viewport surfaces it rather than hiding it.

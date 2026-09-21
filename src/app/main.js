@@ -302,6 +302,7 @@ worker.onmessage = ({ data }) => {
     SKIN.map((color) => `#${color.toString(16).padStart(6, "0")}`),
   );
   const notes = collectNotes(data);
+  panel.setSolvedActors(data.actors);
   $("show-notes").hidden = !notes.length && !data.preview?.issues.length;
   panel.setNotes(notes);
   panel.setContactReport(data.quality.contactDetail ?? []);

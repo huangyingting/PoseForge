@@ -51,6 +51,26 @@ test("body-model reports are remeasured consistently on the returned pose", () =
   );
 });
 
+test("fixed joint channels survive rendered refinement and cancellation", () => {
+  const spec = base();
+  spec.actors[0].jointMode = "fixed";
+  spec.actors[0].joints = {
+    shoulder_r: { abduction: 12 },
+    elbow_r: { flexion: 45 },
+  };
+  const solved = solveScene(checkScene(spec)),
+    bodies = forScene(solved);
+  refineSurfaceContacts(solved, bodies);
+  assert.equal(solved.actors[0].pose.joints.shoulder_r.abduction, 12);
+  assert.equal(solved.actors[0].pose.joints.elbow_r.flexion, 45);
+  const before = poses(solved),
+    steps = surfaceContactSteps(solved, bodies);
+  steps.next();
+  steps.next();
+  steps.return();
+  assert.deepEqual(poses(solved), before);
+});
+
 test("intersecting hands escape the target surface without moving a seated support or adding collisions", () => {
   const spec = checkScene({
     support: { surface: "chair" },

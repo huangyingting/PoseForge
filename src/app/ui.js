@@ -406,11 +406,9 @@ export function buildPanel(root, handlers) {
    * underneath makes the first drag continuous, and makes "reset" mean "back to
    * the posture" instead of "straighten".
    *
-   * What it cannot show is the solver's own corrections - the IK that puts a
-   * hand on a hip, the push-out that stops two people sharing a volume. Those
-   * are quaternions laid over the whole chain at solve time and have no angles
-   * to read back. So these controls state an intent and the solver still has
-   * the last word, which is the same bargain the posture itself gets.
+   * Sliders state the requested angles. The worker supplies the actual solved
+   * angles separately, because guided mode may change the request. Fixed mode
+   * preserves specified channels without freezing unrelated joints or roots.
    */
   const baseline = (index, bone, channel) => {
     const actor = scene?.actors?.[index];
@@ -421,6 +419,22 @@ export function buildPanel(root, handlers) {
 
   /** The bone picker and its three sliders, for one actor. */
   function jointEditor(index) {
+    const fixed = el("input", { type: "checkbox" });
+    const mode = el("label", { className: "toggle" }, [
+      fixed,
+      el("span", { textContent: "Keep edited angles" }),
+    ]);
+    const modeHint = el("p", {
+      className: "hint",
+      textContent:
+        "Keeps specified angle channels fixed. Other joints and placement may still adjust; contacts can remain unresolved.",
+    });
+    const solvedOutput = el("output", {
+      className: "hint solved-joints",
+    });
+    solvedOutput.setAttribute("aria-label", "Solved joint angles");
+    solvedOutput.setAttribute("aria-live", "off");
+    let solvedJoints = null;
     const bone = picker(
       "Joint",
       POSEABLE_BONES.map((entry) => entry.name),
@@ -445,9 +459,21 @@ export function buildPanel(root, handlers) {
       type: "button",
       textContent: "Reset all",
     });
+    const showSolved = () => {
+      const solved = solvedJoints?.[bone.select.value];
+      solvedOutput.textContent = solved
+        ? `Solved: ${CHANNELS.map((channel) => `${channel[0].toUpperCase()}${channel.slice(1)} ${(solved[channel] ?? 0).toFixed(1)}°`).join(" · ")}`
+        : "No solved angles available yet.";
+      for (const channel of CHANNELS) {
+        if (solved)
+          solvedOutput.dataset[channel] = String(solved[channel] ?? 0);
+        else delete solvedOutput.dataset[channel];
+      }
+    };
 
     /** Point the sliders at whatever the chosen bone is doing now. */
     const load = () => {
+      fixed.checked = scene?.actors?.[index]?.jointMode === "fixed";
       const range = ROM[BONE_KIND.get(bone.select.value)];
       if (!range) return;
       for (const { channel, control } of channels) {
@@ -465,9 +491,14 @@ export function buildPanel(root, handlers) {
       adjusted.textContent = names.length
         ? `Set away from the posture: ${names.join(", ")}`
         : "Nothing set; the posture decides every joint.";
+      showSolved();
     };
 
     bone.select.addEventListener("change", load);
+    fixed.addEventListener("change", () => {
+      scene.actors[index].jointMode = fixed.checked ? "fixed" : "guided";
+      emit();
+    });
     for (const { channel, control } of channels) {
       // `change` rather than `input`, as with height and build: one drag is a
       // hundred events and each one is a full solve.
@@ -499,12 +530,22 @@ export function buildPanel(root, handlers) {
     });
 
     const body = el("div", {}, [
+      mode,
+      modeHint,
       bone.field,
       ...channels.map(({ control }) => control.field),
+      solvedOutput,
       el("div", { className: "buttons" }, [reset, resetAll]),
       adjusted,
     ]);
-    return { body, load };
+    return {
+      body,
+      load,
+      setSolved(joints) {
+        solvedJoints = joints ?? null;
+        showSolved();
+      },
+    };
   }
 
   /** Per-actor controls, rebuilt when the number of people changes. */
@@ -723,6 +764,16 @@ export function buildPanel(root, handlers) {
   }
 
   return {
+    setSolvedActors(actors) {
+      actorControls.forEach((control, index) => {
+        const id = scene?.actors?.[index]?.id;
+        const actor =
+          id == null
+            ? actors[index]
+            : actors.find((candidate) => candidate.id === id);
+        control.joints.setSolved(actor?.joints);
+      });
+    },
     showNotes() {
       tabButtons[0].click();
       diagnostics.details.open = true;
@@ -826,6 +877,7 @@ export function buildPanel(root, handlers) {
         control.footR.select.value = sideOf(actor.feet, "r");
         // After the scene is in place: the sliders read their range and their
         // value out of it.
+        control.joints.setSolved(null);
         control.joints.load();
         const set = Object.keys(actor.joints ?? {}).length;
         control.summary.textContent = set ? `Joints (${set} set)` : "Joints";

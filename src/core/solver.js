@@ -157,6 +157,18 @@ export function createActor(spec, index) {
 
 /** Refresh an actor's evaluated pose and world-space volumes. */
 export function refresh(actor) {
+  // Fixed mode holds only explicitly specified channels. The other channels
+  // remain available to IK; refreshing also covers restored solver snapshots
+  // and the renderer-aware refinement pass.
+  if (actor.spec?.jointMode === "fixed") {
+    for (const [bone, angles] of Object.entries(actor.spec.joints ?? {})) {
+      if (!actor.skeleton.index.has(bone)) continue;
+      actor.pose.joints[bone] = actor.skeleton.clampAngles(bone, {
+        ...actor.pose.joints[bone],
+        ...angles,
+      });
+    }
+  }
   actor.evaluated = evaluatePose(actor.skeleton, actor.pose);
   // Gravity on the parts that hang, recomputed every refresh because it
   // depends on where the pelvis has ended up and on nothing else. Stored on
@@ -1439,7 +1451,25 @@ export function solveScene(scene, options = {}) {
   // separately. It needs the contacts *and* the postures, and this is the only
   // place that holds both - see `handShapes` for why the declarations are a
   // better source for it than the solved geometry.
-  for (const actor of actors) actor.hands = handShapes(actor, contacts);
+  for (const actor of actors) {
+    actor.hands = handShapes(actor, contacts);
+    // Fixed angles can make independently reachable support planes conflict.
+    // Report the final returned pose, not a transient ground-clamp correction.
+    // Mounted/carried figures may legitimately rest on a partner instead.
+    if (
+      actor.spec?.jointMode === "fixed" &&
+      Object.keys(actor.spec.joints ?? {}).length > 0 &&
+      !actor.carried && actor.mountedOn == null
+    ) {
+      let residual = 0;
+      for (const support of actor.posture.supports) {
+        const found = supportLowestY(actor, support);
+        if (found)
+          residual = Math.max(residual, Math.abs(found.y - supportPlaneFor(support, surface)));
+      }
+      actor.seatResidual = residual > 0.002 ? residual : 0;
+    }
+  }
 
   // Say what could not be done. A pose where the chests never met is a
   // different picture from the one that was asked for, and the caller cannot

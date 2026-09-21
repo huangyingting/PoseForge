@@ -277,3 +277,16 @@ The body worker also emits a small snapshot of its final rig. This replaces the
 base diagram for the same intent and is reused when saving a copy. Late base
 replies cannot downgrade it, including after cache eviction. A failed preview
 worker leaves labeled authored-pose fallbacks and does not affect the main solve.
+
+## Joint intent and solved values
+
+Catalog scene actors store requested `joints` and an optional `jointMode`.
+Validation normalizes omitted modes to `guided`; `fixed` preserves the specified
+channels whenever the rig is refreshed. Preview keys include this behavior so a
+fixed scene cannot reuse a guided scene's solved diagram by accident.
+
+Worker summaries carry a separate `actors[].joints` table copied from the solved
+rig. The inspector displays this table without writing it back into the authored
+scene. New requests clear the old readout, and only the matching worker result
+can populate it. This separation keeps save/export/history about user intent
+while making solver adjustments visible.

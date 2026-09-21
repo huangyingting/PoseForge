@@ -1,5 +1,5 @@
 /** Portable, versioned scene presets. No browser or renderer dependencies. */
-import { validateScene, BODY_TYPES } from "./scene.js";
+import { validateScene, BODY_TYPES, JOINT_MODES } from "./scene.js";
 import {
   POSTURE_NAMES,
   ARRANGEMENT_NAMES,
@@ -102,6 +102,8 @@ export function checkScene(input) {
       fail(`Figure ${index + 1}: unknown posture.`);
     if (actor.bodyType != null && !BODY_TYPES.includes(actor.bodyType))
       fail("Unknown body type.");
+    if (actor.jointMode != null && !JOINT_MODES.includes(actor.jointMode))
+      fail("Joint mode must be guided or fixed.");
     for (const [key, lo, hi] of [
       ["stature", 1.4, 2.1],
       ["build", 0.8, 1.3],

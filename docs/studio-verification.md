@@ -1,4 +1,4 @@
-# Studio verification — 2026-09-20
+# Studio verification — 2026-09-21
 
 This records the current studio implementation and its limits. Bundled entries
 use clothed reference figures, and the catalog preserves the existing named
@@ -19,6 +19,7 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 | Contact authoring | Figure/body-part pickers, strength, add/remove and visible-surface feedback exercised on desktop and mobile. Figure names survive reload and export. Removing a figure remaps surviving contacts. Custom-only mode excludes arrangement contacts from initial alignment and iterative solving; existing scenes preserve automatic behavior. |
 | Visible contact accuracy | Exact triangle-region distances replace the old unlabeled target residual. Seven dressed-model fixtures finish within 4 mm, including both body orders, same-type pairs, kneeling, varied proportions and authored wrist angles. Complete affected limbs are checked for crossings. Ground heights and pinned placement are preserved, and unrelated/self/prop collisions cannot be hidden by a lower aggregate score. |
 | Full scene fidelity | JSON round trips preserve figure properties, joint overrides, hand shapes, contacts and named camera view. Browser reload tests preserve edited height and joints, and the latest unsaved workspace. |
+| Precise joint authoring | Optional fixed mode retains specified channels through seating, contact/collision solving, surface refinement and cancellation, while unedited channels remain free. The editor shows actual solved values and clears stale values while pending. The browser flow verifies fixed values, history, saved reload, JSON export and narrow-screen accessibility. Guided mode remains the default. |
 | Safe persistence and imports | Unit tests cover invalid versions, malformed JSON, unsafe keys, unknown scene choices, invalid landmark sides, duplicate IDs, quota errors and corrupt storage. A failed import does not partially add a pack. Re-importing creates fresh IDs. Browser recovery and invalid-import flows pass. |
 | Preset geometry | All 23 entries validate structurally and render. The original eleven reference-study geometry checks still pass. The named-position audit flags 9/12 at the base-model level and 12/12 in the dressed-mesh contact audit. These receive pose notes rather than a claim of physical correctness. |
 | Body-supported placement | Adaptive clearance reduces the seated-pair base support target from 523.7 mm to 3.4 mm. Chair cases pass across all four male/female pairings; bench and stature/build variations have measured support-plane regression tests. A 96-case comparison against `969f4f8` has 12 newly clean cases, no newly flagged cases and 78 unchanged results. Dressed contact failures remain separately reported. |
@@ -31,18 +32,14 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 
 ## Commands and results
 
-- `npm test`: **166 passed**, including the original parser, geometry and
+- `npm test`: **171 passed**, including the original parser, geometry and
   architecture tests, catalog/storage tests, contact-authoring tests, clothing
   checks, triangle/surface-refinement checks and per-preset CLI selection,
   quality-dependent exit status and invalid/empty input.
 - `npm run build`: **passed**; also rebuilt by the browser test configuration.
 - `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/google/chrome/chrome npm run test:browser`:
-  **18 passed** in the complete production-build run (10.1 minutes).
-- After the final collection-filter and description-feedback changes,
-  `node --test tests/catalog.test.js tests/preview.test.js tests/cameraInput.test.js`:
-  **18 passed**; `npm run test:browser -- tests/browser/collections.spec.js`
-  with the same Chrome path: **2 passed** in a fresh production build. These are
-  two additional scenarios, for **20 distinct passing browser scenarios**.
+  **21 passed** in the complete production-build run after precise-joint
+  authoring was added (12.9 minutes).
 - After the body-supported placement and intersection-escape changes,
   `npm run test:browser -- tests/browser/catalog-camera.spec.js tests/browser/authoring.spec.js`
   with the same Chrome path: **8 passed**, with one cold-start readiness timeout
@@ -56,6 +53,10 @@ remain unresolved; loading a preset is not proof that its constraints were met.
   scenario `every existing named definition loads and renders` passed again
   (2.3 minutes), loading all twelve entries and checking discoverable quality
   notes with no normal-path page/console/request errors.
+- The precise-joint authoring browser scenario passed (2.2 minutes), including
+  stale-readout clearing, actual solved-angle checks, undo/redo, fixed/guided
+  transitions, save/reload/export and a 320 px Axe audit. An initial missing
+  accessible label was caught by the new test and corrected before this pass.
 - `node scripts/validate-surface-contacts.mjs`: **7/7 passed**; each fixture
   requires a final gap at most 4 mm and clear affected limbs. Raw coarse-model
   overlap and verified contact counts are printed separately.
@@ -146,3 +147,11 @@ A diagnostic that restricted all base-model pelvic contacts to the pelvis bone
 was not retained: it displaced one inherited layout by over a metre and worsened
 other support gaps. Base contact-region refinement needs pose-level regression
 checks, not a global replacement of the current neighborhood rule.
+
+Later seated-support trials showed why precise authoring was needed: guided IK
+could turn a requested 65-degree hip abduction into approximately 38 degrees.
+Fixed mode now makes such trial poses reproducible. Some fixed-angle trials
+brought the measured support gap below 2 mm, but still had other visible
+intersections or unmet hand contacts. None was substituted into the bundled
+catalog, and no collision/contact threshold was relaxed. Full-body clearance
+and reliable supported placement remain unfinished work.
