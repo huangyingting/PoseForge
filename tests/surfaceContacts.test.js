@@ -38,6 +38,11 @@ const base = () =>
   structuredClone(
     BUILTIN_PRESETS.find((p) => p.id === "builtin.helping-hand").scene,
   );
+const standingPair = () =>
+  structuredClone(
+    BUILTIN_PRESETS.find((p) => p.id === "builtin.named.standing_embrace")
+      .scene,
+  );
 const forScene = (solved) =>
   solved.actors.map((actor) => templates.get(actor.bodyType));
 const poses = (solved) =>
@@ -150,6 +155,121 @@ test("intersecting hands escape the target surface without moving a seated suppo
       solved.actors[1].pose.joints[joint],
       initialPoses[1].joints[joint],
     );
+});
+
+test("coupled hand-to-back reaches clear complete arms without worsening unrelated contacts or collisions", () => {
+  const solved = solveScene(checkScene(standingPair())),
+    bodies = forScene(solved),
+    initialPoses = poses(solved),
+    query = createSurfaceContactQuery(solved.actors, bodies),
+    initial = measureSurfaceSafety(solved, query),
+    before = solved.contacts.map(query);
+  assert.deepEqual(initial.limbIntersections, [true, true]);
+  refineSurfaceContacts(solved, bodies);
+  const hands = solved.quality.contactDetail.filter((c) => c.from === "hand");
+  assert.equal(hands.length, 2);
+  for (const hand of hands) {
+    assert.equal(hand.intersects, false);
+    assert.ok(
+      hand.surfaceGap <= SURFACE_CONTACT_TOLERANCE,
+      `${hand.surfaceGap} hand gap`,
+    );
+  }
+  assert.deepEqual(solved.quality.limbIntersections, [false, false]);
+  assert.ok(solved.quality.surfaceRefinement.steps <= 32);
+  for (const key of [
+    "maxDepth",
+    "maxSelfDepth",
+    "maxBodyDepth",
+    "propPenetration",
+    "totalDepth",
+  ])
+    assert.ok(solved.quality[key] <= initial[key] + 1e-8, key);
+  const violations = new Map(initial.violations.map((v) => [v.key, v.depth]));
+  assert.ok(
+    solved.quality.violations.every(
+      (v) => v.depth <= (violations.get(v.key) ?? 0) + 1e-8,
+    ),
+  );
+  assert.deepEqual(
+    solved.actors[0].pose,
+    initialPoses[0],
+    "target figure must not move",
+  );
+  solved.actors.forEach((actor, index) => {
+    assert.deepEqual(actor.pose.root, initialPoses[index].root);
+    for (const joint of [
+      "hip_l",
+      "hip_r",
+      "knee_l",
+      "knee_r",
+      "ankle_l",
+      "ankle_r",
+    ])
+      assert.deepEqual(
+        actor.pose.joints[joint],
+        initialPoses[index].joints[joint],
+      );
+  });
+  solved.contacts.forEach((contact, i) => {
+    if (contact.from !== "hand") {
+      const after = query(contact);
+      assert.equal(after.intersects, before[i].intersects);
+      assert.ok(Math.abs(after.distance - before[i].distance) < 1e-9);
+    }
+  });
+  assert.ok(
+    solved.quality.unmetContacts > 0,
+    "the remaining body gap must not be hidden",
+  );
+});
+
+test("canceling a compound hand candidate restores the rig and unpublished quality", () => {
+  const solved = solveScene(checkScene(standingPair())),
+    before = poses(solved),
+    quality = structuredClone(solved.quality),
+    steps = surfaceContactSteps(solved, forScene(solved));
+  assert.deepEqual(steps.next().value, { steps: 0 });
+  assert.deepEqual(steps.next().value, { steps: 1 });
+  assert.notDeepEqual(
+    poses(solved),
+    before,
+    "fixture must accept a compound candidate",
+  );
+  assert.deepEqual(solved.quality, quality);
+  steps.return();
+  assert.deepEqual(poses(solved), before);
+  assert.deepEqual(solved.quality, quality);
+});
+
+test("hand-to-body candidates obey the shared work budget and preserve authored channels", () => {
+  for (const maxSteps of [0, 1, 3]) {
+    const solved = solveScene(checkScene(standingPair()));
+    refineSurfaceContacts(solved, forScene(solved), { maxSteps });
+    assert.ok(solved.quality.surfaceRefinement.steps <= maxSteps);
+  }
+  for (const jointMode of ["guided", "fixed"]) {
+    const spec = standingPair();
+    spec.actors[1].jointMode = jointMode;
+    spec.actors[1].joints = {
+      wrist_l: { flexion: 0, abduction: 0 },
+      elbow_r: { rotation: 0 },
+      ...(jointMode === "fixed" ? { shoulder_r: { abduction: 12 } } : {}),
+    };
+    const solved = solveScene(checkScene(spec)),
+      before = poses(solved);
+    refineSurfaceContacts(solved, forScene(solved), { maxSteps: 8 });
+    assert.deepEqual(
+      solved.actors[1].pose.joints.wrist_l,
+      before[1].joints.wrist_l,
+    );
+    assert.equal(
+      solved.actors[1].pose.joints.elbow_r.rotation,
+      before[1].joints.elbow_r.rotation,
+    );
+    if (jointMode === "fixed")
+      assert.equal(solved.actors[1].pose.joints.shoulder_r.abduction, 12);
+  }
 });
 
 test("rendered hand-to-forearm distance closes without added collisions or source-template mutations", () => {
@@ -311,6 +431,26 @@ test("explicitly pinned figures keep their root position during surface refineme
     before = [...solved.actors[0].pose.root.position];
   refineSurfaceContacts(solved, forScene(solved));
   assert.deepEqual(solved.actors[0].pose.root.position, before);
+});
+
+test("clear distant limbs use crossing checks without unnecessary exact distance searches", () => {
+  const solved = solveScene(checkScene(base()));
+  solved.actors[1].pose.root.position[0] += 3;
+  refresh(solved.actors[1]);
+  const query = createSurfaceContactQuery(solved.actors, forScene(solved));
+  const original = query.limbs;
+  let exact = 0,
+    crossings = 0;
+  query.limbs = (group, crossingsOnly = false) => {
+    if (crossingsOnly) crossings++;
+    else exact++;
+    return original(group, crossingsOnly);
+  };
+  const safety = measureSurfaceSafety(solved, query);
+  assert.ok(crossings > 0, "whole-limb crossing checks must still run");
+  assert.equal(exact, 0);
+  assert.ok(safety.limbIntersections.every((hit) => !hit));
+  assert.equal(safety.verifiedProxyContacts, 0);
 });
 
 test("canceling incremental refinement restores the original rig without publishing partial measurements", () => {

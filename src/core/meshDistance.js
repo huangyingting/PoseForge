@@ -113,22 +113,12 @@ function crossing(start, end, triangle) {
   return mix(start, end, t);
 }
 
-export function triangleDistance(a, b) {
+function triangleCrossing(a, b) {
   const edges = [
     [0, 1],
     [1, 2],
     [2, 0],
   ];
-  const unitNormal = (triangle) => {
-    const n = v3cross(
-      v3sub(triangle[1], triangle[0]),
-      v3sub(triangle[2], triangle[0]),
-    );
-    const length = Math.hypot(...n);
-    return length > 1e-14 ? n.map((v) => v / length) : null;
-  };
-  const normalA = unitNormal(a),
-    normalB = unitNormal(b);
   for (const [x, y] of edges) {
     const p = crossing(a[x], a[y], b) ?? crossing(b[x], b[y], a);
     if (p) {
@@ -144,6 +134,27 @@ export function triangleDistance(a, b) {
       };
     }
   }
+  return null;
+}
+
+export function triangleDistance(a, b) {
+  const intersection = triangleCrossing(a, b);
+  if (intersection) return intersection;
+  const edges = [
+    [0, 1],
+    [1, 2],
+    [2, 0],
+  ];
+  const unitNormal = (triangle) => {
+    const n = v3cross(
+      v3sub(triangle[1], triangle[0]),
+      v3sub(triangle[2], triangle[0]),
+    );
+    const length = Math.hypot(...n);
+    return length > 1e-14 ? n.map((v) => v / length) : null;
+  };
+  const normalA = unitNormal(a),
+    normalB = unitNormal(b);
   let best = { squared: Infinity, intersects: false };
   const keep = (from, to) => {
     const distance = squared(from, to);
@@ -202,13 +213,15 @@ function branch(triangles) {
 /** Parts are already posed; only supplied triangle indices enter the tree. */
 export function buildTriangleTree(parts) {
   const triangles = [];
-  for (const part of parts)
+  for (const [partIndex, part] of parts.entries())
     for (let i = 0; i < part.indices.length; i += 3) {
       const points = [0, 1, 2].map((k) =>
         point(part.positions, part.indices[i + k]),
       );
       if (!points.flat().every(Number.isFinite)) continue;
       const triangle = {
+        part: partIndex,
+        vertices: Array.from(part.indices.slice(i, i + 3)),
         points,
         center: [0, 1, 2].map(
           (k) => (points[0][k] + points[1][k] + points[2][k]) / 3,
@@ -217,13 +230,69 @@ export function buildTriangleTree(parts) {
       Object.assign(triangle, bounds([triangle]));
       triangles.push(triangle);
     }
-  return triangles.length ? branch(triangles) : null;
+  return triangles.length
+    ? {
+        ...branch(triangles),
+        topology: parts.map((part) => Array.from(part.indices)),
+      }
+    : null;
 }
 
-/** Exact minimum over the supplied triangles; crossings are reported separately. */
-export function closestMeshPoints(a, b) {
+/** Update an immutable hierarchy for new vertex positions. Changed topology or
+ * missing/nonfinite triangles rebuild instead, so no old coverage can leak in. */
+export function refitTriangleTree(previous, parts) {
+  const topology = previous?.topology;
+  if (
+    !topology ||
+    topology.length !== parts.length ||
+    previous.count !==
+      topology.reduce((sum, indices) => sum + indices.length / 3, 0) ||
+    topology.some(
+      (indices, i) =>
+        indices.length !== parts[i].indices.length ||
+        indices.some((value, k) => value !== parts[i].indices[k]),
+    )
+  )
+    return buildTriangleTree(parts);
+
+  function refit(node) {
+    if (node.triangles) {
+      const triangles = [];
+      for (const triangle of node.triangles) {
+        const points = triangle.vertices.map((vertex) =>
+          point(parts[triangle.part].positions, vertex),
+        );
+        if (points.some((p) => p.some((value) => !Number.isFinite(value))))
+          return null;
+        triangles.push({
+          part: triangle.part,
+          vertices: triangle.vertices,
+          points,
+          ...bounds([{ points }]),
+        });
+      }
+      return { triangles, count: triangles.length, ...bounds(triangles) };
+    }
+    const left = refit(node.left),
+      right = refit(node.right);
+    if (!left || !right) return null;
+    return {
+      left,
+      right,
+      count: node.count,
+      min: left.min.map((value, k) => Math.min(value, right.min[k])),
+      max: left.max.map((value, k) => Math.max(value, right.max[k])),
+    };
+  }
+  const result = refit(previous);
+  return result ? { ...result, topology } : buildTriangleTree(parts);
+}
+
+/** Exact minimum over supplied triangles. Crossing-only queries omit distance
+ * and orientation when clear; they still use the same triangle crossing test. */
+export function closestMeshPoints(a, b, { crossingsOnly = false } = {}) {
   if (!a || !b) return null;
-  let best = { squared: Infinity };
+  let best = { squared: crossingsOnly ? 0 : Infinity };
   const stack = [[a, b]];
   while (stack.length) {
     const [left, right] = stack.pop();
@@ -232,7 +301,10 @@ export function closestMeshPoints(a, b) {
       for (const x of left.triangles)
         for (const y of right.triangles) {
           if (boxDistance(x, y) > best.squared + EPS) continue;
-          const found = triangleDistance(x.points, y.points);
+          const found = crossingsOnly
+            ? triangleCrossing(x.points, y.points)
+            : triangleDistance(x.points, y.points);
+          if (!found) continue;
           if (found.intersects) return found;
           if (found.squared < best.squared) best = found;
         }
@@ -254,5 +326,9 @@ export function closestMeshPoints(a, b) {
       stack.push(...candidates);
     }
   }
-  return Number.isFinite(best.squared) ? best : null;
+  return crossingsOnly
+    ? { intersects: false }
+    : Number.isFinite(best.squared)
+      ? best
+      : null;
 }

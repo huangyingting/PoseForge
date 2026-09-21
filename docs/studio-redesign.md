@@ -215,3 +215,37 @@ both preserved and free channels, invalid imports, default compatibility,
 rendered refinement/cancellation, and the browser editor's actual solved values.
 This is authoring control, not a claim that fixed constraints always admit a
 collision-free solution. The unresolved named-preset geometry gate stays open.
+
+## Collision-aware hand-to-body contact placement
+
+Standing-pair trials exposed a local placement trap: moving a wrist or turning
+it alone cannot always free a hand whose arm approaches through the target body.
+A bounded fallback should combine free forearm rotation, wrist orientation and
+an IK reach toward a nearby point in the existing named torso region. Candidate
+frames come from the target landmark and the moving shoulder, not preset IDs.
+After a valid candidate, small corrections should retain its elbow bend plane.
+
+For a limb-to-body contact, verify the complete limb against the complete other
+figure, not only the small named patch. A coarse overlap may be superseded only
+when those rendered surfaces are clear and outward-facing. Preserve raw proxy
+diagnostics and retain the existing self, furniture and unrelated-pair guards.
+No contact is complete until its measured gap is at most 4 mm with no crossing.
+
+Keep the search inside the existing candidate budget and yield between trials.
+Do not overwrite explicit wrist settings or forearm-twist settings; fixed
+channels still apply at every refresh. Verify real dressed standing contacts,
+authored constraints, cancellation, the existing gesture fixtures and browser
+flows. A remaining body-to-body gap is still a failed constraint, not permission
+to remove it or weaken the acceptance gate.
+
+Performance is part of this contract. Whole-limb guards use a crossing-only
+hierarchy traversal; exact nearest points and facing are computed lazily only
+for real proxy overlaps that may qualify for reconciliation. A clear crossing
+query does not claim a distance, facing orientation or permission to suppress a
+proxy overlap. This retains the same triangle crossing test and geometry
+coverage without paying for unrelated nearest-distance searches per candidate.
+Whole-scope triangle sets have stable topology during posing. Refit their bounds
+and vertex coordinates instead of sorting a new hierarchy for every candidate.
+Return a new tree identity so query caches cannot reuse stale measurements;
+rebuild if topology changes or geometry becomes unavailable. Validate against
+fresh trees, including large moves and missing triangles restored later.

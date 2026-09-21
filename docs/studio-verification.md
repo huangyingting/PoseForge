@@ -24,6 +24,7 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 | Preset geometry | All 23 entries validate structurally and render. The original eleven reference-study geometry checks still pass. The named-position audit flags 9/12 at the base-model level and 12/12 in the dressed-mesh contact audit. These receive pose notes rather than a claim of physical correctness. |
 | Body-supported placement | Adaptive clearance reduces the seated-pair base support target from 523.7 mm to 3.4 mm. Chair cases pass across all four male/female pairings; bench and stature/build variations have measured support-plane regression tests. A 96-case comparison against `969f4f8` has 12 newly clean cases, no newly flagged cases and 78 unchanged results. Dressed contact failures remain separately reported. |
 | Surface-intersection escape | Bidirectional bounded IK trials clear both hand/arm intersections in the seated-support fixture, ending at approximately 2.3 mm and 1.8 mm. The supporting figure, both roots and lower-body joints stay unchanged; individual collision pairs and aggregate residuals cannot worsen. The lap target remains unresolved. |
+| Hand-to-body geometry | Coordinated free-arm reaches clear both standing-embrace hand/arm intersections at approximately 2.2 mm. The complete arms are checked against the entire target figure, including colored auxiliary meshes. Regression tests cover distant crossings, both contact directions, explicit angles, fixed channels, bounded work and cancellation. Roots, lower-body joints and the target figure remain unchanged; the separate body gap is still flagged. |
 | Anatomical region selection | Lap queries now include declared thigh-owned surfaces while retaining the original radius and regional weight threshold. Synthetic patches verify both sides, pose/stature/heading changes and exclusion of distant knee surfaces, unrelated bones and small weight tails. The seated lap gap is now measured at 107.5 mm, not reported as fixed. |
 | Description feedback | Unread text warnings survive worker rendering and draft reload. Catalog captions no longer overwrite the original text command. Pending poses do not retain stale quality notes. |
 | Exports | Real PNG, transparent PNG, SVG and JSON downloaded. PNG pixels decoded: opaque image content present; background corner alpha is 255 for standard PNG and 0 for transparent PNG. JSON is re-importable. |
@@ -32,10 +33,38 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 
 ## Commands and results
 
-- `npm test`: **171 passed**, including the original parser, geometry and
+- `npm test`: **179 passed**, including the original parser, geometry and
   architecture tests, catalog/storage tests, contact-authoring tests, clothing
   checks, triangle/surface-refinement checks and per-preset CLI selection,
   quality-dependent exit status and invalid/empty input.
+- After the hand-to-body changes and query optimizations, the complete
+  **179-test run passed** (33.1 seconds), including eight new regressions. The
+  focused surface/region/triangle suite passed all **29 tests**. The seven
+  dressed contact fixtures passed again.
+- An all-named-presets browser check initially timed out at the unchanged
+  30-second readiness limit on the second named entry, both in the combined
+  targeted run and in isolation. A Node CPU profile identified unnecessary exact
+  whole-limb nearest-distance calculations. Separating crossing-only checks from
+  the lazy proxy-facing query reduced that fixture's measured refinement time
+  from **12.2 seconds to 5.2 seconds**, with identical contact results and the
+  same 32 candidates. Neither the collision coverage nor the browser timeout
+  was relaxed.
+- The next browser run cleared that entry but exposed a later timeout at lotus.
+  Its profile showed repeated full-figure hierarchy builds during free-arm
+  trials. Immutable whole-scope refits reduced the measured Node refinement
+  time from **21.5 seconds to 9.2 seconds**, again with identical reported
+  contacts and the same 32 candidates. Tests compare refits with rebuilt trees
+  and cover moved geometry, changed indices, missing/restored triangles and
+  preservation of previous queries. An attempted safety-check reordering did
+  not improve the measured time and was not retained.
+- After both performance fixes, the production-build browser selection
+  `every existing named|rapid preset changes|fixed edited channels` passed
+  **3/3 scenarios** (4.5 minutes). The all-twelve catalog scenario passed in
+  2.3 minutes with its original readiness timeout and no page, console or
+  request failures. The precise-joint flow passed in 1.8 minutes, including
+  history, save/reload, export and narrow-screen accessibility. The complete
+  21-scenario result below belongs to the preceding precise-authoring iteration;
+  this latest run is the targeted three-scenario gate, not a new full-suite run.
 - `npm run build`: **passed**; also rebuilt by the browser test configuration.
 - `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/google/chrome/chrome npm run test:browser`:
   **21 passed** in the complete production-build run after precise-joint
@@ -72,16 +101,18 @@ remain unresolved; loading a preset is not proof that its constraints were met.
   targets with the parent commit, not just the intended chair fixture.
 - `node scripts/validate-named-presets.mjs`: **3/12 without base-model flags;
   9 require review**. `node scripts/validate-named-presets.mjs --rendered`:
-  **0/12 without rendered-contact flags; 12 require review**. The final rendered
-  audit was interrupted after eleven entries; the last entry was audited with
-  `--rendered --preset builtin.named.standing_embrace`. All twelve case results
-  are accounted for. The second mode uses the same dressed-template construction
-  and refinement as the viewport, and prints base targets, surface gaps and
-  intersection flags separately.
+  **0/12 without rendered-contact flags; 12 require review**. The complete
+  rendered audit ran again after the hand-to-body and query-performance changes.
+  It uses the same dressed-template construction and refinement as the viewport,
+  and prints base targets, surface gaps and intersection flags separately.
 - After the lap-region correction, individual rendered audits for
   `builtin.named.chair_straddle` and `builtin.named.lotus` both correctly remain
   nonzero. Their lap-region gaps are approximately 108 mm and 24 mm respectively;
   the chair case's hand contacts remain clear at approximately 2 mm.
+- After coordinated hand-to-body refinement, the individual rendered audit for
+  `builtin.named.standing_embrace` still exits 1 honestly: the two hand gaps are
+  approximately 2.2 mm without crossings, chest is about 1 mm, and the pelvic
+  gap remains about 10 mm. A clothed 640×640 CLI render was inspected.
 - `git diff --check`: **passed**.
 
 The browser runner uses installed Chrome and software WebGL (SwiftShader).
@@ -155,3 +186,11 @@ brought the measured support gap below 2 mm, but still had other visible
 intersections or unmet hand contacts. None was substituted into the bundled
 catalog, and no collision/contact threshold was relaxed. Full-body clearance
 and reliable supported placement remain unfinished work.
+
+The later standing-hand improvement does not yet include a universal final
+figure/figure triangle audit. An independent whole-figure query detects a toe
+crossing after the hands are clear. A coupled root/torso/stance experiment found
+candidates with all four local gaps under 3 mm and no figure/figure triangle
+crossings, but that experiment has not been integrated or accepted as production
+behavior. End-frame/support preservation, authored constraints, bounded search
+and whole-scene regressions are still required before adopting it.

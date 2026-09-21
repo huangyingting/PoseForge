@@ -15,6 +15,11 @@ weights, posed vertices and dressed triangle indices as the renderer. Entire
 connected limbs are checked as well: a clear hand/forearm target must not conceal
 an intersection with the nearby wrist or hand.
 
+For a limb-to-body contact, that complete limb is checked against the complete
+target figure, including colored auxiliary geometry. The regional query still
+uses its anatomical ownership and radius. Synthetic patches verify that a clear
+local contact cannot hide a distant crossing, in either contact direction.
+
 Default surface ownership comes from the landmark's complete `bones` list, not
 only its primary bone; specialized limb and torso rules remain in place. A foot
 includes its toe segment, and a lap includes the pelvis and adjacent thigh bones.
@@ -44,6 +49,14 @@ increasing offsets, bounded at 96 mm before contact-weight blending. This is a
 candidate search, not permission to move through another body: every accepted
 candidate must pass the same per-pair, aggregate and new-intersection guards.
 
+A hand approaching a torso can need a coordinated change rather than an isolated
+wrist turn. Free hand-to-torso trials combine forearm twist, wrist orientation
+and an IK reach toward a nearby, anatomically framed point in the same target
+region. Subsequent small corrections retain the current elbow bend direction.
+Explicit wrist settings or forearm rotation disable these compound trials;
+fixed channels are still enforced by every refresh. Each candidate uses one
+step of the shared budget and yields for cancellation, restoring rejected rigs.
+
 A coarse capsule can report overlap even when the visible limbs are separate.
 Such a discrepancy is reconciled only for the declared limb pair, after checking
 the complete visible limbs for triangle crossings and outward-facing clearance.
@@ -52,6 +65,21 @@ of reconciled contacts is `verifiedProxyContacts`. Missing geometry cannot grant
 an exception. Self-collisions, props and unrelated body pairs remain guarded.
 The guard compares individual unresolved collision pairs as well as aggregate
 depths, so a smaller maximum cannot hide a newly introduced collision elsewhere.
+
+Whole-limb checks use an exact crossing-only traversal when distance is not
+needed. Clear results contain no distance or orientation claim. A real proxy
+overlap still triggers the full nearest-pair/facing query before it can be
+reconciled; missing geometry still grants no exception. Unit tests verify both
+query modes agree about crossings and that distant clear limbs do not perform
+unnecessary exact-distance searches.
+
+Whole-scope hierarchies are refitted to each new pose without re-sorting their
+unchanged triangle sets. The trees and their query identities remain immutable:
+old measurements cannot become new-pose evidence. Changed indices or missing /
+nonfinite triangles force a rebuild, including when previously missing geometry
+returns. Regional trees are still rebuilt because their spatial membership can
+change with the pose. Tests compare refits with fresh exact and crossing-only
+queries after large moves, while preserving the old tree and its measurements.
 
 The normal budget is eight passes and 32 candidate steps. The worker consumes a
 generator and yields between contact updates, allowing newer requests to cancel
@@ -99,6 +127,14 @@ targets, within the normal 32-candidate budget. The supporting figure, both
 roots and lower-body joints remain unchanged, and no unresolved collision pair
 worsens. The separate lap-region target still fails; resolving the hands does
 not make the whole preset pass.
+
+The dressed standing-embrace regression likewise starts with both hands/arms
+crossing the target. Coordinated reaches finish at approximately 2.2 mm on both
+sides, with clear complete arms, unchanged roots/lower bodies/target figure and
+no worsened self, prop or individual unresolved collision pair. Its chest gap
+stays near 1 mm and its pelvic gap near 10 mm. That remaining contact still fails.
+A separate whole-figure diagnostic also detects a pre-existing toe crossing;
+the current limb-contact audit must not be read as universal figure clearance.
 
 These are specified fixtures, not proof that arbitrary conflicting contacts can
 all be satisfied. Region boundaries depend on skin weights, and collision

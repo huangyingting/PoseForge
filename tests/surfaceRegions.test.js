@@ -172,3 +172,46 @@ test("whole-group safety coverage is not a substitute for a named pelvic region"
     "whole-group collision checks must still cover skin-weight tails",
   );
 });
+
+test("limb-to-body checks catch crossings outside the named patch, including colored auxiliary meshes", () => {
+  for (const auxiliary of [false, true]) {
+    const actors = pair(),
+      proximal = patchTemplate(),
+      distant = patchTemplate({ down: 0.5 }),
+      crossing = patchTemplate({ down: 0.5 }).submeshes[0];
+    actors[0].pose.root.position[2] += 0.01;
+    refresh(actors[0]);
+    crossing.positions[2] -= 0.03;
+    crossing.positions[5] += 0.03;
+    crossing.positions[8] += 0.03;
+    if (auxiliary) {
+      crossing.primary = false;
+      crossing.colour = [0.2, 0.3, 0.4];
+    }
+    const source = {
+      ...rig,
+      submeshes: [...proximal.submeshes, ...distant.submeshes],
+    };
+    const clear = createSurfaceContactQuery(actors, [source, proximal])(
+      contact,
+    );
+    assert.ok(clear.distance > 0.009);
+    assert.equal(clear.intersects, false);
+    const target = { ...rig, submeshes: [...proximal.submeshes, crossing] };
+    const query = createSurfaceContactQuery(actors, [source, target]);
+    const measured = query(contact);
+    assert.ok(Math.abs(measured.distance - clear.distance) < 1e-9);
+    assert.equal(measured.regionIntersects, false);
+    assert.equal(measured.limbIntersects, true);
+    assert.equal(measured.intersects, true);
+    const reverse = query({
+      fromActor: 1,
+      toActor: 0,
+      from: "lap",
+      to: "thigh",
+      toSide: "l",
+    });
+    assert.equal(reverse.regionIntersects, false);
+    assert.equal(reverse.limbIntersects, true);
+  }
+});

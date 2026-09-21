@@ -1,14 +1,23 @@
 /** Rendered-surface measurements and collision-checked free-limb corrections. */
 import { skinHumanMesh } from "./humanMesh.js";
-import { landmarkPoint, resolveLandmark } from "./landmarks.js";
+import {
+  landmarkPoint,
+  landmarkSurface,
+  resolveLandmark,
+} from "./landmarks.js";
 import { LIMB_CHAINS, solveTwoBoneIK } from "./ik.js";
+import { clamp, quatRotate, v3dot, v3sub } from "./math.js";
 import {
   chainForBone,
   refresh,
   measureSceneSafety,
   measureContactTargets,
 } from "./solver.js";
-import { buildTriangleTree, closestMeshPoints } from "./meshDistance.js";
+import {
+  buildTriangleTree,
+  refitTriangleTree,
+  closestMeshPoints,
+} from "./meshDistance.js";
 
 export const SURFACE_CONTACT_TOLERANCE = 0.004;
 const vDistanceSq = (a, b) =>
@@ -87,7 +96,13 @@ function topology(template, definition) {
   if (cache.has(key)) return cache.get(key);
   const bones = inheritedBones(template);
   const result = template.submeshes.map((part) => {
-    if (!part.primary && !part.garment && !part.hair && part.colour)
+    if (
+      !definition.whole &&
+      !part.primary &&
+      !part.garment &&
+      !part.hair &&
+      part.colour
+    )
       return null;
     const weight = new Float32Array(part.positions.length / 3);
     for (let v = 0; v < weight.length; v++)
@@ -116,12 +131,15 @@ function topology(template, definition) {
 /** Queries reuse posed geometry until the actor's evaluated rig changes. */
 export function createSurfaceContactQuery(actors, templates) {
   const cache = new Map();
+  const wholeTrees = new Map();
   const pairs = new WeakMap();
-  const closest = (a, b) => {
+  const crossings = new WeakMap();
+  const closest = (a, b, crossingsOnly = false) => {
     if (!a || !b) return null;
-    if (!pairs.has(a)) pairs.set(a, new WeakMap());
-    const memo = pairs.get(a);
-    if (!memo.has(b)) memo.set(b, closestMeshPoints(a, b));
+    const results = crossingsOnly ? crossings : pairs;
+    if (!results.has(a)) results.set(a, new WeakMap());
+    const memo = results.get(a);
+    if (!memo.has(b)) memo.set(b, closestMeshPoints(a, b, { crossingsOnly }));
     return memo.get(b);
   };
   function tree(index, name, side, whole = null) {
@@ -171,7 +189,12 @@ export function createSurfaceContactQuery(actors, templates) {
         }
         if (indices.length) parts.push({ positions: part.positions, indices });
       });
-      entry.trees.set(key, buildTriangleTree(parts));
+      const treeKey = `${index}:${key}`;
+      const result = whole
+        ? refitTriangleTree(wholeTrees.get(treeKey), parts)
+        : buildTriangleTree(parts);
+      if (whole) wholeTrees.set(treeKey, result);
+      entry.trees.set(key, result);
     }
     return entry.trees.get(key);
   }
@@ -181,8 +204,8 @@ export function createSurfaceContactQuery(actors, templates) {
       tree(contact.toActor, contact.to, contact.toSide),
     );
     if (!local) return null;
-    const group = limbGroup(contact);
-    const full = group && query.limbs(group);
+    const group = limbGroup(contact, actors);
+    const full = group && query.limbs(group, true);
     return full?.intersects
       ? {
           ...local,
@@ -193,30 +216,39 @@ export function createSurfaceContactQuery(actors, templates) {
         }
       : local;
   };
-  query.limbs = (group) =>
+  query.limbs = (group, crossingsOnly = false) =>
     closest(
       tree(group.fromActor, "", null, group.fromBones),
       tree(group.toActor, "", null, group.toBones),
+      crossingsOnly,
     );
   return query;
 }
 
-function limbGroup(contact) {
+function limbGroup(contact, actors) {
   const a = chainForBone(
     resolveLandmark(contact.from, contact.fromSide)?.bone ?? "",
   );
   const b = chainForBone(
     resolveLandmark(contact.to, contact.toSide)?.bone ?? "",
   );
-  if (!a || !b) return null;
+  if (!a && !b) return null;
   const chainA = LIMB_CHAINS[a],
     chainB = LIMB_CHAINS[b];
   return {
-    key: `${contact.fromActor}:${a}|${contact.toActor}:${b}`,
+    key: `${contact.fromActor}:${a ?? "body"}|${contact.toActor}:${b ?? "body"}`,
     fromActor: contact.fromActor,
     toActor: contact.toActor,
-    fromBones: new Set([chainA.root, chainA.mid, chainA.end, chainA.tip]),
-    toBones: new Set([chainB.root, chainB.mid, chainB.end, chainB.tip]),
+    fromBones: new Set(
+      chainA
+        ? [chainA.root, chainA.mid, chainA.end, chainA.tip]
+        : actors[contact.fromActor].skeleton.bones.map((bone) => bone.name),
+    ),
+    toBones: new Set(
+      chainB
+        ? [chainB.root, chainB.mid, chainB.end, chainB.tip]
+        : actors[contact.toActor].skeleton.bones.map((bone) => bone.name),
+    ),
   };
 }
 
@@ -224,7 +256,7 @@ function contactLimbGroups(solved) {
   const groups = new Map();
   for (const contact of solved.contacts) {
     if (contact.strength <= 0) continue;
-    const group = limbGroup(contact);
+    const group = limbGroup(contact, solved.actors);
     if (group) groups.set(group.key, group);
   }
   return [...groups.values()];
@@ -235,14 +267,13 @@ function contactLimbGroups(solved) {
 export function measureSurfaceSafety(solved, query) {
   const groups = contactLimbGroups(solved).map((group) => ({
     ...group,
-    result: query.limbs(group),
+    result: query.limbs(group, true),
   }));
   const verifiedPair = (contact) =>
     groups.some(
       (group) =>
         group.result &&
         !group.result.intersects &&
-        group.result.facing &&
         ((contact.bodyA === group.fromActor &&
           contact.bodyB === group.toActor &&
           group.fromBones.has(contact.volumeA.bone) &&
@@ -250,7 +281,10 @@ export function measureSurfaceSafety(solved, query) {
           (contact.bodyB === group.fromActor &&
             contact.bodyA === group.toActor &&
             group.fromBones.has(contact.volumeB.bone) &&
-            group.toBones.has(contact.volumeA.bone))),
+            group.toBones.has(contact.volumeA.bone))) &&
+        // Only proxy overlaps need an exact nearest pair and its orientation.
+        // The cheaper crossing-only traversal still checks every affected limb.
+        query.limbs(group)?.facing,
     );
   return {
     ...measureSceneSafety(solved, { verifiedPair }),
@@ -283,6 +317,55 @@ const clonePose = (actor) => ({
   ),
 });
 
+/** Nearby, anatomically framed reaches for a free hand contacting a torso. */
+function handBodyReach(actor, targetActor, contact, chain) {
+  const target = resolveLandmark(contact.to, contact.toSide);
+  if (
+    contact.from !== "hand" ||
+    !target ||
+    target.side ||
+    !target.bone.startsWith("spine") ||
+    !target.local[2] ||
+    actor.spec?.joints?.[chain.end] ||
+    actor.spec?.joints?.[chain.mid]?.rotation != null
+  )
+    return null;
+  const matrix =
+    targetActor.evaluated.matrices[targetActor.skeleton.boneIndex(target.bone)];
+  const anchor = landmarkPoint(targetActor, contact.to, contact.toSide);
+  const shoulder =
+    actor.evaluated.positions[actor.skeleton.boneIndex(chain.root)];
+  const relative = v3sub(shoulder, anchor),
+    height = targetActor.skeleton.stature;
+  const across = v3dot(relative, matrix.slice(0, 3)) / height;
+  const along = clamp(
+    v3dot(relative, matrix.slice(4, 7)) / height,
+    -0.06,
+    0.06,
+  );
+  const side = Math.sign(across) || chain.side;
+  const lateral = side * clamp(Math.abs(across), 0.06, 0.1);
+  const outward = Math.sign(target.local[2]);
+  const probe = anchor.map(
+    (value, axis) =>
+      value +
+      height *
+        (matrix[axis] * lateral +
+          matrix[4 + axis] * along +
+          matrix[8 + axis] * outward * 0.12),
+  );
+  const surface = landmarkSurface(targetActor, contact.to, probe, {
+    offset: actor.skeleton.stature * 0.018,
+    defaultSide: contact.toSide,
+  });
+  if (!surface) return null;
+  return {
+    point: surface.point,
+    pole: quatRotate(actor.pose.root.quaternion, [chain.side, 0, 1]),
+    twist: -outward * 75,
+  };
+}
+
 /** Mutates the solved rig, never the template or independent rendered vertices. */
 export function* surfaceContactSteps(
   solved,
@@ -313,8 +396,8 @@ export function* surfaceContactSteps(
     for (let pass = 0; pass < maxPasses && steps < maxSteps; pass++) {
       let improved = false;
       for (let i = 0; i < solved.contacts.length && steps < maxSteps; i++) {
-        const contact = solved.contacts[i],
-          measured = measurements[i];
+        const contact = solved.contacts[i];
+        let measured = measurements[i];
         if (
           !measured ||
           (!measured.intersects &&
@@ -375,6 +458,73 @@ export function* surfaceContactSteps(
           reasons.delete(i);
           return true;
         };
+        const targetActor = solved.actors[contact.toActor];
+        const bodyTarget = !chainForBone(
+          resolveLandmark(contact.to, contact.toSide)?.bone ?? "",
+        );
+        const reach =
+          measured.intersects &&
+          handBodyReach(actor, targetActor, contact, chain);
+        if (reach) {
+          const original = clonePose(actor);
+          for (const [twist, flexion, abduction] of [
+            [reach.twist, 45, 24],
+            [-reach.twist, 45, 24],
+            [reach.twist, 0, 24],
+            [reach.twist, 45, 0],
+          ]) {
+            if (steps >= maxSteps) break;
+            steps++;
+            actor.pose = clonePose({ pose: original });
+            actor.pose.joints[chain.mid] = actor.skeleton.clampAngles(
+              chain.mid,
+              {
+                ...actor.pose.joints[chain.mid],
+                rotation: twist,
+              },
+            );
+            actor.pose.joints[chain.end] = actor.skeleton.clampAngles(
+              chain.end,
+              {
+                ...actor.pose.joints[chain.end],
+                flexion,
+                abduction,
+              },
+            );
+            refresh(actor);
+            // Turning the palm changes its offset from the wrist. Reaching
+            // with that offset keeps the intended hand anchor, not just the
+            // wrist, near the surface while the forearm takes another route.
+            for (let repeat = 0; repeat < 3; repeat++) {
+              const hand = landmarkPoint(actor, contact.from, contact.fromSide);
+              const end =
+                actor.evaluated.positions[actor.skeleton.boneIndex(chain.end)];
+              solveTwoBoneIK(
+                actor.skeleton,
+                actor.pose,
+                chain,
+                end.map(
+                  (value, axis) => value + reach.point[axis] - hand[axis],
+                ),
+                { evaluated: actor.evaluated, pole: reach.pole, weight: 1 },
+              );
+              refresh(actor);
+            }
+            const accepted = acceptCandidate();
+            if (!accepted) {
+              actor.pose = clonePose({ pose: original });
+              refresh(actor);
+            }
+            yield { steps };
+            if (accepted) break;
+          }
+          measured = measurements[i];
+          if (
+            !measured.intersects &&
+            measured.distance <= SURFACE_CONTACT_TOLERANCE
+          )
+            continue;
+        }
         const saved = clonePose(actor);
         const end =
           actor.evaluated.positions[actor.skeleton.boneIndex(chain.end)];
@@ -400,7 +550,24 @@ export function* surfaceContactSteps(
             actor.pose,
             chain,
             target,
-            { evaluated: actor.evaluated, weight: contact.strength ?? 1 },
+            {
+              evaluated: actor.evaluated,
+              weight: contact.strength ?? 1,
+              // A small rendered correction must not reset an elbow that has
+              // already found a clear route around the other figure.
+              ...(bodyTarget
+                ? {
+                    pole: v3sub(
+                      actor.evaluated.positions[
+                        actor.skeleton.boneIndex(chain.mid)
+                      ],
+                      actor.evaluated.positions[
+                        actor.skeleton.boneIndex(chain.root)
+                      ],
+                    ),
+                  }
+                : {}),
+            },
           );
           refresh(actor);
           if (acceptCandidate()) break;
