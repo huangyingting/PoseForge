@@ -8,6 +8,10 @@ and [catalog scale verification](catalog-scale-verification.md) cover the later
 1,283-record reference index and larger persistent libraries. The documents below
 describe the underlying geometry engine.
 
+The later [compact UI plan](compact-ui-plan.md) and
+[UI verification](compact-ui-verification.md) cover the tighter layout,
+filter disclosure, denser rows, keyboard search and desktop focus mode.
+
 The 23 authored presets passed the previous complete rendered audit. The new
 reference index does not certify additional 3D poses; it labels all imported
 references separately from authored presets.

@@ -110,7 +110,21 @@ export function buildStudio(library, handlers) {
     type: "search",
     placeholder: "Find your next pose…",
     id: "catalog-search",
+    maxLength: 200,
   });
+  search.setAttribute("aria-keyshortcuts", "/");
+  const clearSearch = button(
+    "×",
+    () => {
+      search.value = "";
+      page = 0;
+      refresh();
+      search.focus();
+    },
+    "clear-search",
+  );
+  clearSearch.setAttribute("aria-label", "Clear search");
+  clearSearch.hidden = true;
   const scopes = element("div", { className: "library-scopes" });
   for (const [value, label] of [
     ["all", "All"],
@@ -151,36 +165,113 @@ export function buildStudio(library, handlers) {
     { className: "reference-group", htmlFor: group.id, hidden: true },
     [group, document.createTextNode("Group matching annotations")],
   );
-  const summary = element("p", {
-    className: "catalog-summary",
-    textContent: `${referenceManifest.records.toLocaleString("en")} source references · ${library.index().filter((p) => p.status === "verified-3d").length} verified stock presets`,
-  });
+  const filters = element(
+    "div",
+    { id: "catalog-filters", className: "catalog-filters", hidden: true },
+    [
+      element("div", { className: "category-field" }, [
+        categoryLabel,
+        category,
+      ]),
+      element("div", { className: "category-field" }, [
+        element("label", {
+          htmlFor: supportStatus.id,
+          textContent: "Support status",
+        }),
+        supportStatus,
+      ]),
+      groupField,
+    ],
+  );
+  const filterToggle = button(
+    "Filters",
+    () => setFiltersOpen(filters.hidden),
+    "filter-toggle",
+  );
+  filterToggle.setAttribute("aria-expanded", "false");
+  filterToggle.setAttribute("aria-controls", filters.id);
+  const resetFilters = button(
+    "Reset filters",
+    () => {
+      category.value = "all";
+      supportStatus.value = "all";
+      group.checked = false;
+      page = 0;
+      refresh();
+      filterToggle.focus();
+    },
+    "text-button reset-filters",
+  );
+  function setFiltersOpen(open) {
+    filters.hidden = !open;
+    filterToggle.setAttribute("aria-expanded", String(open));
+  }
+  filters.onkeydown = (event) => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    event.stopPropagation();
+    setFiltersOpen(false);
+    filterToggle.focus();
+  };
+  const newStudy = button(
+    "+ New",
+    () => handlers.newStudy(),
+    "action small new-study",
+  );
+  newStudy.setAttribute("aria-label", "+ New study");
+  const info = button(
+    "ⓘ",
+    () => {
+      const modal = dialog("About the library");
+      modal.append(
+        element("p", {
+          textContent: `${library.index().filter((p) => p.status === "verified-3d").length} verified stock 3D presets · ${referenceManifest.records.toLocaleString("en")} source references.`,
+        }),
+        element("p", {
+          textContent:
+            "References are metadata records, not additional verified 3D poses. Personal presets need their own pose checks.",
+        }),
+        element("p", {
+          textContent: `Saved in this browser using ${library.mode ?? "local storage"}. Up to 5,000 presets / 32 MB. Export JSON for a portable backup; this is not cloud storage.`,
+        }),
+        element("p", {
+          textContent:
+            "Tip: press / to search the library. Use Focus on desktop for more canvas space; Escape restores the sidebars.",
+        }),
+      );
+      modal.showModal();
+    },
+    "library-info icon-button",
+  );
+  info.setAttribute("aria-label", "About this library");
+  info.title = "Catalog counts, storage and shortcuts";
+  const filterBar = element(
+    "div",
+    { className: "library-filter-bar", hidden: true },
+    [element("span", { textContent: "Filtered results" }), resetFilters],
+  );
+  const searchBox = element("div", { className: "search-box" }, [
+    element("label", {
+      htmlFor: search.id,
+      className: "sr-only",
+      textContent: "Search presets",
+    }),
+    search,
+    clearSearch,
+  ]);
   const top = element("div", { className: "library-top" }, [
-    element("span", { className: "eyebrow", textContent: "A PLACE TO BEGIN" }),
     element("div", { className: "library-title" }, [
-      element("h2", { textContent: "The pose library" }),
+      element("h2", { textContent: "Library" }),
       count,
+      newStudy,
     ]),
-    summary,
-    button("+ New study", () => handlers.newStudy(), "action full new-study"),
-    element("div", { className: "search-box" }, [
-      element("label", {
-        htmlFor: search.id,
-        className: "sr-only",
-        textContent: "Search presets",
-      }),
-      search,
+    element("div", { className: "library-search-row" }, [
+      searchBox,
+      filterToggle,
     ]),
     scopes,
-    element("div", { className: "category-field" }, [categoryLabel, category]),
-    element("div", { className: "category-field" }, [
-      element("label", {
-        htmlFor: supportStatus.id,
-        textContent: "Support status",
-      }),
-      supportStatus,
-    ]),
-    groupField,
+    filterBar,
+    filters,
   ]);
   const list = element("div", { className: "catalog-list" });
   const pageLabel = element("span", { id: "catalog-page" });
@@ -230,9 +321,11 @@ export function buildStudio(library, handlers) {
       element("div", { className: "buttons" }, [
         button("+ Import presets", () => file.click(), "text-button"),
         exportLibrary,
+        info,
       ]),
       element("p", {
         id: "library-storage",
+        className: "sr-only",
         textContent: `Saved in this browser · ${library.mode ?? "local storage"}`,
       }),
       file,
@@ -324,12 +417,16 @@ export function buildStudio(library, handlers) {
     observer?.disconnect();
     starts.clear();
     const isReferences = scope === "references";
+    root.dataset.collection = isReferences ? "references" : "presets";
     const all = library.index();
     categoryLabel.textContent = isReferences ? "Family" : "Category";
     groupField.hidden = !isReferences;
     search.placeholder = isReferences
-      ? "Source ID, family, surface…"
-      : "Find your next pose…";
+      ? "Search references…"
+      : "Search presets…";
+    search.title = isReferences
+      ? "Search by source ID, family, surface or figure count · /"
+      : "Search presets · /";
     document.querySelector(`label[for="${search.id}"]`).textContent =
       isReferences ? "Search references" : "Search presets";
     const oldCategory = category.value || "all";
@@ -351,6 +448,17 @@ export function buildStudio(library, handlers) {
     category.value = [...category.options].some((o) => o.value === oldCategory)
       ? oldCategory
       : "all";
+    clearSearch.hidden = !search.value;
+    const activeFilters =
+      Number(category.value !== "all") +
+      Number(supportStatus.value !== "all") +
+      Number(isReferences && group.checked);
+    filterToggle.textContent = activeFilters
+      ? `Filters (${activeFilters})`
+      : "Filters";
+    filterToggle.setAttribute("aria-label", filterToggle.textContent);
+    resetFilters.hidden = activeFilters === 0;
+    filterBar.hidden = activeFilters === 0;
     scopes.querySelectorAll("button").forEach((node) => {
       const active = scope === node.dataset.scope;
       node.classList.toggle("active", active);
@@ -378,6 +486,7 @@ export function buildStudio(library, handlers) {
       const choose = button("", () => handlers.select(preset), "preset-select");
       choose.dataset.preset = preset.id;
       choose.setAttribute("aria-label", `Load ${preset.title}`);
+      choose.title = preset.title;
       choose.setAttribute("aria-pressed", String(preset.id === selected));
       const picture = element(
         "span",
@@ -507,6 +616,7 @@ export function buildStudio(library, handlers) {
               supportStatus.value = "all";
               search.value = "";
               category.value = "all";
+              group.checked = false;
               refresh();
             },
             "text-button",
@@ -589,22 +699,22 @@ export function buildStudio(library, handlers) {
           textContent: String(entry.figures),
           ariaHidden: "true",
         }),
-        element("strong", { textContent: entry.sourceId }),
-        element("span", { textContent: entry.family }),
-        element("small", {
-          textContent: `${entry.figures} figures · ${entry.surface}`,
-        }),
-        element("span", {
-          className: "support-badge",
-          textContent: "Reference only",
-        }),
-        ...(entry.members
-          ? [
-              element("small", {
-                textContent: `${entry.members.length} matching records`,
-              }),
-            ]
-          : []),
+        element("span", { className: "reference-info" }, [
+          element("span", { className: "reference-line" }, [
+            element("strong", { textContent: entry.sourceId }),
+            element("span", {
+              className: "support-badge",
+              textContent: "Reference only",
+            }),
+          ]),
+          element("span", {
+            className: "reference-family",
+            textContent: entry.family,
+          }),
+          element("small", {
+            textContent: `${entry.figures} figures · ${entry.surface}${entry.members ? ` · ${entry.members.length} matching records` : ""}`,
+          }),
+        ]),
       );
       list.append(
         element("article", { className: "reference-card" }, [choose]),
@@ -796,6 +906,11 @@ export function buildStudio(library, handlers) {
   return {
     refresh,
     openSave,
+    focusSearch() {
+      showRegion("library");
+      search.focus();
+      search.select();
+    },
     setPreview(scene, preview) {
       previews.remember(scene, preview);
     },

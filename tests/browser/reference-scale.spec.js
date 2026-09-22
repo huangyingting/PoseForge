@@ -10,6 +10,7 @@ import {
 } from "../../src/core/catalog.js";
 import { fourFigureLibrary } from "../fixtures/fourFigureLibrary.js";
 import { ready } from "./helpers/ready.js";
+import { openLibraryFilters } from "./helpers/library.js";
 const references = async (page) => {
   await page.getByRole("button", { name: "References", exact: true }).click();
   await expect(page.locator(".reference-card")).toHaveCount(24);
@@ -97,6 +98,7 @@ test("reference families, annotation groups, statuses and mobile controls remain
   await page.goto("/?preset=builtin.standing-female");
   await ready(page);
   await references(page);
+  await openLibraryFilters(page);
   for (const [family, count] of Object.entries(manifest.families)) {
     await page.getByLabel("Family", { exact: true }).selectOption(family);
     await expect(page.locator(".library-title > span")).toHaveText(
@@ -114,6 +116,7 @@ test("reference families, annotation groups, statuses and mobile controls remain
   await expect(page.locator(".empty-state")).toContainText("reference-only");
   await page.getByLabel("Support status").selectOption("all");
   await page.getByLabel("Group matching annotations").uncheck();
+  await page.getByRole("button", { name: "Filters", exact: true }).click();
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 844 });
     if (width < 760)
@@ -198,6 +201,7 @@ test("source association survives save, export and reload without inheriting a v
   await ready(page);
   await expect(page.locator("#scene-source")).toContainText("img-0001");
   await page.getByRole("button", { name: "Saved", exact: true }).click();
+  await openLibraryFilters(page);
   await page.getByLabel("Support status").selectOption("needs-adjustment");
   await expect(page.locator(".preset-card")).toHaveCount(1);
   await page.getByLabel("Support status").selectOption("verified-3d");

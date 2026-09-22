@@ -219,11 +219,7 @@ export function buildPanel(root, handlers) {
     mobileHistory.append(button);
   }
   root.append(
-    el("div", { className: "inspector-heading" }, [
-      el("span", { className: "eyebrow", textContent: "MAKE IT YOURS" }),
-      mobileHistory,
-      tabs,
-    ]),
+    el("div", { className: "inspector-heading" }, [mobileHistory, tabs]),
     scenePane,
     figurePane,
   );
@@ -236,12 +232,12 @@ export function buildPanel(root, handlers) {
     spellcheck: false,
   });
   const examples = el("div", { className: "examples" });
-  for (const example of EXAMPLES) {
+  for (const [index, example] of EXAMPLES.entries()) {
     examples.append(
       el("button", {
         className: "chip",
         type: "button",
-        textContent: example.length > 34 ? `${example.slice(0, 32)}…` : example,
+        textContent: index ? "Seated study" : "Standing study",
         title: example,
         onclick: () => {
           input.value = example;
@@ -258,7 +254,7 @@ export function buildPanel(root, handlers) {
   });
   scenePane.append(
     section(
-      "Start with words",
+      "Describe a scene",
       el("div", {}, [
         el("label", {
           className: "sr-only",

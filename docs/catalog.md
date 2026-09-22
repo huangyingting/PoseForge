@@ -9,6 +9,20 @@ intimate contact labels and private file paths are not shipped. The normal
 There are still 23 authored stock presets; indexing a reference does not add a
 corresponding verified 3D layout.
 
+The compact library keeps search and collections visible. Open **Filters** for
+category/family, support status and grouping. A count on the Filters button
+indicates active filters even while the controls are closed; **Reset filters**
+clears those filters and returns to page one. The **×** search control clears
+only the search text. **ⓘ About this library** explains catalog counts and local
+storage. These disclosures save space without hiding entry quality labels.
+
+Press **/** outside an input or dialog to reveal and focus library search.
+Desktop **Focus** hides both sidebars without changing the scene; **Escape**
+restores them. Search also exits focus mode. Small screens use the bottom
+**Library / Studio / Edit** navigation, and short landscape views scroll to keep
+controls reachable. Descriptive contact guidance is under **Contact help**;
+contact controls and measured warnings remain visible.
+
 Search references by source ID (for example `img-0001`), broad posture family,
 support surface or figure count. A standalone digit from 1 to 4 means the number
 of figures. **Family**, **Support status**, and **Group matching annotations**

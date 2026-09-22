@@ -21,16 +21,19 @@
       <header class="topbar">
         <a class="brand" href="./" aria-label="PoseForge home"
           ><span class="brand-mark">p<span>f</span></span
-          ><span
-            >PoseForge<span class="brand-sub"
-              >A LITTLE SPACE TO CREATE</span
-            ></span
-          ></a
+          ><span>PoseForge</span></a
         >
-        <span class="workspace-label"
-          >Your pose studio <span class="version-badge">01</span></span
-        >
+        <span class="workspace-label">Pose studio</span>
         <div class="header-actions">
+          <button
+            id="focus-view"
+            class="action focus-toggle"
+            aria-label="Focus view"
+            aria-pressed="false"
+            title="Focus view · Escape to exit"
+          >
+            Focus
+          </button>
           <div class="history-actions">
             <button
               id="undo"
@@ -60,7 +63,6 @@
       <main id="stage" aria-label="3D studio">
         <div class="stage-heading">
           <div>
-            <span class="eyebrow">THE STUDIO</span>
             <h1 id="scene-title">Side by side</h1>
             <p id="scene-description">
               A little inspiration. Endless possibilities.

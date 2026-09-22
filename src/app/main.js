@@ -12,10 +12,12 @@ import { DRAFT_KEY } from "./libraryStore.js";
 import { createPersistentLibrary } from "./persistentLibrary.js";
 import { buildStudio, toast, showRegion, openExport } from "./studioUI.js";
 import { bindCameraInput } from "./cameraInput.js";
+import { bindWorkspaceLayout } from "./workspaceLayout.js";
 
 const $ = (id) => document.getElementById(id);
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const canvas = $("viewport");
+const workspace = bindWorkspaceLayout($("app"), $("focus-view"));
 let storage;
 try {
   storage = localStorage;
@@ -109,6 +111,7 @@ function heading() {
   $("scene-title").title = current.title;
   $("scene-description").textContent =
     current.description || "Your scene. Your point of view.";
+  $("scene-description").title = $("scene-description").textContent;
   $("scene-badge").textContent = current.dirty
     ? "Unsaved changes"
     : current.id?.startsWith("user.")
@@ -432,9 +435,15 @@ $("redo").onclick = () => travel("redo");
 document.addEventListener("keydown", (event) => {
   if (
     document.querySelector("dialog[open]") ||
-    /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)
+    /INPUT|TEXTAREA|SELECT/.test(event.target.tagName) ||
+    event.target.isContentEditable
   )
     return;
+  if (event.key === "/" && !event.ctrlKey && !event.metaKey && !event.altKey) {
+    event.preventDefault();
+    workspace.setFocus(false);
+    studio.focusSearch();
+  }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
     event.preventDefault();
     travel(event.shiftKey ? "redo" : "undo");
@@ -455,6 +464,7 @@ document.querySelector(".skip-link").onclick = (event) => {
 window.addEventListener("pagehide", (event) => {
   if (!event.persisted) {
     removeCameraInput();
+    workspace.dispose();
     studio.dispose();
     library.close();
     worker.terminate();

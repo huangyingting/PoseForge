@@ -8,6 +8,7 @@ import { readFile } from "node:fs/promises";
 import AxeBuilder from "@axe-core/playwright";
 
 import { ready } from "./helpers/ready.js";
+import { openLibraryFilters } from "./helpers/library.js";
 const load = async (page, name) => {
   await page.getByRole("button", { name: `Load ${name}`, exact: true }).click();
   await ready(page);
@@ -56,6 +57,7 @@ test("catalog, figure edits, undo, save, update, duplicate, reload and delete", 
   await expect(page.locator(".preset-name").first()).toBeInViewport();
   await page.getByLabel("Search presets").fill("kneel");
   await expect(page.locator(".preset-card")).toHaveCount(6);
+  await openLibraryFilters(page);
   await page.getByLabel("Category", { exact: true }).selectOption("Together");
   await expect(page.locator(".preset-card")).toHaveCount(1);
   await page.getByLabel("Search presets").fill("");

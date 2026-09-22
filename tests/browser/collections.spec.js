@@ -1,4 +1,5 @@
 import { ready } from "./helpers/ready.js";
+import { openLibraryFilters } from "./helpers/library.js";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
@@ -13,6 +14,7 @@ test("positions are a visible collection and collection filters stay usable on n
   await expect(
     page.getByRole("button", { name: "Load Missionary", exact: true }),
   ).toBeVisible();
+  await openLibraryFilters(page);
   await page.getByLabel("Category", { exact: true }).selectOption("Side-lying");
   await expect(page.locator(".preset-card")).toHaveCount(2);
   await page.getByLabel("Category", { exact: true }).selectOption("all");

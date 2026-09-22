@@ -108,16 +108,19 @@ export function createContactEditor(onChange) {
     { className: "contact-editor", id: "contact-editor" },
     [
       node("h2", { textContent: "Partner contacts" }),
-      node("p", {
-        className: "hint",
-        textContent:
-          "Choose which parts should meet. A free limb may adjust on either side. Results measure visible surfaces when available; body-model estimates are labeled.",
-      }),
-      node("p", {
-        className: "hint",
-        textContent:
-          "Support contacts with nonzero pull let a hand hold a mounted figure's supporting knee or forearm off the surface. Rest and grip contacts keep the usual surface support.",
-      }),
+      node("details", { className: "contact-help" }, [
+        node("summary", { textContent: "Contact help" }),
+        node("p", {
+          className: "hint",
+          textContent:
+            "Choose which parts should meet. A free limb may adjust on either side. Results measure visible surfaces when available; body-model estimates are labeled.",
+        }),
+        node("p", {
+          className: "hint",
+          textContent:
+            "Support contacts with nonzero pull let a hand hold a mounted figure's supporting knee or forearm off the surface. Rest and grip contacts keep the usual surface support.",
+        }),
+      ]),
       mode.field,
       help,
       defaults,

@@ -19,6 +19,14 @@ and accept up to **5,000 presets / 32 MB** (whichever limit is reached first).
 Both preset and reference collections use bounded 24-card pages. Reference data
 loads only when opened, independently of the 3D scene.
 
+The compact workspace keeps search beside **Filters**, with active-filter counts
+and one-click reset. Library entries use short rows with visible quality labels.
+Press **/** to search; use **Focus** on desktop for a larger canvas and **Escape**
+to restore the sidebars. Smaller screens keep **Library / Studio / Edit** one tap
+away. The library's **ⓘ** button explains source counts, storage and shortcuts.
+See the [compact UI design](docs/compact-ui-plan.md) and
+[verification](docs/compact-ui-verification.md).
+
 The joint editor shows both requested and solved angles. **Keep edited angles**
 preserves specified channels when authoring precise poses; unedited channels and
 placement remain adjustable, and conflicting constraints stay visible as notes.

@@ -1,0 +1,526 @@
+{
+  "scope": "Compact studio presentation and accessible layout controls; no geometry, catalog-data or storage-schema changes.",
+  "baselineCommit": "c39a91bc8734b189ec4791a56c04fe9bf5a633b4",
+  "recordedAt": "2026-09-22T11:27:43.230Z",
+  "environment": {
+    "node": "v24.17.0",
+    "npm": "11.13.0",
+    "browser": "Chromium 153.0.8010.12",
+    "graphics": "SwiftShader",
+    "viewports": [
+      "1440x844",
+      "1024x768",
+      "768x1024",
+      "390x844",
+      "320x700",
+      "320x844",
+      "844x390"
+    ]
+  },
+  "hashes": {
+    "method": "SHA-256 over sorted path, NUL, file contents, NUL",
+    "application": "2bb702a1f44886a9f7652968f7806c50b2a66d6dda7fcef1cbf8b36c27a440bb",
+    "applicationInputs": [
+      "index.html",
+      "src/**"
+    ],
+    "tests": "1b8e4430eb65adf332ac8d43356e633b0425b3fe2223e1650131b76fd255492b"
+  },
+  "measurements": {
+    "collection": "References",
+    "filters": "closed",
+    "before": [
+      {
+        "width": 1440,
+        "height": 844,
+        "headerHeight": 82,
+        "libraryTopHeight": 455,
+        "listHeight": 182.5,
+        "fullyVisibleCards": 2,
+        "canvasWidth": 812,
+        "canvasHeight": 515.3125
+      },
+      {
+        "width": 1024,
+        "height": 768,
+        "headerHeight": 82,
+        "libraryTopHeight": 453,
+        "listHeight": 112.5,
+        "fullyVisibleCards": 0,
+        "canvasWidth": 510,
+        "canvasHeight": 452.0625
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "headerHeight": 68,
+        "libraryTopHeight": 384.5,
+        "listHeight": 209,
+        "fullyVisibleCards": 2,
+        "canvasWidth": 0,
+        "canvasHeight": 0
+      },
+      {
+        "width": 320,
+        "height": 700,
+        "headerHeight": 68,
+        "libraryTopHeight": 415.5,
+        "listHeight": 34,
+        "fullyVisibleCards": 0,
+        "canvasWidth": 0,
+        "canvasHeight": 0
+      }
+    ],
+    "after": [
+      {
+        "width": 1440,
+        "height": 844,
+        "headerHeight": 56,
+        "libraryTopHeight": 132,
+        "listHeight": 576,
+        "fullyVisibleCards": 7,
+        "canvasWidth": 862,
+        "canvasHeight": 640.703125
+      },
+      {
+        "width": 1024,
+        "height": 768,
+        "headerHeight": 56,
+        "libraryTopHeight": 167,
+        "listHeight": 465,
+        "fullyVisibleCards": 5,
+        "canvasWidth": 502,
+        "canvasHeight": 567.203125
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "headerHeight": 56,
+        "libraryTopHeight": 152,
+        "listHeight": 676,
+        "fullyVisibleCards": 8,
+        "canvasWidth": 0,
+        "canvasHeight": 0
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "headerHeight": 56,
+        "libraryTopHeight": 152,
+        "listHeight": 496,
+        "fullyVisibleCards": 6,
+        "canvasWidth": 0,
+        "canvasHeight": 0
+      },
+      {
+        "width": 320,
+        "height": 700,
+        "headerHeight": 56,
+        "libraryTopHeight": 152,
+        "listHeight": 352,
+        "fullyVisibleCards": 4,
+        "canvasWidth": 0,
+        "canvasHeight": 0
+      }
+    ],
+    "desktopCanvasAreaIncreasePercent": 31.98889758534058,
+    "mobileHiddenCanvasIsExpected": true
+  },
+  "checks": {
+    "units": {
+      "tests": 42,
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "durationMs": 5679.090551,
+      "command": "node --test tests/architecture.test.js tests/cameraInput.test.js tests/catalog.test.js tests/referenceCatalog.test.js tests/persistentLibrary.test.js tests/preview.test.js"
+    },
+    "browser": {
+      "distinctScenarios": 36,
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "runs": [
+        {
+          "label": "regression",
+          "startTime": "2026-09-22T11:13:34.565Z",
+          "duration": 655750.0580000001,
+          "expected": 30,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        {
+          "label": "final-focused",
+          "startTime": "2026-09-22T11:25:15.843Z",
+          "duration": 55926.964,
+          "expected": 6,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        }
+      ]
+    },
+    "build": {
+      "passed": true,
+      "command": "npm run build",
+      "note": "Production build served by Playwright for both completed browser batches."
+    },
+    "dependencyAudit": {
+      "vulnerabilities": 0,
+      "command": "npm audit --json"
+    },
+    "formatting": {
+      "passed": true,
+      "tool": "Prettier",
+      "scope": "Changed HTML, JavaScript and CSS"
+    },
+    "whitespace": {
+      "passed": true,
+      "command": "git diff --check"
+    },
+    "accessibility": {
+      "automatedViolations": 0,
+      "standardTags": [
+        "wcag2a",
+        "wcag2aa",
+        "wcag21aa"
+      ],
+      "manualAndBehavioralChecks": [
+        "Focus visibility below sticky inspector tabs",
+        "Native dialog focus boundaries and restoration",
+        "Search shortcut does not intercept typing",
+        "Mobile breakpoint recovery",
+        "Short landscape scrolling",
+        "Enlarged 16px controls and reduced motion"
+      ]
+    },
+    "catalog": {
+      "sourceRecordsRetained": 1283,
+      "stockPresetsRetained": 23,
+      "allSourcePagesVisited": 54,
+      "dataChanged": false
+    },
+    "newFocusView": {
+      "extraBodySolveRequests": 0,
+      "changesScene": false
+    },
+    "unchangedLayers": [
+      "src/core",
+      "src/nlp",
+      "src/render",
+      "src/workers",
+      "assets",
+      "public",
+      "src/data",
+      "src/app/libraryStore.js",
+      "src/app/persistentLibrary.js"
+    ]
+  },
+  "browserCases": [
+    {
+      "file": "tests/browser/authoring.spec.js",
+      "title": "contact targets, figure names and custom behavior survive save, reload, export and history",
+      "id": "6887233a9b84e4e0cc39-307b76fbf85497ac742e",
+      "status": "passed",
+      "durationMs": 53761,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/authoring.spec.js",
+      "title": "contact types preserve history and saved exports while unresolved edits keep their measured warning",
+      "id": "6887233a9b84e4e0cc39-bf289144433824987c67",
+      "status": "passed",
+      "durationMs": 41018,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/authoring.spec.js",
+      "title": "new studies have independent figures and contacts can be added, swapped and removed on mobile",
+      "id": "6887233a9b84e4e0cc39-722aaceb18265049359a",
+      "status": "passed",
+      "durationMs": 42005,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/authoring.spec.js",
+      "title": "body-first contacts retain their endpoint order through the editor, saved reload and export",
+      "id": "6887233a9b84e4e0cc39-e4951ec78dc2b3bcb722",
+      "status": "passed",
+      "durationMs": 31902,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/authoring.spec.js",
+      "title": "removing a figure remaps surviving contacts and invalid imported sides cannot enter the library",
+      "id": "6887233a9b84e4e0cc39-c4dcbefb73498a2a4bf0",
+      "status": "passed",
+      "durationMs": 21568,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/authoring.spec.js",
+      "title": "missing scanned geometry is labeled as an estimate and does not taint a healthy model",
+      "id": "6887233a9b84e4e0cc39-a7b416a7f8cb358137b9",
+      "status": "passed",
+      "durationMs": 9045,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/authoring.spec.js",
+      "title": "rapid preset changes publish only the final scene and its measured contact",
+      "id": "6887233a9b84e4e0cc39-001959cd55b22c85ba92",
+      "status": "passed",
+      "durationMs": 16971,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/catalog-camera.spec.js",
+      "title": "every existing named definition loads and renders; known quality notes are discoverable",
+      "id": "52adf635cca3f3353df5-f69c2d3e5f4691be98a2",
+      "status": "passed",
+      "durationMs": 66468,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/catalog-camera.spec.js",
+      "title": "preview failure preserves the library and loading a pose supplies its final preview",
+      "id": "52adf635cca3f3353df5-cc8146f069cdca921d07",
+      "status": "passed",
+      "durationMs": 11112,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/catalog-camera.spec.js",
+      "title": "live refined previews survive filter changes and match saved copies",
+      "id": "52adf635cca3f3353df5-7d241b390eb32f986b64",
+      "status": "passed",
+      "durationMs": 12208,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/catalog-camera.spec.js",
+      "title": "trusted pinch/cancel gestures, buttons and keyboard change the rendered camera without overflow",
+      "id": "52adf635cca3f3353df5-3e2f6ad2eec5c439352c",
+      "status": "passed",
+      "durationMs": 12505,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/collections.spec.js",
+      "title": "positions are a visible collection and collection filters stay usable on narrow screens",
+      "id": "91b2bf490356a5da12b9-cf262899397d12ba7c5c",
+      "status": "passed",
+      "durationMs": 11918,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/collections.spec.js",
+      "title": "unread description text remains visible as a warning through the worker and draft reload",
+      "id": "91b2bf490356a5da12b9-debf8bd43a9aa49f5f32",
+      "status": "passed",
+      "durationMs": 23051,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "title": "all 1283 reference IDs are reachable through bounded pages without changing or solving the active scene",
+      "id": "6ffb6617ce5cfab131d4-4e0c9ae921e0be0286eb",
+      "status": "passed",
+      "durationMs": 9874,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "title": "reference families, annotation groups, statuses and mobile controls remain accessible",
+      "id": "6ffb6617ce5cfab131d4-ff25f430acc1d7e093a1",
+      "status": "passed",
+      "durationMs": 10506,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "title": "reference fetch failure is retryable and does not block preset editing",
+      "id": "6ffb6617ce5cfab131d4-724cfcafa976bf09293c",
+      "status": "passed",
+      "durationMs": 7152,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "title": "source association survives save, export and reload without inheriting a verification badge",
+      "id": "6ffb6617ce5cfab131d4-6c5f1845f070e2540338",
+      "status": "passed",
+      "durationMs": 17134,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "title": "1283 full four-figure presets persist beyond localStorage scale with bounded browsing and lossless export",
+      "id": "6ffb6617ce5cfab131d4-791f40678da3b9e60372",
+      "status": "passed",
+      "durationMs": 20916,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "title": "IndexedDB transaction failure keeps the prior saved library and permits retry",
+      "id": "6ffb6617ce5cfab131d4-abc2709fd6bd3388343e",
+      "status": "passed",
+      "durationMs": 6978,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "title": "unavailable IndexedDB has a visible functional legacy fallback",
+      "id": "6ffb6617ce5cfab131d4-e2654697341e88a03960",
+      "status": "passed",
+      "durationMs": 13586,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "title": "two real tabs reject a stale library transaction and recover on reload",
+      "id": "6ffb6617ce5cfab131d4-4820b1753376733010a1",
+      "status": "passed",
+      "durationMs": 16130,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "title": "long metadata fits narrow screens and keyboard selection preserves focus",
+      "id": "3324084181281abe3b7c-36d77a299c10a875d68c",
+      "status": "passed",
+      "durationMs": 12552,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "title": "catalog, figure edits, undo, save, update, duplicate, reload and delete",
+      "id": "3324084181281abe3b7c-a0a6eab933bac25d5cb8",
+      "status": "passed",
+      "durationMs": 30692,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "title": "valid and invalid imports are atomic, and downloaded JSON reloads",
+      "id": "3324084181281abe3b7c-ee4d849ef729bd910151",
+      "status": "passed",
+      "durationMs": 14676,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "title": "description, figure controls and workspace draft preserve the latest edits",
+      "id": "3324084181281abe3b7c-f66c2917a03b20326def",
+      "status": "passed",
+      "durationMs": 30240,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "title": "PNG, transparent PNG, SVG and editable preset downloads contain real output",
+      "id": "3324084181281abe3b7c-0d228482be28a7ea3cc0",
+      "status": "passed",
+      "durationMs": 9244,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "title": "reference studies render, camera and material work, desktop has no overflow",
+      "id": "3324084181281abe3b7c-b3b9e5b95306c24dc276",
+      "status": "passed",
+      "durationMs": 51447,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "title": "mobile library, inspector, editing, saving and export remain reachable",
+      "id": "3324084181281abe3b7c-b2325bf6776518f1ebca",
+      "status": "passed",
+      "durationMs": 17632,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "title": "desktop, mobile and save dialog meet automated accessibility checks",
+      "id": "3324084181281abe3b7c-a170b83ac549ec810b73",
+      "status": "passed",
+      "durationMs": 16646,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "title": "corrupt library can be recovered and a blocked WebGL preview keeps JSON editing usable",
+      "id": "3324084181281abe3b7c-9a6116875cb4a5cd8c17",
+      "status": "passed",
+      "durationMs": 12605,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/compact-ui.spec.js",
+      "title": "compact desktop and mobile layouts expose more rows and reserve the canvas for the scene",
+      "id": "98327f214fad1450ac0e-23336737f1c02ac0981a",
+      "status": "passed",
+      "durationMs": 8674,
+      "run": "final-focused"
+    },
+    {
+      "file": "tests/browser/compact-ui.spec.js",
+      "title": "filters disclose, stay indicated while closed, reset pagination, and clear search without losing focus",
+      "id": "98327f214fad1450ac0e-c773b1d4ac33125c0fac",
+      "status": "passed",
+      "durationMs": 7556,
+      "run": "final-focused"
+    },
+    {
+      "file": "tests/browser/compact-ui.spec.js",
+      "title": "focus view and search shortcuts preserve the scene, honor dialogs and leave typing alone",
+      "id": "98327f214fad1450ac0e-94dd479c00a30a82fa94",
+      "status": "passed",
+      "durationMs": 8783,
+      "run": "final-focused"
+    },
+    {
+      "file": "tests/browser/compact-ui.spec.js",
+      "title": "responsive transitions and short landscape screens keep editing, filters and camera actions reachable",
+      "id": "98327f214fad1450ac0e-97223fcca4003446f2a8",
+      "status": "passed",
+      "durationMs": 7683,
+      "run": "final-focused"
+    },
+    {
+      "file": "tests/browser/compact-ui.spec.js",
+      "title": "compact controls, filters, information dialogs and enlarged text remain accessible",
+      "id": "98327f214fad1450ac0e-72dabf5517e639bef854",
+      "status": "passed",
+      "durationMs": 12030,
+      "run": "final-focused"
+    },
+    {
+      "file": "tests/browser/compact-ui.spec.js",
+      "title": "keyboard-focused fields scroll below the sticky inspector tabs",
+      "id": "98327f214fad1450ac0e-d8271a6c8b9613b3f870",
+      "status": "passed",
+      "durationMs": 7467,
+      "run": "final-focused"
+    }
+  ],
+  "findingsResolved": [
+    "Decorative filter arrow entered the accessible name; explicit action/count label added and tested.",
+    "Keyboard focus could remain behind sticky inspector tabs after opening advanced controls. Scroll padding was added and verified at 390, 1440 and 320 pixels.",
+    "Existing library filter tests now open the visible Filters disclosure instead of acting on hidden controls. Their data and geometry assertions remain unchanged."
+  ],
+  "runNotes": [
+    "An initial focused run was stopped after identifying the filter-label defect. The corrected five-case focused run passed.",
+    "The 30-case regression run then passed. A final keyboard probe found the sticky-header issue; the final six-case focused run repeats all compact UI checks and includes its regression.",
+    "The previous full geometry and 423-test baseline was not rerun for this UI-only iteration. The 42 relevant unit tests and 36 browser scenarios listed here are the current evidence."
+  ],
+  "limits": [
+    "Physical-device and assistive-technology certification not claimed.",
+    "Source references remain metadata, not additional verified 3D reconstructions.",
+    "No hosting deployment or new dependency."
+  ]
+}
