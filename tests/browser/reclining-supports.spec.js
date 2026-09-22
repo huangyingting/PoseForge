@@ -1,10 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
-const ready = async (page) => {
-  await expect(page.locator("#status")).toContainText("Ready");
-  await expect(page.locator("#save-preset")).toBeEnabled();
-};
+import { ready } from "./helpers/ready.js";
 async function grounded(page, plane) {
   const report = await page.evaluate(() => window.__forearmReport);
   expect(report.actors).toHaveLength(1);

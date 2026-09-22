@@ -9,7 +9,9 @@ import {
   parseCatalog,
   serializeCatalog,
   searchCatalog,
+  MAX_PACK_BYTES,
 } from "../src/core/catalog.js";
+import { fourFigureLibrary } from "./fixtures/fourFigureLibrary.js";
 import { solveScene } from "../src/core/solver.js";
 import { createLibrary, LIBRARY_KEY } from "../src/app/libraryStore.js";
 import { ARCHETYPES } from "../src/nlp/archetypes.js";
@@ -84,6 +86,52 @@ test("imports reject unknown versions, duplicate IDs, unsafe keys and unreasonab
   );
   assert.throws(() => parseCatalog(" ".repeat(2_000_001)), /2 MB/);
   assert.throws(() => checkPreset(JSON.parse('{"__proto__":{}}')), /Unsafe/);
+});
+
+test("a malformed contact type rejects the complete pack without modifying saved data", () => {
+  const store = storage(),
+    library = createLibrary(store, ids);
+  library.save(example());
+  const before = library.saved(),
+    stored = store.getItem(LIBRARY_KEY);
+  const pack = JSON.parse(serializeCatalog([example()]));
+  const invalid = example();
+  invalid.id = "example.invalid-type";
+  invalid.scene.contacts = [
+    {
+      fromActor: 0,
+      toActor: 1,
+      from: "hand.l",
+      to: "hand.r",
+      type: { toString: "invalid" },
+    },
+  ];
+  pack.presets.push(invalid);
+  assert.throws(() => library.import(JSON.stringify(pack)), /Contact type/);
+  assert.deepEqual(library.saved(), before);
+  assert.equal(store.getItem(LIBRARY_KEY), stored);
+});
+
+test("a full four-figure library exports as a re-importable pack without losing precision", () => {
+  const entries = fourFigureLibrary();
+  const text = serializeCatalog(entries);
+  assert.ok(new TextEncoder().encode(text).length <= MAX_PACK_BYTES);
+  const restored = parseCatalog(text);
+  assert.equal(restored.length, 200);
+  assert.ok(restored.every((p) => p.scene.actors.length === 4));
+  assert.deepEqual(restored[199], checkPreset(entries[199]));
+});
+
+test("serialization rejects empty, duplicate, excessive and truly oversized packs", () => {
+  assert.throws(() => serializeCatalog([]), /1–200/);
+  assert.throws(() => serializeCatalog(fourFigureLibrary(201)), /1–200/);
+  assert.throws(() => serializeCatalog([example(), example()]), /duplicate/);
+  assert.throws(() => serializeCatalog(fourFigureLibrary(200, 3000)), /2 MB/);
+  assert.match(
+    serializeCatalog([example()]),
+    /\n  "format"/,
+    "small packs should retain readable formatting",
+  );
 });
 
 test("invalid scenes fail at import instead of silently becoming different poses", () => {

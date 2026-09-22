@@ -118,12 +118,12 @@ const SPREAD = { index: 0.92, middle: 1, ring: 1.08, pinky: 1.16, thumb: 1 };
 const SPLAY = { index: -10, middle: 0, ring: 7, pinky: 15, thumb: 0 };
 
 /** The shape a contact of this kind puts a hand into. */
-const BY_CONTACT = {
-  surface: "brace",
-  support: "brace",
-  grip: "grip",
-  rest: "cup",
-};
+const BY_CONTACT = new Map([
+  ["surface", "brace"],
+  ["support", "brace"],
+  ["grip", "grip"],
+  ["rest", "cup"],
+]);
 
 /**
  * Which shape each of an actor's hands is in.
@@ -164,7 +164,7 @@ export function handShapes(actor, contacts = []) {
       if (actorOf !== actor.index) continue;
       const landmark = contact[end];
       if (landmark !== "hand" && landmark !== "hands") continue;
-      put(contact[`${end}Side`], BY_CONTACT[contact.type] ?? "cup");
+      put(contact[`${end}Side`], BY_CONTACT.get(contact.type) ?? "cup");
     }
   }
 

@@ -4,10 +4,7 @@ import { readFile } from "node:fs/promises";
 import { rootFromPlacement } from "../../src/core/placement.js";
 import { quatRotate } from "../../src/core/math.js";
 
-const ready = async (page) => {
-  await expect(page.locator("#status")).toContainText("Ready");
-  await expect(page.locator("#save-preset")).toBeEnabled();
-};
+import { ready } from "./helpers/ready.js";
 const placement = async (actor) => {
   const output = actor.getByLabel("Solved placement", { exact: true });
   return {

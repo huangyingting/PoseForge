@@ -2,10 +2,7 @@ import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { RECLINING_PAIR_LAYOUT } from "../../src/nlp/recliningPairLayout.js";
 
-const ready = async (page) => {
-  await expect(page.locator("#status")).toContainText("Ready");
-  await expect(page.locator("#save-preset")).toBeEnabled();
-};
+import { ready } from "./helpers/ready.js";
 async function apply(page, description) {
   await page.getByRole("button", { name: "Scene", exact: true }).click();
   await page.getByLabel("Pose description").fill(description);

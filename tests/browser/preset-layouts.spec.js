@@ -1,9 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-const ready = async (page) => {
-  await expect(page.locator("#status")).toContainText("Ready");
-  await expect(page.locator("#save-preset")).toBeEnabled();
-};
+import { ready } from "./helpers/ready.js";
 const apply = async (page, text) => {
   await page.getByRole("button", { name: "Scene", exact: true }).click();
   await page.getByLabel("Pose description").fill(text);

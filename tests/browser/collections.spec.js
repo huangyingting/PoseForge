@@ -1,3 +1,4 @@
+import { ready } from "./helpers/ready.js";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
@@ -6,7 +7,7 @@ test("positions are a visible collection and collection filters stay usable on n
   page,
 }, info) => {
   await page.goto("/");
-  await expect(page.locator("#status")).toContainText("Ready");
+  await ready(page);
   await page.getByRole("button", { name: "Positions", exact: true }).click();
   await expect(page.locator(".preset-card")).toHaveCount(12);
   await expect(
@@ -51,20 +52,20 @@ test("unread description text remains visible as a warning through the worker an
   page,
 }) => {
   await page.goto("/");
-  await expect(page.locator("#status")).toContainText("Ready");
+  await ready(page);
   await page
     .getByLabel("Pose description")
     .fill("a woman standing flibbertigibbet");
   await page
     .getByRole("button", { name: "Apply description", exact: true })
     .click();
-  await expect(page.locator("#status")).toContainText("Ready");
+  await ready(page);
   await expect(page.locator(".notes")).toContainText("flibbertigibbet");
   await expect(page.locator("#show-notes")).toBeVisible();
   await page.locator("#show-notes").click();
   await expect(page.locator(".notes")).toBeVisible();
   await page.reload();
-  await expect(page.locator("#status")).toContainText("Ready");
+  await ready(page);
   await expect(page.locator(".notes")).toContainText("flibbertigibbet");
   await page.locator("#save-preset").click();
   await page.getByLabel("Preset name").fill("Command study");

@@ -35,6 +35,7 @@ import {
 /** Body presets the actor spec accepts. */
 export const BODY_TYPES = ["female", "male", "neutral"];
 export const JOINT_MODES = ["guided", "fixed"];
+export const MAX_CONTACT_TYPE_LENGTH = 80;
 
 /**
  * @typedef {object} ActorSpec
@@ -436,8 +437,14 @@ export function validateScene(scene) {
       bad = true;
     }
     if (bad) continue;
+    let type = contact.type;
+    if (type != null && (typeof type !== "string" || !type.trim() || type.length > MAX_CONTACT_TYPE_LENGTH)) {
+      note("warning", "invalid contact type; used rest");
+      type = "rest";
+    }
     contacts.push({
       ...contact,
+      ...(type != null ? { type } : {}),
       fromActor: from,
       toActor: to,
       strength: clamp(contact.strength ?? 0.7, 0, 1),

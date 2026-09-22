@@ -28,6 +28,9 @@ export const GROUP = {
   LEG_R: "legR",
 };
 
+/** Shared by body construction and the drawable-template cache identity. */
+export const DEFAULT_BUST = Object.freeze({ female: 1, male: 0, neutral: 0.7 });
+
 /**
  * How many joints apart two bones may be before their volumes are expected to
  * be distinct. Within this radius the primitives are deliberately authored to
@@ -233,7 +236,7 @@ export function buildBodyVolumes(skeleton, { bust, anatomy = true } = {}) {
   // frame, not secondary-sex geometry, so the right amount for this file to add
   // on top of it is none. Neutral keeps a trace, because the neutral figure is
   // drawn with the female mesh and a bare chest on it reads as male.
-  const bustScale = bust ?? (female ? 1 : male ? 0 : 0.7);
+  const bustScale = bust ?? DEFAULT_BUST[skeleton.chestType] ?? DEFAULT_BUST.neutral;
 
   const volumes = [];
   let id = 0;

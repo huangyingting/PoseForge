@@ -148,6 +148,11 @@ changes. **Import presets** adds a valid pack without replacing existing work.
 Re-importing assigns new IDs and makes independent copies. Your favorites are
 local preferences and are not included in exported packs.
 
+Library exports retain readable formatting when it fits the 2 MB import limit,
+and use compact JSON when formatting alone would exceed it. If the data itself
+is larger than 2 MB, export individual presets or a smaller library; the studio
+reports the limit without deleting saved work or downloading an unreadable pack.
+
 ## Author a partner gesture without JSON
 
 Choose **New study** for one clothed figure with no automatic contacts, or load
@@ -163,6 +168,8 @@ figure's declared supporting region (such as a knee or forearm) instead of
 seating that region on the mattress. Either endpoint order works. Other regions,
 ordinary rest/grip links, zero-strength links and unmounted figures retain their
 normal surface support. The type travels through history, save and JSON export.
+Imported custom types must be non-empty text of at most 80 characters. Malformed
+types reject the entire pack before any saved data changes.
 Changing the first figure to the current second figure swaps the figure roles so a
 contact never accidentally points back to the same person. Removing a figure
 removes contacts involving it and preserves the remaining references.

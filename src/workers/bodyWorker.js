@@ -1,23 +1,18 @@
 /**
  * Text to triangles, off the main thread.
  *
- * Meshing is the expensive step by a wide margin - parsing is under a
- * millisecond and solving is around forty, but extracting a pair of isosurfaces
- * at 12mm is most of a second. On the main thread that is most of a second with
- * no cursor, no scroll, and no response to typing, which is exactly the moment
- * the user is mid-sentence and about to type the next word.
+ * Body shaping, contact fitting and meshing can all be expensive. Keeping
+ * them here leaves the interface available for typing, navigation and newer
+ * scene requests while the current pose is being checked.
  *
  * So the whole chain runs here and only the finished buffers cross back, as
  * transfers rather than copies.
  *
- * It answers twice. The first answer skins the scanned body and stops - that is
- * five milliseconds, so the picture updates between keystrokes rather than
- * between sentences. What it leaves out is the occlusion, which is two hundred
- * milliseconds an actor and is what darkens every crease and every place two
- * bodies touch; the refinement adds it to the very same triangles, so what
- * lands is the same pose gaining its shading rather than a different shape.
- * Between the two passes the worker yields, which is what lets a newer request
- * arrive and cancel the refinement of a pose nobody is looking at any more.
+ * It answers twice after contact validation. The draft omits final occlusion;
+ * the final pass shades the same triangles rather than changing the pose.
+ * Contact trials and the gap between passes yield so a newer request can
+ * cancel work on a scene that is no longer selected. Raw scans, shaped bodies
+ * and dressed templates are cached independently of the current pose.
  */
 
 import { parseDescription } from "../nlp/parser.js";
@@ -25,9 +20,8 @@ import { validateScene } from "../core/scene.js";
 import { solveScene } from "../core/solver.js";
 import { surfaceContactSteps } from '../core/surfaceContacts.js';
 import { solvedPreview } from '../core/posePreview.js';
-import { buildHumanTemplate, featureRelief, skinHumanMesh } from "../core/humanMesh.js";
-import { withHair } from "../core/hair.js";
-import { withGarments } from "../core/garments.js";
+import { buildHumanTemplate, skinHumanMesh } from "../core/humanMesh.js";
+import { createTemplateCache } from "./templateCache.js";
 import { buildBodyMesh, fieldOcclusion } from "../render/meshBuilder.js";
 
 // 30mm draws in around a sixth of the time of the final pass and still reads as
@@ -58,7 +52,6 @@ const MODELS = {
   neutral: new URL("../../assets/models/realistic-female.glb", import.meta.url),
 };
 const templates = new Map();
-const relieved = new Map();
 const modelWarnings = new Map();
 
 function scanned(bodyType) {
@@ -91,27 +84,7 @@ function scanned(bodyType) {
  * would give a slim figure a heavy figure's bust. The scan underneath is still
  * fetched and parsed once.
  */
-function humanTemplate({ bodyType, bust, build, hair, wearing, outfit }) {
-  const key = `${bodyType}|${bust ?? ""}|${build ?? 1}|${hair ?? ""}|${(wearing ?? []).join(",")}|${outfit ?? ""}`;
-  if (!relieved.has(key)) {
-    // Bound memory when a user explores many body proportions and outfits.
-    if (relieved.size >= 24) relieved.delete(relieved.keys().next().value);
-    relieved.set(
-      key,
-      scanned(bodyType).then((template) => {
-        if (!template) return null;
-        const body = featureRelief(template, { bodyType, bust, build: build ?? 1 });
-        // Same order as the CLI renderer builds them in. Neither pass touches
-        // the other's submesh, so the order does not change the result - but
-        // the two paths share nothing except this sequence, and the one thing
-        // worth keeping identical between two renderers is what they are given.
-        const dressed = withGarments(body, { bodyType, wearing, colour: outfit });
-        return withHair(dressed, { bodyType, style: hair });
-      })
-    );
-  }
-  return relieved.get(key);
-}
+const humanTemplate = createTemplateCache(scanned);
 
 /** The newest request id seen. Anything older than this is abandoned. */
 let current = 0;
@@ -161,9 +134,7 @@ function bodyParts(actor, template, scene, occlusion, resolution) {
     indices: part.indices.slice(),
     // A part that brought its own occlusion keeps it - only the eyes do, and
     // only because the field has no socket in it to shade them with. Everything
-    // else gets it from the field, but not on the draft: skinning is five
-    // milliseconds and sampling the field is two hundred, so leaving it out is
-    // what makes the first answer land while the sentence is still being typed.
+    // else gets it from the field on the final pass, not on the earlier draft.
     occlusion: part.occlusion
       ? part.occlusion.slice()
       : occlusion

@@ -1,10 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
-const ready = async (page) => {
-  await expect(page.locator("#status")).toContainText("Ready");
-  await expect(page.locator("#save-preset")).toBeEnabled();
-};
+import { ready } from "./helpers/ready.js";
 
 for (const bodyType of ["female", "male"]) {
   test(`${bodyType} brace hands render and retain their geometry through edits, saved reload and export`, async ({

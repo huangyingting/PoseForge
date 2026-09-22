@@ -2,8 +2,9 @@
 
 This records the current studio implementation and its limits. Bundled entries
 use clothed reference figures, and the catalog preserves the existing named
-definitions as data. The full goal remains open pending the final figure/UI/
-catalog requirement audit; loading a preset is not proof that its constraints
+definitions as data. The full figure/UI/catalog verification is recorded in the
+[completion audit](studio-completion-audit.md), including current-source coverage
+and explicit limits. Loading a preset alone is not proof that its constraints
 were met.
 
 ## Evidence
@@ -58,6 +59,29 @@ were met.
 | CLI interoperability | The CLI renders built-in IDs and exported catalog files using the same surface-refinement pass. Clothed examples rendered successfully at 640×480 and 320×480. A seven-render PNG regression confirms saved-camera defaults, explicit view precedence and malformed stored-camera fallback for raw diagnostic scenes. Lighting/framing remain separate implementations. |
 
 ## Commands and results
+
+The final product audit passes **407/407 unit tests**, **62/62 browser scenarios**
+across 20 isolated batches, **23/23 rendered catalog entries**, and **7/7 contact
+fixtures**. Production builds pass and `npm audit` reports zero vulnerabilities.
+The browser ledger has no missing or unexpected cases and is tied to runtime
+and verification-source hashes; full details and screenshots are linked from
+the completion audit. This is full current browser coverage, not an aggregation
+of the older targeted runs below.
+
+The final additional case holds the skin atlas until after the pose is complete,
+then verifies an idle-viewport pixel change without another worker solve. Its
+addition did not change the original 61 test definitions or application runtime;
+the ledger records the hash-continuity proof.
+
+The audit also fixed repeated body-shape preparation on equivalent appearance
+requests, malformed contact-type imports/inherited-property lookup, and formatted
+library exports that exceeded their own 2 MB import limit. A 200-preset,
+four-figure library now round-trips without losing precision; genuinely oversized
+exports report an error and retain saved data. Cold work can exceed 30 seconds
+on the shared software-rendering host, so scene-readiness waits are bounded at
+60 seconds while geometry checks and other assertions retain their limits.
+
+## Prior iteration results
 
 - The final production-build `catalog-camera.spec.js` regression passes
   **4/4 scenarios** (3.7 minutes), covering all twelve named entries, warning
@@ -691,14 +715,15 @@ for the current tab session and does not reverse library deletion.
 No public hosting deployment was requested or performed. Repository delivery
 and the production build are distinct from a hosted deployment.
 
-## Remaining goal audit
+## Completed scope and diagnostic history
 
 The current complete rendered catalog audit passes all 23 entries, including
 all twelve named layouts and eleven reference studies, with complete available
 support/contact and figure/furniture/floor checks at the existing thresholds.
-This closes the bundled geometry gap, not the full goal: the final requirement-
-by-requirement figure/UI/catalog audit and fresh end-to-end verification still
-remain. The measured slow custom-body fallback also remains documented.
+The final requirement-by-requirement figure/UI/catalog audit and complete browser
+inventory are now verified in the completion audit. The broader uncalibrated
+diagnostics and hardware-dependent cold-rendering latency remain explicit limits;
+they are not silently counted as resolved scenes or instantaneous edits.
 
 The seated female/male gaps of 78/108 mm are now corrected to approximately 2 mm.
 The low-kneel gap of 27 mm is now approximately 1 mm; the paired-kneel maximum

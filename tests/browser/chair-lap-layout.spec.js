@@ -3,10 +3,7 @@ import { readFile } from "node:fs/promises";
 import { CHAIR_LAP_LAYOUT } from "../../src/nlp/chairLapLayout.js";
 
 const phrase = "on his lap in a chair";
-const ready = async (page) => {
-  await expect(page.locator("#status")).toContainText("Ready");
-  await expect(page.locator("#save-preset")).toBeEnabled();
-};
+import { ready } from "./helpers/ready.js";
 const apply = async (page, text) => {
   await page.getByRole("button", { name: "Scene", exact: true }).click();
   await page.getByLabel("Pose description").fill(text);

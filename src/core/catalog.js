@@ -1,5 +1,5 @@
 /** Portable, versioned scene presets. No browser or renderer dependencies. */
-import { validateScene, BODY_TYPES, JOINT_MODES } from "./scene.js";
+import { validateScene, BODY_TYPES, JOINT_MODES, MAX_CONTACT_TYPE_LENGTH } from "./scene.js";
 import {
   POSTURE_NAMES,
   ARRANGEMENT_NAMES,
@@ -167,6 +167,8 @@ export function checkScene(input) {
     fail("Contacts must be a list of at most 32 entries.");
   for (const contact of input.contacts ?? []) {
     if (!record(contact)) fail("Every contact must be an object.");
+    if (contact.type != null)
+      boundedText(contact.type, "Contact type", MAX_CONTACT_TYPE_LENGTH, true);
     if (
       contact.strength != null &&
       (typeof contact.strength !== "number" ||
@@ -206,6 +208,15 @@ export function checkPreset(input) {
   };
 }
 
+function checkedEntries(input) {
+  if (!Array.isArray(input) || input.length < 1 || input.length > MAX_PRESETS)
+    fail("A catalog needs 1–200 presets.");
+  const presets = Array.from(input, checkPreset);
+  if (new Set(presets.map((p) => p.id)).size !== presets.length)
+    fail("The catalog contains duplicate preset IDs.");
+  return presets;
+}
+
 export function parseCatalog(text) {
   if (
     typeof text !== "string" ||
@@ -220,28 +231,21 @@ export function parseCatalog(text) {
   }
   if (pack?.format !== CATALOG_FORMAT || pack.version !== CATALOG_VERSION)
     fail("Expected a PoseForge catalog with version 1.");
-  if (
-    !Array.isArray(pack.presets) ||
-    pack.presets.length < 1 ||
-    pack.presets.length > MAX_PRESETS
-  )
-    fail("A catalog needs 1–200 presets.");
-  const presets = pack.presets.map(checkPreset);
-  if (new Set(presets.map((p) => p.id)).size !== presets.length)
-    fail("The catalog contains duplicate preset IDs.");
-  return presets;
+  return checkedEntries(pack.presets);
 }
 
 export function serializeCatalog(presets) {
-  return JSON.stringify(
-    {
-      format: CATALOG_FORMAT,
-      version: CATALOG_VERSION,
-      presets: presets.map(checkPreset),
-    },
-    null,
-    2,
-  );
+  const pack = {
+    format: CATALOG_FORMAT,
+    version: CATALOG_VERSION,
+    presets: checkedEntries(presets),
+  };
+  const encoder = new TextEncoder();
+  const pretty = JSON.stringify(pack, null, 2);
+  if (encoder.encode(pretty).length <= MAX_PACK_BYTES) return pretty;
+  const compact = JSON.stringify(pack);
+  if (encoder.encode(compact).length <= MAX_PACK_BYTES) return compact;
+  fail("This catalog exceeds 2 MB. Export individual presets or a smaller library.");
 }
 
 export function searchCatalog(

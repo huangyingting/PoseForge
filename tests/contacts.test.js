@@ -10,6 +10,7 @@ import {
 } from "../src/core/catalog.js";
 import { validateScene } from "../src/core/scene.js";
 import { solveScene } from "../src/core/solver.js";
+import { handShapes } from "../src/core/handPose.js";
 
 const study = () => structuredClone(BUILTIN_PRESETS[0].scene);
 const contact = {
@@ -19,6 +20,67 @@ const contact = {
   to: "hand.l",
   strength: 0.75,
 };
+
+test("imported contact types must be bounded non-empty text, while custom tags stay portable", () => {
+  for (const type of [
+    true,
+    7,
+    [],
+    {},
+    { toString: "invalid" },
+    "",
+    "   ",
+    "x".repeat(81),
+  ]) {
+    const scene = study();
+    scene.contacts = [{ ...contact, type }];
+    assert.throws(
+      () => checkScene(scene),
+      /Contact type/,
+      JSON.stringify(type),
+    );
+  }
+  for (const type of [
+    "rest",
+    "surface",
+    "support",
+    "grip",
+    "gesture-study",
+    "x".repeat(80),
+  ]) {
+    const scene = study();
+    scene.contacts = [{ ...contact, type }];
+    assert.equal(checkScene(scene).contacts[0].type, type);
+  }
+});
+
+test("tolerant scene validation repairs malformed contact tags with a warning before solving", () => {
+  const scene = study();
+  scene.contacts = [{ ...contact, type: { toString: "invalid" } }];
+  const checked = validateScene(scene);
+  assert.equal(checked.scene.contacts[0].type, "rest");
+  assert.ok(checked.issues.some((i) => i.message.includes("contact type")));
+  assert.doesNotThrow(() => solveScene(checked.scene));
+});
+
+test("custom contact tags cannot pick inherited hand-shape mapping properties", () => {
+  const actor = { index: 0, spec: {}, posture: { supports: [] } };
+  for (const type of ["gesture-study", "constructor", "__proto__", "toString"])
+    assert.deepEqual(
+      handShapes(actor, [
+        {
+          fromActor: 0,
+          toActor: 1,
+          from: "hand",
+          fromSide: "l",
+          to: "forearm",
+          type,
+        },
+      ]),
+      { l: "cup", r: "relaxed" },
+      type,
+    );
+});
 
 test("invalid landmark sides and inherited property names are rejected before solving", () => {
   for (const name of [

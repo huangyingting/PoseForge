@@ -25,6 +25,8 @@ default contacts. **A helping hand** is a working example you can edit and save.
 [catalog and extension guide](docs/catalog.md) ·
 [importable example](examples/reference-study.json).
 
+Use Node 24 (verified here with Node 24.17.0 and npm 11.13.0).
+
 ```sh
 npm ci
 npm run dev
@@ -52,7 +54,7 @@ and a 2D image you can export. Pose checks report unresolved constraints.
 ```
 npm install
 npm run dev          # webapp on :5173
-npm test             # 392 tests
+npm test             # 407 tests
 node scripts/render-cli.mjs "a woman seated on a chair wearing clothes"
 ```
 
@@ -250,8 +252,9 @@ way instead of wherever the seeding lands them. Out-of-reach targets report
 
 ## Verification
 
-See [studio verification](docs/studio-verification.md) for current results,
-browser coverage, and the remaining acceptance gaps.
+See the [completion audit](docs/studio-completion-audit.md) for the full coverage
+inventory and [studio verification](docs/studio-verification.md) for detailed
+geometry evidence and historical results.
 
 ```
 npm test                                  # units, catalog and geometry regressions

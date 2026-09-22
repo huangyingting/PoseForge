@@ -3,17 +3,14 @@ import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
 import { ARCHETYPES } from "../../src/nlp/archetypes.js";
 
-const ready = async (page, timeout = 30_000) => {
-  await expect(page.locator("#status")).toContainText("Ready", { timeout });
-  await expect(page.locator("#save-preset")).toBeEnabled();
-};
-async function apply(page, description, timeout = 30_000) {
+import { ready } from "./helpers/ready.js";
+async function apply(page, description) {
   await page.getByRole("button", { name: "Scene", exact: true }).click();
   await page.getByLabel("Pose description").fill(description);
   await page
     .getByRole("button", { name: "Apply description", exact: true })
     .click();
-  await ready(page, timeout);
+  await ready(page);
 }
 async function exportedScene(page) {
   await page.locator("#open-export").click();
@@ -228,14 +225,7 @@ for (const id of ["cowgirl", "reverse_cowgirl"]) {
       exact: false,
     });
     await expect(hint).toBeVisible();
-    // This uncalibrated body variation rebuilds the clothed models before
-    // refinement (measured at 30.7 s in software Chrome). Preserve the usual
-    // stock-pose readiness limit; allow bounded time for this explicit edit.
-    await apply(
-      page,
-      `${phrase}, he is tall`,
-      id === "reverse_cowgirl" ? 60_000 : 30_000,
-    );
+    await apply(page, `${phrase}, he is tall`);
     await expect(hint).not.toBeVisible();
     await page.getByRole("button", { name: "Figures", exact: true }).click();
     await expect(

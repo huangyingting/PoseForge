@@ -151,8 +151,12 @@ export function buildStudio(library, handlers) {
     () => {
       if (!library.saved().length)
         return toast("Save your first preset to export a library.");
-      download(library.export(), "poseforge-library.json", "application/json");
-      toast("Your saved library was downloaded.");
+      try {
+        download(library.export(), "poseforge-library.json", "application/json");
+        toast("Your saved library was downloaded.");
+      } catch (error) {
+        toast(`Export failed: ${error.message}`);
+      }
     },
     "text-button",
   );

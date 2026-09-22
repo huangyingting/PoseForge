@@ -3,10 +3,7 @@ import { createHash } from "node:crypto";
 import AxeBuilder from "@axe-core/playwright";
 import { NAMED_PRESETS, serializeCatalog } from "../../src/core/catalog.js";
 
-const ready = async (page) => {
-  await expect(page.locator("#status")).toContainText("Ready");
-  await expect(page.locator("#save-preset")).toBeEnabled();
-};
+import { ready } from "./helpers/ready.js";
 const pixels = async (page) =>
   createHash("sha256")
     .update(

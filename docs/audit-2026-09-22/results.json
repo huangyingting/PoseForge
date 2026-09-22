@@ -1,0 +1,3192 @@
+{
+  "format": "poseforge.studio-audit",
+  "version": 1,
+  "completedAt": "2026-09-22T04:15:11.384Z",
+  "scope": "Figure presentation, responsive studio, and complete extensible preset workflow",
+  "source": {
+    "baselineCommit": "d3f19b1ef65c8d294a28d32d17ac1cbf302fb1ca",
+    "runtimeHash": "b8aab30cdb3368dffd159088b130103eb298c58591fadb7709124ccdaef75bb0",
+    "verificationHash": "dad5ac945a17fb71c3063f582cd2e5bfa584d8caaa8512349926644750a338ea",
+    "verificationContinuity": {
+      "previousHash": "5efc865cace0287edd67dad21f9905d1f0712422983b07f1b90499292ddea332",
+      "onlyAddedFile": "tests/browser/late-texture.spec.js",
+      "previousDefinitionsUnchanged": true
+    },
+    "runtimeFiles": 73,
+    "hashMethod": "SHA256 over sorted relative path, NUL, file bytes",
+    "runtimeInputs": [
+      "src",
+      "assets",
+      "index.html",
+      "package.json",
+      "package-lock.json",
+      "vite.config.js",
+      "playwright.config.js"
+    ],
+    "verificationInputs": [
+      "tests",
+      "scripts",
+      "playwright.config.js"
+    ]
+  },
+  "environment": {
+    "node": "v24.17.0",
+    "npm": "11.13.0",
+    "browser": "Google Chrome 153.0.8010.52",
+    "rendering": "SwiftShader software WebGL",
+    "viewports": [
+      "1440x1000",
+      "390x844",
+      "320x844"
+    ],
+    "physicalDevices": false
+  },
+  "gates": {
+    "unit": {
+      "command": "npm test",
+      "tests": 407,
+      "passed": 407,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "durationMs": 516303.735605
+    },
+    "browser": {
+      "command": "npm run test:browser",
+      "cases": 62,
+      "passed": 62,
+      "failed": 0,
+      "missing": 0,
+      "unexpected": 0,
+      "batches": 20,
+      "sceneReadyWaitMs": 60000,
+      "otherAssertionWaitMs": 30000
+    },
+    "build": {
+      "passed": true,
+      "tool": "Vite 7.3.6"
+    },
+    "dependencies": {
+      "npmAuditVulnerabilities": 0
+    },
+    "catalog": {
+      "entries": 23,
+      "renderedClear": 23,
+      "coarseClear": 22,
+      "namedRenderedClear": 12,
+      "unavailableChecks": 0
+    },
+    "contactFixtures": {
+      "cases": 7,
+      "passed": 7
+    }
+  },
+  "diagnostics": {
+    "syntheticScenes": {
+      "sound": 134,
+      "total": 159,
+      "worstProxyPenetrationMm": 63,
+      "unmetContactsReported": 98
+    },
+    "text": {
+      "parsed": 34,
+      "total": 34,
+      "coarseSound": 31,
+      "sameFindingsAsBaseline": true
+    },
+    "postures": {
+      "worstProxySupportGapMm": 30,
+      "worstSelfPenetrationMm": 2,
+      "withinDeclaredTolerance": true
+    },
+    "mesh": {
+      "worstSampledSdfErrorMm": 5.43,
+      "closedAndOutward": true
+    },
+    "skin": {
+      "featuresPresent": true
+    },
+    "externalCorpus": {
+      "annotations": 1283,
+      "sound": 1075,
+      "twoPersonScenes": 1258,
+      "shippedCatalog": false
+    }
+  },
+  "templateTimingMs": {
+    "coldMs": 19514.299999952316,
+    "editedMs": 703.4000000953674,
+    "restoredMs": 0
+  },
+  "registries": {
+    "presets": [
+      "builtin.together",
+      "builtin.standing-female",
+      "builtin.standing-male",
+      "builtin.seated-female",
+      "builtin.seated-male",
+      "builtin.reclined",
+      "builtin.kneeling",
+      "builtin.low-kneel",
+      "builtin.floor-rest",
+      "builtin.paired-kneel",
+      "builtin.helping-hand",
+      "builtin.named.missionary",
+      "builtin.named.cowgirl",
+      "builtin.named.reverse_cowgirl",
+      "builtin.named.doggy_style",
+      "builtin.named.spooning",
+      "builtin.named.lotus",
+      "builtin.named.chair_straddle",
+      "builtin.named.bent_over_table",
+      "builtin.named.standing_carry",
+      "builtin.named.sixty_nine",
+      "builtin.named.side_by_side_facing",
+      "builtin.named.standing_embrace"
+    ],
+    "named": [
+      "builtin.named.missionary",
+      "builtin.named.cowgirl",
+      "builtin.named.reverse_cowgirl",
+      "builtin.named.doggy_style",
+      "builtin.named.spooning",
+      "builtin.named.lotus",
+      "builtin.named.chair_straddle",
+      "builtin.named.bent_over_table",
+      "builtin.named.standing_carry",
+      "builtin.named.sixty_nine",
+      "builtin.named.side_by_side_facing",
+      "builtin.named.standing_embrace"
+    ],
+    "bodyTypes": [
+      "female",
+      "male",
+      "neutral"
+    ],
+    "hair": [
+      "none",
+      "crop",
+      "short",
+      "bob",
+      "medium",
+      "long"
+    ],
+    "palette": [
+      "black",
+      "white",
+      "grey",
+      "red",
+      "navy",
+      "sage",
+      "clay",
+      "nude"
+    ],
+    "garments": [
+      "bra",
+      "briefs",
+      "top",
+      "shorts"
+    ],
+    "hands": [
+      "relaxed",
+      "brace",
+      "cup",
+      "grip",
+      "fist",
+      "open",
+      "spread",
+      "point",
+      "pinch",
+      "claw",
+      "hold"
+    ],
+    "feet": [
+      "flat",
+      "relaxed",
+      "pointed",
+      "flexed",
+      "tucked",
+      "tiptoe"
+    ]
+  },
+  "images": [
+    {
+      "file": "audit-2026-09-22/studio-desktop.png",
+      "sha256": "5e1e0948e92df0805c174c566dfba27ac33a5c05bd563862505faa8b801ab0fc"
+    },
+    {
+      "file": "audit-2026-09-22/studio-mobile.png",
+      "sha256": "a9c01a5a83fab2e906d4812dea524b846ff34acd8defd66936fb487d4712dd69"
+    },
+    {
+      "file": "audit-2026-09-22/studio-mobile-editor.png",
+      "sha256": "f0f9b2e6d41ec402d31e8990dc689d415c074609dd31205477e493e534f02a0f"
+    }
+  ],
+  "browserBatches": [
+    {
+      "report": "appearance-female.json",
+      "startedAt": "2026-09-22T02:57:23.710Z",
+      "durationMs": 203104.66499999998,
+      "passed": 1,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "testIDs": [
+        "c9e76a3fa0141306d85a-01b88708a0158c42522a"
+      ]
+    },
+    {
+      "report": "appearance-others.json",
+      "startedAt": "2026-09-22T03:00:47.381Z",
+      "durationMs": 253787.28100000002,
+      "passed": 2,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "testIDs": [
+        "c9e76a3fa0141306d85a-e1f83d4e48b31c29c834",
+        "c9e76a3fa0141306d85a-636b4401118aabb92df9"
+      ]
+    },
+    {
+      "report": "authoring-a.json",
+      "startedAt": "2026-09-22T03:05:01.732Z",
+      "durationMs": 355427.806,
+      "passed": 4,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "testIDs": [
+        "6887233a9b84e4e0cc39-307b76fbf85497ac742e",
+        "6887233a9b84e4e0cc39-bf289144433824987c67",
+        "6887233a9b84e4e0cc39-722aaceb18265049359a",
+        "6887233a9b84e4e0cc39-e4951ec78dc2b3bcb722"
+      ]
+    },
+    {
+      "report": "authoring-b.json",
+      "startedAt": "2026-09-22T03:10:58.147Z",
+      "durationMs": 105539.02,
+      "passed": 3,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "testIDs": [
+        "6887233a9b84e4e0cc39-c4dcbefb73498a2a4bf0",
+        "6887233a9b84e4e0cc39-a7b416a7f8cb358137b9",
+        "6887233a9b84e4e0cc39-001959cd55b22c85ba92"
+      ]
+    },
+    {
+      "report": "boundary.json",
+      "startedAt": "2026-09-22T02:54:12.997Z",
+      "durationMs": 109262.168,
+      "passed": 2,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "testIDs": [
+        "7e425a970e237ca96e79-36f6f5eb6496c6d6c983",
+        "1399199547e0473a7b35-f289a75d75caab6b6edc"
+      ]
+    },
+    {
+      "report": "capacity.json",
+      "startedAt": "2026-09-22T02:56:03.129Z",
+      "durationMs": 79689.959,
+      "passed": 2,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "testIDs": [
+        "651297813cef9aee2cde-c7e4510ba7d8f750b39a",
+        "651297813cef9aee2cde-2e58b2492444a7ced00a"
+      ]
+    },
+    {
+      "report": "capture.json",
+      "startedAt": "2026-09-22T03:23:45.247Z",
+      "durationMs": 228069.626,
+      "passed": 4,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "testIDs": [
+        "b71a61e892d00262b35e-bed714a3fa0b1abf24af",
+        "b71a61e892d00262b35e-dead1f6e0bc42e05abda",
+        "d9c902c5861d48a98d75-d9f706ab02ac9715d11c",
+        "d9c902c5861d48a98d75-10000a8b6e164cdb89b4"
+      ]
+    },
+    {
+      "report": "catalog.json",
+      "startedAt": "2026-09-22T03:55:40.633Z",
+      "durationMs": 226999.071,
+      "passed": 4,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "testIDs": [
+        "52adf635cca3f3353df5-f69c2d3e5f4691be98a2",
+        "52adf635cca3f3353df5-cc8146f069cdca921d07",
+        "52adf635cca3f3353df5-7d241b390eb32f986b64",
+        "52adf635cca3f3353df5-3e2f6ad2eec5c439352c"
+      ]
+    },
+    {
+      "report": "chair.json",
+      "startedAt": "2026-09-22T03:31:48.739Z",
+      "durationMs": 266875.112,
+      "passed": 4,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "testIDs": [
+        "36aa59bf9eab66c121ee-1f529d464eee62323777",
+        "36aa59bf9eab66c121ee-1d881c05e14f237626f8",
+        "dde05a1b63f55a66387a-1f5e44cd72c5303c4857",
+        "dde05a1b63f55a66387a-86cb55d85cdfeb89c43c"
+      ]
+    },
+    {
+      "report": "controls.json",
+      "startedAt": "2026-09-22T03:18:59.147Z",
+      "durationMs": 285553.76,
+      "passed": 4,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "testIDs": [
+        "91b2bf490356a5da12b9-cf262899397d12ba7c5c",
+        "91b2bf490356a5da12b9-debf8bd43a9aa49f5f32",
+        "52635cbaeaea3850280e-fd7b8682c8563e692225",
+        "3ee869187d1f9d722b02-852750185455ca0b4557"
+      ]
+    },
+    {
+      "report": "floor-pairs.json",
+      "startedAt": "2026-09-22T03:41:25.258Z",
+      "durationMs": 272720.87,
+      "passed": 4,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "testIDs": [
+        "d1f65413e110ba4d5b89-5b431b52436936acfe6f",
+        "d1f65413e110ba4d5b89-aa1e2736107f98e7475a",
+        "ef4f6ec7750d1a30c0f7-387e51a6f62d8d5d5b88",
+        "ef4f6ec7750d1a30c0f7-9e3eb7bd259d52d0649a"
+      ]
+    },
+    {
+      "report": "late-texture.json",
+      "startedAt": "2026-09-22T04:09:56.801Z",
+      "durationMs": 16980.413,
+      "passed": 1,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "testIDs": [
+        "ef835a2e60a7573d19d2-2f92ffeaa90bc0648864"
+      ]
+    },
+    {
+      "report": "lying-pairs.json",
+      "startedAt": "2026-09-22T03:45:58.518Z",
+      "durationMs": 218808.97699999998,
+      "passed": 4,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "testIDs": [
+        "bf0f9e56586f4be0a7a0-82de6d3eda6ad85ad5f4",
+        "bf0f9e56586f4be0a7a0-0e7d34551b86f9985eae",
+        "f1faa8006bd0e5fd98d8-6851a74233fdc02f6f7d",
+        "f1faa8006bd0e5fd98d8-fa3c6daf9f3cb94dfa2c"
+      ]
+    },
+    {
+      "report": "seated-pairs.json",
+      "startedAt": "2026-09-22T03:36:16.180Z",
+      "durationMs": 308513.50299999997,
+      "passed": 4,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "testIDs": [
+        "98480096834cd7739638-644ff9fdc3711df0ed65",
+        "98480096834cd7739638-8131dda93684739aae06",
+        "50e146a2183f226e4b69-5011fc688d6a21f7c6b0",
+        "50e146a2183f226e4b69-b4d3d5a93a562063f64c"
+      ]
+    },
+    {
+      "report": "seats.json",
+      "startedAt": "2026-09-22T03:29:50.932Z",
+      "durationMs": 117088.399,
+      "passed": 3,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "testIDs": [
+        "9d24ebfa1af8fc656b1b-631bac2087d539ece89e",
+        "a69663d33216a35aa2d2-044cda1341ce6a6048ae",
+        "a69663d33216a35aa2d2-57d5409862de6827e715"
+      ]
+    },
+    {
+      "report": "straddle.json",
+      "startedAt": "2026-09-22T03:49:37.880Z",
+      "durationMs": 361983.66000000003,
+      "passed": 4,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "testIDs": [
+        "6be255ab03e150fef1cb-62a48ac2ad8c6826904b",
+        "6be255ab03e150fef1cb-872ba89125aaa0326b37",
+        "6be255ab03e150fef1cb-513a8a168ce0f70f2996",
+        "6be255ab03e150fef1cb-34f66e02ea57ce838635"
+      ]
+    },
+    {
+      "report": "studio-a.json",
+      "startedAt": "2026-09-22T03:12:44.326Z",
+      "durationMs": 115864.85800000001,
+      "passed": 3,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "testIDs": [
+        "3324084181281abe3b7c-36d77a299c10a875d68c",
+        "3324084181281abe3b7c-a0a6eab933bac25d5cb8",
+        "3324084181281abe3b7c-ee4d849ef729bd910151"
+      ]
+    },
+    {
+      "report": "studio-b.json",
+      "startedAt": "2026-09-22T03:14:40.799Z",
+      "durationMs": 182380.093,
+      "passed": 3,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "testIDs": [
+        "3324084181281abe3b7c-f66c2917a03b20326def",
+        "3324084181281abe3b7c-0d228482be28a7ea3cc0",
+        "3324084181281abe3b7c-b3b9e5b95306c24dc276"
+      ]
+    },
+    {
+      "report": "studio-c.json",
+      "startedAt": "2026-09-22T03:17:43.742Z",
+      "durationMs": 74807.63900000001,
+      "passed": 3,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "testIDs": [
+        "3324084181281abe3b7c-b2325bf6776518f1ebca",
+        "3324084181281abe3b7c-a170b83ac549ec810b73",
+        "3324084181281abe3b7c-9a6116875cb4a5cd8c17"
+      ]
+    },
+    {
+      "report": "supports.json",
+      "startedAt": "2026-09-22T03:27:33.905Z",
+      "durationMs": 136419.318,
+      "passed": 3,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "testIDs": [
+        "c6a6af2cd7949fd9f446-0ad471787941a94d9771",
+        "c6a6af2cd7949fd9f446-601bd64432ab4866a2d9",
+        "28c2bd28474e14ff5f71-baf2d7ff23632226f3a7"
+      ]
+    }
+  ],
+  "browserCases": [
+    {
+      "id": "c9e76a3fa0141306d85a-01b88708a0158c42522a",
+      "file": "appearance-registry.spec.js",
+      "line": 18,
+      "title": "female appearance registry renders every hair, palette, hand and foot choice",
+      "status": "passed",
+      "durationMs": 196919,
+      "batch": "appearance-female.json"
+    },
+    {
+      "id": "c9e76a3fa0141306d85a-e1f83d4e48b31c29c834",
+      "file": "appearance-registry.spec.js",
+      "line": 18,
+      "title": "male appearance registry renders every hair, palette, hand and foot choice",
+      "status": "passed",
+      "durationMs": 116475,
+      "batch": "appearance-others.json"
+    },
+    {
+      "id": "c9e76a3fa0141306d85a-636b4401118aabb92df9",
+      "file": "appearance-registry.spec.js",
+      "line": 18,
+      "title": "neutral appearance registry renders every hair, palette, hand and foot choice",
+      "status": "passed",
+      "durationMs": 132515,
+      "batch": "appearance-others.json"
+    },
+    {
+      "id": "6887233a9b84e4e0cc39-307b76fbf85497ac742e",
+      "file": "authoring.spec.js",
+      "line": 16,
+      "title": "contact targets, figure names and custom behavior survive save, reload, export and history",
+      "status": "passed",
+      "durationMs": 109580,
+      "batch": "authoring-a.json"
+    },
+    {
+      "id": "6887233a9b84e4e0cc39-bf289144433824987c67",
+      "file": "authoring.spec.js",
+      "line": 101,
+      "title": "contact types preserve history and saved exports while unresolved edits keep their measured warning",
+      "status": "passed",
+      "durationMs": 85315,
+      "batch": "authoring-a.json"
+    },
+    {
+      "id": "6887233a9b84e4e0cc39-722aaceb18265049359a",
+      "file": "authoring.spec.js",
+      "line": 161,
+      "title": "new studies have independent figures and contacts can be added, swapped and removed on mobile",
+      "status": "passed",
+      "durationMs": 69588,
+      "batch": "authoring-a.json"
+    },
+    {
+      "id": "6887233a9b84e4e0cc39-e4951ec78dc2b3bcb722",
+      "file": "authoring.spec.js",
+      "line": 231,
+      "title": "body-first contacts retain their endpoint order through the editor, saved reload and export",
+      "status": "passed",
+      "durationMs": 85662,
+      "batch": "authoring-a.json"
+    },
+    {
+      "id": "6887233a9b84e4e0cc39-c4dcbefb73498a2a4bf0",
+      "file": "authoring.spec.js",
+      "line": 312,
+      "title": "removing a figure remaps surviving contacts and invalid imported sides cannot enter the library",
+      "status": "passed",
+      "durationMs": 51800,
+      "batch": "authoring-b.json"
+    },
+    {
+      "id": "6887233a9b84e4e0cc39-a7b416a7f8cb358137b9",
+      "file": "authoring.spec.js",
+      "line": 365,
+      "title": "missing scanned geometry is labeled as an estimate and does not taint a healthy model",
+      "status": "passed",
+      "durationMs": 14925,
+      "batch": "authoring-b.json"
+    },
+    {
+      "id": "6887233a9b84e4e0cc39-001959cd55b22c85ba92",
+      "file": "authoring.spec.js",
+      "line": 387,
+      "title": "rapid preset changes publish only the final scene and its measured contact",
+      "status": "passed",
+      "durationMs": 32498,
+      "batch": "authoring-b.json"
+    },
+    {
+      "id": "52adf635cca3f3353df5-f69c2d3e5f4691be98a2",
+      "file": "catalog-camera.spec.js",
+      "line": 14,
+      "title": "every existing named definition loads and renders; known quality notes are discoverable",
+      "status": "passed",
+      "durationMs": 162305,
+      "batch": "catalog.json"
+    },
+    {
+      "id": "52adf635cca3f3353df5-cc8146f069cdca921d07",
+      "file": "catalog-camera.spec.js",
+      "line": 153,
+      "title": "preview failure preserves the library and loading a pose supplies its final preview",
+      "status": "passed",
+      "durationMs": 21745,
+      "batch": "catalog.json"
+    },
+    {
+      "id": "52adf635cca3f3353df5-7d241b390eb32f986b64",
+      "file": "catalog-camera.spec.js",
+      "line": 177,
+      "title": "live refined previews survive filter changes and match saved copies",
+      "status": "passed",
+      "durationMs": 18525,
+      "batch": "catalog.json"
+    },
+    {
+      "id": "52adf635cca3f3353df5-3e2f6ad2eec5c439352c",
+      "file": "catalog-camera.spec.js",
+      "line": 202,
+      "title": "trusted pinch/cancel gestures, buttons and keyboard change the rendered camera without overflow",
+      "status": "passed",
+      "durationMs": 18232,
+      "batch": "catalog.json"
+    },
+    {
+      "id": "36aa59bf9eab66c121ee-1f529d464eee62323777",
+      "file": "chair-lap-layout.spec.js",
+      "line": 46,
+      "title": "calibrated chair and bench support keep three close contacts through save, reload and export",
+      "status": "passed",
+      "durationMs": 64447,
+      "batch": "chair.json"
+    },
+    {
+      "id": "36aa59bf9eab66c121ee-1d881c05e14f237626f8",
+      "file": "chair-lap-layout.spec.js",
+      "line": 115,
+      "title": "chair-layout body, facing and unsupported-surface requests remain explicit editable variations",
+      "status": "passed",
+      "durationMs": 63475,
+      "batch": "chair.json"
+    },
+    {
+      "id": "91b2bf490356a5da12b9-cf262899397d12ba7c5c",
+      "file": "collections.spec.js",
+      "line": 6,
+      "title": "positions are a visible collection and collection filters stay usable on narrow screens",
+      "status": "passed",
+      "durationMs": 22896,
+      "batch": "controls.json"
+    },
+    {
+      "id": "91b2bf490356a5da12b9-debf8bd43a9aa49f5f32",
+      "file": "collections.spec.js",
+      "line": 51,
+      "title": "unread description text remains visible as a warning through the worker and draft reload",
+      "status": "passed",
+      "durationMs": 42532,
+      "batch": "controls.json"
+    },
+    {
+      "id": "52635cbaeaea3850280e-fd7b8682c8563e692225",
+      "file": "guided-placement.spec.js",
+      "line": 13,
+      "title": "guided placement can adjust, switch to fixed, survive history/reload/export and reset on mobile",
+      "status": "passed",
+      "durationMs": 57464,
+      "batch": "controls.json"
+    },
+    {
+      "id": "b71a61e892d00262b35e-bed714a3fa0b1abf24af",
+      "file": "hand-shapes.spec.js",
+      "line": 7,
+      "title": "female brace hands render and retain their geometry through edits, saved reload and export",
+      "status": "passed",
+      "durationMs": 52297,
+      "batch": "capture.json"
+    },
+    {
+      "id": "b71a61e892d00262b35e-dead1f6e0bc42e05abda",
+      "file": "hand-shapes.spec.js",
+      "line": 7,
+      "title": "male brace hands render and retain their geometry through edits, saved reload and export",
+      "status": "passed",
+      "durationMs": 34556,
+      "batch": "capture.json"
+    },
+    {
+      "id": "d1f65413e110ba4d5b89-5b431b52436936acfe6f",
+      "file": "head-to-toe-layout.spec.js",
+      "line": 94,
+      "title": "the head-to-toe pair retains guided placement and both original contacts on bed and floor through saved reload, export and capture",
+      "status": "passed",
+      "durationMs": 88463,
+      "batch": "floor-pairs.json"
+    },
+    {
+      "id": "d1f65413e110ba4d5b89-aa1e2736107f98e7475a",
+      "file": "head-to-toe-layout.spec.js",
+      "line": 185,
+      "title": "the head-to-toe calibration respects explicit height, facing and unsupported-surface requests",
+      "status": "passed",
+      "durationMs": 42594,
+      "batch": "floor-pairs.json"
+    },
+    {
+      "id": "7e425a970e237ca96e79-36f6f5eb6496c6d6c983",
+      "file": "import-boundary.spec.js",
+      "line": 5,
+      "title": "malformed contact types reject an entire imported pack before changing the library or viewport",
+      "status": "passed",
+      "durationMs": 25160,
+      "batch": "boundary.json"
+    },
+    {
+      "id": "3ee869187d1f9d722b02-852750185455ca0b4557",
+      "file": "joints.spec.js",
+      "line": 39,
+      "title": "fixed edited channels and actual solved angles survive history, save, reload and export",
+      "status": "passed",
+      "durationMs": 157543,
+      "batch": "controls.json"
+    },
+    {
+      "id": "ef4f6ec7750d1a30c0f7-387e51a6f62d8d5d5b88",
+      "file": "kneeling-pair-layout.spec.js",
+      "line": 104,
+      "title": "the kneeling pair retains six supports and three contacts on bed and floor through saved reload, export and capture",
+      "status": "passed",
+      "durationMs": 85164,
+      "batch": "floor-pairs.json"
+    },
+    {
+      "id": "ef4f6ec7750d1a30c0f7-9e3eb7bd259d52d0649a",
+      "file": "kneeling-pair-layout.spec.js",
+      "line": 195,
+      "title": "the kneeling calibration respects explicit height, facing and unsupported-surface requests",
+      "status": "passed",
+      "durationMs": 52671,
+      "batch": "floor-pairs.json"
+    },
+    {
+      "id": "c6a6af2cd7949fd9f446-0ad471787941a94d9771",
+      "file": "kneeling-supports.spec.js",
+      "line": 29,
+      "title": "low-kneel is grounded and preserves contacts through capture, reload and export",
+      "status": "passed",
+      "durationMs": 34094,
+      "batch": "supports.json"
+    },
+    {
+      "id": "c6a6af2cd7949fd9f446-601bd64432ab4866a2d9",
+      "file": "kneeling-supports.spec.js",
+      "line": 29,
+      "title": "paired-kneel is grounded and preserves contacts through capture, reload and export",
+      "status": "passed",
+      "durationMs": 50019,
+      "batch": "supports.json"
+    },
+    {
+      "id": "ef835a2e60a7573d19d2-2f92ffeaa90bc0648864",
+      "file": "late-texture.spec.js",
+      "line": 12,
+      "title": "a skin atlas arriving after the final pose redraws the idle viewport without another solve",
+      "status": "passed",
+      "durationMs": 13281,
+      "batch": "late-texture.json"
+    },
+    {
+      "id": "9d24ebfa1af8fc656b1b-631bac2087d539ece89e",
+      "file": "level-seated-supports.spec.js",
+      "line": 26,
+      "title": "shared-plane seating clears the sofa for both body types and survives surface edits, capture, reload and export",
+      "status": "passed",
+      "durationMs": 50563,
+      "batch": "seats.json"
+    },
+    {
+      "id": "651297813cef9aee2cde-c7e4510ba7d8f750b39a",
+      "file": "library-capacity.spec.js",
+      "line": 35,
+      "title": "a 200-preset four-figure library exports compactly and re-imports without data loss",
+      "status": "passed",
+      "durationMs": 48342,
+      "batch": "capacity.json"
+    },
+    {
+      "id": "651297813cef9aee2cde-2e58b2492444a7ced00a",
+      "file": "library-capacity.spec.js",
+      "line": 67,
+      "title": "a genuinely oversized library export explains the limit without deleting saved studies",
+      "status": "passed",
+      "durationMs": 25070,
+      "batch": "capacity.json"
+    },
+    {
+      "id": "d9c902c5861d48a98d75-d9f706ab02ac9715d11c",
+      "file": "placement.spec.js",
+      "line": 31,
+      "title": "a complete captured layout preserves both figures through history, save, reload and JSON export",
+      "status": "passed",
+      "durationMs": 88051,
+      "batch": "capture.json"
+    },
+    {
+      "id": "d9c902c5861d48a98d75-10000a8b6e164cdb89b4",
+      "file": "placement.spec.js",
+      "line": 104,
+      "title": "placement fields preserve untouched precision, validate edits, report support errors and reset on mobile",
+      "status": "passed",
+      "durationMs": 49217,
+      "batch": "capture.json"
+    },
+    {
+      "id": "bf0f9e56586f4be0a7a0-82de6d3eda6ad85ad5f4",
+      "file": "preset-layouts.spec.js",
+      "line": 17,
+      "title": "Side by side facing: calibrated card and floor text are clear, while taller and away requests remain editable variations",
+      "status": "passed",
+      "durationMs": 43901,
+      "batch": "lying-pairs.json"
+    },
+    {
+      "id": "bf0f9e56586f4be0a7a0-0e7d34551b86f9985eae",
+      "file": "preset-layouts.spec.js",
+      "line": 17,
+      "title": "Spooning: calibrated card and floor text are clear, while taller and away requests remain editable variations",
+      "status": "passed",
+      "durationMs": 47666,
+      "batch": "lying-pairs.json"
+    },
+    {
+      "id": "f1faa8006bd0e5fd98d8-6851a74233fdc02f6f7d",
+      "file": "reclining-pair-layout.spec.js",
+      "line": 88,
+      "title": "the reclining pair retains mixed placement and its original contact on bed and floor through saved reload, export and capture",
+      "status": "passed",
+      "durationMs": 85237,
+      "batch": "lying-pairs.json"
+    },
+    {
+      "id": "f1faa8006bd0e5fd98d8-fa3c6daf9f3cb94dfa2c",
+      "file": "reclining-pair-layout.spec.js",
+      "line": 182,
+      "title": "the reclining calibration respects explicit height, facing and unsupported-surface requests",
+      "status": "passed",
+      "durationMs": 38279,
+      "batch": "lying-pairs.json"
+    },
+    {
+      "id": "28c2bd28474e14ff5f71-baf2d7ff23632226f3a7",
+      "file": "reclining-supports.spec.js",
+      "line": 24,
+      "title": "forearm-supported recline stays grounded across body/surface edits, capture, reload and export",
+      "status": "passed",
+      "durationMs": 47654,
+      "batch": "supports.json"
+    },
+    {
+      "id": "98480096834cd7739638-644ff9fdc3711df0ed65",
+      "file": "seated-embrace-layout.spec.js",
+      "line": 72,
+      "title": "seated embrace keeps five contacts on floor and bed through save, reload, export and fixed capture",
+      "status": "passed",
+      "durationMs": 89995,
+      "batch": "seated-pairs.json"
+    },
+    {
+      "id": "98480096834cd7739638-8131dda93684739aae06",
+      "file": "seated-embrace-layout.spec.js",
+      "line": 157,
+      "title": "seated embrace calibration does not override explicit body, facing or unsupported-surface requests",
+      "status": "passed",
+      "durationMs": 74336,
+      "batch": "seated-pairs.json"
+    },
+    {
+      "id": "a69663d33216a35aa2d2-044cda1341ce6a6048ae",
+      "file": "seated-supports.spec.js",
+      "line": 21,
+      "title": "male seated support is clear and captured placement survives save, reload and export",
+      "status": "passed",
+      "durationMs": 22390,
+      "batch": "seats.json"
+    },
+    {
+      "id": "a69663d33216a35aa2d2-57d5409862de6827e715",
+      "file": "seated-supports.spec.js",
+      "line": 21,
+      "title": "female seated support is clear and captured placement survives save, reload and export",
+      "status": "passed",
+      "durationMs": 39323,
+      "batch": "seats.json"
+    },
+    {
+      "id": "50e146a2183f226e4b69-5011fc688d6a21f7c6b0",
+      "file": "standing-carry-layout.spec.js",
+      "line": 89,
+      "title": "standing carry retains five close contacts and two foot supports through floor, bed, save and capture",
+      "status": "passed",
+      "durationMs": 83388,
+      "batch": "seated-pairs.json"
+    },
+    {
+      "id": "50e146a2183f226e4b69-b4d3d5a93a562063f64c",
+      "file": "standing-carry-layout.spec.js",
+      "line": 175,
+      "title": "standing carry preserves explicit taller, away and unsupported-surface requests",
+      "status": "passed",
+      "durationMs": 57089,
+      "batch": "seated-pairs.json"
+    },
+    {
+      "id": "6be255ab03e150fef1cb-62a48ac2ad8c6826904b",
+      "file": "straddle-pair-layouts.spec.js",
+      "line": 97,
+      "title": "cowgirl: bed and floor preserve five contacts through saved reload, export and fixed capture",
+      "status": "passed",
+      "durationMs": 81311,
+      "batch": "straddle.json"
+    },
+    {
+      "id": "6be255ab03e150fef1cb-872ba89125aaa0326b37",
+      "file": "straddle-pair-layouts.spec.js",
+      "line": 216,
+      "title": "cowgirl: explicit height, opposite facing and unsupported surface remain editable variations",
+      "status": "passed",
+      "durationMs": 74717,
+      "batch": "straddle.json"
+    },
+    {
+      "id": "6be255ab03e150fef1cb-513a8a168ce0f70f2996",
+      "file": "straddle-pair-layouts.spec.js",
+      "line": 97,
+      "title": "reverse_cowgirl: bed and floor preserve five contacts through saved reload, export and fixed capture",
+      "status": "passed",
+      "durationMs": 115209,
+      "batch": "straddle.json"
+    },
+    {
+      "id": "6be255ab03e150fef1cb-34f66e02ea57ce838635",
+      "file": "straddle-pair-layouts.spec.js",
+      "line": 216,
+      "title": "reverse_cowgirl: explicit height, opposite facing and unsupported surface remain editable variations",
+      "status": "passed",
+      "durationMs": 86894,
+      "batch": "straddle.json"
+    },
+    {
+      "id": "3324084181281abe3b7c-36d77a299c10a875d68c",
+      "file": "studio.spec.js",
+      "line": 16,
+      "title": "long metadata fits narrow screens and keyboard selection preserves focus",
+      "status": "passed",
+      "durationMs": 25878,
+      "batch": "studio-a.json"
+    },
+    {
+      "id": "3324084181281abe3b7c-a0a6eab933bac25d5cb8",
+      "file": "studio.spec.js",
+      "line": 49,
+      "title": "catalog, figure edits, undo, save, update, duplicate, reload and delete",
+      "status": "passed",
+      "durationMs": 60892,
+      "batch": "studio-a.json"
+    },
+    {
+      "id": "3324084181281abe3b7c-ee4d849ef729bd910151",
+      "file": "studio.spec.js",
+      "line": 138,
+      "title": "valid and invalid imports are atomic, and downloaded JSON reloads",
+      "status": "passed",
+      "durationMs": 23989,
+      "batch": "studio-a.json"
+    },
+    {
+      "id": "3324084181281abe3b7c-f66c2917a03b20326def",
+      "file": "studio.spec.js",
+      "line": 173,
+      "title": "description, figure controls and workspace draft preserve the latest edits",
+      "status": "passed",
+      "durationMs": 61555,
+      "batch": "studio-b.json"
+    },
+    {
+      "id": "3324084181281abe3b7c-0d228482be28a7ea3cc0",
+      "file": "studio.spec.js",
+      "line": 224,
+      "title": "PNG, transparent PNG, SVG and editable preset downloads contain real output",
+      "status": "passed",
+      "durationMs": 17479,
+      "batch": "studio-b.json"
+    },
+    {
+      "id": "3324084181281abe3b7c-b3b9e5b95306c24dc276",
+      "file": "studio.spec.js",
+      "line": 281,
+      "title": "reference studies render, camera and material work, desktop has no overflow",
+      "status": "passed",
+      "durationMs": 98335,
+      "batch": "studio-b.json"
+    },
+    {
+      "id": "3324084181281abe3b7c-b2325bf6776518f1ebca",
+      "file": "studio.spec.js",
+      "line": 320,
+      "title": "mobile library, inspector, editing, saving and export remain reachable",
+      "status": "passed",
+      "durationMs": 26034,
+      "batch": "studio-c.json"
+    },
+    {
+      "id": "3324084181281abe3b7c-a170b83ac549ec810b73",
+      "file": "studio.spec.js",
+      "line": 370,
+      "title": "desktop, mobile and save dialog meet automated accessibility checks",
+      "status": "passed",
+      "durationMs": 24168,
+      "batch": "studio-c.json"
+    },
+    {
+      "id": "3324084181281abe3b7c-9a6116875cb4a5cd8c17",
+      "file": "studio.spec.js",
+      "line": 395,
+      "title": "corrupt library can be recovered and a blocked WebGL preview keeps JSON editing usable",
+      "status": "passed",
+      "durationMs": 19669,
+      "batch": "studio-c.json"
+    },
+    {
+      "id": "dde05a1b63f55a66387a-1f5e44cd72c5303c4857",
+      "file": "table-support-layout.spec.js",
+      "line": 104,
+      "title": "table support retains mixed placement, six supports and three contacts through save, reload, export and capture",
+      "status": "passed",
+      "durationMs": 79095,
+      "batch": "chair.json"
+    },
+    {
+      "id": "dde05a1b63f55a66387a-86cb55d85cdfeb89c43c",
+      "file": "table-support-layout.spec.js",
+      "line": 191,
+      "title": "table calibration preserves explicit body, facing and other-surface requests",
+      "status": "passed",
+      "durationMs": 54732,
+      "batch": "chair.json"
+    },
+    {
+      "id": "1399199547e0473a7b35-f289a75d75caab6b6edc",
+      "file": "template-cache.spec.js",
+      "line": 13,
+      "title": "equivalent body defaults reuse shaping across height and outfit changes without stale colors",
+      "status": "passed",
+      "durationMs": 77701,
+      "batch": "boundary.json"
+    }
+  ],
+  "catalogResults": [
+    {
+      "id": "builtin.together",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 0,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        5,
+        6
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface",
+        "surface"
+      ],
+      "supportGapMm": [
+        5,
+        6
+      ],
+      "supportMeasurement": [
+        "rendered",
+        "rendered"
+      ],
+      "bodyBalance": [
+        {
+          "actor": "female",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        },
+        {
+          "actor": "male",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "female",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        },
+        {
+          "actor": "male",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        }
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        5,
+        6
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 0,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface",
+          "surface"
+        ],
+        "supportGapMm": [
+          0,
+          0
+        ],
+        "supportMeasurement": [
+          "body-model",
+          "body-model"
+        ]
+      },
+      "contacts": [
+        {
+          "from": "1:hand.l",
+          "to": "0:hand.r",
+          "basis": "rendered",
+          "targetMm": 36,
+          "surfaceMm": 0,
+          "intersects": false,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "id": "builtin.standing-female",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 0,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        5
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface"
+      ],
+      "supportGapMm": [
+        5
+      ],
+      "supportMeasurement": [
+        "rendered"
+      ],
+      "bodyBalance": [
+        {
+          "actor": "female",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "female",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        }
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        5
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 0,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface"
+        ],
+        "supportGapMm": [
+          0
+        ],
+        "supportMeasurement": [
+          "body-model"
+        ]
+      },
+      "contacts": []
+    },
+    {
+      "id": "builtin.standing-male",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 0,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        6
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface"
+      ],
+      "supportGapMm": [
+        6
+      ],
+      "supportMeasurement": [
+        "rendered"
+      ],
+      "bodyBalance": [
+        {
+          "actor": "male",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "male",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        }
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        6
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 0,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface"
+        ],
+        "supportGapMm": [
+          0
+        ],
+        "supportMeasurement": [
+          "body-model"
+        ]
+      },
+      "contacts": []
+    },
+    {
+      "id": "builtin.seated-female",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 68,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        0
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface"
+      ],
+      "supportGapMm": [
+        2
+      ],
+      "supportMeasurement": [
+        "rendered"
+      ],
+      "bodyBalance": [
+        {
+          "actor": "female",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "female",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        }
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        0
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 0,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface"
+        ],
+        "supportGapMm": [
+          0
+        ],
+        "supportMeasurement": [
+          "body-model"
+        ]
+      },
+      "contacts": []
+    },
+    {
+      "id": "builtin.seated-male",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 77,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        0
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface"
+      ],
+      "supportGapMm": [
+        2
+      ],
+      "supportMeasurement": [
+        "rendered"
+      ],
+      "bodyBalance": [
+        {
+          "actor": "male",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "male",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        }
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        0
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 0,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface"
+        ],
+        "supportGapMm": [
+          0
+        ],
+        "supportMeasurement": [
+          "body-model"
+        ]
+      },
+      "contacts": []
+    },
+    {
+      "id": "builtin.reclined",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 91,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        0
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface"
+      ],
+      "supportGapMm": [
+        4
+      ],
+      "supportMeasurement": [
+        "rendered"
+      ],
+      "bodyBalance": [
+        {
+          "actor": "female",
+          "supported": false,
+          "offset": 0.08537970241605883,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "female",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        }
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        0
+      ],
+      "baseModel": {
+        "issues": [
+          "Support overlap"
+        ],
+        "overlapMm": 0,
+        "propOverlapMm": 41,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface"
+        ],
+        "supportGapMm": [
+          0
+        ],
+        "supportMeasurement": [
+          "body-model"
+        ]
+      },
+      "contacts": []
+    },
+    {
+      "id": "builtin.kneeling",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 0,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        0
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface"
+      ],
+      "supportGapMm": [
+        2
+      ],
+      "supportMeasurement": [
+        "rendered"
+      ],
+      "bodyBalance": [
+        {
+          "actor": "male",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "male",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        }
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        0
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 0,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface"
+        ],
+        "supportGapMm": [
+          2
+        ],
+        "supportMeasurement": [
+          "body-model"
+        ]
+      },
+      "contacts": []
+    },
+    {
+      "id": "builtin.low-kneel",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 0,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        0
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface"
+      ],
+      "supportGapMm": [
+        1
+      ],
+      "supportMeasurement": [
+        "rendered"
+      ],
+      "bodyBalance": [
+        {
+          "actor": "female",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "female",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        }
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        0
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 0,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface"
+        ],
+        "supportGapMm": [
+          0
+        ],
+        "supportMeasurement": [
+          "body-model"
+        ]
+      },
+      "contacts": []
+    },
+    {
+      "id": "builtin.floor-rest",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 0,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        0
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface"
+      ],
+      "supportGapMm": [
+        2
+      ],
+      "supportMeasurement": [
+        "rendered"
+      ],
+      "bodyBalance": [
+        {
+          "actor": "male",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "male",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        }
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        0
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 0,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface"
+        ],
+        "supportGapMm": [
+          0
+        ],
+        "supportMeasurement": [
+          "body-model"
+        ]
+      },
+      "contacts": []
+    },
+    {
+      "id": "builtin.paired-kneel",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 0,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        0,
+        0
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface",
+        "surface"
+      ],
+      "supportGapMm": [
+        2,
+        2
+      ],
+      "supportMeasurement": [
+        "rendered",
+        "rendered"
+      ],
+      "bodyBalance": [
+        {
+          "actor": "female",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        },
+        {
+          "actor": "male",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "female",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        },
+        {
+          "actor": "male",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        }
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        0,
+        0
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 0,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface",
+          "surface"
+        ],
+        "supportGapMm": [
+          0,
+          2
+        ],
+        "supportMeasurement": [
+          "body-model",
+          "body-model"
+        ]
+      },
+      "contacts": [
+        {
+          "from": "1:hand.l",
+          "to": "0:hand.r",
+          "basis": "rendered",
+          "targetMm": 12,
+          "surfaceMm": 0,
+          "intersects": false,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "id": "builtin.helping-hand",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 0,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        5,
+        6
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface",
+        "surface"
+      ],
+      "supportGapMm": [
+        5,
+        6
+      ],
+      "supportMeasurement": [
+        "rendered",
+        "rendered"
+      ],
+      "bodyBalance": [
+        {
+          "actor": "female",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        },
+        {
+          "actor": "male",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "female",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        },
+        {
+          "actor": "male",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        }
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        5,
+        6
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 0,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface",
+          "surface"
+        ],
+        "supportGapMm": [
+          0,
+          0
+        ],
+        "supportMeasurement": [
+          "body-model",
+          "body-model"
+        ]
+      },
+      "contacts": [
+        {
+          "from": "0:hand.r",
+          "to": "1:forearm.l",
+          "basis": "rendered",
+          "targetMm": 13,
+          "surfaceMm": 4,
+          "intersects": false,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "id": "builtin.named.missionary",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 16,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        0,
+        0
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface",
+        "partner"
+      ],
+      "supportGapMm": [
+        2,
+        null
+      ],
+      "supportMeasurement": [
+        "rendered",
+        null
+      ],
+      "bodyBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        },
+        {
+          "actor": "actor1",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        },
+        null
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        0,
+        null
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 0,
+        "propOverlapMm": 13,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface",
+          "partner"
+        ],
+        "supportGapMm": [
+          14,
+          null
+        ],
+        "supportMeasurement": [
+          "body-model",
+          null
+        ]
+      },
+      "contacts": [
+        {
+          "from": "1:pelvis.",
+          "to": "0:pelvis.",
+          "basis": "rendered",
+          "targetMm": 47,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "id": "builtin.named.cowgirl",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 51,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        0,
+        0
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface",
+        "partner"
+      ],
+      "supportGapMm": [
+        3,
+        null
+      ],
+      "supportMeasurement": [
+        "rendered",
+        null
+      ],
+      "bodyBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        },
+        {
+          "actor": "actor1",
+          "supported": false,
+          "offset": 0.5375117997845621,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        },
+        null
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        0,
+        null
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 0,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface",
+          "partner"
+        ],
+        "supportGapMm": [
+          20,
+          null
+        ],
+        "supportMeasurement": [
+          "body-model",
+          null
+        ]
+      },
+      "contacts": [
+        {
+          "from": "1:pelvis.",
+          "to": "0:pelvis.",
+          "basis": "rendered",
+          "targetMm": 32,
+          "surfaceMm": 2,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:hand.l",
+          "to": "0:chest.",
+          "basis": "rendered",
+          "targetMm": 0,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:hand.r",
+          "to": "0:chest.",
+          "basis": "rendered",
+          "targetMm": 0,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "0:hand.l",
+          "to": "1:knee.r",
+          "basis": "rendered",
+          "targetMm": 10,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "0:hand.r",
+          "to": "1:knee.l",
+          "basis": "rendered",
+          "targetMm": 10,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "id": "builtin.named.reverse_cowgirl",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 51,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        0,
+        0
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface",
+        "partner"
+      ],
+      "supportGapMm": [
+        3,
+        null
+      ],
+      "supportMeasurement": [
+        "rendered",
+        null
+      ],
+      "bodyBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        },
+        {
+          "actor": "actor1",
+          "supported": false,
+          "offset": 0.38284657120828297,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        },
+        null
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        0,
+        null
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 15,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface",
+          "partner"
+        ],
+        "supportGapMm": [
+          20,
+          null
+        ],
+        "supportMeasurement": [
+          "body-model",
+          null
+        ]
+      },
+      "contacts": [
+        {
+          "from": "1:pelvis.",
+          "to": "0:pelvis.",
+          "basis": "rendered",
+          "targetMm": 46,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:hand.l",
+          "to": "0:chest.",
+          "basis": "rendered",
+          "targetMm": 1,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:hand.r",
+          "to": "0:chest.",
+          "basis": "rendered",
+          "targetMm": 1,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "0:hand.l",
+          "to": "1:knee.l",
+          "basis": "rendered",
+          "targetMm": 5,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "0:hand.r",
+          "to": "1:knee.r",
+          "basis": "rendered",
+          "targetMm": 5,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "id": "builtin.named.doggy_style",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 15,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        0,
+        0
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface",
+        "surface"
+      ],
+      "supportGapMm": [
+        2,
+        2
+      ],
+      "supportMeasurement": [
+        "rendered",
+        "rendered"
+      ],
+      "bodyBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        },
+        {
+          "actor": "actor1",
+          "supported": true,
+          "offset": 0.009821982681887276,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        },
+        {
+          "actor": "actor1",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        }
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        0,
+        0
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 16,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface",
+          "surface"
+        ],
+        "supportGapMm": [
+          0,
+          4
+        ],
+        "supportMeasurement": [
+          "body-model",
+          "body-model"
+        ]
+      },
+      "contacts": [
+        {
+          "from": "1:pelvis.",
+          "to": "0:buttocks.",
+          "basis": "rendered",
+          "targetMm": 57,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:hand.l",
+          "to": "0:hip.l",
+          "basis": "rendered",
+          "targetMm": 92,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:hand.r",
+          "to": "0:hip.r",
+          "basis": "rendered",
+          "targetMm": 92,
+          "surfaceMm": 2,
+          "intersects": false,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "id": "builtin.named.spooning",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 0,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        0,
+        0
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface",
+        "surface"
+      ],
+      "supportGapMm": [
+        16,
+        14
+      ],
+      "supportMeasurement": [
+        "rendered",
+        "rendered"
+      ],
+      "bodyBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        },
+        {
+          "actor": "actor1",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        },
+        {
+          "actor": "actor1",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        }
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        0,
+        0
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 14,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface",
+          "surface"
+        ],
+        "supportGapMm": [
+          10,
+          10
+        ],
+        "supportMeasurement": [
+          "body-model",
+          "body-model"
+        ]
+      },
+      "contacts": [
+        {
+          "from": "1:chest.",
+          "to": "0:upperBack.",
+          "basis": "rendered",
+          "targetMm": 30,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:pelvis.",
+          "to": "0:buttocks.",
+          "basis": "rendered",
+          "targetMm": 29,
+          "surfaceMm": 1,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:hand.l",
+          "to": "0:waist.",
+          "basis": "rendered",
+          "targetMm": 54,
+          "surfaceMm": 4,
+          "intersects": false,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "id": "builtin.named.lotus",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 0,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        0,
+        0
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface",
+        "partner"
+      ],
+      "supportGapMm": [
+        2,
+        null
+      ],
+      "supportMeasurement": [
+        "rendered",
+        null
+      ],
+      "bodyBalance": [
+        {
+          "actor": "actor0",
+          "supported": false,
+          "offset": 0.04041829703630728,
+          "note": null
+        },
+        {
+          "actor": "actor1",
+          "supported": false,
+          "offset": 0.4059174770521661,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0.009717967385562187,
+          "note": null,
+          "basis": "rendered-support"
+        },
+        null
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        0,
+        null
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 2,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface",
+          "partner"
+        ],
+        "supportGapMm": [
+          3,
+          null
+        ],
+        "supportMeasurement": [
+          "body-model",
+          null
+        ]
+      },
+      "contacts": [
+        {
+          "from": "1:pelvis.",
+          "to": "0:lap.",
+          "basis": "rendered",
+          "targetMm": 21,
+          "surfaceMm": 2,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:hand.l",
+          "to": "0:shoulder.r",
+          "basis": "rendered",
+          "targetMm": 41,
+          "surfaceMm": 2,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:hand.r",
+          "to": "0:shoulder.l",
+          "basis": "rendered",
+          "targetMm": 32,
+          "surfaceMm": 2,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "0:hand.l",
+          "to": "1:upperBack.",
+          "basis": "rendered",
+          "targetMm": 106,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "0:hand.r",
+          "to": "1:upperBack.",
+          "basis": "rendered",
+          "targetMm": 106,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "id": "builtin.named.chair_straddle",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 80,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        0,
+        0
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface",
+        "partner"
+      ],
+      "supportGapMm": [
+        2,
+        null
+      ],
+      "supportMeasurement": [
+        "rendered",
+        null
+      ],
+      "bodyBalance": [
+        {
+          "actor": "actor0",
+          "supported": false,
+          "offset": 0.030211002973541956,
+          "note": null
+        },
+        {
+          "actor": "actor1",
+          "supported": false,
+          "offset": null,
+          "note": "supported by partner"
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        },
+        null
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        0,
+        null
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 0,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface",
+          "partner"
+        ],
+        "supportGapMm": [
+          5,
+          null
+        ],
+        "supportMeasurement": [
+          "body-model",
+          null
+        ]
+      },
+      "contacts": [
+        {
+          "from": "1:pelvis.",
+          "to": "0:lap.",
+          "basis": "rendered",
+          "targetMm": 21,
+          "surfaceMm": 2,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:hand.l",
+          "to": "0:shoulder.r",
+          "basis": "rendered",
+          "targetMm": 40,
+          "surfaceMm": 2,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:hand.r",
+          "to": "0:shoulder.l",
+          "basis": "rendered",
+          "targetMm": 31,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "id": "builtin.named.bent_over_table",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 0,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        0,
+        0
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface",
+        "surface"
+      ],
+      "supportGapMm": [
+        2,
+        2
+      ],
+      "supportMeasurement": [
+        "rendered",
+        "rendered"
+      ],
+      "bodyBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        },
+        {
+          "actor": "actor1",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        },
+        {
+          "actor": "actor1",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        }
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        0,
+        0
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 7,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface",
+          "surface"
+        ],
+        "supportGapMm": [
+          11,
+          0
+        ],
+        "supportMeasurement": [
+          "body-model",
+          "body-model"
+        ]
+      },
+      "contacts": [
+        {
+          "from": "1:pelvis.",
+          "to": "0:buttocks.",
+          "basis": "rendered",
+          "targetMm": 73,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:hand.l",
+          "to": "0:hip.l",
+          "basis": "rendered",
+          "targetMm": 50,
+          "surfaceMm": 2,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:hand.r",
+          "to": "0:hip.r",
+          "basis": "rendered",
+          "targetMm": 50,
+          "surfaceMm": 2,
+          "intersects": false,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "id": "builtin.named.standing_carry",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 0,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        0,
+        0
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface",
+        "partner"
+      ],
+      "supportGapMm": [
+        3,
+        null
+      ],
+      "supportMeasurement": [
+        "rendered",
+        null
+      ],
+      "bodyBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        },
+        {
+          "actor": "actor1",
+          "supported": false,
+          "offset": null,
+          "note": "supported by partner"
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        },
+        null
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        0,
+        null
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 0,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface",
+          "partner"
+        ],
+        "supportGapMm": [
+          6,
+          null
+        ],
+        "supportMeasurement": [
+          "body-model",
+          null
+        ]
+      },
+      "contacts": [
+        {
+          "from": "1:chest.",
+          "to": "0:chest.",
+          "basis": "rendered",
+          "targetMm": 9,
+          "surfaceMm": 2,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:buttocks.",
+          "to": "0:hand.l",
+          "basis": "rendered",
+          "targetMm": 40,
+          "surfaceMm": 2,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:buttocks.",
+          "to": "0:hand.r",
+          "basis": "rendered",
+          "targetMm": 58,
+          "surfaceMm": 2,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:hand.l",
+          "to": "0:shoulder.r",
+          "basis": "rendered",
+          "targetMm": 1,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:hand.r",
+          "to": "0:shoulder.l",
+          "basis": "rendered",
+          "targetMm": 2,
+          "surfaceMm": 4,
+          "intersects": false,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "id": "builtin.named.sixty_nine",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 28,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        0,
+        0
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface",
+        "partner"
+      ],
+      "supportGapMm": [
+        4,
+        null
+      ],
+      "supportMeasurement": [
+        "rendered",
+        null
+      ],
+      "bodyBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        },
+        {
+          "actor": "actor1",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        },
+        null
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        0,
+        null
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 0,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface",
+          "partner"
+        ],
+        "supportGapMm": [
+          14,
+          null
+        ],
+        "supportMeasurement": [
+          "body-model",
+          null
+        ]
+      },
+      "contacts": [
+        {
+          "from": "1:head.",
+          "to": "0:pelvis.",
+          "basis": "rendered",
+          "targetMm": 1,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:pelvis.",
+          "to": "0:head.",
+          "basis": "rendered",
+          "targetMm": 22,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "id": "builtin.named.side_by_side_facing",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 0,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        0,
+        0
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface",
+        "surface"
+      ],
+      "supportGapMm": [
+        18,
+        15
+      ],
+      "supportMeasurement": [
+        "rendered",
+        "rendered"
+      ],
+      "bodyBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        },
+        {
+          "actor": "actor1",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        },
+        {
+          "actor": "actor1",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        }
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        0,
+        0
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 11,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface",
+          "surface"
+        ],
+        "supportGapMm": [
+          10,
+          8
+        ],
+        "supportMeasurement": [
+          "body-model",
+          "body-model"
+        ]
+      },
+      "contacts": [
+        {
+          "from": "1:chest.",
+          "to": "0:chest.",
+          "basis": "rendered",
+          "targetMm": 11,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:pelvis.",
+          "to": "0:pelvis.",
+          "basis": "rendered",
+          "targetMm": 12,
+          "surfaceMm": 2,
+          "intersects": false,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "id": "builtin.named.standing_embrace",
+      "issues": [],
+      "overlapMm": 0,
+      "propOverlapMm": 0,
+      "proxyPropOverlapMm": 0,
+      "intersectingProps": [],
+      "unavailablePropChecks": 0,
+      "floorPenetrationMm": [
+        2,
+        4
+      ],
+      "unavailableFloorChecks": 0,
+      "unmetContacts": 0,
+      "intersectingFigures": [],
+      "unavailableFigureChecks": 0,
+      "supportBasis": [
+        "surface",
+        "surface"
+      ],
+      "supportGapMm": [
+        2,
+        4
+      ],
+      "supportMeasurement": [
+        "rendered",
+        "rendered"
+      ],
+      "bodyBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        },
+        {
+          "actor": "actor1",
+          "supported": true,
+          "offset": 0,
+          "note": null
+        }
+      ],
+      "renderedBalance": [
+        {
+          "actor": "actor0",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        },
+        {
+          "actor": "actor1",
+          "supported": true,
+          "offset": 0,
+          "note": null,
+          "basis": "rendered-support"
+        }
+      ],
+      "unavailableSupportChecks": 0,
+      "supportPenetrationMm": [
+        2,
+        4
+      ],
+      "baseModel": {
+        "issues": [],
+        "overlapMm": 1,
+        "propOverlapMm": 0,
+        "unmetContacts": 0,
+        "supportBasis": [
+          "surface",
+          "surface"
+        ],
+        "supportGapMm": [
+          0,
+          0
+        ],
+        "supportMeasurement": [
+          "body-model",
+          "body-model"
+        ]
+      },
+      "contacts": [
+        {
+          "from": "1:chest.",
+          "to": "0:chest.",
+          "basis": "rendered",
+          "targetMm": 9,
+          "surfaceMm": 2,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:pelvis.",
+          "to": "0:pelvis.",
+          "basis": "rendered",
+          "targetMm": 3,
+          "surfaceMm": 3,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:hand.l",
+          "to": "0:back.",
+          "basis": "rendered",
+          "targetMm": 8,
+          "surfaceMm": 2,
+          "intersects": false,
+          "reason": null
+        },
+        {
+          "from": "1:hand.r",
+          "to": "0:back.",
+          "basis": "rendered",
+          "targetMm": 8,
+          "surfaceMm": 2,
+          "intersects": false,
+          "reason": null
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Arbitrary conflicting user scenes may remain unresolved and are reported.",
+    "Coarse proxies differ from rendered geometry; balance is not force simulation.",
+    "Neutral reuses an existing scan; fitted garments are not cloth simulation.",
+    "Libraries are browser-local and packs are limited to 2 MB and 200 presets.",
+    "Mobile/touch testing is emulated, not physical-device or assistive-technology certification.",
+    "No public hosting deployment was requested or performed."
+  ]
+}

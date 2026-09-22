@@ -892,3 +892,40 @@ the original two arrangement contacts remain the entire contact graph. The
 primary's 26.6 mm raw body-model support residual remains diagnostic, while its
 coarse default passes independently. Verify replay, missing models and actual
 opposed head directions after integrating the ordinary data recipe.
+
+## Final product audit and template reuse
+
+Reconcile the full figure/UI/catalog objective against the design contracts,
+registered presets and complete browser inventory. Retain exact results for
+unit/build/dependency checks, every browser scenario, all catalog entries and
+the seven contact fixtures. Inspect final desktop/mobile output, persistence,
+import/export, error recovery, authoring and camera behavior. Keep unavailable
+external or physical-device verification explicit. A clean rendered catalog
+alone does not complete the product audit.
+
+The body-edit timing probe shows that omitted versus explicit default chest
+fullness values create different cache keys for identical dressed templates.
+Applying a fresh taller description also resets unspecified outfit colors, so
+the dressed template legitimately differs even though its expensive body shape
+does not. Share actual body defaults with the key and cache shaped bodies
+separately (at most eight), retaining the existing 24 dressed-template bound.
+Normalize equivalent appearance settings but keep geometry, clothing and color
+distinctions. Preserve model failure handling, geometry, validation and
+refinement budgets. Verify default/explicit
+geometry equivalence for all body types, key purity and appearance distinctions,
+then measure the production-browser edit again and check it preserves the same
+pose and quality results. Do not trade measurement accuracy for speed.
+
+The final import audit found that a non-text contact type could pass the library
+boundary and then fail during hand-shape lookup. Reject malformed or oversized
+types atomically at import, while retaining valid custom tags; tolerant raw
+scene validation must report a repair before solving. Unknown text tags must
+use the ordinary fallback, including names that match JavaScript prototype
+properties. Verify both strict import/storage behavior and browser feedback.
+
+A capacity probe found that 200 full four-figure presets fit in a 1.4 MB compact
+pack but exceed 3.2 MB when formatted, making the old export fail its own import
+limit. Keep the 2 MB guard: prefer readable output, then compact it without
+changing scene data if necessary. Reject genuinely oversized, empty or duplicate-
+ID exports clearly, preserve saved data on failure, and verify a complete
+capacity-sized browser export/re-import round trip with full joint precision.

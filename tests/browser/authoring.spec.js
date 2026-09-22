@@ -3,10 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
 import { BUILTIN_PRESETS, serializeCatalog } from "../../src/core/catalog.js";
 
-const ready = async (page) => {
-  await expect(page.locator("#status")).toContainText("Ready");
-  await expect(page.locator("#save-preset")).toBeEnabled();
-};
+import { ready } from "./helpers/ready.js";
 async function exportedScene(page) {
   await page.locator("#open-export").click();
   const [file] = await Promise.all([
