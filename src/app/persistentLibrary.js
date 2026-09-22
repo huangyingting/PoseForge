@@ -98,6 +98,7 @@ function unavailable(message, backup = "") {
     save: reject,
     remove: reject,
     import: reject,
+    saveReferenceStudies: reject,
     favorite: reject,
     reset: reject,
     export: reject,
@@ -212,10 +213,14 @@ export async function createPersistentLibrary(
     export: () => state.export(),
     raw: () => state.raw(),
     ...Object.fromEntries(
-      ["save", "remove", "favorite", "import", "reset"].map((method) => [
-        method,
-        (...args) => mutate(method, args),
-      ]),
+      [
+        "save",
+        "remove",
+        "favorite",
+        "import",
+        "saveReferenceStudies",
+        "reset",
+      ].map((method) => [method, (...args) => mutate(method, args)]),
     ),
   };
 }

@@ -14,6 +14,13 @@ import { buildStudio, toast, showRegion, openExport } from "./studioUI.js";
 import { bindCameraInput } from "./cameraInput.js";
 import { bindWorkspaceLayout } from "./workspaceLayout.js";
 import { createReferenceService } from "./referenceLoader.js";
+import {
+  isReferenceStudy,
+  referenceStudyId,
+  checkReferenceStudy,
+  referenceStudyMatches,
+} from "../core/referenceStudies.js";
+import { captureSolvedPose } from "../core/placement.js";
 
 const $ = (id) => document.getElementById(id);
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -67,6 +74,7 @@ const worker = new Worker(
 );
 let request = 0;
 let ready = false;
+let completedActors = null;
 let current = null;
 let shouldFrame = true;
 let past = [];
@@ -118,11 +126,13 @@ function heading() {
   $("scene-description").title = $("scene-description").textContent;
   $("scene-badge").textContent = current.dirty
     ? "Unsaved changes"
-    : current.id?.startsWith("user.")
-      ? "My preset"
-      : current.id?.startsWith("reference.")
-        ? "Approximate 3D"
-        : "Built-in study";
+    : isReferenceStudy(current)
+      ? "Authored · unreviewed"
+      : current.id?.startsWith("user.")
+        ? "My preset"
+        : current.id?.startsWith("reference.")
+          ? "Approximate 3D"
+          : "Built-in study";
   let source = $("scene-source");
   if (!source) {
     source = document.createElement("p");
@@ -132,15 +142,18 @@ function heading() {
   }
   source.hidden = !current.source;
   source.textContent = current.source
-    ? `Source: SexPoses ${current.source.recordId} · independently authored study, not a verified reconstruction`
+    ? `Source: SexPoses ${current.source.recordId} · ${current.id?.startsWith("reference.") ? "generated approximation" : "independent study"}, not a verified reconstruction`
     : "";
+  $("reference-actions").hidden = !current.source;
 }
 function solve(scene, { frame = false } = {}) {
   request += 1;
   ready = false;
+  completedActors = null;
   shouldFrame = frame;
   $("save-preset").disabled = true;
   $("open-export").disabled = true;
+  $("reference-save").disabled = true;
   $("panel").setAttribute("aria-busy", "true");
   status("Shaping your study…", true);
   worker.postMessage({ id: request, scene });
@@ -174,9 +187,13 @@ function selectPreset(preset, options = {}) {
   apply({ ...preset, dirty: false }, { frame: true, ...options });
   const url = new URL(location.href);
   url.search = "";
-  if (preset.id?.startsWith("reference.") && preset.source)
+  if (
+    (preset.id?.startsWith("reference.") || isReferenceStudy(preset)) &&
+    preset.source
+  )
     url.searchParams.set("reference", preset.source.recordId);
   else url.searchParams.set("preset", preset.id);
+  if (options.generated) url.searchParams.set("preview", "generated");
   history.replaceState(null, "", url);
   showRegion("studio");
 }
@@ -188,8 +205,18 @@ async function selectReference(value, options = {}) {
   try {
     const entry =
       typeof value === "string" ? await references.find(value) : value;
-    const preset = await references.preset(entry);
+    const authored = options.generated
+      ? null
+      : library.get(referenceStudyId(entry.sourceId));
+    const usable = authored && referenceStudyMatches(authored, entry);
+    const preset = usable
+      ? checkReferenceStudy(authored, entry)
+      : await references.preset(entry);
     if (token !== referenceRequest) return false;
+    if (authored && !usable)
+      toast(
+        "The saved study no longer matches this source. Opening the generated approximation; the saved study was kept.",
+      );
     selectPreset(preset, options);
     if (matchMedia("(max-width: 900px)").matches) canvas.focus();
     return true;
@@ -316,6 +343,11 @@ function collectNotes(data) {
     ? current.inputWarnings.filter((message) => typeof message === "string")
     : [];
   const notes = [
+    ...(isReferenceStudy(current)
+      ? [
+          "Locally authored, separate clothed posture study. Unreviewed; not a verified reconstruction.",
+        ]
+      : []),
     ...inputWarnings,
     ...data.warnings,
     ...data.quality.warnings,
@@ -355,6 +387,8 @@ function collectNotes(data) {
 }
 function workerFailure(message) {
   ready = false;
+  completedActors = null;
+  $("reference-save").disabled = true;
   panel.setSolvedActors([], { complete: false });
   $("show-notes").hidden = false;
   $("panel").setAttribute("aria-busy", "false");
@@ -371,7 +405,7 @@ worker.onmessage = ({ data }) => {
   if (data.id !== request) return;
   if (data.stage === "error") return workerFailure(data.error.split("\n")[0]);
   if (
-    current.id?.startsWith("reference.") &&
+    (current.id?.startsWith("reference.") || isReferenceStudy(current)) &&
     data.meshes.some((mesh) => mesh.source !== "scanned")
   ) {
     const message =
@@ -405,8 +439,10 @@ worker.onmessage = ({ data }) => {
   panel.setContactReport(data.quality.contactDetail ?? []);
   if (data.preview) studio.setPreview(current.scene, data.preview);
   ready = data.stage === "final";
+  completedActors = ready ? data.actors : null;
   $("save-preset").disabled = !ready;
   $("open-export").disabled = !ready;
+  $("reference-save").disabled = !ready;
   $("panel").setAttribute("aria-busy", String(!ready));
   status(
     ready
@@ -474,6 +510,35 @@ $("save-preset").onclick = () => {
   if (ready) {
     cancelReferenceLoad();
     studio.openSave(clone(current));
+  }
+};
+$("reference-edit").onclick = () => {
+  cancelReferenceLoad();
+  workspace.setFocus(false);
+  showRegion("edit");
+  panel.showFigures();
+};
+$("reference-save").onclick = async () => {
+  if (!ready || !current.source || !completedActors) return;
+  cancelReferenceLoad();
+  const token = referenceRequest;
+  const snapshot = clone(current);
+  try {
+    snapshot.scene.actors = snapshot.scene.actors.map((actor) => ({
+      ...actor,
+      ...captureSolvedPose(
+        completedActors.find((value) => value.id === actor.id),
+      ),
+    }));
+    const entry = await references.find(snapshot.source.recordId);
+    if (token !== referenceRequest) return;
+    studio.openReferenceSave(snapshot, entry, (preset) => {
+      if (token === referenceRequest) selectPreset(preset);
+      else studio.refresh();
+    });
+  } catch (error) {
+    if (token === referenceRequest)
+      toast(`Reference study not saved: ${error.message}`);
   }
 };
 $("open-export").onclick = () => {
@@ -615,7 +680,10 @@ else if (params.has("reference")) {
     history: false,
     frame: true,
   });
-  await selectReference(params.get("reference"), { history: false });
+  await selectReference(params.get("reference"), {
+    history: false,
+    generated: params.get("preview") === "generated",
+  });
 } else if (params.has("preset")) {
   const preset = library.get(params.get("preset"));
   if (!preset)

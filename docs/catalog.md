@@ -2,6 +2,10 @@
 
 ## References and verified presets are separate
 
+For independent per-reference editing and bulk imports, see the
+[reference authoring guide](reference-authoring.md). Authored studies are local,
+unreviewed overrides; they do not change the committed source snapshot.
+
 **References** browses all 1,283 records in the committed SexPoses annotation
 snapshot. Clicking a card now opens its **Approximate 3D** posture study in the
 studio. Source photos, raw descriptions, intimate contact labels and private
@@ -76,6 +80,8 @@ Support labels mean:
 
 - **Approximate 3D**: generated clothed individual posture study, not a verified
   reconstruction. Every current source record has one.
+- **Authored · unreviewed**: a locally saved, source-matched study selected instead
+  of that reference's generated approximation. This is not a verification badge.
 - **Needs adjustment**: personal/imported preset, not individually certified;
   inspect Pose checks to determine whether adjustment is actually needed.
 - **Verified 3D preset**: one of the audited immutable stock configurations.

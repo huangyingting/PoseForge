@@ -12,6 +12,14 @@ import {
   createReferenceService,
   referenceManifest,
 } from "./referenceLoader.js";
+import {
+  isReferenceStudy,
+  referenceStudyId,
+  referenceStudyMatches,
+  checkReferenceStudy,
+  parseReferenceStudies,
+  serializeReferenceStudies,
+} from "../core/referenceStudies.js";
 
 export const element = (tag, props = {}, children = []) => {
   const node = Object.assign(document.createElement(tag), props);
@@ -322,13 +330,30 @@ export function buildStudio(
     },
     "text-button",
   );
+  const referenceTools = button(
+    "Reference studies",
+    openReferenceTools,
+    "text-button",
+  );
+  const importLibrary = button(
+    "+ Import presets",
+    () => file.click(),
+    "text-button",
+  );
+  const referenceProgress = element("p", {
+    className: "reference-study-summary",
+    hidden: true,
+  });
+  referenceProgress.setAttribute("aria-live", "polite");
+  top.append(referenceProgress);
   root.append(
     top,
     list,
     pagination,
     element("div", { className: "library-bottom" }, [
       element("div", { className: "buttons" }, [
-        button("+ Import presets", () => file.click(), "text-button"),
+        referenceTools,
+        importLibrary,
         exportLibrary,
         info,
       ]),
@@ -427,6 +452,10 @@ export function buildStudio(
     observer?.disconnect();
     starts.clear();
     const isReferences = scope === "references";
+    referenceTools.hidden = !isReferences;
+    importLibrary.hidden = isReferences;
+    exportLibrary.hidden = isReferences;
+    referenceProgress.hidden = !isReferences || !references;
     root.dataset.collection = isReferences ? "references" : "presets";
     const all = library.index();
     categoryLabel.textContent = isReferences ? "Family" : "Category";
@@ -687,14 +716,24 @@ export function buildStudio(
       }
       return;
     }
-    const filtered = queryReferences(references, {
-      query: search.value,
-      family: category.value,
-      status: supportStatus.value,
-      group: group.checked,
-    });
+    const authored = authoredIndex();
+    referenceProgress.hidden = false;
+    referenceProgress.textContent = `${authored.size.toLocaleString("en")} / ${references.length.toLocaleString("en")} authored · unreviewed`;
+    const filtered = queryReferences(
+      references.map((entry) =>
+        authored.has(entry.sourceId)
+          ? { ...entry, status: "authored-3d" }
+          : entry,
+      ),
+      {
+        query: search.value,
+        family: category.value,
+        status: supportStatus.value,
+        group: group.checked,
+      },
+    );
     if (revealReference) {
-      const index = filtered.findIndex((entry) => entry.id === selected);
+      const index = filtered.findIndex((entry) => referenceSelected(entry));
       if (index >= 0) page = Math.floor(index / 24);
       revealReference = false;
     }
@@ -716,7 +755,7 @@ export function buildStudio(
       );
       choose.dataset.reference = entry.id;
       choose.setAttribute("aria-label", `Preview reference ${entry.sourceId}`);
-      choose.setAttribute("aria-pressed", String(selected === entry.id));
+      choose.setAttribute("aria-pressed", String(referenceSelected(entry)));
       choose.setAttribute("aria-busy", String(loadingReference === entry.id));
       choose.append(
         element("span", {
@@ -732,7 +771,7 @@ export function buildStudio(
               textContent:
                 loadingReference === entry.id
                   ? "Loading 3D…"
-                  : "Approximate 3D",
+                  : STATUS_LABELS[entry.status],
             }),
           ]),
           element("span", {
@@ -754,7 +793,7 @@ export function buildStudio(
         element(
           "article",
           {
-            className: `reference-card${selected === entry.id ? " selected" : ""}`,
+            className: `reference-card${referenceSelected(entry) ? " selected" : ""}`,
           },
           [choose, details],
         ),
@@ -768,8 +807,9 @@ export function buildStudio(
     modal.append(
       element("p", {
         className: "support-badge",
-        textContent:
-          "Approximate 3D · separate posture studies, not a verified reconstruction",
+        textContent: authoredIndex().has(entry.sourceId)
+          ? "Authored · unreviewed · not a verified reconstruction"
+          : "Approximate 3D · separate posture studies, not a verified reconstruction",
       }),
       element("p", {
         textContent: `${entry.figures} figures · ${entry.family} · ${entry.surface}`,
@@ -816,6 +856,10 @@ export function buildStudio(
         },
         "action primary",
       ),
+      button("Open generated approximation", () => {
+        modal.close();
+        handlers.previewReference(entry, { generated: true });
+      }),
       button("Associate current study with this source", () => {
         handlers.associate({
           dataset: "SexPoses",
@@ -829,6 +873,248 @@ export function buildStudio(
       }),
     );
     modal.showModal();
+  }
+
+  function referenceSelected(entry) {
+    return (
+      selected === entry.id || selected === referenceStudyId(entry.sourceId)
+    );
+  }
+
+  function authoredIndex() {
+    const saved = new Map(
+      library
+        .index()
+        .filter(isReferenceStudy)
+        .map((p) => [p.id, p]),
+    );
+    return new Map(
+      (references ?? [])
+        .filter((entry) =>
+          referenceStudyMatches(
+            saved.get(referenceStudyId(entry.sourceId)),
+            entry,
+          ),
+        )
+        .map((entry) => [
+          entry.sourceId,
+          saved.get(referenceStudyId(entry.sourceId)),
+        ]),
+    );
+  }
+
+  function openReferenceSave(snapshot, entry, onSaved) {
+    const checked = checkReferenceStudy(
+      { ...snapshot, id: referenceStudyId(entry.sourceId) },
+      entry,
+    );
+    const existing = library.get(checked.id);
+    const modal = dialog("Save reference study");
+    const title = field("Study name", snapshot.title, { required: true });
+    const replace = element("input", {
+      type: "checkbox",
+      id: newId("replace-study"),
+    });
+    const error = element("p", { className: "dialog-error", role: "alert" });
+    const form = element("form", {}, [
+      element("p", {
+        textContent: `${entry.sourceId} · ${entry.figures} figures. Saves the completed joint angles and placements as this reference's active study. This is unreviewed, not a verified reconstruction.`,
+      }),
+      title.wrapper,
+      ...(existing
+        ? [
+            element(
+              "label",
+              { htmlFor: replace.id, className: "reference-group" },
+              [
+                replace,
+                document.createTextNode(
+                  "Replace the existing authored study for this reference",
+                ),
+              ],
+            ),
+          ]
+        : []),
+      error,
+      element("div", { className: "buttons" }, [
+        button("Cancel", () => modal.close()),
+        element("button", {
+          type: "submit",
+          className: "action primary",
+          textContent: "Save study",
+        }),
+      ]),
+    ]);
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      if (form.dataset.saving) return;
+      if (existing && !replace.checked) {
+        error.textContent = "Confirm replacement to update the existing study.";
+        return;
+      }
+      form.dataset.saving = "true";
+      const submit = form.querySelector('[type="submit"]');
+      submit.disabled = true;
+      try {
+        const result = await library.saveReferenceStudies(
+          [
+            {
+              ...checked,
+              title: title.input.value,
+              category: "Reference studies",
+              description:
+                "Locally authored, separate clothed posture study. Unreviewed; not a verified reconstruction.",
+              scene: { ...checked.scene, title: title.input.value },
+            },
+          ],
+          [entry],
+          { replace: replace.checked },
+        );
+        if (!result.written.length)
+          throw new Error(
+            "An existing study was kept. Reopen this dialog to confirm replacement.",
+          );
+        onSaved(result.written[0]);
+        modal.close();
+        toast(
+          `Authored study saved for ${entry.sourceId}. It remains unreviewed.`,
+        );
+      } catch (e) {
+        error.textContent = e.message;
+      } finally {
+        delete form.dataset.saving;
+        submit.disabled = false;
+      }
+    };
+    modal.append(form);
+    modal.showModal();
+    title.input.focus();
+  }
+
+  async function openReferenceTools() {
+    const modal = dialog("Reference studies");
+    const message = element("p", { textContent: "Loading reference index…" });
+    const error = element("p", { className: "dialog-error", role: "alert" });
+    modal.append(message, error);
+    modal.showModal();
+    try {
+      references = await loadReferences();
+      if (!modal.isConnected) return;
+      const updateCount = () => {
+        message.textContent = `${authoredIndex().size.toLocaleString("en")} / ${references.length.toLocaleString("en")} references have authored studies in this browser. All are unreviewed. Export JSON for backup or transfer.`;
+      };
+      updateCount();
+      const input = element("input", {
+        type: "file",
+        id: newId("reference-import"),
+        accept: ".json,application/json",
+      });
+      const review = element("div");
+      modal.append(
+        element("p", {
+          textContent:
+            "Import source-linked PoseForge catalog JSON. Each study must include the matching source ID and annotation hash, all participants, fixed joints/placements, clothing, a neutral floor and separate figures. The entire batch is checked before anything is saved.",
+        }),
+        button("Export authored studies", () => {
+          try {
+            const presets = [...authoredIndex().values()].map((p) =>
+              library.get(p.id),
+            );
+            if (!presets.length)
+              throw new Error("No authored reference studies to export yet.");
+            download(
+              serializeReferenceStudies(presets),
+              "poseforge-reference-studies.json",
+              "application/json",
+            );
+          } catch (e) {
+            error.textContent = e.message;
+          }
+        }),
+        element("div", { className: "field" }, [
+          element("label", {
+            htmlFor: input.id,
+            textContent: "Import reference studies (JSON)",
+          }),
+          input,
+        ]),
+        review,
+      );
+      let revision = 0;
+      input.onchange = async () => {
+        const chosen = input.files[0];
+        const token = ++revision;
+        review.replaceChildren();
+        error.textContent = "";
+        if (!chosen) return;
+        try {
+          if (chosen.size > MAX_PACK_BYTES)
+            throw new Error("Catalog files must be no larger than 32 MB.");
+          const text = await chosen.text();
+          if (token !== revision || !modal.isConnected) return;
+          const studies = parseReferenceStudies(text, references);
+          const conflicts = studies.filter((p) => library.get(p.id)).length;
+          const replace = element("input", {
+            type: "checkbox",
+            id: newId("replace-batch"),
+          });
+          const apply = button(
+            "Import studies",
+            async () => {
+              apply.disabled = true;
+              input.disabled = true;
+              replace.disabled = true;
+              try {
+                const result = await library.saveReferenceStudies(
+                  studies,
+                  references,
+                  { replace: replace.checked },
+                );
+                review.replaceChildren(
+                  element("p", {
+                    role: "status",
+                    textContent: `Saved ${result.written.length} studies; kept ${result.skipped} existing studies.`,
+                  }),
+                );
+                updateCount();
+                refresh();
+                input.value = "";
+              } catch (e) {
+                error.textContent = e.message;
+                apply.disabled = false;
+              } finally {
+                input.disabled = false;
+                replace.disabled = false;
+              }
+            },
+            "action primary",
+          );
+          review.append(
+            element("p", {
+              textContent: `${studies.length} valid studies · ${studies.length - conflicts} new · ${conflicts} already authored. Existing studies are kept unless replacement is selected.`,
+            }),
+          );
+          if (conflicts)
+            review.append(
+              element(
+                "label",
+                { htmlFor: replace.id, className: "reference-group" },
+                [
+                  replace,
+                  document.createTextNode(
+                    `Replace ${conflicts} existing authored studies`,
+                  ),
+                ],
+              ),
+            );
+          review.append(apply);
+        } catch (e) {
+          error.textContent = `Import failed: ${e.message} Nothing was saved.`;
+        }
+      };
+    } catch (e) {
+      error.textContent = e.message;
+    }
   }
 
   function openSave(snapshot) {
@@ -955,6 +1241,7 @@ export function buildStudio(
   return {
     refresh,
     openSave,
+    openReferenceSave,
     setReferenceLoading(id) {
       loadingReference = id;
       if (scope === "references") refresh();
@@ -977,7 +1264,7 @@ export function buildStudio(
     setSelected(id) {
       const changed = selected !== id;
       selected = id;
-      if (id?.startsWith("reference.")) {
+      if (id?.startsWith("reference.") || isReferenceStudy({ id })) {
         if (scope !== "references") {
           scope = "references";
           search.value = "";

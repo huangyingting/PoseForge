@@ -7,6 +7,11 @@ import {
   MAX_PACK_BYTES,
 } from "../core/catalog.js";
 import { newId } from "./ids.js";
+import {
+  isReferenceStudy,
+  checkReferenceStudy,
+  prepareReferenceStudies,
+} from "../core/referenceStudies.js";
 
 export const LIBRARY_KEY = "poseforge.library.v1";
 export const DRAFT_KEY = "poseforge.workspace.v1";
@@ -30,6 +35,9 @@ export function createLibrary(storage, idFactory = () => newId()) {
         throw new Error("Invalid saved library");
       if (data.saved.length > MAX_PRESETS) throw new Error("Library too large");
       saved = data.saved.map(checkPreset);
+      saved = saved.map((p) =>
+        isReferenceStudy(p) ? checkReferenceStudy(p) : p,
+      );
       if (
         saved.length > MAX_PRESETS ||
         saved.some((p) => !p.id.startsWith("user.")) ||
@@ -103,7 +111,20 @@ export function createLibrary(storage, idFactory = () => newId()) {
       if (updateId && !saved.some((p) => p.id === updateId))
         throw new Error("Only your own saved presets can be updated.");
       const id = updateId ?? freshId(new Set(saved.map((p) => p.id)));
-      const next = checkPreset({ ...input, id });
+      let next = checkPreset({ ...input, id });
+      if (isReferenceStudy(next)) {
+        const previous = saved.find((p) => p.id === updateId);
+        next = checkReferenceStudy(
+          next,
+          previous
+            ? {
+                sourceId: previous.source.recordId,
+                annotationHash: previous.source.annotationHash,
+                figures: previous.scene.actors.length,
+              }
+            : undefined,
+        );
+      }
       commit(
         updateId
           ? saved.map((p) => (p.id === updateId ? next : p))
@@ -139,6 +160,28 @@ export function createLibrary(storage, idFactory = () => newId()) {
       });
       commit([...saved, ...added]);
       return structuredClone(added);
+    },
+    saveReferenceStudies(inputs, entries, { replace = false } = {}) {
+      if (
+        !Array.isArray(inputs) ||
+        inputs.length < 1 ||
+        inputs.length > MAX_PRESETS
+      )
+        throw new Error(`Provide 1–${MAX_PRESETS} reference studies.`);
+      const checked = prepareReferenceStudies(inputs, entries);
+      const next = new Map(saved.map((p) => [p.id, p]));
+      const written = [];
+      let skipped = 0;
+      for (const preset of checked) {
+        if (next.has(preset.id) && !replace) {
+          skipped++;
+          continue;
+        }
+        next.set(preset.id, preset);
+        written.push(preset);
+      }
+      if (written.length) commit([...next.values()]);
+      return { written: structuredClone(written), skipped };
     },
     export: () => serializeCatalog(saved),
     raw: () => storage.getItem(LIBRARY_KEY) ?? "",

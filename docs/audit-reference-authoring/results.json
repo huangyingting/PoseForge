@@ -1,0 +1,435 @@
+{
+  "scope": "Per-reference authoring and bulk import of clothed, separate, non-graphic posture studies. Does not create 1283 source-accurate reconstructed poses.",
+  "baselineCommit": "6107ec196f3aa4cca9c8c1bb1e344d3d01d8defe",
+  "recordedAt": "2026-09-22T22:19:35.630Z",
+  "environment": {
+    "node": "v24.17.0",
+    "platform": "linux",
+    "playwright": "1.63.0",
+    "graphics": "Chromium with SwiftShader"
+  },
+  "hashes": {
+    "method": "SHA-256 over sorted path, NUL, contents, NUL",
+    "applicationInputs": [
+      "index.html",
+      "package.json",
+      "package-lock.json",
+      "src/**",
+      "public/**"
+    ],
+    "application": "214dc0318366aee233d7fe23c8adc90cec91c67703a2ac6a650b45bb36393b78",
+    "tests": "c7cb5ddbd7ca11faf81e9d6181a079b9a991fcbbe1626b0fdc6aefbacb947d07"
+  },
+  "source": {
+    "records": 1283,
+    "figures": {
+      "1": 12,
+      "2": 1258,
+      "3": 13
+    },
+    "sourceSha256": "c65f48910f389046a75c70fcb1a6c9cabda4586aa99c12f8bbddf4b20262a3bf",
+    "indexSha256": "34b4f635d91e89b27450eb8af45411275e8acb89e2ab95eb11e7b7c7ec89b540",
+    "generatedPreviewSha256": "622a054dab50ec2eda309232b24fdfc474abd24dd2af5e2c1e62db2b87712675",
+    "generatedScenes": 203,
+    "generatedDataChanged": false,
+    "newAuthoredPosesShipped": 0
+  },
+  "checks": {
+    "units": {
+      "passed": 51,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 23558.234179,
+      "command": "node --test tests/architecture.test.js tests/catalog.test.js tests/persistentLibrary.test.js tests/referenceCatalog.test.js tests/referencePreviews.test.js tests/referenceStudies.test.js tests/preview.test.js"
+    },
+    "browser": {
+      "distinctScenarios": 38,
+      "passed": 38,
+      "failed": 0,
+      "skipped": 0,
+      "runs": [
+        {
+          "label": "broad-regression",
+          "startTime": "2026-09-22T21:58:52.633Z",
+          "duration": 691816.7000000001,
+          "expected": 35,
+          "skipped": 0,
+          "unexpected": 1,
+          "flaky": 0
+        },
+        {
+          "label": "compact-and-authoring",
+          "startTime": "2026-09-22T22:11:05.770Z",
+          "duration": 222766.65899999999,
+          "expected": 11,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        {
+          "label": "final-authoring",
+          "startTime": "2026-09-22T22:15:43.531Z",
+          "duration": 209005.454,
+          "expected": 6,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        }
+      ]
+    },
+    "productionBuild": {
+      "passed": true,
+      "command": "npm run build",
+      "note": "Each browser batch builds the production bundle before starting the preview server."
+    },
+    "dependencies": {
+      "vulnerabilities": 0
+    },
+    "formatting": {
+      "passed": true
+    },
+    "whitespace": {
+      "passed": true
+    }
+  },
+  "scaleEvidence": {
+    "sourceRecords": 1283,
+    "uniqueSourceIds": 1283,
+    "participants": 2567,
+    "exportedPresetBytes": 4652262,
+    "fixtures": "Existing generated approximations adopted to test capacity, not newly authored geometry."
+  },
+  "compactLayout": [
+    {
+      "width": 1440,
+      "height": 844,
+      "headerHeight": 56,
+      "libraryTopHeight": 160.59375,
+      "listHeight": 547.40625,
+      "fullyVisibleCards": 6,
+      "canvasWidth": 862,
+      "canvasHeight": 640.703125
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "headerHeight": 56,
+      "libraryTopHeight": 195.59375,
+      "listHeight": 436.40625,
+      "fullyVisibleCards": 5,
+      "canvasWidth": 502,
+      "canvasHeight": 567.203125
+    },
+    {
+      "width": 768,
+      "height": 1024,
+      "headerHeight": 56,
+      "libraryTopHeight": 180.59375,
+      "listHeight": 647.40625,
+      "fullyVisibleCards": 8,
+      "canvasWidth": 0,
+      "canvasHeight": 0
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "headerHeight": 56,
+      "libraryTopHeight": 180.59375,
+      "listHeight": 467.40625,
+      "fullyVisibleCards": 5,
+      "canvasWidth": 0,
+      "canvasHeight": 0
+    },
+    {
+      "width": 320,
+      "height": 700,
+      "headerHeight": 56,
+      "libraryTopHeight": 180.59375,
+      "listHeight": 323.40625,
+      "fullyVisibleCards": 4,
+      "canvasWidth": 0,
+      "canvasHeight": 0
+    }
+  ],
+  "browserCases": [
+    {
+      "file": "collections.spec.js",
+      "title": "positions are a visible collection and collection filters stay usable on narrow screens",
+      "status": "passed",
+      "durationMs": 15248,
+      "run": "broad-regression"
+    },
+    {
+      "file": "collections.spec.js",
+      "title": "unread description text remains visible as a warning through the worker and draft reload",
+      "status": "passed",
+      "durationMs": 26802,
+      "run": "broad-regression"
+    },
+    {
+      "file": "compact-ui.spec.js",
+      "title": "compact desktop and mobile layouts expose more rows and reserve the canvas for the scene",
+      "status": "passed",
+      "durationMs": 12583,
+      "run": "compact-and-authoring"
+    },
+    {
+      "file": "compact-ui.spec.js",
+      "title": "filters disclose, stay indicated while closed, reset pagination, and clear search without losing focus",
+      "status": "passed",
+      "durationMs": 8258,
+      "run": "compact-and-authoring"
+    },
+    {
+      "file": "compact-ui.spec.js",
+      "title": "focus view and search shortcuts preserve the scene, honor dialogs and leave typing alone",
+      "status": "passed",
+      "durationMs": 11958,
+      "run": "compact-and-authoring"
+    },
+    {
+      "file": "compact-ui.spec.js",
+      "title": "responsive transitions and short landscape screens keep editing, filters and camera actions reachable",
+      "status": "passed",
+      "durationMs": 9012,
+      "run": "compact-and-authoring"
+    },
+    {
+      "file": "compact-ui.spec.js",
+      "title": "compact controls, filters, information dialogs and enlarged text remain accessible",
+      "status": "passed",
+      "durationMs": 13792,
+      "run": "compact-and-authoring"
+    },
+    {
+      "file": "compact-ui.spec.js",
+      "title": "keyboard-focused fields scroll below the sticky inspector tabs",
+      "status": "passed",
+      "durationMs": 8215,
+      "run": "compact-and-authoring"
+    },
+    {
+      "file": "reference-3d.spec.js",
+      "title": "solo and three-person previews support deep links, camera controls, saving and exports",
+      "status": "passed",
+      "durationMs": 35769,
+      "run": "broad-regression"
+    },
+    {
+      "file": "reference-3d.spec.js",
+      "title": "a failed preview download preserves the current study and retry loads it",
+      "status": "passed",
+      "durationMs": 9529,
+      "run": "broad-regression"
+    },
+    {
+      "file": "reference-3d.spec.js",
+      "title": "a delayed reference request cannot overwrite a newer stock selection",
+      "status": "passed",
+      "durationMs": 10660,
+      "run": "broad-regression"
+    },
+    {
+      "file": "reference-3d.spec.js",
+      "title": "mobile reference selection opens the 3D studio while details remain separately accessible",
+      "status": "passed",
+      "durationMs": 14830,
+      "run": "broad-regression"
+    },
+    {
+      "file": "reference-3d.spec.js",
+      "title": "missing scanned models do not substitute an unclothed field for a clothed reference preview",
+      "status": "passed",
+      "durationMs": 1457,
+      "run": "broad-regression"
+    },
+    {
+      "file": "reference-3d.spec.js",
+      "title": "opening Save cancels a pending reference so it cannot replace the saved study",
+      "status": "passed",
+      "durationMs": 9893,
+      "run": "broad-regression"
+    },
+    {
+      "file": "reference-3d.spec.js",
+      "title": "keyboard preview selection retains focus on desktop and invalid deep links keep a usable study",
+      "status": "passed",
+      "durationMs": 15438,
+      "run": "broad-regression"
+    },
+    {
+      "file": "reference-authoring.spec.js",
+      "title": "a reference has an independently edited, captured and replace-confirmed pose across reload and export",
+      "status": "passed",
+      "durationMs": 54813,
+      "run": "final-authoring"
+    },
+    {
+      "file": "reference-authoring.spec.js",
+      "title": "bulk imports preview counts, keep existing by default, replace explicitly and reject an invalid batch atomically",
+      "status": "passed",
+      "durationMs": 28547,
+      "run": "final-authoring"
+    },
+    {
+      "file": "reference-authoring.spec.js",
+      "title": "all 1283 entries can be imported, exported and individually selected as authored test fixtures",
+      "status": "passed",
+      "durationMs": 34311,
+      "run": "final-authoring"
+    },
+    {
+      "file": "reference-authoring.spec.js",
+      "title": "mobile authoring and import are reachable, accessible and reject a missing participant",
+      "status": "passed",
+      "durationMs": 38230,
+      "run": "final-authoring"
+    },
+    {
+      "file": "reference-scale.spec.js",
+      "title": "all 1283 reference IDs are reachable through bounded pages without changing or solving the active scene",
+      "status": "passed",
+      "durationMs": 10756,
+      "run": "broad-regression"
+    },
+    {
+      "file": "reference-scale.spec.js",
+      "title": "reference families, annotation groups, statuses and mobile controls remain accessible",
+      "status": "passed",
+      "durationMs": 11483,
+      "run": "broad-regression"
+    },
+    {
+      "file": "reference-scale.spec.js",
+      "title": "reference fetch failure is retryable and does not block preset editing",
+      "status": "passed",
+      "durationMs": 7692,
+      "run": "broad-regression"
+    },
+    {
+      "file": "reference-scale.spec.js",
+      "title": "source association survives save, export and reload without inheriting a verification badge",
+      "status": "passed",
+      "durationMs": 18103,
+      "run": "broad-regression"
+    },
+    {
+      "file": "reference-scale.spec.js",
+      "title": "1283 full four-figure presets persist beyond localStorage scale with bounded browsing and lossless export",
+      "status": "passed",
+      "durationMs": 26167,
+      "run": "broad-regression"
+    },
+    {
+      "file": "reference-scale.spec.js",
+      "title": "IndexedDB transaction failure keeps the prior saved library and permits retry",
+      "status": "passed",
+      "durationMs": 9170,
+      "run": "broad-regression"
+    },
+    {
+      "file": "reference-scale.spec.js",
+      "title": "unavailable IndexedDB has a visible functional legacy fallback",
+      "status": "passed",
+      "durationMs": 17610,
+      "run": "broad-regression"
+    },
+    {
+      "file": "reference-scale.spec.js",
+      "title": "two real tabs reject a stale library transaction and recover on reload",
+      "status": "passed",
+      "durationMs": 19790,
+      "run": "broad-regression"
+    },
+    {
+      "file": "studio.spec.js",
+      "title": "long metadata fits narrow screens and keyboard selection preserves focus",
+      "status": "passed",
+      "durationMs": 14692,
+      "run": "broad-regression"
+    },
+    {
+      "file": "studio.spec.js",
+      "title": "catalog, figure edits, undo, save, update, duplicate, reload and delete",
+      "status": "passed",
+      "durationMs": 34785,
+      "run": "broad-regression"
+    },
+    {
+      "file": "studio.spec.js",
+      "title": "valid and invalid imports are atomic, and downloaded JSON reloads",
+      "status": "passed",
+      "durationMs": 18089,
+      "run": "broad-regression"
+    },
+    {
+      "file": "studio.spec.js",
+      "title": "description, figure controls and workspace draft preserve the latest edits",
+      "status": "passed",
+      "durationMs": 33059,
+      "run": "broad-regression"
+    },
+    {
+      "file": "studio.spec.js",
+      "title": "PNG, transparent PNG, SVG and editable preset downloads contain real output",
+      "status": "passed",
+      "durationMs": 9603,
+      "run": "broad-regression"
+    },
+    {
+      "file": "studio.spec.js",
+      "title": "reference studies render, camera and material work, desktop has no overflow",
+      "status": "passed",
+      "durationMs": 52639,
+      "run": "broad-regression"
+    },
+    {
+      "file": "studio.spec.js",
+      "title": "mobile library, inspector, editing, saving and export remain reachable",
+      "status": "passed",
+      "durationMs": 21136,
+      "run": "broad-regression"
+    },
+    {
+      "file": "studio.spec.js",
+      "title": "desktop, mobile and save dialog meet automated accessibility checks",
+      "status": "passed",
+      "durationMs": 16196,
+      "run": "broad-regression"
+    },
+    {
+      "file": "studio.spec.js",
+      "title": "corrupt library can be recovered and a blocked WebGL preview keeps JSON editing usable",
+      "status": "passed",
+      "durationMs": 13989,
+      "run": "broad-regression"
+    },
+    {
+      "file": "reference-authoring.spec.js",
+      "title": "saving an authored study cancels a pending generated selection",
+      "status": "passed",
+      "durationMs": 26082,
+      "run": "final-authoring"
+    },
+    {
+      "file": "reference-authoring.spec.js",
+      "title": "a committed reference save cannot replace a newer selection after its dialog closes",
+      "status": "passed",
+      "durationMs": 15798,
+      "run": "final-authoring"
+    }
+  ],
+  "verificationNotes": [
+    "The broad batch passed 35 of 36 cases; its 320px card-density failure was fixed by keeping reference-specific transfer controls in the References footer. All six compact-layout cases passed in the next batch.",
+    "After the compact batch, reserved-study generic updates were hardened against source/count changes, and reference save completion was guarded against newer selections. All six final authoring scenarios and 51 targeted units passed after these changes.",
+    "38 is the number of distinct scenarios across the batches, counting each title once using its latest result. No flaky or skipped cases occurred.",
+    "Capacity fixtures adopt existing generated approximations. Full source-ID export reconciliation covers 1283 IDs and 2567 participants, not newly authored geometry.",
+    "Previous 203-scene rendering evidence remains historical; generated data, solver, worker, renderer and model assets are unchanged. No complete historical unit suite or full rendering sweep was repeated."
+  ],
+  "limits": [
+    "Authored is an unreviewed workflow label, not source fidelity, distinct geometry or physical certification.",
+    "The 0.25m world-X separation check uses posed coarse body bounds without intimate anatomy, not precise mesh intersection, balance, support or clothing simulation.",
+    "Studies remain browser-local; backups require JSON export. Browser/device/assistive-technology certification is not claimed.",
+    "No cloud service, source imagery, new dependency or hosted deployment."
+  ]
+}

@@ -825,6 +825,10 @@ export function buildPanel(root, handlers) {
         control.placement.setSolved(actor, complete);
       });
     },
+    showFigures() {
+      tabButtons[1].click();
+      tabButtons[1].focus();
+    },
     showNotes() {
       tabButtons[0].click();
       diagnostics.details.open = true;

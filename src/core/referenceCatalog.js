@@ -4,12 +4,14 @@ export const CATALOG_PAGE_SIZE = 24;
 export const REFERENCE_STATUSES = [
   "reference-only",
   "approximate-3d",
+  "authored-3d",
   "needs-adjustment",
   "verified-3d",
 ];
 export const STATUS_LABELS = {
   "reference-only": "Reference only",
   "approximate-3d": "Approximate 3D",
+  "authored-3d": "Authored · unreviewed",
   "needs-adjustment": "Needs adjustment",
   "verified-3d": "Verified 3D preset",
 };
@@ -149,8 +151,9 @@ export function queryReferences(
   if (!group) return filtered;
   const groups = new Map();
   for (const e of filtered) {
-    if (groups.has(e.variant)) groups.get(e.variant).members.push(e.sourceId);
-    else groups.set(e.variant, { ...e, members: [e.sourceId] });
+    const key = e.status === "authored-3d" ? e.id : e.variant;
+    if (groups.has(key)) groups.get(key).members.push(e.sourceId);
+    else groups.set(key, { ...e, members: [e.sourceId] });
   }
   return [...groups.values()];
 }

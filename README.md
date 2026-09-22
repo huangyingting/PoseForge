@@ -26,6 +26,14 @@ loads only when opened; the separate preview pack loads on first 3D selection.
 Reference links use `?reference=img-0001`. Orbit, zoom, camera views, editing,
 save and PNG/SVG/JSON export work with reference previews.
 
+Each source can now have its own independently saved, clothed posture study.
+Use **Edit posture → Save reference study**, or **Reference studies** in the
+library for validated bulk import/export. Cards and reference links prefer the
+saved study while retaining the generated fallback. The coverage counter and
+**Authored · unreviewed** labels distinguish saved work from approximations;
+they do not certify uniqueness or source accuracy. See the
+[authoring guide](docs/reference-authoring.md).
+
 The compact workspace keeps search beside **Filters**, with active-filter counts
 and one-click reset. Library entries use short rows with visible quality labels.
 Press **/** to search; use **Focus** on desktop for a larger canvas and **Escape**

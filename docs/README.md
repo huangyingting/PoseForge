@@ -17,6 +17,13 @@ The [3D reference plan](reference-3d-plan.md) and
 for every source record, with separate clothed figures and explicit approximation
 notes. Original source interactions are not reconstructed.
 
+The [reference authoring plan](reference-authoring-plan.md) and
+[workflow guide](reference-authoring.md) describe independently saved reference
+studies, coverage status and validated bulk import/export. Authored does not mean
+verified, accurate to the source, or geometrically unique.
+The [authoring verification report](reference-authoring-verification.md) records
+the full-size import/export checks, browser evidence and remaining limitations.
+
 The 23 authored presets passed the previous complete rendered audit. The new
 reference index does not certify additional 3D poses; it labels all imported
 references separately from authored presets.

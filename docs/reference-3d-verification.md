@@ -1,5 +1,9 @@
 # 3D reference posture previews
 
+This report records the generated-preview milestone. The later
+[authoring workflow](reference-authoring.md) adds local per-source studies and
+bulk import/export without changing this generated preview pack.
+
 ## Delivered behavior and boundaries
 
 All **1,283 reference records** have a directly selectable clothed 3D posture
