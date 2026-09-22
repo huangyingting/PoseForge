@@ -1,5 +1,10 @@
 /** Portable, versioned scene presets. No browser or renderer dependencies. */
-import { validateScene, BODY_TYPES, JOINT_MODES, MAX_CONTACT_TYPE_LENGTH } from "./scene.js";
+import {
+  validateScene,
+  BODY_TYPES,
+  JOINT_MODES,
+  MAX_CONTACT_TYPE_LENGTH,
+} from "./scene.js";
 import {
   POSTURE_NAMES,
   ARRANGEMENT_NAMES,
@@ -15,8 +20,8 @@ import { FOOT_SHAPE_NAMES } from "./footPose.js";
 
 export const CATALOG_FORMAT = "poseforge.catalog";
 export const CATALOG_VERSION = 1;
-export const MAX_PACK_BYTES = 2_000_000;
-export const MAX_PRESETS = 200;
+export const MAX_PACK_BYTES = 32_000_000;
+export const MAX_PRESETS = 5000;
 export const CAMERA_VIEWS = ["three_quarter", "front", "side", "top"];
 
 const record = (value) =>
@@ -196,6 +201,7 @@ export function checkPreset(input) {
     fail("Preset IDs may use letters, numbers, dots, dashes and underscores.");
   if (!Array.isArray(input.tags) || input.tags.length > 12)
     fail("Tags must be a list of at most 12 items.");
+  const source = input.source == null ? null : checkSource(input.source);
   return {
     id,
     title: boundedText(input.title, "Title", 80, true),
@@ -205,12 +211,31 @@ export function checkPreset(input) {
       ...new Set(input.tags.map((tag) => boundedText(tag, "Tag", 32, true))),
     ],
     scene: checkScene(input.scene),
+    ...(source ? { source } : {}),
+  };
+}
+
+/** Provenance is descriptive metadata, never a transferable verification badge. */
+export function checkSource(input) {
+  if (
+    !record(input) ||
+    input.dataset !== "SexPoses" ||
+    typeof input.recordId !== "string" ||
+    typeof input.annotationHash !== "string" ||
+    !/^[a-z0-9][a-z0-9_.-]{0,99}$/i.test(input.recordId ?? "") ||
+    !/^[a-f0-9]{64}$/.test(input.annotationHash ?? "")
+  )
+    fail("Invalid source reference.");
+  return {
+    dataset: "SexPoses",
+    recordId: input.recordId,
+    annotationHash: input.annotationHash,
   };
 }
 
 function checkedEntries(input) {
   if (!Array.isArray(input) || input.length < 1 || input.length > MAX_PRESETS)
-    fail("A catalog needs 1–200 presets.");
+    fail(`A catalog needs 1–${MAX_PRESETS} presets.`);
   const presets = Array.from(input, checkPreset);
   if (new Set(presets.map((p) => p.id)).size !== presets.length)
     fail("The catalog contains duplicate preset IDs.");
@@ -222,7 +247,7 @@ export function parseCatalog(text) {
     typeof text !== "string" ||
     new TextEncoder().encode(text).length > MAX_PACK_BYTES
   )
-    fail("Catalog files must be smaller than 2 MB.");
+    fail("Catalog files must be no larger than 32 MB.");
   let pack;
   try {
     pack = JSON.parse(text);
@@ -245,7 +270,9 @@ export function serializeCatalog(presets) {
   if (encoder.encode(pretty).length <= MAX_PACK_BYTES) return pretty;
   const compact = JSON.stringify(pack);
   if (encoder.encode(compact).length <= MAX_PACK_BYTES) return compact;
-  fail("This catalog exceeds 2 MB. Export individual presets or a smaller library.");
+  fail(
+    "This catalog exceeds 32 MB. Export individual presets or a smaller library.",
+  );
 }
 
 export function searchCatalog(
@@ -260,6 +287,8 @@ export function searchCatalog(
       preset.category,
       ...preset.tags,
       ...preset.scene.actors.map((a) => a.posture),
+      preset.source?.recordId ?? "",
+      preset.source?.dataset ?? "",
     ]
       .join(" ")
       .toLocaleLowerCase();

@@ -10,6 +10,7 @@ import {
   serializeCatalog,
   searchCatalog,
   MAX_PACK_BYTES,
+  MAX_PRESETS,
 } from "../src/core/catalog.js";
 import { fourFigureLibrary } from "./fixtures/fourFigureLibrary.js";
 import { solveScene } from "../src/core/solver.js";
@@ -84,7 +85,7 @@ test("imports reject unknown versions, duplicate IDs, unsafe keys and unreasonab
       ),
     /duplicate/,
   );
-  assert.throws(() => parseCatalog(" ".repeat(2_000_001)), /2 MB/);
+  assert.throws(() => parseCatalog(" ".repeat(MAX_PACK_BYTES + 1)), /32 MB/);
   assert.throws(() => checkPreset(JSON.parse('{"__proto__":{}}')), /Unsafe/);
 });
 
@@ -122,11 +123,27 @@ test("a full four-figure library exports as a re-importable pack without losing 
   assert.deepEqual(restored[199], checkPreset(entries[199]));
 });
 
+test("large packs use compact JSON when needed and preserve all 5000 allowed entries", () => {
+  const large = fourFigureLibrary(2500);
+  const compact = serializeCatalog(large);
+  assert.ok(!compact.includes("\n"));
+  assert.ok(Buffer.byteLength(compact) <= MAX_PACK_BYTES);
+  assert.equal(parseCatalog(compact).length, 2500);
+  const entries = Array.from({ length: MAX_PRESETS }, (_, i) => ({
+    ...example(),
+    id: `scale.${i}`,
+  }));
+  assert.equal(parseCatalog(serializeCatalog(entries)).length, MAX_PRESETS);
+});
+
 test("serialization rejects empty, duplicate, excessive and truly oversized packs", () => {
-  assert.throws(() => serializeCatalog([]), /1–200/);
-  assert.throws(() => serializeCatalog(fourFigureLibrary(201)), /1–200/);
+  assert.throws(() => serializeCatalog([]), /1–5000/);
+  assert.throws(
+    () => serializeCatalog(Array(MAX_PRESETS + 1).fill(example())),
+    /1–5000/,
+  );
   assert.throws(() => serializeCatalog([example(), example()]), /duplicate/);
-  assert.throws(() => serializeCatalog(fourFigureLibrary(200, 3000)), /2 MB/);
+  assert.throws(() => serializeCatalog(fourFigureLibrary(2200, 3000)), /32 MB/);
   assert.match(
     serializeCatalog([example()]),
     /\n  "format"/,

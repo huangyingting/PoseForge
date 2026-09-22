@@ -1,0 +1,43 @@
+{
+  "format": "poseforge.reference-manifest",
+  "version": 1,
+  "dataset": "SexPoses",
+  "sourceFile": "annotated-pose-dataset/annotations.jsonl",
+  "sourceSha256": "c65f48910f389046a75c70fcb1a6c9cabda4586aa99c12f8bbddf4b20262a3bf",
+  "dataSha256": "694113612159b13e40e85480aabd73b608bbd6c0bf6d3b2b2e3db14a98113cd8",
+  "bytes": 532507,
+  "records": 1283,
+  "variants": 379,
+  "uniqueImages": 1283,
+  "figures": {
+    "1": 12,
+    "2": 1258,
+    "3": 13
+  },
+  "families": {
+    "Crouching": 2,
+    "Crouching + Seated": 11,
+    "Crouching + Supported": 8,
+    "Kneeling": 144,
+    "Kneeling + Other": 47,
+    "Kneeling + Reclining": 349,
+    "Kneeling + Reclining + Seated": 6,
+    "Kneeling + Seated": 23,
+    "Kneeling + Standing": 43,
+    "Kneeling + Supported": 2,
+    "Other": 30,
+    "Other + Reclining": 64,
+    "Other + Seated": 38,
+    "Other + Standing": 3,
+    "Reclining": 198,
+    "Reclining + Seated": 47,
+    "Reclining + Standing": 11,
+    "Seated": 135,
+    "Seated + Standing": 2,
+    "Standing": 83,
+    "Standing + Supported": 32,
+    "Supported": 5
+  },
+  "file": "catalog/sexposes-v1.json",
+  "semantics": "Reference metadata only. Variant groups match structured annotations, not verified anatomical positions."
+}

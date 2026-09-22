@@ -1,5 +1,11 @@
 # Studio completion audit
 
+This is the completed 23-preset studio baseline. The subsequent
+[large-catalog iteration](catalog-scale-verification.md) adds a separate source
+reference index and supersedes this report's 200-preset / 2 MB storage limits.
+The measurements below remain evidence for the baseline, not a claim that the
+new references have been reconstructed or verified as additional 3D presets.
+
 This audit covers the original three-part objective: improved male/female
 presentation, a modern usable studio, and a complete extensible preset system.
 The requested studio scope is implemented and the current-source checks below

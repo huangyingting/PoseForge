@@ -1,5 +1,64 @@
 # Building a pose library
 
+## References and verified presets are separate
+
+**References** browses all 1,283 records in the committed SexPoses annotation
+snapshot. It is a metadata-only catalog: source photos, raw descriptions,
+intimate contact labels and private file paths are not shipped. The normal
+**All / Positions / Saved / Favorites** collections contain playable 3D presets.
+There are still 23 authored stock presets; indexing a reference does not add a
+corresponding verified 3D layout.
+
+Search references by source ID (for example `img-0001`), broad posture family,
+support surface or figure count. A standalone digit from 1 to 4 means the number
+of figures. **Family**, **Support status**, and **Group matching annotations**
+compose with search. The snapshot has 22 broad family combinations and 379
+structured-annotation groups. Matching annotations are not proof of identical
+anatomy, and different annotations are not proof of distinct positions. All
+1,283 source IDs remain reachable without grouping.
+
+The group fingerprint includes the ordered participants' structured pose fields
+and the full relationship annotation. Participant `id` and `gender` fields,
+captions and tags are excluded; relationship strings and list order are retained.
+It does not resolve synonyms or compare solved geometry. The separate annotation
+fingerprint covers the complete original annotation for provenance.
+
+Both catalogs show at most 24 cards per page. **Previous / Next** preserves
+filters; changing a filter starts at page one. Reference metadata is downloaded
+only when References is opened. Failed or incomplete downloads show a retry
+button and leave the studio and personal library available.
+
+Opening a reference shows provenance and matching IDs without changing the
+active 3D scene. **Associate current study with this source** links your current
+independently authored study to the source record; save it to persist the link.
+Source IDs and annotation fingerprints survive preset export and import.
+Association does not generate a reconstruction or confer verification.
+
+Support labels mean:
+
+- **Reference only**: indexed source record, no authored 3D preset attached.
+- **Needs adjustment**: personal/imported preset, not individually certified;
+  inspect Pose checks to determine whether adjustment is actually needed.
+- **Verified 3D preset**: one of the audited immutable stock configurations.
+  Edited copies require their own checks. JSON cannot import a verification badge.
+
+The checked-in manifest is `src/data/reference-manifest.json`; metadata lives in
+`public/catalog/sexposes-v1.json`. Source IDs, annotation hashes and manifest
+hashes permit offline reconciliation without redistributing source imagery.
+A fresh clone does not need the sibling SexPoses checkout. To regenerate from
+an explicitly supplied annotation file, or verify byte-for-byte reproducibility:
+
+```sh
+node scripts/build-reference-catalog.mjs /path/to/annotations.jsonl
+node scripts/build-reference-catalog.mjs /path/to/annotations.jsonl --check
+```
+
+The importer rejects missing/duplicate IDs and malformed records rather than
+silently dropping them. It performs no network requests. Broad neutral families
+are a discovery aid, not an engine vocabulary mapping or geometry certification.
+
+## Author and save a 3D preset
+
 Choose an entry in **All** or browse the existing named definitions in **Positions**.
 Use **Figures** to change body type, height,
 build, clothing, hands, feet and individual joints, then choose **Save preset**.
@@ -148,9 +207,22 @@ changes. **Import presets** adds a valid pack without replacing existing work.
 Re-importing assigns new IDs and makes independent copies. Your favorites are
 local preferences and are not included in exported packs.
 
-Library exports retain readable formatting when it fits the 2 MB import limit,
+Libraries now use IndexedDB for capacity beyond localStorage. Valid legacy
+libraries are copied transactionally; the original localStorage data is retained
+as a recovery backup and is not the active library after migration. Writes are
+serialized and success is shown only after durable commit. A concurrent-tab
+conflict asks you to reload instead of overwriting newer saved data. Workspace
+drafts still use localStorage. JSON remains the portable backup.
+
+If IndexedDB cannot open, a new/unmigrated library can use an explicitly labeled
+legacy fallback with browser-dependent quota. A known migrated library is locked
+against replacement while its database is inaccessible. Corrupt data is not
+overwritten without explicit reset. Browser persistence is not cloud backup or
+a guarantee against user clearing, private-session expiry, or browser eviction.
+
+Library exports retain readable formatting when it fits the 32 MB import limit,
 and use compact JSON when formatting alone would exceed it. If the data itself
-is larger than 2 MB, export individual presets or a smaller library; the studio
+is larger than 32 MB, export individual presets or a smaller library; the studio
 reports the limit without deleting saved work or downloading an unreadable pack.
 
 ## Author a partner gesture without JSON
@@ -276,10 +348,11 @@ working starter. All dimensions are in meters and joint angles are degrees.
 | Field | Contract |
 | --- | --- |
 | `format`, `version` | Exactly `poseforge.catalog` and `1`; unsupported versions fail before importing |
-| `presets` | 1–200 entries; maximum file size 2 MB |
+| `presets` | 1–5,000 entries; maximum file size 32 MB (32,000,000 bytes) |
 | `id` | Unique within a pack; 1–100 letters, numbers, dots, underscores or dashes; starts with a letter or number |
 | `title`, `description` | Required name up to 80 characters; optional description up to 500 |
 | `category`, `tags` | Required category up to 40 characters; at most 12 tags, each up to 32 |
+| `source` | Optional `{dataset: "SexPoses", recordId, annotationHash}` provenance; never a quality endorsement |
 | `scene.actors` | 1–4 actors with distinct IDs and known postures |
 | `bodyType` | `female`, `male`, or `neutral`; neutral currently uses the female scan with neutral proportions |
 | `stature`, `build` | 1.4–2.1 meters; 0.8–1.3 build multiplier |

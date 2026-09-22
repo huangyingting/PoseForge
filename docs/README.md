@@ -3,11 +3,14 @@
 Start with the [studio redesign](studio-redesign.md) for the current interface
 contract and [catalog guide](catalog.md) for saving, importing and authoring
 portable presets. [Verification evidence](studio-verification.md) records the
-current checks and limitations. The documents below describe the underlying geometry engine.
+historical studio checks and limitations. The [catalog scale plan](catalog-scale-plan.md)
+and [catalog scale verification](catalog-scale-verification.md) cover the later
+1,283-record reference index and larger persistent libraries. The documents below
+describe the underlying geometry engine.
 
-The catalog now includes the existing named definitions. Their
-`validate-named-presets.mjs` quality gate remains open even though structural,
-preview and browser loading checks pass.
+The 23 authored presets passed the previous complete rendered audit. The new
+reference index does not certify additional 3D poses; it labels all imported
+references separately from authored presets.
 
 These describe *why* the system is built the way it is. The code carries the
 "what" in its own comments; these carry the reasoning, the measurements, and the

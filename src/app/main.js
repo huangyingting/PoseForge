@@ -4,10 +4,12 @@ import { parseDescription } from "../nlp/parser.js";
 import {
   BUILTIN_PRESETS,
   checkScene,
+  checkSource,
   serializeCatalog,
 } from "../core/catalog.js";
 import { buildPanel } from "./ui.js";
-import { createLibrary, DRAFT_KEY } from "./libraryStore.js";
+import { DRAFT_KEY } from "./libraryStore.js";
+import { createPersistentLibrary } from "./persistentLibrary.js";
 import { buildStudio, toast, showRegion, openExport } from "./studioUI.js";
 import { bindCameraInput } from "./cameraInput.js";
 
@@ -26,7 +28,7 @@ try {
     removeItem: () => {},
   };
 }
-const library = createLibrary(storage);
+const library = await createPersistentLibrary(storage);
 let view;
 let pendingDraw = false;
 function draw() {
@@ -112,6 +114,17 @@ function heading() {
     : current.id?.startsWith("user.")
       ? "My preset"
       : "Built-in study";
+  let source = $("scene-source");
+  if (!source) {
+    source = document.createElement("p");
+    source.id = "scene-source";
+    source.className = "source-note";
+    $("scene-description").after(source);
+  }
+  source.hidden = !current.source;
+  source.textContent = current.source
+    ? `Source: SexPoses ${current.source.recordId} · independently authored study, not a verified reconstruction`
+    : "";
 }
 function solve(scene, { frame = false } = {}) {
   request += 1;
@@ -185,6 +198,13 @@ const panel = buildPanel($("panel"), {
 });
 const studio = buildStudio(library, {
   select: selectPreset,
+  associate(source) {
+    if (!current) return;
+    remember();
+    current = { ...current, source, dirty: true };
+    heading();
+    persist();
+  },
   newStudy() {
     apply(
       {
@@ -270,8 +290,11 @@ function collectNotes(data) {
     });
   for (const actor of data.actors)
     if (actor.seatResidual > 0.02) {
-      const kind = actor.supportMeasurement === "rendered" &&
-        actor.supportPenetration >= actor.seatResidual - 1e-9 ? "support penetration" : "support gap";
+      const kind =
+        actor.supportMeasurement === "rendered" &&
+        actor.supportPenetration >= actor.seatResidual - 1e-9
+          ? "support penetration"
+          : "support gap";
       notes.push({
         level: "warning",
         message: `${actor.label} has a ${Math.round(actor.seatResidual * 1000)} mm ${actor.supportMeasurement ? `${actor.supportMeasurement} ` : ""}${kind}.`,
@@ -433,6 +456,7 @@ window.addEventListener("pagehide", (event) => {
   if (!event.persisted) {
     removeCameraInput();
     studio.dispose();
+    library.close();
     worker.terminate();
     view?.dispose();
   }
@@ -499,6 +523,7 @@ try {
   const draft = JSON.parse(storage.getItem(DRAFT_KEY) ?? "null");
   if (draft?.version === 1 && draft.current) {
     restored = { ...draft.current, scene: checkScene(draft.current.scene) };
+    if (restored.source != null) restored.source = checkSource(restored.source);
     if (typeof restored.title !== "string") restored = null;
   }
 } catch {
@@ -508,7 +533,7 @@ try {
 }
 if (params.has("q")) textScene(params.get("q"));
 else if (params.has("preset")) {
-  const preset = library.all().find((p) => p.id === params.get("preset"));
+  const preset = library.get(params.get("preset"));
   if (!preset)
     toast("That preset is not in this browser. Opening a starter study.");
   selectPreset(preset ?? BUILTIN_PRESETS[0], { history: false });

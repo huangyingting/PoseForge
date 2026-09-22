@@ -1,0 +1,351 @@
+{
+  "scope": "Metadata reference-catalog expansion and scalable personal libraries; not new source-image reconstructions.",
+  "baselineCommit": "2328c6de48494822cc0b01f887f2afaf1edf326d",
+  "generatedAt": "2026-09-22T09:01:35.129Z",
+  "environment": {
+    "node": "v24.17.0",
+    "npm": "11.13.0",
+    "browser": "Chromium 153.0.8010.12",
+    "graphics": "SwiftShader",
+    "viewports": [
+      "1440x844",
+      "390x844",
+      "320x844"
+    ]
+  },
+  "hashes": {
+    "method": "SHA-256 over sorted relative path, NUL, file contents, NUL",
+    "applicationSource": "f5590ed641141af6d0e2707b088c55c6f288b10d24bfc508890c897fbdaaeeab",
+    "applicationSourceFiles": 69,
+    "applicationInputs": [
+      "src/**",
+      "public/**",
+      "scripts/build-reference-catalog.mjs"
+    ],
+    "verification": "84ed3761ba878f9836e3902abff6e5ea62a8d5af5c7a9b62becdf28234b97ace",
+    "verificationFiles": 67
+  },
+  "sourceManifest": {
+    "format": "poseforge.reference-manifest",
+    "version": 1,
+    "dataset": "SexPoses",
+    "sourceFile": "annotated-pose-dataset/annotations.jsonl",
+    "sourceSha256": "c65f48910f389046a75c70fcb1a6c9cabda4586aa99c12f8bbddf4b20262a3bf",
+    "dataSha256": "694113612159b13e40e85480aabd73b608bbd6c0bf6d3b2b2e3db14a98113cd8",
+    "bytes": 532507,
+    "records": 1283,
+    "variants": 379,
+    "uniqueImages": 1283,
+    "figures": {
+      "1": 12,
+      "2": 1258,
+      "3": 13
+    },
+    "families": {
+      "Crouching": 2,
+      "Crouching + Seated": 11,
+      "Crouching + Supported": 8,
+      "Kneeling": 144,
+      "Kneeling + Other": 47,
+      "Kneeling + Reclining": 349,
+      "Kneeling + Reclining + Seated": 6,
+      "Kneeling + Seated": 23,
+      "Kneeling + Standing": 43,
+      "Kneeling + Supported": 2,
+      "Other": 30,
+      "Other + Reclining": 64,
+      "Other + Seated": 38,
+      "Other + Standing": 3,
+      "Reclining": 198,
+      "Reclining + Seated": 47,
+      "Reclining + Standing": 11,
+      "Seated": 135,
+      "Seated + Standing": 2,
+      "Standing": 83,
+      "Standing + Supported": 32,
+      "Supported": 5
+    },
+    "file": "catalog/sexposes-v1.json",
+    "semantics": "Reference metadata only. Variant groups match structured annotations, not verified anatomical positions."
+  },
+  "checks": {
+    "units": {
+      "command": "npm test",
+      "tests": 423,
+      "passed": 423,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "durationMs": 564759.957969
+    },
+    "finalFocusedUnits": {
+      "command": "node --test tests/referenceCatalog.test.js tests/persistentLibrary.test.js tests/catalog.test.js",
+      "tests": 29,
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 17154.430857
+    },
+    "browser": {
+      "distinctScenarios": 22,
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "runs": [
+        {
+          "label": "regression",
+          "startTime": "2026-09-22T08:48:31.977Z",
+          "duration": 562447.1919999999,
+          "expected": 21,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        {
+          "label": "final-focused",
+          "startTime": "2026-09-22T08:58:33.433Z",
+          "duration": 114023.263,
+          "expected": 8,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        }
+      ]
+    },
+    "productionBuild": {
+      "passed": true,
+      "command": "npm run build",
+      "note": "Production build served by Playwright for each browser batch."
+    },
+    "dependencies": {
+      "command": "npm audit --json",
+      "vulnerabilities": 0
+    },
+    "formatting": {
+      "passed": true,
+      "tool": "Prettier 3.9.8",
+      "scope": "All changed JavaScript and CSS files"
+    },
+    "sourceReproduction": {
+      "passed": true,
+      "command": "node scripts/build-reference-catalog.mjs <source-annotations.jsonl> --check",
+      "records": 1283,
+      "sourceIdsReconciled": 1283
+    },
+    "referencePaging": {
+      "visitedPages": 54,
+      "uniqueIds": 1283,
+      "maxCards": 24,
+      "newWorkerRequestsWhileBrowsing": 0
+    },
+    "privacyProjection": {
+      "sourceImagePaths": false,
+      "sourceURLs": false,
+      "rawDescriptions": false
+    },
+    "transfer": {
+      "browserEntries": 1283,
+      "figuresPerEntry": 4,
+      "readableBytes": 21108335,
+      "exactNonIdDataPreserved": true,
+      "uniqueFreshIds": 1283,
+      "compactUnitEntries": 2500,
+      "compactBytes": 17632837,
+      "maxEntryBoundary": 5000,
+      "maxPackBytes": 32000000
+    }
+  },
+  "browserCases": [
+    {
+      "file": "tests/browser/collections.spec.js",
+      "id": "91b2bf490356a5da12b9-cf262899397d12ba7c5c",
+      "title": "positions are a visible collection and collection filters stay usable on narrow screens",
+      "status": "passed",
+      "durationMs": 28091,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/collections.spec.js",
+      "id": "91b2bf490356a5da12b9-debf8bd43a9aa49f5f32",
+      "title": "unread description text remains visible as a warning through the worker and draft reload",
+      "status": "passed",
+      "durationMs": 48138,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/import-boundary.spec.js",
+      "id": "7e425a970e237ca96e79-36f6f5eb6496c6d6c983",
+      "title": "malformed contact types reject an entire imported pack before changing the library or viewport",
+      "status": "passed",
+      "durationMs": 23293,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/library-capacity.spec.js",
+      "id": "651297813cef9aee2cde-6a6fe8721c14f6f0f4dc",
+      "title": "a legacy 200-preset four-figure library migrates and re-imports without data loss",
+      "status": "passed",
+      "durationMs": 33890,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/library-capacity.spec.js",
+      "id": "651297813cef9aee2cde-bec92267120a7c30c3f8",
+      "title": "an oversized import explains the new limit without deleting saved studies",
+      "status": "passed",
+      "durationMs": 25098,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "id": "6ffb6617ce5cfab131d4-4e0c9ae921e0be0286eb",
+      "title": "all 1283 reference IDs are reachable through bounded pages without changing or solving the active scene",
+      "status": "passed",
+      "durationMs": 10950,
+      "run": "final-focused"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "id": "6ffb6617ce5cfab131d4-ff25f430acc1d7e093a1",
+      "title": "reference families, annotation groups, statuses and mobile controls remain accessible",
+      "status": "passed",
+      "durationMs": 11024,
+      "run": "final-focused"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "id": "6ffb6617ce5cfab131d4-724cfcafa976bf09293c",
+      "title": "reference fetch failure is retryable and does not block preset editing",
+      "status": "passed",
+      "durationMs": 7608,
+      "run": "final-focused"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "id": "6ffb6617ce5cfab131d4-6c5f1845f070e2540338",
+      "title": "source association survives save, export and reload without inheriting a verification badge",
+      "status": "passed",
+      "durationMs": 19100,
+      "run": "final-focused"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "id": "6ffb6617ce5cfab131d4-791f40678da3b9e60372",
+      "title": "1283 full four-figure presets persist beyond localStorage scale with bounded browsing and lossless export",
+      "status": "passed",
+      "durationMs": 22325,
+      "run": "final-focused"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "id": "6ffb6617ce5cfab131d4-abc2709fd6bd3388343e",
+      "title": "IndexedDB transaction failure keeps the prior saved library and permits retry",
+      "status": "passed",
+      "durationMs": 7364,
+      "run": "final-focused"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "id": "6ffb6617ce5cfab131d4-e2654697341e88a03960",
+      "title": "unavailable IndexedDB has a visible functional legacy fallback",
+      "status": "passed",
+      "durationMs": 14655,
+      "run": "final-focused"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "id": "3324084181281abe3b7c-36d77a299c10a875d68c",
+      "title": "long metadata fits narrow screens and keyboard selection preserves focus",
+      "status": "passed",
+      "durationMs": 19195,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "id": "3324084181281abe3b7c-a0a6eab933bac25d5cb8",
+      "title": "catalog, figure edits, undo, save, update, duplicate, reload and delete",
+      "status": "passed",
+      "durationMs": 39552,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "id": "3324084181281abe3b7c-ee4d849ef729bd910151",
+      "title": "valid and invalid imports are atomic, and downloaded JSON reloads",
+      "status": "passed",
+      "durationMs": 17465,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "id": "3324084181281abe3b7c-f66c2917a03b20326def",
+      "title": "description, figure controls and workspace draft preserve the latest edits",
+      "status": "passed",
+      "durationMs": 31655,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "id": "3324084181281abe3b7c-0d228482be28a7ea3cc0",
+      "title": "PNG, transparent PNG, SVG and editable preset downloads contain real output",
+      "status": "passed",
+      "durationMs": 9844,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "id": "3324084181281abe3b7c-b3b9e5b95306c24dc276",
+      "title": "reference studies render, camera and material work, desktop has no overflow",
+      "status": "passed",
+      "durationMs": 52711,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "id": "3324084181281abe3b7c-b2325bf6776518f1ebca",
+      "title": "mobile library, inspector, editing, saving and export remain reachable",
+      "status": "passed",
+      "durationMs": 18596,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "id": "3324084181281abe3b7c-a170b83ac549ec810b73",
+      "title": "desktop, mobile and save dialog meet automated accessibility checks",
+      "status": "passed",
+      "durationMs": 15601,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "id": "3324084181281abe3b7c-9a6116875cb4a5cd8c17",
+      "title": "corrupt library can be recovered and a blocked WebGL preview keeps JSON editing usable",
+      "status": "passed",
+      "durationMs": 13891,
+      "run": "regression"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "id": "6ffb6617ce5cfab131d4-4820b1753376733010a1",
+      "title": "two real tabs reject a stale library transaction and recover on reload",
+      "status": "passed",
+      "durationMs": 17053,
+      "run": "final-focused"
+    }
+  ],
+  "reviewedChanges": [
+    "Neutral metadata only; all original source IDs retained without importing images or raw descriptions.",
+    "Existing 23 stock scenes, calibrated layouts, solver, renderer, workers and model assets unchanged.",
+    "Older 200-entry / 2 MB assertions updated for the 5000-entry / 32 MB contract and bounded pagination.",
+    "Initial reference browser fixture path typo corrected; corrected scenario passed in both subsequent browser batches.",
+    "Source-ID type validation and source-linked draft validation were finalized after the broad suite started; the 29 focused units and eight final browser cases were rerun on the final code."
+  ],
+  "limits": [
+    "1283 source references are not 1283 distinct or verified 3D positions. Authored stock presets remain 23.",
+    "379 annotation groups are not anatomical equivalence classes; participant ID/body-type fields are excluded.",
+    "No new complete rendered geometry audit over the source corpus. Previous geometry limitations remain.",
+    "Browser-local IndexedDB storage remains quota- and eviction-dependent; JSON is the portable backup.",
+    "Desktop/mobile software-browser testing is not physical-device or assistive-technology certification.",
+    "No hosted deployment or CI workflow was configured."
+  ]
+}

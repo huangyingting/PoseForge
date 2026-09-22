@@ -4,6 +4,7 @@ import {
   parseCatalog,
   serializeCatalog,
   MAX_PRESETS,
+  MAX_PACK_BYTES,
 } from "../core/catalog.js";
 import { newId } from "./ids.js";
 
@@ -18,6 +19,8 @@ export function createLibrary(storage, idFactory = () => newId()) {
   try {
     const text = storage.getItem(LIBRARY_KEY);
     if (text) {
+      if (new TextEncoder().encode(text).length > MAX_PACK_BYTES)
+        throw new Error("Library too large");
       const data = JSON.parse(text);
       if (
         data.version !== 1 ||
@@ -25,6 +28,7 @@ export function createLibrary(storage, idFactory = () => newId()) {
         !Array.isArray(data.favorites)
       )
         throw new Error("Invalid saved library");
+      if (data.saved.length > MAX_PRESETS) throw new Error("Library too large");
       saved = data.saved.map(checkPreset);
       if (
         saved.length > MAX_PRESETS ||
@@ -44,17 +48,19 @@ export function createLibrary(storage, idFactory = () => newId()) {
     if (loadError) throw new Error(loadError);
     if (nextSaved.length > MAX_PRESETS)
       throw new Error(
-        "Your library is full (200 presets). Export a backup and remove unused presets.",
+        `Your library is full (${MAX_PRESETS} presets). Export a backup and remove unused presets.`,
+      );
+    const serialized = JSON.stringify({
+      version: 1,
+      saved: nextSaved,
+      favorites: nextFavorites,
+    });
+    if (new TextEncoder().encode(serialized).length > MAX_PACK_BYTES)
+      throw new Error(
+        "Your library exceeds 32 MB. Export a backup and remove unused presets.",
       );
     try {
-      storage.setItem(
-        LIBRARY_KEY,
-        JSON.stringify({
-          version: 1,
-          saved: nextSaved,
-          favorites: nextFavorites,
-        }),
-      );
+      storage.setItem(LIBRARY_KEY, serialized);
     } catch {
       throw new Error(
         "Could not save to this browser. Check available storage or download your scene as JSON.",
@@ -76,6 +82,21 @@ export function createLibrary(storage, idFactory = () => newId()) {
       return loadError;
     },
     all: () => structuredClone([...BUILTIN_PRESETS, ...saved]),
+    get: (id) =>
+      structuredClone([...BUILTIN_PRESETS, ...saved].find((p) => p.id === id)),
+    index: () =>
+      [...BUILTIN_PRESETS, ...saved].map((p) => ({
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        category: p.category,
+        tags: [...p.tags],
+        ...(p.source ? { source: { ...p.source } } : {}),
+        scene: { actors: p.scene.actors.map((a) => ({ posture: a.posture })) },
+        status: p.id.startsWith("builtin.")
+          ? "verified-3d"
+          : "needs-adjustment",
+      })),
     saved: () => structuredClone(saved),
     favorites: () => [...favorites],
     save(input, updateId = null) {

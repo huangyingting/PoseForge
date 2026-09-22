@@ -1,5 +1,9 @@
 # Studio verification — 2026-09-22
 
+The later [catalog-scale verification](catalog-scale-verification.md) covers
+the source-reference index and increased personal-library limits. This report
+retains the earlier studio/geometry baseline and its historical measurements.
+
 This records the current studio implementation and its limits. Bundled entries
 use clothed reference figures, and the catalog preserves the existing named
 definitions as data. The full figure/UI/catalog verification is recorded in the

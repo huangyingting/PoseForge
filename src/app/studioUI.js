@@ -3,6 +3,12 @@ import { authoredPreview, poseDiagram } from "./diagram.js";
 import { createPreviewService } from "./previewService.js";
 import { download } from "../render/exporters.js";
 import { newId } from "./ids.js";
+import {
+  catalogPage,
+  queryReferences,
+  STATUS_LABELS,
+} from "../core/referenceCatalog.js";
+import { createReferenceLoader, referenceManifest } from "./referenceLoader.js";
 
 export const element = (tag, props = {}, children = []) => {
   const node = Object.assign(document.createElement(tag), props);
@@ -92,7 +98,14 @@ export function buildStudio(library, handlers) {
         );
   let selected = "";
   let scope = "all";
+  let page = 0;
+  let references = null;
+  let referenceError = "";
+  let loadingReferences = false;
+  let disposed = false;
+  const loadReferences = createReferenceLoader();
   const count = element("span");
+  count.setAttribute("aria-live", "polite");
   const search = element("input", {
     type: "search",
     placeholder: "Find your next pose…",
@@ -104,11 +117,15 @@ export function buildStudio(library, handlers) {
     ["named", "Positions"],
     ["saved", "Saved"],
     ["favorites", "Favorites"],
+    ["references", "References"],
   ]) {
     const node = button(
       label,
       () => {
         scope = value;
+        page = 0;
+        category.value = "all";
+        supportStatus.value = "all";
         refresh();
         list.scrollTop = 0;
       },
@@ -118,12 +135,33 @@ export function buildStudio(library, handlers) {
     scopes.append(node);
   }
   const category = element("select", { id: "catalog-category" });
+  const categoryLabel = element("label", {
+    htmlFor: category.id,
+    textContent: "Category",
+  });
+  const supportStatus = element("select", { id: "catalog-status" }, [
+    element("option", { value: "all", textContent: "All statuses" }),
+    ...Object.entries(STATUS_LABELS).map(([value, textContent]) =>
+      element("option", { value, textContent }),
+    ),
+  ]);
+  const group = element("input", { id: "catalog-group", type: "checkbox" });
+  const groupField = element(
+    "label",
+    { className: "reference-group", htmlFor: group.id, hidden: true },
+    [group, document.createTextNode("Group matching annotations")],
+  );
+  const summary = element("p", {
+    className: "catalog-summary",
+    textContent: `${referenceManifest.records.toLocaleString("en")} source references · ${library.index().filter((p) => p.status === "verified-3d").length} verified stock presets`,
+  });
   const top = element("div", { className: "library-top" }, [
     element("span", { className: "eyebrow", textContent: "A PLACE TO BEGIN" }),
     element("div", { className: "library-title" }, [
       element("h2", { textContent: "The pose library" }),
       count,
     ]),
+    summary,
     button("+ New study", () => handlers.newStudy(), "action full new-study"),
     element("div", { className: "search-box" }, [
       element("label", {
@@ -134,12 +172,32 @@ export function buildStudio(library, handlers) {
       search,
     ]),
     scopes,
+    element("div", { className: "category-field" }, [categoryLabel, category]),
     element("div", { className: "category-field" }, [
-      element("label", { htmlFor: category.id, textContent: "Category" }),
-      category,
+      element("label", {
+        htmlFor: supportStatus.id,
+        textContent: "Support status",
+      }),
+      supportStatus,
     ]),
+    groupField,
   ]);
   const list = element("div", { className: "catalog-list" });
+  const pageLabel = element("span", { id: "catalog-page" });
+  pageLabel.setAttribute("aria-live", "polite");
+  const turnPage = (delta) => {
+    page += delta;
+    refresh();
+    list.scrollTop = 0;
+  };
+  const previous = button("Previous", () => turnPage(-1), "text-button");
+  const next = button("Next", () => turnPage(1), "text-button");
+  const pagination = element(
+    "nav",
+    { className: "catalog-pagination", hidden: true },
+    [previous, pageLabel, next],
+  );
+  pagination.setAttribute("aria-label", "Catalog pages");
   const file = element("input", {
     id: "catalog-file",
     type: "file",
@@ -152,7 +210,11 @@ export function buildStudio(library, handlers) {
       if (!library.saved().length)
         return toast("Save your first preset to export a library.");
       try {
-        download(library.export(), "poseforge-library.json", "application/json");
+        download(
+          library.export(),
+          "poseforge-library.json",
+          "application/json",
+        );
         toast("Your saved library was downloaded.");
       } catch (error) {
         toast(`Export failed: ${error.message}`);
@@ -163,15 +225,27 @@ export function buildStudio(library, handlers) {
   root.append(
     top,
     list,
+    pagination,
     element("div", { className: "library-bottom" }, [
       element("div", { className: "buttons" }, [
         button("+ Import presets", () => file.click(), "text-button"),
         exportLibrary,
       ]),
-      element("p", { textContent: "Make it yours. Saved in this browser." }),
+      element("p", {
+        id: "library-storage",
+        textContent: `Saved in this browser · ${library.mode ?? "local storage"}`,
+      }),
       file,
     ]),
   );
+  if (library.notice)
+    root.insertBefore(
+      element("p", {
+        className: "storage-notice",
+        textContent: library.notice,
+      }),
+      list,
+    );
   if (library.error) {
     const recovery = element("div", { className: "recovery" }, [
       element("p", { textContent: library.error }),
@@ -196,8 +270,8 @@ export function buildStudio(library, handlers) {
           confirmAction(
             "Reset saved library?",
             "This removes the unreadable data from this browser. Download it first if you need a recovery copy.",
-            () => {
-              library.reset();
+            async () => {
+              await library.reset();
               recovery.remove();
               refresh();
               toast("The saved library was reset.");
@@ -214,9 +288,12 @@ export function buildStudio(library, handlers) {
     if (!chosen) return;
     try {
       if (chosen.size > MAX_PACK_BYTES)
-        throw new Error("Catalog files must be smaller than 2 MB.");
-      const added = library.import(await chosen.text());
+        throw new Error("Catalog files must be no larger than 32 MB.");
+      file.disabled = true;
+      const added = await library.import(await chosen.text());
       scope = "saved";
+      page = 0;
+      supportStatus.value = "all";
       search.value = "";
       category.value = "all";
       refresh();
@@ -227,12 +304,18 @@ export function buildStudio(library, handlers) {
       toast(`Import failed: ${e.message}`);
     } finally {
       file.value = "";
+      file.disabled = false;
     }
   };
-  search.oninput = category.onchange = () => {
-    refresh();
-    list.scrollTop = 0;
-  };
+  search.oninput =
+    category.onchange =
+    supportStatus.onchange =
+    group.onchange =
+      () => {
+        page = 0;
+        refresh();
+        list.scrollTop = 0;
+      };
 
   function refresh() {
     const focusedPreset = document.activeElement?.dataset.preset;
@@ -240,11 +323,28 @@ export function buildStudio(library, handlers) {
     previewCleanups = [];
     observer?.disconnect();
     starts.clear();
-    const all = library.all();
+    const isReferences = scope === "references";
+    const all = library.index();
+    categoryLabel.textContent = isReferences ? "Family" : "Category";
+    groupField.hidden = !isReferences;
+    search.placeholder = isReferences
+      ? "Source ID, family, surface…"
+      : "Find your next pose…";
+    document.querySelector(`label[for="${search.id}"]`).textContent =
+      isReferences ? "Search references" : "Search presets";
     const oldCategory = category.value || "all";
     category.replaceChildren(
-      element("option", { value: "all", textContent: "All categories" }),
-      ...[...new Set(all.map((p) => p.category))]
+      element("option", {
+        value: "all",
+        textContent: isReferences ? "All families" : "All categories",
+      }),
+      ...[
+        ...new Set(
+          isReferences
+            ? Object.keys(referenceManifest.families)
+            : all.map((p) => p.category),
+        ),
+      ]
         .sort()
         .map((name) => element("option", { value: name, textContent: name })),
     );
@@ -256,16 +356,25 @@ export function buildStudio(library, handlers) {
       node.classList.toggle("active", active);
       node.setAttribute("aria-pressed", String(active));
     });
+    list.replaceChildren();
+    pagination.hidden = true;
+    if (isReferences) {
+      renderReferences();
+      return;
+    }
     const favorites = library.favorites();
     const filtered = searchCatalog(all, {
       query: search.value,
       category: category.value,
       scope,
       favorites,
-    });
+    }).filter(
+      (p) => supportStatus.value === "all" || p.status === supportStatus.value,
+    );
     count.textContent = `${filtered.length} studies`;
-    list.replaceChildren();
-    for (const preset of filtered) {
+    const paged = updatePages(filtered);
+    for (const entry of paged.entries) {
+      const preset = library.get(entry.id);
       const choose = button("", () => handlers.select(preset), "preset-select");
       choose.dataset.preset = preset.id;
       choose.setAttribute("aria-label", `Load ${preset.title}`);
@@ -293,13 +402,29 @@ export function buildStudio(library, handlers) {
             textContent: `${preset.scene.actors.length === 1 ? "Solo" : `${preset.scene.actors.length} figures`} · ${preset.category}`,
           }),
           previewNote,
+          element("span", {
+            className: `support-badge ${entry.status}`,
+            textContent: STATUS_LABELS[entry.status],
+            title:
+              entry.status === "verified-3d"
+                ? "Audited stock configuration only; edits need their own checks."
+                : "This personal preset has not been individually certified. Inspect Pose checks; adjustment may be needed.",
+          }),
+          ...(preset.source
+            ? [
+                element("span", {
+                  className: "source-note",
+                  textContent: `Source ${preset.source.recordId}`,
+                }),
+              ]
+            : []),
         ]),
       );
       const favorite = button(
         favorites.includes(preset.id) ? "★" : "☆",
-        () => {
+        async () => {
           try {
-            library.favorite(preset.id);
+            await library.favorite(preset.id);
             refresh();
             list.querySelector(`[data-favorite="${preset.id}"]`)?.focus();
           } catch (e) {
@@ -378,6 +503,8 @@ export function buildStudio(library, handlers) {
             "Explore all studies",
             () => {
               scope = "all";
+              page = 0;
+              supportStatus.value = "all";
               search.value = "";
               category.value = "all";
               refresh();
@@ -390,6 +517,159 @@ export function buildStudio(library, handlers) {
       list
         .querySelector(`[data-preset="${focusedPreset}"]`)
         ?.focus({ preventScroll: true });
+  }
+
+  function updatePages(entries) {
+    const result = catalogPage(entries, page);
+    page = result.page;
+    pagination.hidden = result.pages === 1;
+    pageLabel.textContent = `${page + 1} / ${result.pages}`;
+    previous.disabled = page === 0;
+    next.disabled = page + 1 === result.pages;
+    return result;
+  }
+
+  function renderReferences() {
+    count.textContent = `${referenceManifest.records.toLocaleString("en")} references`;
+    if (!references) {
+      const message = element("div", { className: "empty-state" }, [
+        element("p", {
+          textContent:
+            referenceError ||
+            "Loading the source index. The studio remains available…",
+        }),
+      ]);
+      list.append(message);
+      if (referenceError)
+        message.append(
+          button("Retry references", () => {
+            referenceError = "";
+            refresh();
+          }),
+        );
+      else if (!loadingReferences) {
+        loadingReferences = true;
+        loadReferences()
+          .then((entries) => {
+            references = entries;
+          })
+          .catch((error) => {
+            referenceError = error.message;
+          })
+          .finally(() => {
+            loadingReferences = false;
+            if (!disposed && scope === "references") refresh();
+          });
+      }
+      return;
+    }
+    const filtered = queryReferences(references, {
+      query: search.value,
+      family: category.value,
+      status: supportStatus.value,
+      group: group.checked,
+    });
+    count.textContent = `${filtered.length.toLocaleString("en")} ${group.checked ? "groups" : "references"}`;
+    const paged = updatePages(filtered);
+    if (!filtered.length)
+      list.append(
+        element("p", {
+          className: "empty-state",
+          textContent:
+            "No matching references. Imported records are reference-only, not verified 3D presets.",
+        }),
+      );
+    for (const entry of paged.entries) {
+      const choose = button("", () => openReference(entry), "reference-select");
+      choose.dataset.reference = entry.id;
+      choose.setAttribute("aria-label", `Inspect reference ${entry.sourceId}`);
+      choose.append(
+        element("span", {
+          className: "reference-mark",
+          textContent: String(entry.figures),
+          ariaHidden: "true",
+        }),
+        element("strong", { textContent: entry.sourceId }),
+        element("span", { textContent: entry.family }),
+        element("small", {
+          textContent: `${entry.figures} figures · ${entry.surface}`,
+        }),
+        element("span", {
+          className: "support-badge",
+          textContent: "Reference only",
+        }),
+        ...(entry.members
+          ? [
+              element("small", {
+                textContent: `${entry.members.length} matching records`,
+              }),
+            ]
+          : []),
+      );
+      list.append(
+        element("article", { className: "reference-card" }, [choose]),
+      );
+    }
+  }
+
+  function openReference(entry) {
+    const modal = dialog(`Reference ${entry.sourceId}`);
+    const peers = references.filter((e) => e.variant === entry.variant);
+    modal.append(
+      element("p", {
+        className: "support-badge",
+        textContent: "Reference only · no verified 3D preset attached",
+      }),
+      element("p", {
+        textContent: `${entry.figures} figures · ${entry.family} · ${entry.surface}`,
+      }),
+      element("p", {
+        textContent: `Source: SexPoses / ${referenceManifest.sourceFile} / ${entry.sourceId}`,
+      }),
+      element("p", {
+        textContent: `${peers.length} records share this structured annotation. This is not proof of anatomically identical positions.`,
+      }),
+      element("p", {
+        textContent:
+          "This metadata card does not reconstruct the source image. Opening it leaves your active 3D scene unchanged. Source photos and descriptions are not included.",
+      }),
+    );
+    const details = element("details", {}, [
+      element("summary", { textContent: "Provenance and matching records" }),
+    ]);
+    details.append(
+      element("p", {
+        className: "reference-hash",
+        textContent: `Annotation SHA-256: ${entry.annotationHash}`,
+      }),
+      element("p", {
+        className: "reference-hash",
+        textContent: `Variant: ${entry.variant}`,
+      }),
+      element("p", {
+        className: "reference-hash",
+        textContent: `Image SHA-256: ${entry.imageHash}`,
+      }),
+      element("p", {
+        className: "reference-hash",
+        textContent: peers.map((p) => p.sourceId).join(", "),
+      }),
+    );
+    modal.append(
+      details,
+      button("Associate current study with this source", () => {
+        handlers.associate({
+          dataset: "SexPoses",
+          recordId: entry.sourceId,
+          annotationHash: entry.annotationHash,
+        });
+        modal.close();
+        toast(
+          "Source linked. Save your study to keep the association; this does not verify a reconstruction.",
+        );
+      }),
+    );
+    modal.showModal();
   }
 
   function openSave(snapshot) {
@@ -423,8 +703,8 @@ export function buildStudio(library, handlers) {
             confirmAction(
               "Delete this preset?",
               `“${snapshot.title}” will be removed from this browser's library. Your current scene will remain in the studio.`,
-              () => {
-                library.remove(snapshot.id);
+              async () => {
+                await library.remove(snapshot.id);
                 handlers.deleted(snapshot.id);
                 refresh();
                 modal.close();
@@ -467,10 +747,14 @@ export function buildStudio(library, handlers) {
       error,
       actions,
     );
-    form.onsubmit = (event) => {
+    form.onsubmit = async (event) => {
       event.preventDefault();
+      if (form.dataset.saving) return;
+      form.dataset.saving = "true";
+      const submitter = event.submitter;
+      if (submitter) submitter.disabled = true;
       try {
-        const next = library.save(
+        const next = await library.save(
           {
             ...snapshot,
             title: title.input.value,
@@ -485,11 +769,13 @@ export function buildStudio(library, handlers) {
               title: title.input.value,
             },
           },
-          event.submitter?.value === "update" ? snapshot.id : null,
+          submitter?.value === "update" ? snapshot.id : null,
         );
         selected = next.id;
         handlers.saved(next);
         scope = "saved";
+        page = 0;
+        supportStatus.value = "all";
         search.value = "";
         category.value = "all";
         refresh();
@@ -497,6 +783,9 @@ export function buildStudio(library, handlers) {
         toast("Preset saved to your library.");
       } catch (e) {
         error.textContent = e.message;
+      } finally {
+        delete form.dataset.saving;
+        if (submitter) submitter.disabled = false;
       }
     };
     modal.append(form);
@@ -511,6 +800,7 @@ export function buildStudio(library, handlers) {
       previews.remember(scene, preview);
     },
     dispose() {
+      disposed = true;
       observer?.disconnect();
       starts.clear();
       previewCleanups.forEach((cleanup) => cleanup());
@@ -539,12 +829,16 @@ export function confirmAction(title, message, action) {
       button("Cancel", () => modal.close()),
       button(
         "Confirm",
-        () => {
+        async (event) => {
+          const control = event.currentTarget;
+          control.disabled = true;
           try {
-            action();
+            await action();
             modal.close();
           } catch (e) {
             error.textContent = e.message;
+          } finally {
+            control.disabled = false;
           }
         },
         "action primary",

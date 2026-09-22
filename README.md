@@ -1,7 +1,12 @@
 # PoseForge
 
-PoseForge includes a responsive pose studio with 23 catalog entries: eleven
-clothed reference studies and the twelve existing named position definitions.
+PoseForge includes a responsive pose studio with **1,283 searchable source
+references** and **23 authored 3D presets**: eleven clothed reference studies
+and the twelve existing named position definitions. These are separate counts:
+reference records are not automatically distinct positions or verified 3D poses.
+The **References** collection includes source IDs, 22 broad posture families,
+379 matching-annotation groups, provenance details and explicit support status.
+It contains neutral metadata, not source photographs or reconstructions.
 The **Positions** collection makes those definitions searchable by their original
 English and Chinese aliases. Solved joint diagrams show the figures together,
 including their support props; pose notes identify unresolved geometry.
@@ -9,6 +14,10 @@ including their support props; pose notes identify unresolved geometry.
 Figure/contact editing, favorites, saved presets, undo/redo and JSON import/export
 let you build a personal library. The viewport supports drag/keyboard orbit,
 pinch/wheel/button zoom, natural and clay materials, and PNG/SVG export.
+Saved libraries use IndexedDB, migrate legacy data without deleting the backup,
+and accept up to **5,000 presets / 32 MB** (whichever limit is reached first).
+Both preset and reference collections use bounded 24-card pages. Reference data
+loads only when opened, independently of the 3D scene.
 
 The joint editor shows both requested and solved angles. **Keep edited angles**
 preserves specified channels when authoring precise poses; unedited channels and
@@ -23,6 +32,8 @@ default contacts. **A helping hand** is a working example you can edit and save.
 
 **Start here:** [studio design](docs/studio-redesign.md) ·
 [catalog and extension guide](docs/catalog.md) ·
+[large-catalog design](docs/catalog-scale-plan.md) ·
+[catalog-scale verification](docs/catalog-scale-verification.md) ·
 [importable example](examples/reference-study.json).
 
 Use Node 24 (verified here with Node 24.17.0 and npm 11.13.0).
@@ -54,7 +65,7 @@ and a 2D image you can export. Pose checks report unresolved constraints.
 ```
 npm install
 npm run dev          # webapp on :5173
-npm test             # 407 tests
+npm test             # complete unit suite
 node scripts/render-cli.mjs "a woman seated on a chair wearing clothes"
 ```
 
