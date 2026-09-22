@@ -1,12 +1,15 @@
-/** Metadata-only reference index. Never sends imported references to a solver. */
+/** Source index with separately loaded approximate posture studies. */
+import { REFERENCE_PREVIEW_NOTES } from "./referencePreviews.js";
 export const CATALOG_PAGE_SIZE = 24;
 export const REFERENCE_STATUSES = [
   "reference-only",
+  "approximate-3d",
   "needs-adjustment",
   "verified-3d",
 ];
 export const STATUS_LABELS = {
   "reference-only": "Reference only",
+  "approximate-3d": "Approximate 3D",
   "needs-adjustment": "Needs adjustment",
   "verified-3d": "Verified 3D preset",
 };
@@ -59,7 +62,16 @@ export function checkReferences(pack, manifest) {
       e.postures.some((p) => !FAMILIES.has(p)) ||
       e.family !== [...new Set(e.postures)].sort().join(" + ") ||
       !SURFACES.has(e.surface) ||
-      e.status !== "reference-only" ||
+      e.status !== "approximate-3d" ||
+      !digest(e.previewKey) ||
+      !Array.isArray(e.previewNotes) ||
+      e.previewNotes.length > 8 ||
+      !["separate-participants", "approximate-joints", "assumed-floor"].every(
+        (code) => e.previewNotes.includes(code),
+      ) ||
+      e.previewNotes.some(
+        (code) => !Object.hasOwn(REFERENCE_PREVIEW_NOTES, code),
+      ) ||
       ![e.annotationHash, e.variant, e.imageHash].every(digest) ||
       Object.keys(e).some(
         (k) =>
@@ -74,6 +86,8 @@ export function checkReferences(pack, manifest) {
             "annotationHash",
             "variant",
             "imageHash",
+            "previewKey",
+            "previewNotes",
           ].includes(k),
       )
     )
@@ -93,11 +107,18 @@ export function checkReferences(pack, manifest) {
   }
   if (
     new Set(pack.entries.map((e) => e.variant)).size !== manifest.variants ||
-    new Set(pack.entries.map((e) => e.imageHash)).size !== manifest.uniqueImages
+    new Set(pack.entries.map((e) => e.imageHash)).size !==
+      manifest.uniqueImages ||
+    new Set(pack.entries.map((e) => e.previewKey)).size !==
+      manifest.previews?.scenes
   )
     throw new Error("Reference grouping does not match the manifest.");
   return pack.entries.map((e) =>
-    Object.freeze({ ...e, postures: Object.freeze([...e.postures]) }),
+    Object.freeze({
+      ...e,
+      postures: Object.freeze([...e.postures]),
+      previewNotes: Object.freeze([...e.previewNotes]),
+    }),
   );
 }
 

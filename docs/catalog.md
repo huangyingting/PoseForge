@@ -3,11 +3,21 @@
 ## References and verified presets are separate
 
 **References** browses all 1,283 records in the committed SexPoses annotation
-snapshot. It is a metadata-only catalog: source photos, raw descriptions,
-intimate contact labels and private file paths are not shipped. The normal
+snapshot. Clicking a card now opens its **Approximate 3D** posture study in the
+studio. Source photos, raw descriptions, intimate contact labels and private
+file paths are not shipped. The normal
 **All / Positions / Saved / Favorites** collections contain playable 3D presets.
 There are still 23 authored stock presets; indexing a reference does not add a
-corresponding verified 3D layout.
+corresponding verified 3D layout. The 1,283 records map to 203 generated study
+scenes: source records may share the same approximate geometry.
+
+These are non-graphic, clothed individual posture studies. All participants are
+retained, including single- and three-person records, but they are displayed
+separately. Joint angles come from categorical annotations and the existing rig,
+not measured 3D coordinates. A neutral floor replaces original furniture and
+external supports. Original relative facing, relationship and contact details
+are not reconstructed. **Pose checks** retains these approximation notes and
+any measured geometry problems; renderability is not physical certification.
 
 The compact library keeps search and collections visible. Open **Filters** for
 category/family, support status and grouping. A count on the Filters button
@@ -39,25 +49,41 @@ fingerprint covers the complete original annotation for provenance.
 
 Both catalogs show at most 24 cards per page. **Previous / Next** preserves
 filters; changing a filter starts at page one. Reference metadata is downloaded
-only when References is opened. Failed or incomplete downloads show a retry
-button and leave the studio and personal library available.
+only when References is opened. The separate preview pack is fetched on first
+3D selection. Both files have byte/hash/schema checks and revalidate cached
+responses. Failed index downloads show Retry; a failed preview download keeps
+the previous study and can be retried by selecting the card again.
 
-Opening a reference shows provenance and matching IDs without changing the
-active 3D scene. **Associate current study with this source** links your current
+The main card action changes the 3D scene; its **ⓘ Reference details** button
+opens provenance and matching IDs without replacing the current study. Details
+also offers **Open 3D preview**. **Associate current study with this source** links your current
 independently authored study to the source record; save it to persist the link.
 Source IDs and annotation fingerprints survive preset export and import.
 Association does not generate a reconstruction or confer verification.
 
+Share or reload a preview with `?reference=<source-id>`, for example
+`?reference=img-0001`. Invalid IDs/download failures leave a usable prior study.
+Late preview requests cannot replace a newer selection, edited or saved study.
+On mobile, successful selection opens Studio and focuses the preview canvas.
+
+Use the existing camera controls, Focus, figure/joint editing and export actions.
+Save creates an independent personal preset with its source link; it does not
+alter the generated reference. Diagnostic captions are not inserted as natural-
+language parser commands. Missing scanned models show an explicit unavailable
+message rather than substituting an unclothed collision-field reference.
+
 Support labels mean:
 
-- **Reference only**: indexed source record, no authored 3D preset attached.
+- **Approximate 3D**: generated clothed individual posture study, not a verified
+  reconstruction. Every current source record has one.
 - **Needs adjustment**: personal/imported preset, not individually certified;
   inspect Pose checks to determine whether adjustment is actually needed.
 - **Verified 3D preset**: one of the audited immutable stock configurations.
   Edited copies require their own checks. JSON cannot import a verification badge.
 
 The checked-in manifest is `src/data/reference-manifest.json`; metadata lives in
-`public/catalog/sexposes-v1.json`. Source IDs, annotation hashes and manifest
+`public/catalog/sexposes-v1.json`; deduplicated scene data lives in
+`public/catalog/reference-previews-v1.json`. Source IDs, annotation hashes and manifest
 hashes permit offline reconciliation without redistributing source imagery.
 A fresh clone does not need the sibling SexPoses checkout. To regenerate from
 an explicitly supplied annotation file, or verify byte-for-byte reproducibility:
@@ -67,9 +93,12 @@ node scripts/build-reference-catalog.mjs /path/to/annotations.jsonl
 node scripts/build-reference-catalog.mjs /path/to/annotations.jsonl --check
 ```
 
-The importer rejects missing/duplicate IDs and malformed records rather than
-silently dropping them. It performs no network requests. Broad neutral families
-are a discovery aid, not an engine vocabulary mapping or geometry certification.
+The importer rejects missing/duplicate IDs, unmapped postures and malformed
+records rather than silently dropping figures or defaulting to standing. It
+performs no network requests. Broad families remain a discovery aid. The scene
+builder separately maps posture/limb/trunk annotations, notes deferred or unread
+detail, clamps through the existing rig and captures fixed joint/placement data.
+The unchanged engine performs the displayed pose measurements.
 
 ## Author and save a 3D preset
 

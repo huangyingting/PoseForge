@@ -8,7 +8,10 @@ import {
   queryReferences,
   STATUS_LABELS,
 } from "../core/referenceCatalog.js";
-import { createReferenceLoader, referenceManifest } from "./referenceLoader.js";
+import {
+  createReferenceService,
+  referenceManifest,
+} from "./referenceLoader.js";
 
 export const element = (tag, props = {}, children = []) => {
   const node = Object.assign(document.createElement(tag), props);
@@ -77,7 +80,11 @@ function field(
   return { wrapper, input };
 }
 
-export function buildStudio(library, handlers) {
+export function buildStudio(
+  library,
+  handlers,
+  referenceService = createReferenceService(),
+) {
   const root = document.getElementById("library");
   const previews = createPreviewService();
   let previewCleanups = [];
@@ -103,7 +110,9 @@ export function buildStudio(library, handlers) {
   let referenceError = "";
   let loadingReferences = false;
   let disposed = false;
-  const loadReferences = createReferenceLoader();
+  const loadReferences = referenceService.entries;
+  let loadingReference = null;
+  let revealReference = false;
   const count = element("span");
   count.setAttribute("aria-live", "polite");
   const search = element("input", {
@@ -229,7 +238,7 @@ export function buildStudio(library, handlers) {
         }),
         element("p", {
           textContent:
-            "References are metadata records, not additional verified 3D poses. Personal presets need their own pose checks.",
+            "Every reference opens an approximate clothed 3D posture study with separate participants. These are not reconstructed interactions or verified 3D poses. Personal presets need their own pose checks.",
         }),
         element("p", {
           textContent: `Saved in this browser using ${library.mode ?? "local storage"}. Up to 5,000 presets / 32 MB. Export JSON for a portable backup; this is not cloud storage.`,
@@ -412,6 +421,7 @@ export function buildStudio(library, handlers) {
 
   function refresh() {
     const focusedPreset = document.activeElement?.dataset.preset;
+    const focusedReference = document.activeElement?.dataset.reference;
     previewCleanups.forEach((cleanup) => cleanup());
     previewCleanups = [];
     observer?.disconnect();
@@ -468,6 +478,10 @@ export function buildStudio(library, handlers) {
     pagination.hidden = true;
     if (isReferences) {
       renderReferences();
+      if (focusedReference)
+        list
+          .querySelector(`[data-reference="${focusedReference}"]`)
+          ?.focus({ preventScroll: true });
       return;
     }
     const favorites = library.favorites();
@@ -679,6 +693,11 @@ export function buildStudio(library, handlers) {
       status: supportStatus.value,
       group: group.checked,
     });
+    if (revealReference) {
+      const index = filtered.findIndex((entry) => entry.id === selected);
+      if (index >= 0) page = Math.floor(index / 24);
+      revealReference = false;
+    }
     count.textContent = `${filtered.length.toLocaleString("en")} ${group.checked ? "groups" : "references"}`;
     const paged = updatePages(filtered);
     if (!filtered.length)
@@ -686,17 +705,23 @@ export function buildStudio(library, handlers) {
         element("p", {
           className: "empty-state",
           textContent:
-            "No matching references. Imported records are reference-only, not verified 3D presets.",
+            "No matching references. These are approximate 3D posture previews, not verified 3D presets.",
         }),
       );
     for (const entry of paged.entries) {
-      const choose = button("", () => openReference(entry), "reference-select");
+      const choose = button(
+        "",
+        () => handlers.previewReference(entry),
+        "reference-select",
+      );
       choose.dataset.reference = entry.id;
-      choose.setAttribute("aria-label", `Inspect reference ${entry.sourceId}`);
+      choose.setAttribute("aria-label", `Preview reference ${entry.sourceId}`);
+      choose.setAttribute("aria-pressed", String(selected === entry.id));
+      choose.setAttribute("aria-busy", String(loadingReference === entry.id));
       choose.append(
         element("span", {
           className: "reference-mark",
-          textContent: String(entry.figures),
+          textContent: "3D",
           ariaHidden: "true",
         }),
         element("span", { className: "reference-info" }, [
@@ -704,7 +729,10 @@ export function buildStudio(library, handlers) {
             element("strong", { textContent: entry.sourceId }),
             element("span", {
               className: "support-badge",
-              textContent: "Reference only",
+              textContent:
+                loadingReference === entry.id
+                  ? "Loading 3D…"
+                  : "Approximate 3D",
             }),
           ]),
           element("span", {
@@ -716,8 +744,20 @@ export function buildStudio(library, handlers) {
           }),
         ]),
       );
+      const details = button(
+        "ⓘ",
+        () => openReference(entry),
+        "reference-details icon-button",
+      );
+      details.setAttribute("aria-label", `Reference details ${entry.sourceId}`);
       list.append(
-        element("article", { className: "reference-card" }, [choose]),
+        element(
+          "article",
+          {
+            className: `reference-card${selected === entry.id ? " selected" : ""}`,
+          },
+          [choose, details],
+        ),
       );
     }
   }
@@ -728,7 +768,8 @@ export function buildStudio(library, handlers) {
     modal.append(
       element("p", {
         className: "support-badge",
-        textContent: "Reference only · no verified 3D preset attached",
+        textContent:
+          "Approximate 3D · separate posture studies, not a verified reconstruction",
       }),
       element("p", {
         textContent: `${entry.figures} figures · ${entry.family} · ${entry.surface}`,
@@ -741,7 +782,7 @@ export function buildStudio(library, handlers) {
       }),
       element("p", {
         textContent:
-          "This metadata card does not reconstruct the source image. Opening it leaves your active 3D scene unchanged. Source photos and descriptions are not included.",
+          "The 3D preview derives individual body postures from annotations. Participants are displayed separately on a neutral floor; original relationship, facing, furniture and contact details are not reconstructed. Source photos are not included.",
       }),
     );
     const details = element("details", {}, [
@@ -767,6 +808,14 @@ export function buildStudio(library, handlers) {
     );
     modal.append(
       details,
+      button(
+        "Open 3D preview",
+        () => {
+          modal.close();
+          handlers.previewReference(entry);
+        },
+        "action primary",
+      ),
       button("Associate current study with this source", () => {
         handlers.associate({
           dataset: "SexPoses",
@@ -906,6 +955,10 @@ export function buildStudio(library, handlers) {
   return {
     refresh,
     openSave,
+    setReferenceLoading(id) {
+      loadingReference = id;
+      if (scope === "references") refresh();
+    },
     focusSearch() {
       showRegion("library");
       search.focus();
@@ -924,10 +977,20 @@ export function buildStudio(library, handlers) {
     setSelected(id) {
       const changed = selected !== id;
       selected = id;
+      if (id?.startsWith("reference.")) {
+        if (scope !== "references") {
+          scope = "references";
+          search.value = "";
+          category.value = "all";
+          supportStatus.value = "all";
+          group.checked = false;
+        }
+        revealReference = changed;
+      }
       refresh();
       if (changed)
         list
-          .querySelector(".preset-card.selected")
+          .querySelector(".preset-card.selected, .reference-card.selected")
           ?.scrollIntoView({ block: "nearest" });
     },
   };

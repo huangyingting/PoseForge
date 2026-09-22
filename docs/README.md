@@ -12,6 +12,11 @@ The later [compact UI plan](compact-ui-plan.md) and
 [UI verification](compact-ui-verification.md) cover the tighter layout,
 filter disclosure, denser rows, keyboard search and desktop focus mode.
 
+The [3D reference plan](reference-3d-plan.md) and
+[verification](reference-3d-verification.md) cover interactive posture previews
+for every source record, with separate clothed figures and explicit approximation
+notes. Original source interactions are not reconstructed.
+
 The 23 authored presets passed the previous complete rendered audit. The new
 reference index does not certify additional 3D poses; it labels all imported
 references separately from authored presets.

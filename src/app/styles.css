@@ -510,11 +510,30 @@ p {
   color: #286347;
 }
 .reference-card {
+  position: relative;
   border: 1px solid #dce4dc;
   border-radius: 10px;
   background: #fff;
   overflow: hidden;
   min-width: 0;
+}
+.reference-card.selected {
+  border-color: #50836c;
+  box-shadow: 0 0 0 1px #50836c;
+}
+.reference-details {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 28px;
+  height: 28px;
+  font-size: 15px;
+}
+.reference-info small {
+  padding-right: 22px;
+}
+.reference-card [aria-busy="true"] {
+  background: #edf1ea;
 }
 .reference-select {
   display: grid;

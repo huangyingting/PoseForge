@@ -13,6 +13,7 @@ import { createPersistentLibrary } from "./persistentLibrary.js";
 import { buildStudio, toast, showRegion, openExport } from "./studioUI.js";
 import { bindCameraInput } from "./cameraInput.js";
 import { bindWorkspaceLayout } from "./workspaceLayout.js";
+import { createReferenceService } from "./referenceLoader.js";
 
 const $ = (id) => document.getElementById(id);
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -50,6 +51,7 @@ try {
 }
 canvas.addEventListener("webglcontextlost", (event) => {
   event.preventDefault();
+  delete $("viewport-error").dataset.referenceMissing;
   $("viewport-error").hidden = false;
   $("viewport-error").textContent =
     "The 3D connection was interrupted. Reload to restore the preview; your latest scene is saved in this browser.";
@@ -71,6 +73,8 @@ let past = [];
 let future = [];
 let storageWarned = false;
 let exporting = false;
+let referenceRequest = 0;
+const references = createReferenceService();
 
 function status(message, busy = false) {
   $("status").textContent = message;
@@ -116,7 +120,9 @@ function heading() {
     ? "Unsaved changes"
     : current.id?.startsWith("user.")
       ? "My preset"
-      : "Built-in study";
+      : current.id?.startsWith("reference.")
+        ? "Approximate 3D"
+        : "Built-in study";
   let source = $("scene-source");
   if (!source) {
     source = document.createElement("p");
@@ -139,7 +145,16 @@ function solve(scene, { frame = false } = {}) {
   status("Shaping your study…", true);
   worker.postMessage({ id: request, scene });
 }
+function cancelReferenceLoad() {
+  referenceRequest += 1;
+  studio.setReferenceLoading(null);
+}
 function apply(next, { history = true, frame = false } = {}) {
+  cancelReferenceLoad();
+  if ($("viewport-error").dataset.referenceMissing) {
+    delete $("viewport-error").dataset.referenceMissing;
+    if (view) $("viewport-error").hidden = true;
+  }
   if (history) remember();
   current = clone(next);
   heading();
@@ -159,9 +174,34 @@ function selectPreset(preset, options = {}) {
   apply({ ...preset, dirty: false }, { frame: true, ...options });
   const url = new URL(location.href);
   url.search = "";
-  url.searchParams.set("preset", preset.id);
+  if (preset.id?.startsWith("reference.") && preset.source)
+    url.searchParams.set("reference", preset.source.recordId);
+  else url.searchParams.set("preset", preset.id);
   history.replaceState(null, "", url);
   showRegion("studio");
+}
+async function selectReference(value, options = {}) {
+  const token = ++referenceRequest;
+  studio.setReferenceLoading(
+    typeof value === "string" ? `reference.sexposes.${value}` : value.id,
+  );
+  try {
+    const entry =
+      typeof value === "string" ? await references.find(value) : value;
+    const preset = await references.preset(entry);
+    if (token !== referenceRequest) return false;
+    selectPreset(preset, options);
+    if (matchMedia("(max-width: 900px)").matches) canvas.focus();
+    return true;
+  } catch (error) {
+    if (token === referenceRequest)
+      toast(
+        `3D preview unavailable: ${error.message} Your current study was kept. Select the reference to retry.`,
+      );
+    return false;
+  } finally {
+    if (token === referenceRequest) studio.setReferenceLoading(null);
+  }
 }
 function edit(scene) {
   const next = { ...current, scene, dirty: true, inputWarnings: [] };
@@ -199,69 +239,77 @@ const panel = buildPanel($("panel"), {
   onText: textScene,
   onHistory: travel,
 });
-const studio = buildStudio(library, {
-  select: selectPreset,
-  associate(source) {
-    if (!current) return;
-    remember();
-    current = { ...current, source, dirty: true };
-    heading();
-    persist();
-  },
-  newStudy() {
-    apply(
-      {
-        id: null,
-        title: "Untitled study",
-        description: "",
-        category: "My studies",
-        tags: [],
-        dirty: true,
-        scene: {
-          actors: [
-            {
-              id: "figure-a",
-              label: "Figure A",
-              bodyType: "female",
-              posture: "standing",
-              wearing: ["top", "shorts"],
-              outfit: "sage",
-            },
-          ],
-          support: { surface: "floor" },
-          relationship: { contactMode: "custom" },
-          contacts: [],
-          camera: { view: "three_quarter" },
+const studio = buildStudio(
+  library,
+  {
+    select: selectPreset,
+    previewReference: selectReference,
+    associate(source) {
+      if (!current) return;
+      cancelReferenceLoad();
+      remember();
+      current = { ...current, source, dirty: true };
+      heading();
+      persist();
+    },
+    newStudy() {
+      apply(
+        {
+          id: null,
+          title: "Untitled study",
+          description: "",
+          category: "My studies",
+          tags: [],
+          dirty: true,
+          scene: {
+            actors: [
+              {
+                id: "figure-a",
+                label: "Figure A",
+                bodyType: "female",
+                posture: "standing",
+                wearing: ["top", "shorts"],
+                outfit: "sage",
+              },
+            ],
+            support: { surface: "floor" },
+            relationship: { contactMode: "custom" },
+            contacts: [],
+            camera: { view: "three_quarter" },
+          },
         },
-      },
-      { frame: true },
-    );
-    const url = new URL(location.href);
-    url.search = "";
-    history.replaceState(null, "", url);
-    showRegion("studio");
-  },
-  saved(preset) {
-    current = { ...preset, dirty: false };
-    heading();
-    persist();
-    const url = new URL(location.href);
-    url.search = "";
-    url.searchParams.set("preset", preset.id);
-    history.replaceState(null, "", url);
-  },
-  deleted(id) {
-    if (current.id === id) {
-      current.id = null;
-      current.dirty = true;
+        { frame: true },
+      );
+      const url = new URL(location.href);
+      url.search = "";
+      history.replaceState(null, "", url);
+      showRegion("studio");
+    },
+    saved(preset) {
+      cancelReferenceLoad();
+      current = { ...preset, dirty: false };
       heading();
       persist();
       const url = new URL(location.href);
       url.search = "";
+      url.searchParams.set("preset", preset.id);
       history.replaceState(null, "", url);
-    }
+    },
+    deleted(id) {
+      if (current.id === id) {
+        cancelReferenceLoad();
+        current.id = null;
+        current.dirty = true;
+        heading();
+        persist();
+        const url = new URL(location.href);
+        url.search = "";
+        history.replaceState(null, "", url);
+      }
+    },
   },
-});
+  references,
+);
 
 function collectNotes(data) {
   const inputWarnings = Array.isArray(current?.inputWarnings)
@@ -322,6 +370,19 @@ worker.onerror = (event) =>
 worker.onmessage = ({ data }) => {
   if (data.id !== request) return;
   if (data.stage === "error") return workerFailure(data.error.split("\n")[0]);
+  if (
+    current.id?.startsWith("reference.") &&
+    data.meshes.some((mesh) => mesh.source !== "scanned")
+  ) {
+    const message =
+      "Clothed 3D reference preview unavailable because a body model could not load. Reload to retry.";
+    if (view) {
+      $("viewport-error").textContent = message;
+      $("viewport-error").dataset.referenceMissing = "true";
+      $("viewport-error").hidden = false;
+    }
+    return workerFailure(message);
+  }
   current.scene = clone({
     ...data.scene,
     camera: current.scene.camera ?? data.scene.camera,
@@ -370,6 +431,7 @@ document.querySelectorAll("[data-view]").forEach(
     (node.onclick = () => {
       setView(node.dataset.view);
       if (current) {
+        cancelReferenceLoad();
         remember();
         current.scene.camera = { view: node.dataset.view };
         current.dirty = true;
@@ -409,10 +471,16 @@ $("material").onchange = () => {
   draw();
 };
 $("save-preset").onclick = () => {
-  if (ready) studio.openSave(clone(current));
+  if (ready) {
+    cancelReferenceLoad();
+    studio.openSave(clone(current));
+  }
 };
 $("open-export").onclick = () => {
-  if (ready) openExport(exportImage);
+  if (ready) {
+    cancelReferenceLoad();
+    openExport(exportImage);
+  }
 };
 document
   .querySelectorAll("[data-region]")
@@ -542,7 +610,13 @@ try {
   );
 }
 if (params.has("q")) textScene(params.get("q"));
-else if (params.has("preset")) {
+else if (params.has("reference")) {
+  apply(restored ?? { ...BUILTIN_PRESETS[0], dirty: false }, {
+    history: false,
+    frame: true,
+  });
+  await selectReference(params.get("reference"), { history: false });
+} else if (params.has("preset")) {
   const preset = library.get(params.get("preset"));
   if (!preset)
     toast("That preset is not in this browser. Opening a starter study.");

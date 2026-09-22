@@ -76,13 +76,13 @@ test("all 1283 reference IDs are reachable through bounded pages without changin
   await page.getByLabel("Search references").fill("img-0001");
   await expect(page.locator(".reference-card")).toHaveCount(1);
   const card = page.getByRole("button", {
-    name: "Inspect reference img-0001",
+    name: "Reference details img-0001",
     exact: true,
   });
   await card.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("dialog")).toContainText(
-    "no verified 3D preset attached",
+    "not a verified reconstruction",
   );
   await page.keyboard.press("Escape");
   await expect(card).toBeFocused();
@@ -113,7 +113,7 @@ test("reference families, annotation groups, statuses and mobile controls remain
   await expect(page.locator(".library-title > span")).toHaveText("379 groups");
   await page.getByLabel("Support status").selectOption("verified-3d");
   await expect(page.locator(".reference-card")).toHaveCount(0);
-  await expect(page.locator(".empty-state")).toContainText("reference-only");
+  await expect(page.locator(".empty-state")).toContainText("approximate 3D");
   await page.getByLabel("Support status").selectOption("all");
   await page.getByLabel("Group matching annotations").uncheck();
   await page.getByRole("button", { name: "Filters", exact: true }).click();
@@ -178,7 +178,7 @@ test("source association survives save, export and reload without inheriting a v
   await references(page);
   await page.getByLabel("Search references").fill("img-0001");
   await page
-    .getByRole("button", { name: "Inspect reference img-0001", exact: true })
+    .getByRole("button", { name: "Reference details img-0001", exact: true })
     .click();
   await page
     .getByRole("button", {

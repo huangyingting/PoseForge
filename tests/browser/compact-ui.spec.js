@@ -112,7 +112,7 @@ test("filters disclose, stay indicated while closed, reset pagination, and clear
   await start(page);
   await references(page);
   await openLibraryFilters(page);
-  await page.getByLabel("Support status").selectOption("reference-only");
+  await page.getByLabel("Support status").selectOption("approximate-3d");
   await page.getByLabel("Group matching annotations").check();
   await expect(page.locator(".library-title > span")).toHaveText("379 groups");
   await page.getByLabel("Family", { exact: true }).selectOption("Standing");

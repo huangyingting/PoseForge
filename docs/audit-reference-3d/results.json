@@ -1,0 +1,485 @@
+{
+  "scope": "Interactive clothed individual posture previews with separate participants; not reconstruction of original sexual interactions.",
+  "baselineCommit": "4ed4ac72e5dcfc0973d62ce483fc6f34dc848a0d",
+  "recordedAt": "2026-09-22T21:25:04.383Z",
+  "environment": {
+    "node": "v24.17.0",
+    "npm": "11.13.0",
+    "browser": "Chromium 153.0.8010.12",
+    "graphics": "SwiftShader"
+  },
+  "hashes": {
+    "method": "SHA-256 over sorted path, NUL, contents, NUL",
+    "application": "6e1bf1ed2ed1e1dbe6f86259eca9dc5b7097cc1714076ef1528ee7679bebc0ec",
+    "applicationInputs": [
+      "index.html",
+      "src/**",
+      "public/**",
+      "scripts/build-reference-catalog.mjs",
+      "scripts/reference-posture-scenes.mjs"
+    ],
+    "tests": "152151c2229160bf1cd8e351517393bca2dab4a7c1681c95f5245290399f35fa"
+  },
+  "manifest": {
+    "format": "poseforge.reference-manifest",
+    "version": 1,
+    "dataset": "SexPoses",
+    "sourceFile": "annotated-pose-dataset/annotations.jsonl",
+    "sourceSha256": "c65f48910f389046a75c70fcb1a6c9cabda4586aa99c12f8bbddf4b20262a3bf",
+    "dataSha256": "34b4f635d91e89b27450eb8af45411275e8acb89e2ab95eb11e7b7c7ec89b540",
+    "bytes": 767139,
+    "records": 1283,
+    "variants": 379,
+    "uniqueImages": 1283,
+    "figures": {
+      "1": 12,
+      "2": 1258,
+      "3": 13
+    },
+    "families": {
+      "Crouching": 2,
+      "Crouching + Seated": 11,
+      "Crouching + Supported": 8,
+      "Kneeling": 144,
+      "Kneeling + Other": 47,
+      "Kneeling + Reclining": 349,
+      "Kneeling + Reclining + Seated": 6,
+      "Kneeling + Seated": 23,
+      "Kneeling + Standing": 43,
+      "Kneeling + Supported": 2,
+      "Other": 30,
+      "Other + Reclining": 64,
+      "Other + Seated": 38,
+      "Other + Standing": 3,
+      "Reclining": 198,
+      "Reclining + Seated": 47,
+      "Reclining + Standing": 11,
+      "Seated": 135,
+      "Seated + Standing": 2,
+      "Standing": 83,
+      "Standing + Supported": 32,
+      "Supported": 5
+    },
+    "file": "catalog/sexposes-v1.json",
+    "previews": {
+      "file": "catalog/reference-previews-v1.json",
+      "bytes": 655258,
+      "sha256": "622a054dab50ec2eda309232b24fdfc474abd24dd2af5e2c1e62db2b87712675",
+      "scenes": 203
+    },
+    "semantics": "Approximate individual 3D posture studies with separate participants, not reconstructions of source relationships or verified anatomical positions."
+  },
+  "coverage": {
+    "sourceRecords": 1283,
+    "participants": 2567,
+    "distinctGeneratedScenes": 203,
+    "distinctRenderedScenes": 203,
+    "allSourceMappingsCovered": true,
+    "renderedActors": 407,
+    "minimumColouredPixels": 72,
+    "allScannedAndClothed": true,
+    "allMeshPositionsAndNormalsFinite": true,
+    "sourceImageRequests": 0
+  },
+  "checks": {
+    "units": {
+      "passed": 45,
+      "failed": 0,
+      "skipped": 0,
+      "command": "node --test tests/architecture.test.js tests/catalog.test.js tests/persistentLibrary.test.js tests/referenceCatalog.test.js tests/referencePreviews.test.js tests/preview.test.js",
+      "durationMs": 19883.471355
+    },
+    "finalCoreRepeat": {
+      "passed": 13,
+      "failed": 0,
+      "durationMs": 8125.248146
+    },
+    "browser": {
+      "distinctScenarios": 36,
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "runs": [
+        {
+          "label": "geometry-sweep",
+          "startTime": "2026-09-22T20:53:09.754Z",
+          "duration": 900070.746,
+          "expected": 9,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        {
+          "label": "final-ui",
+          "startTime": "2026-09-22T21:10:29.435Z",
+          "duration": 608174.912,
+          "expected": 32,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        }
+      ]
+    },
+    "productionBuild": {
+      "passed": true,
+      "command": "npm run build"
+    },
+    "dependencies": {
+      "vulnerabilities": 0
+    },
+    "sourceReproduction": {
+      "passed": true,
+      "command": "node scripts/build-reference-catalog.mjs <annotations.jsonl> --check"
+    },
+    "formatting": {
+      "passed": true
+    },
+    "whitespace": {
+      "passed": true
+    }
+  },
+  "approximationNotes": {
+    "approximate-joints": 1283,
+    "assumed-floor": 1283,
+    "deferred-limb-detail": 1283,
+    "separate-participants": 1283,
+    "clamped-joints": 3,
+    "unspecified-body-type": 93,
+    "unread-limb-detail": 6
+  },
+  "coarseDiagnostics": {
+    "scenes": 203,
+    "maxProxyPenetrationM": 0.06866925538991764,
+    "maxProxySupportGapM": 0.5286621872915891,
+    "flaggedSceneKeys": [
+      "05fc2d15bd3f6354af5fe41d398478511068da307ea4d523a65b32a7d3209342",
+      "0f1cae1f85181c6971e6aa37900400dee64a32057beae0813ab107fc5362f465",
+      "11ef60775cc97260785e6c182fc1eb0ff2188965c61b3f08a3152b3935f4949e",
+      "1573ba6809d96644e5734443675a7cfc6cfef5795ccce5ba0ab6c98e635aea3a",
+      "2b32972548f3e0a9288f69395806f5a74a24dc2027ceae8e0bc789e031e5fc83",
+      "488ceec0c8ab6fe3cdc0ca15c10f1d38d9f638b87efedfd8dc85d717bc975151",
+      "60dbb0c93d553075930c108fecdb4af40f038a1ca9c487c4041aa1a05da50dff",
+      "649b421e62179b62f353f8cec4cb5eb541e6529485a6ddf303198fac442aecaf",
+      "664c3ce56130080bd5a381249b1f8b5e41872daa052f0e1f89a7370d72421ba8",
+      "69bc35d10e3d16a87f232a50ff6e69d9da5db70c620baca70842cfb41d746b88",
+      "6c911aa685c246e962354bf970631f3dc555abcdf192bae6add2bc9cf221bd11",
+      "6def344d30483f68f8af81c3ea8e3543c5efb15135dad914d058feceaafea81d",
+      "78bdd488fa465dca8702f24b35ad3476470a8adf3c2e30a2704a8ff58ddca7b7",
+      "8d95eab0f217c7add70e0ad97e06ec892fd42cc6202473c417be60f906a1c3e9",
+      "a38b018621c23c292f6489b1e3b52fc8f55f513d8cf87e420da7e80173194e7d",
+      "baed00551ab13600bf834fd5249fc8a4cf32fa1672a5f8ec48c638727df574c3",
+      "bcc494b80546bfda24aeefa8c21c86f34fc417defa4d0b1a6623806b24b4749c",
+      "c44a66efe5e455b6959ecc1c20a514e326773e91bc425925a3acae53be2cf781",
+      "d64f3bfb3e02ecdc115e5a5bd8f19680e7ffd85a9f00d0c94814a3311a9b29d8",
+      "dfea8308cb6423195272bcbdfe569ac38fe66f20adcf7d55775c600e8c0def5c",
+      "f60ab1c4851e4bf16432f3d9ad27a2496714cb1e0673610824a0faee60df2f54"
+    ],
+    "recordsWithFlaggedScene": 129,
+    "partnerSupportedActors": 33
+  },
+  "browserCases": [
+    {
+      "file": "tests/browser/reference-3d.spec.js",
+      "id": "5a43d749216410700365-7685207a37296bb069c5",
+      "title": "distinct reference geometries render with real clothed meshes and pixels, batch 1",
+      "status": "passed",
+      "durationMs": 193379,
+      "run": "geometry-sweep"
+    },
+    {
+      "file": "tests/browser/reference-3d.spec.js",
+      "id": "5a43d749216410700365-3ebbe873bb178ccba904",
+      "title": "distinct reference geometries render with real clothed meshes and pixels, batch 2",
+      "status": "passed",
+      "durationMs": 232818,
+      "run": "geometry-sweep"
+    },
+    {
+      "file": "tests/browser/reference-3d.spec.js",
+      "id": "5a43d749216410700365-671469e7f44862a0f540",
+      "title": "distinct reference geometries render with real clothed meshes and pixels, batch 3",
+      "status": "passed",
+      "durationMs": 202062,
+      "run": "geometry-sweep"
+    },
+    {
+      "file": "tests/browser/reference-3d.spec.js",
+      "id": "5a43d749216410700365-17f0d49b62f7854dd5e2",
+      "title": "distinct reference geometries render with real clothed meshes and pixels, batch 4",
+      "status": "passed",
+      "durationMs": 188117,
+      "run": "geometry-sweep"
+    },
+    {
+      "file": "tests/browser/reference-3d.spec.js",
+      "id": "5a43d749216410700365-0d51a4b69841e9c2d5f7",
+      "title": "solo and three-person previews support deep links, camera controls, saving and exports",
+      "status": "passed",
+      "durationMs": 39392,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/reference-3d.spec.js",
+      "id": "5a43d749216410700365-595e55a02a545a44098f",
+      "title": "a failed preview download preserves the current study and retry loads it",
+      "status": "passed",
+      "durationMs": 11033,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/reference-3d.spec.js",
+      "id": "5a43d749216410700365-0689d06d0f40266af64c",
+      "title": "a delayed reference request cannot overwrite a newer stock selection",
+      "status": "passed",
+      "durationMs": 12399,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/reference-3d.spec.js",
+      "id": "5a43d749216410700365-d4bd7512fcadacb4ab32",
+      "title": "mobile reference selection opens the 3D studio while details remain separately accessible",
+      "status": "passed",
+      "durationMs": 15006,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/reference-3d.spec.js",
+      "id": "5a43d749216410700365-268632bc2e41fa94364e",
+      "title": "missing scanned models do not substitute an unclothed field for a clothed reference preview",
+      "status": "passed",
+      "durationMs": 1697,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/collections.spec.js",
+      "id": "91b2bf490356a5da12b9-cf262899397d12ba7c5c",
+      "title": "positions are a visible collection and collection filters stay usable on narrow screens",
+      "status": "passed",
+      "durationMs": 15940,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/collections.spec.js",
+      "id": "91b2bf490356a5da12b9-debf8bd43a9aa49f5f32",
+      "title": "unread description text remains visible as a warning through the worker and draft reload",
+      "status": "passed",
+      "durationMs": 29093,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/compact-ui.spec.js",
+      "id": "98327f214fad1450ac0e-23336737f1c02ac0981a",
+      "title": "compact desktop and mobile layouts expose more rows and reserve the canvas for the scene",
+      "status": "passed",
+      "durationMs": 10455,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/compact-ui.spec.js",
+      "id": "98327f214fad1450ac0e-c773b1d4ac33125c0fac",
+      "title": "filters disclose, stay indicated while closed, reset pagination, and clear search without losing focus",
+      "status": "passed",
+      "durationMs": 8604,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/compact-ui.spec.js",
+      "id": "98327f214fad1450ac0e-94dd479c00a30a82fa94",
+      "title": "focus view and search shortcuts preserve the scene, honor dialogs and leave typing alone",
+      "status": "passed",
+      "durationMs": 11142,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/compact-ui.spec.js",
+      "id": "98327f214fad1450ac0e-97223fcca4003446f2a8",
+      "title": "responsive transitions and short landscape screens keep editing, filters and camera actions reachable",
+      "status": "passed",
+      "durationMs": 8682,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/compact-ui.spec.js",
+      "id": "98327f214fad1450ac0e-72dabf5517e639bef854",
+      "title": "compact controls, filters, information dialogs and enlarged text remain accessible",
+      "status": "passed",
+      "durationMs": 16723,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/compact-ui.spec.js",
+      "id": "98327f214fad1450ac0e-d8271a6c8b9613b3f870",
+      "title": "keyboard-focused fields scroll below the sticky inspector tabs",
+      "status": "passed",
+      "durationMs": 9988,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/reference-3d.spec.js",
+      "id": "5a43d749216410700365-e0b2077e1c6e4d22b76e",
+      "title": "opening Save cancels a pending reference so it cannot replace the saved study",
+      "status": "passed",
+      "durationMs": 11723,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/reference-3d.spec.js",
+      "id": "5a43d749216410700365-cffdf0249f12795944d1",
+      "title": "keyboard preview selection retains focus on desktop and invalid deep links keep a usable study",
+      "status": "passed",
+      "durationMs": 15277,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "id": "6ffb6617ce5cfab131d4-4e0c9ae921e0be0286eb",
+      "title": "all 1283 reference IDs are reachable through bounded pages without changing or solving the active scene",
+      "status": "passed",
+      "durationMs": 12742,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "id": "6ffb6617ce5cfab131d4-ff25f430acc1d7e093a1",
+      "title": "reference families, annotation groups, statuses and mobile controls remain accessible",
+      "status": "passed",
+      "durationMs": 13306,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "id": "6ffb6617ce5cfab131d4-724cfcafa976bf09293c",
+      "title": "reference fetch failure is retryable and does not block preset editing",
+      "status": "passed",
+      "durationMs": 9520,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "id": "6ffb6617ce5cfab131d4-6c5f1845f070e2540338",
+      "title": "source association survives save, export and reload without inheriting a verification badge",
+      "status": "passed",
+      "durationMs": 22403,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "id": "6ffb6617ce5cfab131d4-791f40678da3b9e60372",
+      "title": "1283 full four-figure presets persist beyond localStorage scale with bounded browsing and lossless export",
+      "status": "passed",
+      "durationMs": 26826,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "id": "6ffb6617ce5cfab131d4-abc2709fd6bd3388343e",
+      "title": "IndexedDB transaction failure keeps the prior saved library and permits retry",
+      "status": "passed",
+      "durationMs": 8839,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "id": "6ffb6617ce5cfab131d4-e2654697341e88a03960",
+      "title": "unavailable IndexedDB has a visible functional legacy fallback",
+      "status": "passed",
+      "durationMs": 18711,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/reference-scale.spec.js",
+      "id": "6ffb6617ce5cfab131d4-4820b1753376733010a1",
+      "title": "two real tabs reject a stale library transaction and recover on reload",
+      "status": "passed",
+      "durationMs": 22932,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "id": "3324084181281abe3b7c-36d77a299c10a875d68c",
+      "title": "long metadata fits narrow screens and keyboard selection preserves focus",
+      "status": "passed",
+      "durationMs": 17449,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "id": "3324084181281abe3b7c-a0a6eab933bac25d5cb8",
+      "title": "catalog, figure edits, undo, save, update, duplicate, reload and delete",
+      "status": "passed",
+      "durationMs": 49698,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "id": "3324084181281abe3b7c-ee4d849ef729bd910151",
+      "title": "valid and invalid imports are atomic, and downloaded JSON reloads",
+      "status": "passed",
+      "durationMs": 19195,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "id": "3324084181281abe3b7c-f66c2917a03b20326def",
+      "title": "description, figure controls and workspace draft preserve the latest edits",
+      "status": "passed",
+      "durationMs": 36038,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "id": "3324084181281abe3b7c-0d228482be28a7ea3cc0",
+      "title": "PNG, transparent PNG, SVG and editable preset downloads contain real output",
+      "status": "passed",
+      "durationMs": 11094,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "id": "3324084181281abe3b7c-b3b9e5b95306c24dc276",
+      "title": "reference studies render, camera and material work, desktop has no overflow",
+      "status": "passed",
+      "durationMs": 60864,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "id": "3324084181281abe3b7c-b2325bf6776518f1ebca",
+      "title": "mobile library, inspector, editing, saving and export remain reachable",
+      "status": "passed",
+      "durationMs": 21569,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "id": "3324084181281abe3b7c-a170b83ac549ec810b73",
+      "title": "desktop, mobile and save dialog meet automated accessibility checks",
+      "status": "passed",
+      "durationMs": 17102,
+      "run": "final-ui"
+    },
+    {
+      "file": "tests/browser/studio.spec.js",
+      "id": "3324084181281abe3b7c-9a6116875cb4a5cd8c17",
+      "title": "corrupt library can be recovered and a blocked WebGL preview keeps JSON editing usable",
+      "status": "passed",
+      "durationMs": 15819,
+      "run": "final-ui"
+    }
+  ],
+  "renderedSceneEvidence": "rendered-scenes.json",
+  "verificationNotes": [
+    "The geometry sweep and final UI run used the same generated preview pack; all 203 scene keys reconcile to the 1283 source entries.",
+    "After the sweep started, interaction-only fixes added focus preservation, save/export cancellation, cache revalidation and blank parser-command fields. The final UI batch exercised those final behaviors; scene geometry was unchanged.",
+    "Existing metadata-inspection tests now use the separate details button. Reference quality filters use Approximate 3D instead of Reference only.",
+    "The full historic unit/geometry audit was not repeated; the 45 relevant units and 36 browser scenarios are this iteration's evidence."
+  ],
+  "limits": [
+    "Participants are separate; original relative facing, relationship, furniture and contacts are omitted.",
+    "Categorical annotations are not measured 3D coordinates. 203 generated scenes are not 1283 unique verified poses.",
+    "Coarse diagnostic flags and unsupported postures remain visible; renderability is not physical or anatomical certification.",
+    "The existing neutral model shares a scan with the female model.",
+    "Physical-device and assistive-technology certification are not claimed.",
+    "No hosted deployment or new dependency."
+  ]
+}

@@ -1,8 +1,9 @@
-/** Offline metadata-only projection. No images, URLs or prose are published. */
+/** Offline index and separate posture studies. No source images, URLs or prose. */
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createPostureSceneBuilder } from "./reference-posture-scenes.mjs";
 
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 function canonical(value) {
@@ -40,6 +41,8 @@ const digest = (value) =>
 
 export function buildReferenceCatalog(text) {
   const ids = new Set();
+  const buildPreview = createPostureSceneBuilder();
+  const scenes = new Map();
   const entries = text
     .split(/\r?\n/)
     .filter((line) => line.trim())
@@ -66,6 +69,8 @@ export function buildReferenceCatalog(text) {
       if (!digest(row.source_sha256) || !digest(row.normalized_sha256))
         throw new Error(`Missing image fingerprint on line ${index + 1}.`);
       const postures = a.participants.map((p) => postureFamily(p.posture));
+      const preview = buildPreview(a);
+      scenes.set(preview.key, preview.scene);
       // Preserve participant order, facing and structured contacts in the hash,
       // not in public metadata. This is annotation equality, not pose equivalence.
       const geometry = {
@@ -79,7 +84,9 @@ export function buildReferenceCatalog(text) {
         family: [...new Set(postures)].sort().join(" + "),
         postures,
         surface: surfaceFamily(a.relationship?.support_surface),
-        status: "reference-only",
+        status: "approximate-3d",
+        previewKey: preview.key,
+        previewNotes: preview.notes,
         annotationHash: hash(JSON.stringify(canonical(a))),
         variant: hash(JSON.stringify(canonical(geometry))),
         imageHash: row.normalized_sha256,
@@ -90,6 +97,14 @@ export function buildReferenceCatalog(text) {
   const data =
     JSON.stringify({ format: "poseforge.references", version: 1, entries }) +
     "\n";
+  const previewData =
+    JSON.stringify({
+      format: "poseforge.reference-previews",
+      version: 1,
+      scenes: [...scenes]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, scene]) => ({ key, scene })),
+    }) + "\n";
   const counts = (key) =>
     Object.fromEntries(
       [...new Set(entries.map((e) => e[key]))]
@@ -113,10 +128,16 @@ export function buildReferenceCatalog(text) {
     figures: counts("figures"),
     families: counts("family"),
     file: "catalog/sexposes-v1.json",
+    previews: {
+      file: "catalog/reference-previews-v1.json",
+      bytes: Buffer.byteLength(previewData),
+      sha256: hash(previewData),
+      scenes: scenes.size,
+    },
     semantics:
-      "Reference metadata only. Variant groups match structured annotations, not verified anatomical positions.",
+      "Approximate individual 3D posture studies with separate participants, not reconstructions of source relationships or verified anatomical positions.",
   };
-  return { data, manifest, entries };
+  return { data, manifest, entries, previewData };
 }
 
 if (
@@ -129,9 +150,12 @@ if (
       "Usage: node scripts/build-reference-catalog.mjs <annotations.jsonl> [--check]",
     );
   const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-  const { data, manifest } = buildReferenceCatalog(readFileSync(input, "utf8"));
+  const { data, manifest, previewData } = buildReferenceCatalog(
+    readFileSync(input, "utf8"),
+  );
   const outputs = [
     [resolve(root, "public", manifest.file), data],
+    [resolve(root, "public", manifest.previews.file), previewData],
     [
       resolve(root, "src/data/reference-manifest.json"),
       JSON.stringify(manifest, null, 2) + "\n",

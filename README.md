@@ -1,12 +1,17 @@
 # PoseForge
 
-PoseForge includes a responsive pose studio with **1,283 searchable source
-references** and **23 authored 3D presets**: eleven clothed reference studies
+PoseForge includes a responsive pose studio with **1,283 interactive 3D reference
+previews** and **23 authored stock presets**: eleven clothed reference studies
 and the twelve existing named position definitions. These are separate counts:
 reference records are not automatically distinct positions or verified 3D poses.
+Each reference opens an approximate clothed posture study in the existing 3D
+viewport. Participants are shown separately; original relationship, facing,
+furniture and contact details are not reconstructed. The records share **203
+distinct generated scenes** after deduplication, not 1,283 unique geometries.
 The **References** collection includes source IDs, 22 broad posture families,
 379 matching-annotation groups, provenance details and explicit support status.
-It contains neutral metadata, not source photographs or reconstructions.
+No source photographs or raw descriptions are included. Use a card's **ⓘ**
+button for provenance; its main action opens the 3D preview.
 The **Positions** collection makes those definitions searchable by their original
 English and Chinese aliases. Solved joint diagrams show the figures together,
 including their support props; pose notes identify unresolved geometry.
@@ -17,7 +22,9 @@ pinch/wheel/button zoom, natural and clay materials, and PNG/SVG export.
 Saved libraries use IndexedDB, migrate legacy data without deleting the backup,
 and accept up to **5,000 presets / 32 MB** (whichever limit is reached first).
 Both preset and reference collections use bounded 24-card pages. Reference data
-loads only when opened, independently of the 3D scene.
+loads only when opened; the separate preview pack loads on first 3D selection.
+Reference links use `?reference=img-0001`. Orbit, zoom, camera views, editing,
+save and PNG/SVG/JSON export work with reference previews.
 
 The compact workspace keeps search beside **Filters**, with active-filter counts
 and one-click reset. Library entries use short rows with visible quality labels.
@@ -40,6 +47,8 @@ default contacts. **A helping hand** is a working example you can edit and save.
 
 **Start here:** [studio design](docs/studio-redesign.md) ·
 [catalog and extension guide](docs/catalog.md) ·
+[3D reference design](docs/reference-3d-plan.md) ·
+[3D reference verification](docs/reference-3d-verification.md) ·
 [large-catalog design](docs/catalog-scale-plan.md) ·
 [catalog-scale verification](docs/catalog-scale-verification.md) ·
 [importable example](examples/reference-study.json).

@@ -52,7 +52,7 @@ test("committed reference snapshot reconciles all counts, hashes and allowlisted
   assert.equal(manifest.variants, 379);
   assert.equal(Object.keys(manifest.families).length, 22);
   assert.equal(
-    entries.every((e) => e.status === "reference-only"),
+    entries.every((e) => e.status === "approximate-3d"),
     true,
   );
   assert.equal(Object.isFrozen(entries[0]), true);
@@ -183,8 +183,9 @@ test("reference loader is lazy, shares requests, retries failure and verifies by
   let requests = 0;
   const load = createReferenceLoader({
     base: "/nested/",
-    fetcher: async (url) => {
+    fetcher: async (url, options) => {
       assert.equal(url, "/nested/catalog/sexposes-v1.json");
+      assert.equal(options.cache, "no-cache");
       requests++;
       if (requests === 1) return new Response("failed", { status: 503 });
       return new Response(bytes);

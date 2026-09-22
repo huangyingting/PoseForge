@@ -1,5 +1,9 @@
 # Compact studio UI verification
 
+This report records the compact-layout milestone. The later
+[3D reference iteration](reference-3d-verification.md) adds selectable approximate
+posture previews to the reference cards and repeats relevant UI regressions.
+
 **Final results:** 42/42 relevant unit tests and 36/36 browser scenarios passed.
 Production builds, formatting, whitespace and dependency checks passed, with
 zero reported dependency vulnerabilities. The 30-case regression batch and final

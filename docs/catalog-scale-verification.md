@@ -1,5 +1,9 @@
 # Catalog scale verification
 
+This report records the metadata-catalog milestone. The later
+[3D reference iteration](reference-3d-verification.md) supersedes its
+metadata-only card behavior with approximate, separate posture previews.
+
 **Final result:** 423/423 unit tests and 22 distinct browser scenarios passed.
 The production build, dependency audit (zero vulnerabilities), formatting and
 whitespace checks passed. The final source-metadata/storage unit pass repeated

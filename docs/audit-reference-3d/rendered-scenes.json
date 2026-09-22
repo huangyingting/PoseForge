@@ -1,0 +1,2845 @@
+[
+  {
+    "sourceId": "img-0001",
+    "previewKey": "bcc494b80546bfda24aeefa8c21c86f34fc417defa4d0b1a6623806b24b4749c",
+    "figures": 2,
+    "colouredPixels": 132,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0002",
+    "previewKey": "269d5df87bbaa7f84ba4c5f4e4ad287b72476c63adc07adb3dc7dd30f52dfd90",
+    "figures": 2,
+    "colouredPixels": 149,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0922",
+    "previewKey": "11e8ea2b79a70f994c648b303975ed9f0d64eb8a092109e6429818a65f32dc05",
+    "figures": 2,
+    "colouredPixels": 79,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0004",
+    "previewKey": "7973ac6021c2b1e7504a7435f448f73c06f5c5d740b8202f15b7b1901d4c6048",
+    "figures": 2,
+    "colouredPixels": 114,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0005",
+    "previewKey": "04bf6cdae7e097b3313d7fd7835934a75aa73f2699efb48da79b87103b1fe568",
+    "figures": 2,
+    "colouredPixels": 163,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0006",
+    "previewKey": "e6f0dc6d8c3350d61438d68f5b60a5a72befe0d94017dd1dcc7dfe9903a6fcc4",
+    "figures": 2,
+    "colouredPixels": 154,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0007",
+    "previewKey": "87cfcdfa03accb4c95b5f8c6a0fc13fca7a59b32a2b7b5ebe045ff8c7372e59f",
+    "figures": 2,
+    "colouredPixels": 129,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.000010263278833650552
+  },
+  {
+    "sourceId": "img-0008",
+    "previewKey": "900c1064a872a03ad7e79ac27dd0baaaed0cef1f004b6d1804cace5429a1e368",
+    "figures": 2,
+    "colouredPixels": 152,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0009",
+    "previewKey": "910fc7a63c743b510ec4883cb95f169cab7ad7773ca020c0d75059b5768399c6",
+    "figures": 2,
+    "colouredPixels": 217,
+    "triangles": [
+      46258,
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0010",
+    "previewKey": "f1a675bdc4982af8e216b2cfea33f3715cc9c3f2809e2d432c7ea26218db654a",
+    "figures": 2,
+    "colouredPixels": 107,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0011",
+    "previewKey": "0a711b25728364dbb6ce9c1ebc4c819956e70797cea81fbda60ca924419c4005",
+    "figures": 2,
+    "colouredPixels": 73,
+    "triangles": [
+      46258,
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0012",
+    "previewKey": "2f273dbda379137caef04683c20233a331fcbfc04a6a14150dc9abec70cd3a2d",
+    "figures": 2,
+    "colouredPixels": 112,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0935",
+    "previewKey": "977afaa42886f74e6e1c56bac46f57d83a2c94664027f620a7a083ad718d5386",
+    "figures": 2,
+    "colouredPixels": 226,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0014",
+    "previewKey": "56fdc227bed1e116aba0e52be304e55e1a2b1c64c521dd10b6a4a4cdf87306c1",
+    "figures": 2,
+    "colouredPixels": 242,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0015",
+    "previewKey": "93ae051dd532a1263e7c72814cbe4f0acfb4540664885407eb178e72f07b76d3",
+    "figures": 2,
+    "colouredPixels": 162,
+    "triangles": [
+      46258,
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0206",
+    "previewKey": "74e64f6379976e89decd1375b73454dd87eff2cad3ef6280db4fbf43222ddc0d",
+    "figures": 2,
+    "colouredPixels": 142,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0017",
+    "previewKey": "9156bc5ef160a0f6a8d49c74409dd806d169418a68e6c870141257bd8e6fe263",
+    "figures": 2,
+    "colouredPixels": 93,
+    "triangles": [
+      46258,
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0019",
+    "previewKey": "a78864bd5198745da69412f9f04c7236f1d393b6c6775358df3f7d96d31b536b",
+    "figures": 2,
+    "colouredPixels": 76,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0020",
+    "previewKey": "be471d172fb0055e328670d92fb7612d0d921c5dc07b70d7d57f52851757d81a",
+    "figures": 2,
+    "colouredPixels": 72,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0021",
+    "previewKey": "5d9d9ab97985f8209f5b26f47326294afbe061c43b8b09b1bdadcd6b57319ea3",
+    "figures": 2,
+    "colouredPixels": 117,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0022",
+    "previewKey": "60dbb0c93d553075930c108fecdb4af40f038a1ca9c487c4041aa1a05da50dff",
+    "figures": 2,
+    "colouredPixels": 140,
+    "triangles": [
+      46258,
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.06866925538991764
+  },
+  {
+    "sourceId": "img-0023",
+    "previewKey": "cb5789c560694993adec335bd7d368fcb5c7a7f713f66443e7dbbe317d95c143",
+    "figures": 2,
+    "colouredPixels": 108,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0024",
+    "previewKey": "baed00551ab13600bf834fd5249fc8a4cf32fa1672a5f8ec48c638727df574c3",
+    "figures": 2,
+    "colouredPixels": 102,
+    "triangles": [
+      46258,
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.022614146863216607
+  },
+  {
+    "sourceId": "img-0025",
+    "previewKey": "ae803bacebc19baf1422b1f65bc1cf128c05e4ecb6cdb812d88270293643e581",
+    "figures": 2,
+    "colouredPixels": 169,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.000010263278833650552
+  },
+  {
+    "sourceId": "img-0026",
+    "previewKey": "a12610fd8bb1e80db7bd718c453f39ca36f527c738872b7c6bc344e86c0313c1",
+    "figures": 2,
+    "colouredPixels": 161,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0027",
+    "previewKey": "fae59b925decf64f36708df08e332b0eec19f4178ebc831d1fc7351061657591",
+    "figures": 2,
+    "colouredPixels": 139,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0164",
+    "previewKey": "aac85f3a660350bb646cf726a3766268cd4bed665d66544cd27b63ca34a3ff66",
+    "figures": 2,
+    "colouredPixels": 75,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0029",
+    "previewKey": "af76d459ee183aeff909e1d7558d4a32482a124b810eb4a75c2fc378d95c67a0",
+    "figures": 2,
+    "colouredPixels": 156,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0203",
+    "previewKey": "f4d4b7b9795a905f9e10988d692d837bbc20da2460c6a39253a4985610a6ec63",
+    "figures": 2,
+    "colouredPixels": 153,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.000019311455064594668
+  },
+  {
+    "sourceId": "img-0031",
+    "previewKey": "e4940ba417b063a1494164ab9afd4d5d2f7ba853143fa12929e28d64d70cebdf",
+    "figures": 2,
+    "colouredPixels": 145,
+    "triangles": [
+      46258,
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0032",
+    "previewKey": "d853533a0e5696e16e8fe7108ac60078e15113d71ce004681ca4b4918d09060f",
+    "figures": 2,
+    "colouredPixels": 148,
+    "triangles": [
+      46258,
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.00002335730314103647
+  },
+  {
+    "sourceId": "img-0033",
+    "previewKey": "318409727170f05d4eb05c301f0cb509c5cec3fef24e7a97ba9ba9bcd1fac150",
+    "figures": 2,
+    "colouredPixels": 155,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0034",
+    "previewKey": "de0926dcf7fa00ed9cc7fc2ca94fde251f3f7fd0f4a164a41789374eea607e76",
+    "figures": 2,
+    "colouredPixels": 141,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0035",
+    "previewKey": "cc01bfdfed023e63b1d1138c4ccae620b0436ce66c7d2d46334c55dd7d667df4",
+    "figures": 2,
+    "colouredPixels": 158,
+    "triangles": [
+      46258,
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0036",
+    "previewKey": "0f60f3a73a01d6838c77f9574daac98680b797757f4e3290708684272497d9d0",
+    "figures": 2,
+    "colouredPixels": 151,
+    "triangles": [
+      46258,
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0199",
+    "previewKey": "856333821aee4b93e253f191d589f784b24d203641a520197849cef94cb76c84",
+    "figures": 2,
+    "colouredPixels": 150,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0202",
+    "previewKey": "05af6caa9fa8cf40c30c8cf314c8e8d1e90050104968f1be7750738dd6e77990",
+    "figures": 2,
+    "colouredPixels": 157,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0147",
+    "previewKey": "b2842667bb6f8eaf782fbe504953b2c16edefbbc52f44412ab9a858fcc2763ad",
+    "figures": 2,
+    "colouredPixels": 82,
+    "triangles": [
+      68346,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0907",
+    "previewKey": "4059c18df1fa76a0641aba6c19da46d4e8920a352e4c791de9e21644f36bdf7e",
+    "figures": 2,
+    "colouredPixels": 204,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0568",
+    "previewKey": "a38b018621c23c292f6489b1e3b52fc8f55f513d8cf87e420da7e80173194e7d",
+    "figures": 2,
+    "colouredPixels": 108,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0209",
+    "previewKey": "4467ad1d1f38ab463156a1828694d473f0ff93ffde3009036e8f392ab0f887af",
+    "figures": 2,
+    "colouredPixels": 136,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0929",
+    "previewKey": "37125b5dd9f4eb39817938c685e31fe63ee2adf5b0e7dffe2c748a8b5da34f8d",
+    "figures": 2,
+    "colouredPixels": 146,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0362",
+    "previewKey": "f18992dd6f357124707188ab3a0509e14d3235aedb9da992c85cd4997b4320b7",
+    "figures": 2,
+    "colouredPixels": 182,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0916",
+    "previewKey": "ddaa11335a30c63515e23afdcd3c2384530fa9eaf2a21962ffedb0d9c26cc7b4",
+    "figures": 2,
+    "colouredPixels": 128,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0373",
+    "previewKey": "c172fcc015a6045eb5a6748517cf9fb3fb2503fca7176f99935da373403e4d26",
+    "figures": 2,
+    "colouredPixels": 73,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0125",
+    "previewKey": "094e42768fffc7db2055e61b4ee90770d61597d5b91f84122e188adcbdb019e1",
+    "figures": 2,
+    "colouredPixels": 152,
+    "triangles": [
+      68346,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0174",
+    "previewKey": "8ce45d449e66f1f7fe5eaff50a743a1d534f089f050750251552719e34e794ea",
+    "figures": 2,
+    "colouredPixels": 153,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0205",
+    "previewKey": "dffd013dabc5e0f475957176be06d19386ef73d61e77818072d7fe5fbce219cd",
+    "figures": 2,
+    "colouredPixels": 122,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0936",
+    "previewKey": "c9200939936d494da9bfc449e9caa9894267e058795868a5b6a371c006addf7a",
+    "figures": 2,
+    "colouredPixels": 134,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0076",
+    "previewKey": "4e9c15ba9bf178fbf72e90a6dab2b15b040eacf11e00f23325bb57e1f7c27e2c",
+    "figures": 2,
+    "colouredPixels": 84,
+    "triangles": [
+      68346,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1098",
+    "previewKey": "e713a59ae8dd9e47cdefe28d7ae073ceb057711a9112140678640d940efd651d",
+    "figures": 2,
+    "colouredPixels": 224,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0212",
+    "previewKey": "91dffbb10f6763c21933c570abb808195400c898a971809eb1f3eb39209a892a",
+    "figures": 2,
+    "colouredPixels": 141,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0132",
+    "previewKey": "4d14e9fc503a01e327cde1fe4631a06bcd8fe87640217709de6d62199c0e4106",
+    "figures": 2,
+    "colouredPixels": 221,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0119",
+    "previewKey": "8d95eab0f217c7add70e0ad97e06ec892fd42cc6202473c417be60f906a1c3e9",
+    "figures": 2,
+    "colouredPixels": 129,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0126",
+    "previewKey": "c8f24503d5de216fb123b3f678c35831b18a72e0c1f5fbd4cdc4ebe3224c4de0",
+    "figures": 1,
+    "colouredPixels": 114,
+    "triangles": [
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0136",
+    "previewKey": "0f1cae1f85181c6971e6aa37900400dee64a32057beae0813ab107fc5362f465",
+    "figures": 2,
+    "colouredPixels": 119,
+    "triangles": [
+      68346,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0187",
+    "previewKey": "df6f1fe928e79c4faf236c5c5933334699ff621a8bb5315b26dde234b4edfa21",
+    "figures": 2,
+    "colouredPixels": 120,
+    "triangles": [
+      68346,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0166",
+    "previewKey": "1e8ff2b1b12084b0dbd8fb4387874b3f40de5286164059a809006a953594fc1e",
+    "figures": 3,
+    "colouredPixels": 133,
+    "triangles": [
+      46258,
+      68346,
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0171",
+    "previewKey": "d0921a4ec754ae70a14e08d90bc71e896695d4f820a3fa747f74f1264b486d8b",
+    "figures": 2,
+    "colouredPixels": 170,
+    "triangles": [
+      68346,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0185",
+    "previewKey": "0c8f98c72e1da02179f5d05e387ff604da1838955509c83309ccca57e8950048",
+    "figures": 2,
+    "colouredPixels": 148,
+    "triangles": [
+      68346,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0192",
+    "previewKey": "c4b3cb61ac91ca90e41198ef5b751ca5c982b39e96cc03044fd629aee0ac8efa",
+    "figures": 3,
+    "colouredPixels": 81,
+    "triangles": [
+      46258,
+      68346,
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0194",
+    "previewKey": "478d19fd18922bf4afa0fd984345546742238b277707f9e2542bf9d6dc12d6a7",
+    "figures": 2,
+    "colouredPixels": 164,
+    "triangles": [
+      68346,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0211",
+    "previewKey": "3c9cf2b409d6c55e0469a255858c260c3b5255c965a1c94ca32c5e8b85134a14",
+    "figures": 2,
+    "colouredPixels": 232,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0214",
+    "previewKey": "6043dcb502935a75bb667eae7a5f6c324af26659c97b876112ce78d2e990d35d",
+    "figures": 2,
+    "colouredPixels": 228,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.00984714979839322
+  },
+  {
+    "sourceId": "img-0215",
+    "previewKey": "6be1513ddc44c66ecadb1265fe14acf6ca344ccfb9f94b20dcdb6a90cfe5a13f",
+    "figures": 2,
+    "colouredPixels": 151,
+    "triangles": [
+      68346,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0367",
+    "previewKey": "993298fa9a8947245a31f81e882bda63af61ff88dae03d2dc037f5b55653cef3",
+    "figures": 2,
+    "colouredPixels": 100,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0394",
+    "previewKey": "f5f094b9ebf16bf4128ef77419016954eeaf75c54c2e5e8b8b03bd306c85a469",
+    "figures": 2,
+    "colouredPixels": 173,
+    "triangles": [
+      46258,
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0219",
+    "previewKey": "6746b2bc28602067ad349230615f5010a5a9e0f5d28c2d070c7268edae6cd6bf",
+    "figures": 3,
+    "colouredPixels": 137,
+    "triangles": [
+      68346,
+      46258,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0391",
+    "previewKey": "78bdd488fa465dca8702f24b35ad3476470a8adf3c2e30a2704a8ff58ddca7b7",
+    "figures": 2,
+    "colouredPixels": 123,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.007454591370059585
+  },
+  {
+    "sourceId": "img-0384",
+    "previewKey": "be070f853b4ef89a1cecc92cf5ba56cdba8ef6ead4bef85a38d9d10961c08f50",
+    "figures": 2,
+    "colouredPixels": 136,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0390",
+    "previewKey": "f60ab1c4851e4bf16432f3d9ad27a2496714cb1e0673610824a0faee60df2f54",
+    "figures": 2,
+    "colouredPixels": 119,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0358",
+    "previewKey": "6b42b52bd6d8db83c9ae773b88971751c7e072213c79dba5a9abe16d7b904ee5",
+    "figures": 2,
+    "colouredPixels": 145,
+    "triangles": [
+      46258,
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0310",
+    "previewKey": "6f947e098fcf409cf3fa55bf0002419d834a020c189570a79f46e115503efce5",
+    "figures": 2,
+    "colouredPixels": 145,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0361",
+    "previewKey": "d64f3bfb3e02ecdc115e5a5bd8f19680e7ffd85a9f00d0c94814a3311a9b29d8",
+    "figures": 2,
+    "colouredPixels": 129,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0393",
+    "previewKey": "9f64d689816fcd9f7348406894ea03f9b697bef4fa8faf2d92fcec07ad79771a",
+    "figures": 2,
+    "colouredPixels": 135,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.000019311455064594668
+  },
+  {
+    "sourceId": "img-0926",
+    "previewKey": "3bc966d79ccb11ac9c124c2514dd17a5599df7980cd9b3143d2b8d58349d0f7e",
+    "figures": 2,
+    "colouredPixels": 170,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0396",
+    "previewKey": "4d7b17274761bd8ae5d35bd980fd77731ad5db4eee7ea3a9768babe3c796e0d1",
+    "figures": 2,
+    "colouredPixels": 119,
+    "triangles": [
+      46258,
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0371",
+    "previewKey": "b4c0bc71d8b7aad9872af18505f715045db9d3161970cbc92ca9f8f2e2edb96c",
+    "figures": 2,
+    "colouredPixels": 116,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0564",
+    "previewKey": "896e779e20b2fa2f8629756412a7bce1cf53441262cb4b88e27df5183adca11a",
+    "figures": 2,
+    "colouredPixels": 155,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0388",
+    "previewKey": "e763553a7551eecdd54cd73c0a13c2ab73d91be915d9895f71f654fbbdc2c1bb",
+    "figures": 2,
+    "colouredPixels": 139,
+    "triangles": [
+      46258,
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0257",
+    "previewKey": "02375b527ba2f44a0431715523ecf865587b71d43bb4f35754ae2e4a858cd27a",
+    "figures": 3,
+    "colouredPixels": 152,
+    "triangles": [
+      56864,
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0395",
+    "previewKey": "62b50b5822648346d344ab0f4c9af5675aa0b7ec1f6505e2c2a721f1be2d4d89",
+    "figures": 2,
+    "colouredPixels": 160,
+    "triangles": [
+      46258,
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0309",
+    "previewKey": "54838172f53dbe8ede3023e6ad062d3803e1580ad9eb22e752966154191a468c",
+    "figures": 1,
+    "colouredPixels": 392,
+    "triangles": [
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0356",
+    "previewKey": "fc015d049a9a48108298e8e1aa87e7342c9f1a91226aefc4af045d6872973571",
+    "figures": 1,
+    "colouredPixels": 345,
+    "triangles": [
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0280",
+    "previewKey": "f22e2be35d1c8c7ab1f13e2121ec492b7b2ef9a43e13a82de7b317836a61887f",
+    "figures": 1,
+    "colouredPixels": 173,
+    "triangles": [
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0298",
+    "previewKey": "a35ff64ac72fe9e3f04aded3661b5b28619e8d235704d0cba58c5b3a86a05a6f",
+    "figures": 2,
+    "colouredPixels": 153,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.00002505669132351132
+  },
+  {
+    "sourceId": "img-0380",
+    "previewKey": "d71945ecd1058d9b9153b86278c4022b672b418ac7aa1f77f963a246a9a63a13",
+    "figures": 2,
+    "colouredPixels": 198,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.000010263278833650552
+  },
+  {
+    "sourceId": "img-0351",
+    "previewKey": "57ea7f9a35d1a9e11619fa9ff3b86cb6abbb3485a78322bc9445e850ff7b7672",
+    "figures": 2,
+    "colouredPixels": 84,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0329",
+    "previewKey": "b53f402c094fe7b3d6e89fe65b5cfe22b6e7f8c657ac069540af6c143d21fd1a",
+    "figures": 2,
+    "colouredPixels": 184,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0557",
+    "previewKey": "5888536437abce4141acfbcd14d2ff94b9615d89f5dd300932ce8eb2fa1867a5",
+    "figures": 2,
+    "colouredPixels": 168,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0376",
+    "previewKey": "dfea8308cb6423195272bcbdfe569ac38fe66f20adcf7d55775c600e8c0def5c",
+    "figures": 2,
+    "colouredPixels": 136,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0366",
+    "previewKey": "69ae9d7f2ea4d3d1754deff145278137835dcb314963fb5065b64b9a1d39f2e2",
+    "figures": 2,
+    "colouredPixels": 196,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0381",
+    "previewKey": "812b0d475a62ff3d6e97601e2a146038c5d37947034d830ca81de086151ec349",
+    "figures": 2,
+    "colouredPixels": 230,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0397",
+    "previewKey": "ac7af2844e6777199e66e6215357207dd184f821e57659668e157dd6f4782d2d",
+    "figures": 2,
+    "colouredPixels": 186,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0545",
+    "previewKey": "60b6deb35a72cce154f53413f9791373947ebfceffa707d19ff2ba9145453ea6",
+    "figures": 2,
+    "colouredPixels": 148,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.000010263278833650552
+  },
+  {
+    "sourceId": "img-0576",
+    "previewKey": "ad0e6d00f85d2470b0e297889e958559a6bac62f0f0a947eacc7fbd60c0e2875",
+    "figures": 2,
+    "colouredPixels": 169,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0486",
+    "previewKey": "bc866002599532055330afc52621d88c5acd754d283c41e6f49dc8663a7607b5",
+    "figures": 2,
+    "colouredPixels": 181,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0567",
+    "previewKey": "67e33b86940f6ab28e04d04e61561897adb8d930cb6f9aca9ca5002607785ea7",
+    "figures": 2,
+    "colouredPixels": 209,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0573",
+    "previewKey": "2b32972548f3e0a9288f69395806f5a74a24dc2027ceae8e0bc789e031e5fc83",
+    "figures": 2,
+    "colouredPixels": 143,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.007454591370059585
+  },
+  {
+    "sourceId": "img-0571",
+    "previewKey": "39b0e596b77513621f3cb5b3c6b5f5ccb37f3875a677dd8de3776ba1f46db54e",
+    "figures": 2,
+    "colouredPixels": 143,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0512",
+    "previewKey": "23ef3f04c0e2151e08199d03148fa18473d856cb958fcb9c01f0d72ff3b7b1e9",
+    "figures": 2,
+    "colouredPixels": 138,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1093",
+    "previewKey": "f0b7f7fd6016ce90239ec0bd2506bf04a50e01c618b613152fccf95525f50ee6",
+    "figures": 2,
+    "colouredPixels": 133,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.000019311455064594668
+  },
+  {
+    "sourceId": "img-0549",
+    "previewKey": "5698e4cc11cc7110efc9e7f1f5593b8314b3f6d112d24ee27bf684e7befdce6e",
+    "figures": 2,
+    "colouredPixels": 136,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0515",
+    "previewKey": "dc2bd168e4cf0144cf411363eb1fa60a66d28f36aa8592431d93af1cedc343d1",
+    "figures": 2,
+    "colouredPixels": 119,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0554",
+    "previewKey": "2e1914cf4e253df8b785575fc496f70d114031f66406b1a0e1a777dc96b03c7f",
+    "figures": 2,
+    "colouredPixels": 171,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0501",
+    "previewKey": "3390a67489f661298f109727ef08d5acd4e50ef4e0f51fa00aa292662766a519",
+    "figures": 2,
+    "colouredPixels": 86,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0422",
+    "previewKey": "649b421e62179b62f353f8cec4cb5eb541e6529485a6ddf303198fac442aecaf",
+    "figures": 2,
+    "colouredPixels": 122,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0433",
+    "previewKey": "2512a9e1384c9df22734423c9e97bd08c7541bbae1fc7ae62864070211256602",
+    "figures": 2,
+    "colouredPixels": 192,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0569",
+    "previewKey": "2716c4592d8f14c07e4d08b150c1bb2330d2c57725f62dd26149d8cc5f74a536",
+    "figures": 2,
+    "colouredPixels": 141,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0429",
+    "previewKey": "6711788ebbd1b0f44579fc07f84622aba6c9c0ec70f75f02d5fd85ed18d6cef8",
+    "figures": 1,
+    "colouredPixels": 272,
+    "triangles": [
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0556",
+    "previewKey": "cc5fea3e1b7e60979be01e7af0fded2f2de78699a62919871c682d567ddaec9a",
+    "figures": 2,
+    "colouredPixels": 216,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0529",
+    "previewKey": "496b3490228233ac2ce7623aba099ad9d07723d4d6436c2d6044fcf1a2a0a4eb",
+    "figures": 2,
+    "colouredPixels": 126,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1031",
+    "previewKey": "7956b1ed93c5947e030d9664f0be687b75b1c9c20c218ea45f4beb1b3cd44445",
+    "figures": 2,
+    "colouredPixels": 146,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.00002505669132351132
+  },
+  {
+    "sourceId": "img-0442",
+    "previewKey": "4cd296ec37de1fe66748109ab6ce0918bb3ddb9c73b49e98de6e2a0f59e98255",
+    "figures": 2,
+    "colouredPixels": 198,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0562",
+    "previewKey": "117019c1e974d1ddeb083a4ebebf43de446195d8f536be4a9e840e130cad5953",
+    "figures": 2,
+    "colouredPixels": 131,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0540",
+    "previewKey": "42b175f3a58292b399f73a12d1ad6b6252d5e0d458bdcae327b9446feb9d7c7a",
+    "figures": 2,
+    "colouredPixels": 126,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0559",
+    "previewKey": "a84a482e2536caef6ed7007e000f9bbda2810e26b16f3e7e98e64f2befee69a8",
+    "figures": 2,
+    "colouredPixels": 137,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0535",
+    "previewKey": "c41e6e3c94f3a3070052c3fb712fb80eba8fb64991de598d6ef4dce733a129aa",
+    "figures": 2,
+    "colouredPixels": 184,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0503",
+    "previewKey": "510c31f915748ad9dfefe7d9a19d89518f2aafe63f47d648ed33ef754ac38d8e",
+    "figures": 2,
+    "colouredPixels": 188,
+    "triangles": [
+      68346,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0574",
+    "previewKey": "1304afb1ee1c0d32900d1b0f9d618757b6830d8cfe05becd19a13bf05e6bd5bd",
+    "figures": 3,
+    "colouredPixels": 151,
+    "triangles": [
+      68346,
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0484",
+    "previewKey": "11ef60775cc97260785e6c182fc1eb0ff2188965c61b3f08a3152b3935f4949e",
+    "figures": 2,
+    "colouredPixels": 128,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.0015545148204677926
+  },
+  {
+    "sourceId": "img-0548",
+    "previewKey": "e1c41bc23fd8f420254056c0b3a0c4c577f9c6db6d7ba33114da6f4b6ac0efed",
+    "figures": 2,
+    "colouredPixels": 187,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0498",
+    "previewKey": "93e5fa99ce5983c9123f7fd41311598349395e30c5e8d6c909a9b1c8c338b370",
+    "figures": 1,
+    "colouredPixels": 294,
+    "triangles": [
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0533",
+    "previewKey": "c44a66efe5e455b6959ecc1c20a514e326773e91bc425925a3acae53be2cf781",
+    "figures": 2,
+    "colouredPixels": 124,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0505",
+    "previewKey": "440a9dd7ec8aa4d88e0a2c1b8c87b93eb366493aeea425d2a089c8b7760553c0",
+    "figures": 3,
+    "colouredPixels": 96,
+    "triangles": [
+      68346,
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0509",
+    "previewKey": "45eab98995931b732f4a427ba8fba684ae36c3c8673748c72634432ec6a29ce6",
+    "figures": 1,
+    "colouredPixels": 253,
+    "triangles": [
+      68346
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0518",
+    "previewKey": "0d4d7212895a223d99508edd7be86283ac97de0775bd3b5a2d435a90c0eea689",
+    "figures": 2,
+    "colouredPixels": 162,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.000006994555573198308
+  },
+  {
+    "sourceId": "img-0541",
+    "previewKey": "0f6897f4ef2e05cbec69748ec4a0cc378d5b26c159ce80a57d1673589468b111",
+    "figures": 2,
+    "colouredPixels": 186,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0575",
+    "previewKey": "af2c726dcde9eee89af8989de68eb48391937b9a3de623498b3db8a4da306faf",
+    "figures": 2,
+    "colouredPixels": 137,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.000010263278833650552
+  },
+  {
+    "sourceId": "img-0753",
+    "previewKey": "38af6cddec073933a10f2df47a0c8efe722d64623a3edfd2b3186c52bbc04c98",
+    "figures": 2,
+    "colouredPixels": 168,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0750",
+    "previewKey": "cd635dde7d2214052ae5186cacd8a602fd49fed235a0a16fce77e15253432b58",
+    "figures": 2,
+    "colouredPixels": 153,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.000010263278833650552
+  },
+  {
+    "sourceId": "img-1063",
+    "previewKey": "b6bfe96ee33af8a132aefba20d10d71045ce9b9343130d1c2b28f93a6804e81c",
+    "figures": 2,
+    "colouredPixels": 125,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0749",
+    "previewKey": "6c911aa685c246e962354bf970631f3dc555abcdf192bae6add2bc9cf221bd11",
+    "figures": 2,
+    "colouredPixels": 185,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.019832220158518314
+  },
+  {
+    "sourceId": "img-0934",
+    "previewKey": "0d45196ace74e3642e4678d2b09b219838cac955f7de981552e057ddb25d6f35",
+    "figures": 2,
+    "colouredPixels": 189,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0709",
+    "previewKey": "07fff39bb5459bc756a95700be434f5c6ae712bce1a974bdb48fa6c487558ddc",
+    "figures": 2,
+    "colouredPixels": 159,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0736",
+    "previewKey": "3f418c8cb6eaa89776b9b99aaf4c83294211d5c4ba312772e06b64aca48f9118",
+    "figures": 2,
+    "colouredPixels": 140,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0735",
+    "previewKey": "664c3ce56130080bd5a381249b1f8b5e41872daa052f0e1f89a7370d72421ba8",
+    "figures": 2,
+    "colouredPixels": 149,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0740",
+    "previewKey": "0ad81174766f33be988f68f5570783b5ba6f7f7d57ea37747f54f06ccb063ccb",
+    "figures": 2,
+    "colouredPixels": 210,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0730",
+    "previewKey": "9f409a515270bdbb3969261ef8fd2ace28f4e98e319033ee092d716b0383f504",
+    "figures": 2,
+    "colouredPixels": 118,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0698",
+    "previewKey": "4d73761c67df27fe60f2fb51fb065956331ad7157309db322a565aeb7b1f8cf0",
+    "figures": 2,
+    "colouredPixels": 140,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0729",
+    "previewKey": "47d7af53c640fd551d958750a8efb78f3a241b572c8121d96b91fd55dec4c1e2",
+    "figures": 2,
+    "colouredPixels": 136,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0732",
+    "previewKey": "1df2100cf12430f6686cef6f8031ec781b4df49f2066378bafa939c5f276cdcd",
+    "figures": 2,
+    "colouredPixels": 204,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0755",
+    "previewKey": "3c7916af9a339d71fedc291280dee59fcb0ae216ee72507fbe526b32d448c21a",
+    "figures": 2,
+    "colouredPixels": 84,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0734",
+    "previewKey": "5092e0822fb06dd0793937417956d2769b788b3a7bd3fbd2eaefcdc278835620",
+    "figures": 2,
+    "colouredPixels": 125,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.000010263278833650552
+  },
+  {
+    "sourceId": "img-0754",
+    "previewKey": "e4f5527e62a3d933c542d85e4cbc6cdee262f2a2184bfd99483c3a300cfacfb1",
+    "figures": 2,
+    "colouredPixels": 186,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0752",
+    "previewKey": "9181da03ca523f198664d82fb7ee0a84e4776b5c2681fee71c518167b8cae8cc",
+    "figures": 2,
+    "colouredPixels": 222,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0634",
+    "previewKey": "ec48cc17fd55cc43ac3434c9e27caf88378fc5d4a50d353fcc0ee197f5564163",
+    "figures": 3,
+    "colouredPixels": 132,
+    "triangles": [
+      68346,
+      46258,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.000010263278833636674
+  },
+  {
+    "sourceId": "img-0715",
+    "previewKey": "05fc2d15bd3f6354af5fe41d398478511068da307ea4d523a65b32a7d3209342",
+    "figures": 3,
+    "colouredPixels": 124,
+    "triangles": [
+      68346,
+      46258,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0904",
+    "previewKey": "11de64fbbb2754cf3274c9f0735ff865b3227594d36cb1ed0a58affdfa3e4d32",
+    "figures": 2,
+    "colouredPixels": 138,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0925",
+    "previewKey": "a15b9f0a17fe1cf04ba551087f5005567c57e3858416b035b15f766a7de228b1",
+    "figures": 2,
+    "colouredPixels": 149,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1227",
+    "previewKey": "7e107f8abee60998b279fe1f186e5fb210e9347daf1dc107d91a5c498911906b",
+    "figures": 2,
+    "colouredPixels": 139,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0795",
+    "previewKey": "64ec09e4821663945acdb08ca14e419fb253008b43d0f582266451f7fefe73c9",
+    "figures": 2,
+    "colouredPixels": 132,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0933",
+    "previewKey": "cbc34c499d516deddf3f4289f0bcefffcb6434ec761535a29b353a3fea9d883f",
+    "figures": 2,
+    "colouredPixels": 121,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0932",
+    "previewKey": "a2fb624e7eb9d1cd1c6f9eba3c3d486a0e42c8d7835652b64813fa1ead1f68b7",
+    "figures": 2,
+    "colouredPixels": 137,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0908",
+    "previewKey": "1573ba6809d96644e5734443675a7cfc6cfef5795ccce5ba0ab6c98e635aea3a",
+    "figures": 2,
+    "colouredPixels": 117,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0896",
+    "previewKey": "53de2734c3a5f6383969b01b5b26fcf079ee2e51c674c9bb43aa1f65a29969f8",
+    "figures": 2,
+    "colouredPixels": 136,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0931",
+    "previewKey": "0058bda808326384aeff65444016758beb8be8fd0f310bd9190e0a77ec2ed49a",
+    "figures": 2,
+    "colouredPixels": 139,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.000019311455064594668
+  },
+  {
+    "sourceId": "img-0787",
+    "previewKey": "b306da4c80fa65aee7e74a2b17655d70d6f1e453bc379cece92c10882ada210a",
+    "figures": 2,
+    "colouredPixels": 106,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.0007064439953107324
+  },
+  {
+    "sourceId": "img-0919",
+    "previewKey": "cd69f3cb7b4b4596c1f7cfd4eb421b5c4f8757a9a803c2fdf1fe4dcefbb7bd71",
+    "figures": 2,
+    "colouredPixels": 155,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0913",
+    "previewKey": "f1e79210855069f23668d78ec45cadca239f1a802fc20426b7a7048c0de574d2",
+    "figures": 2,
+    "colouredPixels": 147,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.00004272451147179293
+  },
+  {
+    "sourceId": "img-0897",
+    "previewKey": "f045a146193a96aa362476cd4236cbc353037c02d241d157674947081ab9616a",
+    "figures": 2,
+    "colouredPixels": 187,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1114",
+    "previewKey": "4cf167a3b23d68f06c1175067dc0f468cd45db853259d7baf0fd434c25bfd3fe",
+    "figures": 2,
+    "colouredPixels": 156,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1278",
+    "previewKey": "ef244f01e3d288c92b1d2bfd91ae0eba30dd344283f674d11c867fd2d2d5c6f2",
+    "figures": 2,
+    "colouredPixels": 191,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1091",
+    "previewKey": "7f5af5d450fa779da4bc6caf6948d6d189e12c918c1808f37ff843dc62468ea2",
+    "figures": 2,
+    "colouredPixels": 165,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1109",
+    "previewKey": "0dd4d7d2a6dea84e842fc04492ecd33230650d9b77612203c03f61f9c49f469d",
+    "figures": 2,
+    "colouredPixels": 184,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1116",
+    "previewKey": "a66d0379af22412d2b5f55278598ea06061e870ccb5461f0df2fa3e8fb488228",
+    "figures": 2,
+    "colouredPixels": 176,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1113",
+    "previewKey": "69bc35d10e3d16a87f232a50ff6e69d9da5db70c620baca70842cfb41d746b88",
+    "figures": 2,
+    "colouredPixels": 151,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1019",
+    "previewKey": "bd74372c67699edb56bdc070bbdda098397d8ae81f6f9872bf4c5519907eb746",
+    "figures": 2,
+    "colouredPixels": 191,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.000006994555573198308
+  },
+  {
+    "sourceId": "img-0947",
+    "previewKey": "c55cf0d558580b160a649fde0ebcd0e65f688aa10e6ce4f84d78e5aba473f68b",
+    "figures": 2,
+    "colouredPixels": 149,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1046",
+    "previewKey": "dee19f6e5889178d6c553827788c8a05b062757e88aae2da55a3a72a32f6ec51",
+    "figures": 2,
+    "colouredPixels": 137,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1104",
+    "previewKey": "360e524add827693b8189cef1ebc1320061e43b1752f6a2967ea94dbe9a7b942",
+    "figures": 2,
+    "colouredPixels": 121,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1081",
+    "previewKey": "46873e981cab13a097671b69ca92d1296be047711e0a623ef542181a8458d677",
+    "figures": 2,
+    "colouredPixels": 120,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1112",
+    "previewKey": "a8b2ff2e28ddc3be491fd4e68bb19f4687d8574e4f5633f4616dcf45462f94ec",
+    "figures": 2,
+    "colouredPixels": 149,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1103",
+    "previewKey": "00f765ce21154e998d2f51cc1563284bbc10cc6b0157eaf14fcba85ca1ba1068",
+    "figures": 2,
+    "colouredPixels": 167,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1096",
+    "previewKey": "907d0870d05a1733eb7a2e7ae32f1eab605252ce088a7e2ddca1fbb7a3f8c3fd",
+    "figures": 2,
+    "colouredPixels": 198,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1107",
+    "previewKey": "488ceec0c8ab6fe3cdc0ca15c10f1d38d9f638b87efedfd8dc85d717bc975151",
+    "figures": 2,
+    "colouredPixels": 137,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1084",
+    "previewKey": "818f77b1f39b632e0a4e1fd7b6ed617c8bba08bb70e2090e6abbcf010382a677",
+    "figures": 2,
+    "colouredPixels": 165,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-0981",
+    "previewKey": "8241751e2adec951c807abfb5609fabc9d6e6e50b49253600b6643f1abd18605",
+    "figures": 2,
+    "colouredPixels": 232,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1071",
+    "previewKey": "7718cb5e66b117184dcb35f3525b6530cf92c65bad69b652599d8ebfbbe4a8c0",
+    "figures": 2,
+    "colouredPixels": 189,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1045",
+    "previewKey": "eeedd022f3fc2dad0c4d35265ae77c25e14a8fc3d3c34ffca08a38d0d611b2c8",
+    "figures": 2,
+    "colouredPixels": 162,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1065",
+    "previewKey": "3095ed40c00eb311662e14e8de3127397d196c1912a74daf03ab8c97ad230820",
+    "figures": 2,
+    "colouredPixels": 187,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1047",
+    "previewKey": "27f723f7c444dd7bdae1f3314802088c8bdb92a99c5d5ec700dfea39019b71b7",
+    "figures": 2,
+    "colouredPixels": 163,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1089",
+    "previewKey": "cfbe254625de8ff36e5d3c0ce18eafa7b9455d2b50909888eb774a5cd13f54ed",
+    "figures": 2,
+    "colouredPixels": 126,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1069",
+    "previewKey": "10a147a28e7b384bc6afd9ade491ee6a17cfd071ef8b7f7780452c41dc54911e",
+    "figures": 2,
+    "colouredPixels": 203,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1105",
+    "previewKey": "3c61a5ee002f42786ee59f8b9e5c52baf07b0e6e8fba4fd3472e6a2aed4aba68",
+    "figures": 2,
+    "colouredPixels": 224,
+    "triangles": [
+      56864,
+      56864
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1266",
+    "previewKey": "b39fe96fb87de9e94051627a98087c3179a8584a820e6b0e660a4ef17bab885f",
+    "figures": 2,
+    "colouredPixels": 148,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.000010263278833650552
+  },
+  {
+    "sourceId": "img-1279",
+    "previewKey": "873ea2d3ca6ae5c7aadfa0260d7f2e9212581d40bf2c12cc079d6ce0d48832f5",
+    "figures": 2,
+    "colouredPixels": 155,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1251",
+    "previewKey": "cf4d6c1c45f85bb5ff3bd98e0211a7a88b08c559f258e0f3b0e053ad97bbeb12",
+    "figures": 2,
+    "colouredPixels": 178,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1265",
+    "previewKey": "8bbc7316be415a92deafbf1bcadd7e13f3f02e12c4801b978ec5a7bcaed52cf3",
+    "figures": 2,
+    "colouredPixels": 141,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1276",
+    "previewKey": "9a6152b20137a3727b41a0ce93b7dededfb56a608c6e6a2e80191e8bf818dea2",
+    "figures": 2,
+    "colouredPixels": 146,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1271",
+    "previewKey": "d6454d5237f8a8ae35f1c7d2684841dc94cc5df9ed08645c7dc9ddd0516accf9",
+    "figures": 2,
+    "colouredPixels": 138,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1281",
+    "previewKey": "ede93cf5267d8e5919ccf778e5bc74fcad53f388de8ce57549f08a938d640e03",
+    "figures": 2,
+    "colouredPixels": 161,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1280",
+    "previewKey": "6a25da10cd8ab98b28d29fbb3f9d3abc9d87c1671483039e4e5c7af3d2dbae60",
+    "figures": 2,
+    "colouredPixels": 136,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1263",
+    "previewKey": "35b6519815faebe38d8d7ab33415cfc384c8e7815d6f57bb208ec58c681257b3",
+    "figures": 2,
+    "colouredPixels": 169,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1273",
+    "previewKey": "304532713f56a8217ee59ccf6596a2f9c9c369e86d8e859ba2b18e9bebdbd7ca",
+    "figures": 2,
+    "colouredPixels": 150,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.000010263278833650552
+  },
+  {
+    "sourceId": "img-1129",
+    "previewKey": "265bdde938e5189e0501aa3b63530961480ea5c7b7e91c1a4ace6acaf8e9ff8f",
+    "figures": 2,
+    "colouredPixels": 163,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1277",
+    "previewKey": "16358bd2acb8b6cd633cd652e93f392055d5a63af248beca5795e697976f6ca9",
+    "figures": 2,
+    "colouredPixels": 118,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1282",
+    "previewKey": "c504143e7b2de43ee152b4c481a00111f9b29b043fe49ed89ce3bfd71cffb561",
+    "figures": 2,
+    "colouredPixels": 159,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.000010263278833650552
+  },
+  {
+    "sourceId": "img-1178",
+    "previewKey": "fbc5aad9f93b6062ad0bc0e956c187fa6604f6c06a3b1c14f038603742e95187",
+    "figures": 2,
+    "colouredPixels": 150,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1284",
+    "previewKey": "4b22841897e76a2a116e1bc4cc61591e5a704fa670ca5c7c5eca62eaa2d2f320",
+    "figures": 2,
+    "colouredPixels": 161,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1258",
+    "previewKey": "621f7f95c09163c2a25dc2e58660cbd88b8a0e8aad078ae641e763fd7092e488",
+    "figures": 2,
+    "colouredPixels": 133,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  },
+  {
+    "sourceId": "img-1283",
+    "previewKey": "6def344d30483f68f8af81c3ea8e3543c5efb15135dad914d058feceaafea81d",
+    "figures": 2,
+    "colouredPixels": 119,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0.007454591370059585
+  },
+  {
+    "sourceId": "img-1253",
+    "previewKey": "1ed9ce9a11292386d79906f3d320e2dcacf52ca73c176aeeb0abbe5c23721fa4",
+    "figures": 2,
+    "colouredPixels": 218,
+    "triangles": [
+      68346,
+      46258
+    ],
+    "allFinite": true,
+    "allScanned": true,
+    "topAndShorts": true,
+    "reportedPenetrationM": 0
+  }
+]
