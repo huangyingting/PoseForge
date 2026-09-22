@@ -793,3 +793,59 @@ retain the primary's raw coarse support discrepancy separately, and use ordinary
 fixed captures for exact replay. A 70 mm shared longitudinal shift brings the
 relaxed feet over the finite mattress rather than measuring only their clipped
 edge. No solver, region, furniture or tolerance changes are needed.
+
+## Seated-over-reclining pair and reversed facing
+
+The remaining forward/reversed variants share a male supine primary and female
+kneeling-straddle partner. The current rendered audits retain approximately
+60/69 mm primary support gaps, three unresolved contacts in each, complete
+figure crossings, and a mattress crossing in the forward variant. Preserve the
+original pelvic support contact and both hand-to-chest contacts, posture/body
+roles, default bed, and the opposite 0/180-degree facing contracts.
+
+Fit the shared supine base against upper-back, buttocks and head supports, then
+calibrate each partner orientation independently. Measure full legs, arms,
+clothing, furniture and floor, not only the three contact patches. Verify actual
+knee/foot placement in addition to retaining the partner support classification.
+The reverse variant must still face away while its original hands reach their
+declared chest targets; do not swap its targets or silently use the forward pose.
+Only integrate a recipe after coarse default and rendered final gates pass on
+its supported surfaces, with alias parity, explicit-edit fallbacks, missing-model
+handling and fixed capture/reload. No region, furniture or tolerance changes may
+substitute for the fitted geometry.
+
+The floor-knee trials do not clear the clothed figures while closing all three
+original patches. The supported variation retains the existing partner-support
+classification and adds two explicit primary-hand-to-partner-knee supports to
+the contact graph. This makes the knee support measurable rather than leaving
+the lifted knees unexplained. Keep the original three contacts unchanged and
+validate all five together, plus the primary's back/pelvis/head supports and
+both figures' complete floor/furniture clearance. The forward and reversed
+variants need their own side mappings and hand fits; a passing forward pose
+does not certify the reversed layout.
+
+The coarse initialization currently re-seats those explicitly held knees onto
+the mattress, narrowing the upper figure's authored stance before its contact
+graph is solved. Resolve positive hand-to-declared-support links before mounted
+placement and exclude those particular supports from surface seating only while
+the receiver is mounted. Keep the original posture support list, load-bearing
+roles, floor/prop collision protection and partner-support reporting intact.
+Rest/grip contacts, zero-strength links and unmounted figures must retain their
+existing floor behavior. Verify both endpoint orders, unilateral support, fixed
+settings, scene purity and the existing scene/catalog regressions; this is a
+support-ownership correction, not a relaxed contact or clearance threshold.
+
+Both independently fitted layouts pass the coarse default and rendered final
+gates on bed and floor with guided placement for both figures. Preserve the
+primary's approximately 61 mm raw body-model support residual diagnostically;
+the rendered back, pelvis and head supports measure within 4 mm. The five
+contact gaps also measure within 4 mm, with palm-up hands beneath the knees and
+the partner's feet approximately 3 mm from the plane. A fixed capture should
+replay exactly without another guided step. Verify actual head-facing vectors,
+not only the nominal relationship yaw.
+
+Expose a labeled Contact type picker for every custom contact (rest, surface,
+grip or support), retain imported kinds, and explain the nonzero hand-support
+rule. Test type changes through undo/redo, saved reload, exported packs and
+mobile accessibility. The two added knee supports remain ordinary editable
+scene data in aliases, catalog entries and exported user presets.

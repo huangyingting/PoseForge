@@ -111,6 +111,41 @@ function loadBearingBones(skeleton, posture) {
   return bones;
 }
 
+const supportKey = (name, side) => {
+  const landmark = resolveLandmark(name, side ?? null);
+  return landmark ? `${landmark.base}.${landmark.side ?? ""}` : null;
+};
+
+/** A mounted figure may rest a declared support on a partner's hand. */
+function surfaceSupports(actor) {
+  if (actor.mountedOn == null || !actor.partnerSupportKeys?.size)
+    return actor.posture.supports;
+  return actor.posture.supports.filter(
+    (support) =>
+      !actor.partnerSupportKeys.has(supportKey(support.landmark, support.side)),
+  );
+}
+
+/** Resolve ownership without rewriting postures or authored contact order. */
+function assignPartnerSupports(actors, contacts) {
+  for (const actor of actors) actor.partnerSupportKeys = new Set();
+  for (const contact of contacts) {
+    if (contact.type !== "support" ||
+        !Number.isFinite(contact.strength) || contact.strength <= 0) continue;
+    for (const [receiver, provider] of [["from", "to"], ["to", "from"]]) {
+      const held = resolveLandmark(contact[receiver], contact[`${receiver}Side`]);
+      const hand = resolveLandmark(contact[provider], contact[`${provider}Side`]);
+      if (!held || held.base === "hand" || hand?.base !== "hand") continue;
+      const actor = actors[contact[`${receiver}Actor`]];
+      if (!actor || !actors[contact[`${provider}Actor`]]) continue;
+      const key = supportKey(held.base, held.side);
+      // A later arrangement roll can swap the load-bearing side. Match the
+      // support list when it is used, after that roll, not against the rest side.
+      actor.partnerSupportKeys.add(key);
+    }
+  }
+}
+
 /** Build one actor: skeleton, volumes and the posture's base pose. */
 export function createActor(spec, index) {
   const skeleton = new Skeleton({
@@ -293,7 +328,7 @@ export function measureBodySupportResidual(actor, surface) {
  * the old all-supports fit is still the best available answer.
  */
 function levellingSupports(actor, planeFor) {
-  const supports = actor.posture.supports;
+  const supports = surfaceSupports(actor);
   let highest = -Infinity;
   for (const support of supports) highest = Math.max(highest, planeFor(support));
   const top = supports.filter((support) => planeFor(support) >= highest - 1e-6);
@@ -488,7 +523,7 @@ function aimSegment(actor, chain, targetPoint) {
  */
 function seatLimbSupports(actor, planeFor) {
   let moved = false;
-  for (const support of actor.posture.supports) {
+  for (const support of surfaceSupports(actor)) {
     const resolved = resolveLandmark(support.landmark, support.side ?? null);
     if (!resolved) continue;
     const chainKey = chainForBone(resolved.bone);
@@ -524,9 +559,9 @@ function seatLimbSupports(actor, planeFor) {
  * Seat an actor on its support surface.
  *
  * The invariant is not "drop until something touches" but "the declared
- * supports are the lowest thing on the body, and all of them touch". Once that
- * holds, a single translation puts them on the surface and nothing else can be
- * underground.
+ * surface-owned supports are the lowest thing on the body, and all of them
+ * touch". Once that holds, a single translation puts them on the surface and
+ * nothing else can be underground.
  *
  * Each pass drives the limb supports onto the surface, raises any limb hanging
  * below the support plane - a kneeling figure's trailing feet, a prone
@@ -551,9 +586,15 @@ export function seatOnSurface(
       `seatOnSurface needs a surface with numeric height and ground, got ${JSON.stringify(surface)}`
     );
   }
-  const supports = actor.posture.supports;
+  const supports = surfaceSupports(actor);
   const groundY = surface.ground;
   const planeFor = (support) => supportPlaneFor(support, surface);
+  // No surface target remains when the mounted figure's declared supports
+  // are held by hands. Keep global floor protection, but do not pull those
+  // limbs back onto the mattress before their support contacts are solved.
+  if (actor.mountedOn != null && actor.posture.supports.length > 0 &&
+      !supports.length && actor.partnerSupportKeys?.size)
+    return clampAboveSurface(actor, groundY);
 
   /**
    * How far the actor has to rise for every support to be on or above the
@@ -858,7 +899,7 @@ export function applyArrangement(primary, secondary, arrangement, surface) {
   // Arrangements that place one actor on top of the other should not then be
   // dropped onto the floor; only ground-supported postures get seated, and a
   // mounted one only ever gets lifted by it.
-  const grounded = !secondary.carried && secondary.posture.supports.length > 0;
+  const grounded = !secondary.carried && surfaceSupports(secondary).length > 0;
   const mounted = secondary.mountedOn != null;
   if (grounded) {
     seatOnSurface(secondary, surface, { lower: !mounted });
@@ -1314,17 +1355,8 @@ export function solveScene(scene, options = {}) {
   // alignment nor the iterative contact solve. Merely skipping the latter
   // would still quietly seed a user-authored pose from an unwanted contact.
   if (scene.relationship?.contactMode === 'custom') arrangement = { ...arrangement, contacts: [] };
-  for (let i = 1; i < actors.length; i += 1) {
-    const rule = i === 1 ? arrangement : fanOut(arrangement, i);
-    applyArrangement(actors[0], actors[i], rule, surface);
-  }
-
-  separateFootprints(actors, surface.ground);
-  for (const actor of actors) {
-    if (actor.posture.supports.length) seatOnSurface(actor, surface, { useIK: false });
-  }
-
-  // 3. gather contacts: arrangement defaults plus anything the text asked for
+  // Contact ownership is needed by initial seating as well as by iteration.
+  // In particular, held knees must not first be IK-fitted to the mattress.
   const contacts = [];
   for (const [sourceIndex, contact] of (arrangement.contacts || []).entries()) {
     if (actors.length < 2) break;
@@ -1335,7 +1367,18 @@ export function solveScene(scene, options = {}) {
     const normalised = normaliseContact(contact, null, null, actors);
     if (normalised) contacts.push({ ...normalised, source: 'custom', sourceIndex });
   }
+  assignPartnerSupports(actors, contacts);
+  for (let i = 1; i < actors.length; i += 1) {
+    const rule = i === 1 ? arrangement : fanOut(arrangement, i);
+    applyArrangement(actors[0], actors[i], rule, surface);
+  }
 
+  separateFootprints(actors, surface.ground);
+  for (const actor of actors) {
+    if (actor.posture.supports.length) seatOnSurface(actor, surface, { useIK: false });
+  }
+
+  // 3. collision allowances for the collected contacts
   const declaredKeys = new Set();
   for (const contact of contacts) {
     const fromBone = resolveLandmark(contact.from, contact.fromSide)?.bone;
@@ -1365,7 +1408,7 @@ export function solveScene(scene, options = {}) {
     // 4a. contacts
     contactReports = [];
     for (const contact of contacts) {
-      const driven = limbFirstContact(contact);
+      const driven = limbFirstContact(contact, actors);
       const from = actors[driven.fromActor];
       const to = actors[driven.toActor];
       if (!from || !to) continue;
@@ -1808,7 +1851,7 @@ function restoreActor(actor, snapshot) {
  * was ever trying to minimise.
  */
 function measureContact(actors, contact) {
-  const driven = limbFirstContact(contact);
+  const driven = limbFirstContact(contact, actors);
   if (LIMB_LANDMARKS.has(driven.from)) {
     const actor = actors[driven.fromActor], target = actors[driven.toActor];
     const current = landmarkPoint(actor, driven.from, driven.fromSide ?? null);

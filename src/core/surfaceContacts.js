@@ -703,7 +703,7 @@ export function* surfaceContactSteps(
       let improved = false;
       for (let i = 0; i < solved.contacts.length && steps < maxSteps; i++) {
         const authoredContact = solved.contacts[i];
-        const contact = limbFirstContact(authoredContact);
+        const contact = limbFirstContact(authoredContact, solved.actors);
         // Reports and scoring retain authored direction; motion uses the free
         // limb's directed query so approach vectors and normals stay correct.
         const motionMeasurement = () =>

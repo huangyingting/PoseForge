@@ -25,6 +25,7 @@ test("contact targets, figure names and custom behavior survive save, reload, ex
   await ready(page);
   await expect(page.getByLabel("Contact behavior")).toHaveValue("custom");
   const contact = page.getByRole("group", { name: "Contact 1", exact: true });
+  await expect(contact.getByLabel("Contact type")).toHaveValue("rest");
   await expect(contact.locator(".contact-result")).toContainText(
     "Close contact",
   );
@@ -78,6 +79,7 @@ test("contact targets, figure names and custom behavior survive save, reload, ex
   await ready(page);
   await expect(page.getByLabel("Contact behavior")).toHaveValue("custom");
   await expect(contact.getByLabel("Second body part")).toHaveValue("forearm.l");
+  await expect(contact.getByLabel("Contact type")).toHaveValue("rest");
   await expect(contact.locator(".contact-result")).toContainText(
     "Close contact",
   );
@@ -85,10 +87,77 @@ test("contact targets, figure names and custom behavior survive save, reload, ex
   expect(scene.actors.map((actor) => actor.label)).toEqual(["Alex", "Sam"]);
   expect(scene.relationship.contactMode).toBe("custom");
   expect(scene.contacts).toMatchObject([
-    { fromActor: 0, toActor: 1, from: "hand.r", to: "forearm.l", strength: 1 },
+    {
+      fromActor: 0,
+      toActor: 1,
+      from: "hand.r",
+      to: "forearm.l",
+      strength: 1,
+      type: "rest",
+    },
   ]);
   await contact.scrollIntoViewIfNeeded();
   await page.screenshot({ path: info.outputPath("contact-editor.png") });
+  expect(errors).toEqual([]);
+});
+
+test("contact types preserve history and saved exports while unresolved edits keep their measured warning", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/?preset=builtin.helping-hand");
+  await ready(page);
+  const row = page.getByRole("group", { name: "Contact 1", exact: true });
+  await expect(row.getByLabel("Contact type")).toHaveValue("rest");
+  await expect(row.locator(".contact-result")).toContainText("Close contact");
+  await row.getByLabel("Contact type").selectOption("support");
+  await ready(page);
+  await expect(row.locator(".contact-result")).toHaveAttribute(
+    "data-measurement",
+    "rendered",
+  );
+  const gap = Number(
+    await row.locator(".contact-result").getAttribute("data-gap"),
+  );
+  expect(gap).toBeGreaterThan(0.004);
+  await expect(row.locator(".contact-result.warning")).toContainText(
+    "Movement limited",
+  );
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await ready(page);
+  await expect(row.getByLabel("Contact type")).toHaveValue("rest");
+  await expect(row.locator(".contact-result")).toContainText("Close contact");
+  await page.getByRole("button", { name: "Redo", exact: true }).click();
+  await ready(page);
+  await expect(row.getByLabel("Contact type")).toHaveValue("support");
+  await page.locator("#save-preset").click();
+  await page.getByLabel("Preset name").fill("Support contact study");
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Save preset", exact: true })
+    .click();
+  await ready(page);
+  await page.reload();
+  await ready(page);
+  await expect(row.getByLabel("Contact type")).toHaveValue("support");
+  await expect(row.locator(".contact-result.warning")).toContainText(
+    "Movement limited",
+  );
+  expect(
+    Number(await row.locator(".contact-result").getAttribute("data-gap")),
+  ).toBeCloseTo(gap, 7);
+  const scene = await exportedScene(page);
+  expect(scene.contacts).toEqual([
+    {
+      fromActor: 0,
+      toActor: 1,
+      from: "hand.r",
+      to: "forearm.l",
+      strength: 1,
+      type: "support",
+    },
+  ]);
   expect(errors).toEqual([]);
 });
 
@@ -131,6 +200,10 @@ test("new studies have independent figures and contacts can be added, swapped an
   await ready(page);
   await row.getByLabel("Second body part").selectOption("forearm.r");
   await ready(page);
+  await expect(row.getByLabel("Contact type")).toHaveValue("rest");
+  await row.getByLabel("Contact type").selectOption("grip");
+  await ready(page);
+  await expect(row.getByLabel("Contact type")).toHaveValue("grip");
   await row.getByLabel("Pull strength").evaluate((input) => {
     input.value = "0.5";
     input.dispatchEvent(new Event("change", { bubbles: true }));
@@ -174,6 +247,7 @@ test("body-first contacts retain their endpoint order through the editor, saved 
   preset.title = "Body-first gesture";
   preset.scene.contacts = preset.scene.contacts.map((contact) => ({
     ...contact,
+    type: "gesture-study",
     from: contact.to,
     to: contact.from,
     fromActor: contact.toActor,
@@ -192,6 +266,10 @@ test("body-first contacts retain their endpoint order through the editor, saved 
   await ready(page);
   const row = page.getByRole("group", { name: "Contact 1", exact: true });
   await expect(row.getByLabel("First figure")).toHaveValue("0");
+  await expect(row.getByLabel("Contact type")).toHaveValue("gesture-study");
+  await expect(
+    row.getByLabel("Contact type").locator("option:checked"),
+  ).toHaveText("gesture-study");
   await expect(row.getByLabel("Second figure")).toHaveValue("1");
   await expect(row.getByLabel("First body part")).toHaveValue("back");
   await expect(row.getByLabel("Second body part")).toHaveValue(

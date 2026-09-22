@@ -41,6 +41,7 @@ import { STANDING_CARRY_LAYOUT } from "./standingCarryLayout.js";
 import { TABLE_SUPPORT_LAYOUT } from "./tableSupportLayout.js";
 import { KNEELING_PAIR_LAYOUT } from "./kneelingPairLayout.js";
 import { RECLINING_PAIR_LAYOUT } from "./recliningPairLayout.js";
+import { STRADDLE_PAIR_LAYOUT, REVERSE_STRADDLE_PAIR_LAYOUT } from "./straddlePairLayouts.js";
 
 /** @type {Archetype[]} */
 export const ARCHETYPES = [
@@ -64,6 +65,7 @@ export const ARCHETYPES = [
   },
   {
     id: "cowgirl",
+    layout: STRADDLE_PAIR_LAYOUT,
     phrases: ["cowgirl", "woman on top", "女上", "女上位", "骑乘位"],
     label: "one partner astride the other, who is lying on their back",
     surface: "bed",
@@ -72,9 +74,14 @@ export const ARCHETYPES = [
       { posture: "supine", bodyType: "male" },
       { posture: "kneeling_straddle", bodyType: "female" },
     ],
+    contacts: [
+      { from: "hand.l", to: "knee.r", fromActor: 0, toActor: 1, type: "support", strength: 0.7 },
+      { from: "hand.r", to: "knee.l", fromActor: 0, toActor: 1, type: "support", strength: 0.7 },
+    ],
   },
   {
     id: "reverse_cowgirl",
+    layout: REVERSE_STRADDLE_PAIR_LAYOUT,
     phrases: ["reverse cowgirl", "facing away on top", "背对女上", "反向骑乘"],
     label: "one partner astride the other, facing away",
     surface: "bed",
@@ -87,6 +94,10 @@ export const ARCHETYPES = [
     actors: [
       { posture: "supine", bodyType: "male" },
       { posture: "kneeling_straddle", bodyType: "female" },
+    ],
+    contacts: [
+      { from: "hand.l", to: "knee.l", fromActor: 0, toActor: 1, type: "support", strength: 0.7 },
+      { from: "hand.r", to: "knee.r", fromActor: 0, toActor: 1, type: "support", strength: 0.7 },
     ],
   },
   {

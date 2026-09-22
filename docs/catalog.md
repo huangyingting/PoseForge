@@ -39,6 +39,16 @@ posture, limb, facing, contact and clothing changes bypass stock calibration;
 unsupported surfaces stay automatic. Missing meshes remain labeled as estimates,
 not certified clearance.
 
+**Cowgirl** and **Reverse cowgirl** have independently calibrated clothed
+bed/floor layouts. Both retain the supine primary and kneeling-straddle partner,
+the original pelvis support and two hand-to-chest contacts. Two additional,
+editable **Support** contacts place the primary's palms beneath the partner's
+knees; the side mapping differs with facing. Both actors use guided starts.
+Their support/clearance checks must pass before the rendered pose is adopted;
+capturing the layout saves an exact fixed pose. Aliases and JSON include the
+same explicit knee supports. Body, pose, opposite-facing and unsupported-surface
+requests bypass the stock fit and may need further adjustment.
+
 **Lotus**, also available as `seated embrace`, uses a calibrated clothed floor
 layout with all five original contacts: lap support, both hands on shoulders,
 and both hands on the upper back. Seat and foot supports share one plane, so
@@ -136,6 +146,12 @@ before opening **Scene → Partner contacts**.
 
 **Add contact** creates a first-figure/body-part pair and a second-figure/body-part
 pair. Choose both endpoints explicitly, then adjust **Pull strength** if needed.
+**Contact type** offers Rest, Surface, Grip and Support; imported custom kinds
+remain visible. A Support link with nonzero strength lets a hand hold a mounted
+figure's declared supporting region (such as a knee or forearm) instead of
+seating that region on the mattress. Either endpoint order works. Other regions,
+ordinary rest/grip links, zero-strength links and unmounted figures retain their
+normal surface support. The type travels through history, save and JSON export.
 Changing the first figure to the current second figure swaps the figure roles so a
 contact never accidentally points back to the same person. Removing a figure
 removes contacts involving it and preserves the remaining references.

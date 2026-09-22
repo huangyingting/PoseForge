@@ -77,7 +77,10 @@ export const JOINT_MODES = ["guided", "fixed"];
  * @property {number|string} [fromActor] actor index or id, defaults to 0
  * @property {number|string} [toActor] actor index or id, defaults to 1
  * @property {number} [strength] 0..1, how hard the solver works to close it
- * @property {string} [type] free-form tag carried through to the report
+ * @property {string} [type] contact kind carried through to the report; rest,
+ *           surface, grip and support can guide hand shape. Positive hand-to-
+ *           support links let mounted figures rest that support on the hand
+ *           instead of the surface. Other imported tags remain portable.
  */
 
 /**

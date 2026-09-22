@@ -113,6 +113,11 @@ export function createContactEditor(onChange) {
         textContent:
           "Choose which parts should meet. A free limb may adjust on either side. Results measure visible surfaces when available; body-model estimates are labeled.",
       }),
+      node("p", {
+        className: "hint",
+        textContent:
+          "Support contacts with nonzero pull let a hand hold a mounted figure's supporting knee or forearm off the surface. Rest and grip contacts keep the usual surface support.",
+      }),
       mode.field,
       help,
       defaults,
@@ -160,6 +165,12 @@ export function createContactEditor(onChange) {
       const toActor = selectField("Second figure", []);
       const fromPoint = selectField("First body part", POINTS);
       const toPoint = selectField("Second body part", POINTS);
+      const type = selectField("Contact type", [
+        ["rest", "Rest"],
+        ["surface", "Surface"],
+        ["grip", "Grip"],
+        ["support", "Support"],
+      ]);
       const strength = node("input", {
         type: "range",
         min: 0,
@@ -195,6 +206,7 @@ export function createContactEditor(onChange) {
         }),
         toActor.field,
         toPoint.field,
+        type.field,
         node("div", { className: "field" }, [
           node("label", { htmlFor: strength.id, textContent: "Pull strength" }),
           node("div", { className: "contact-strength" }, [strength, readout]),
@@ -205,6 +217,7 @@ export function createContactEditor(onChange) {
       for (const [picker, key] of [
         [fromPoint, "from"],
         [toPoint, "to"],
+        [type, "type"],
       ])
         picker.select.onchange = () =>
           update((next) => {
@@ -235,6 +248,7 @@ export function createContactEditor(onChange) {
         toActor,
         fromPoint,
         toPoint,
+        type,
         strength,
         showStrength,
         result,
@@ -299,6 +313,16 @@ export function createContactEditor(onChange) {
           picker.select.value = contact[key];
         }
         row.strength.value = contact.strength ?? 0.7;
+        // Scene packs may carry a specialized engine contact kind. Keep it
+        // visible until the author deliberately chooses one of the defaults.
+        const type = contact.type ?? "rest";
+        if (
+          ![...row.type.select.options].some((option) => option.value === type)
+        )
+          row.type.select.append(
+            node("option", { value: type, textContent: type }),
+          );
+        row.type.select.value = type;
         row.showStrength();
         row.result.textContent = "Updating the pose…";
         row.result.className = "contact-result pending";
