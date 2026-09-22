@@ -42,6 +42,7 @@ import { TABLE_SUPPORT_LAYOUT } from "./tableSupportLayout.js";
 import { KNEELING_PAIR_LAYOUT } from "./kneelingPairLayout.js";
 import { RECLINING_PAIR_LAYOUT } from "./recliningPairLayout.js";
 import { STRADDLE_PAIR_LAYOUT, REVERSE_STRADDLE_PAIR_LAYOUT } from "./straddlePairLayouts.js";
+import { HEAD_TO_TOE_LAYOUT } from "./headToToeLayout.js";
 
 /** @type {Archetype[]} */
 export const ARCHETYPES = [
@@ -184,6 +185,7 @@ export const ARCHETYPES = [
   },
   {
     id: "sixty_nine",
+    layout: HEAD_TO_TOE_LAYOUT,
     phrases: ["sixty nine", "69 position", "69式", "头尾相对姿势"],
     label: "lying head to toe in opposite directions",
     surface: "bed",

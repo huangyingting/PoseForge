@@ -2,8 +2,9 @@
 
 This records the current studio implementation and its limits. Bundled entries
 use clothed reference figures, and the catalog preserves the existing named
-definitions as data. The full goal remains open while their geometry issues
-remain unresolved; loading a preset is not proof that its constraints were met.
+definitions as data. The full goal remains open pending the final figure/UI/
+catalog requirement audit; loading a preset is not proof that its constraints
+were met.
 
 ## Evidence
 
@@ -26,7 +27,7 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 | Reproducible placement | Optional fixed world placement, per-figure solved-pose capture and atomic whole-layout capture are implemented. Position and XYZ rotation survive solving and serialization while unedited joints can remain guided. Captured recumbent figures retain their support side. Fully fixed hand constraints skip futile trials without hiding unmet contacts. Capturing and reloading the refined standing scene preserves joint positions within 1e-7 m and retains its clear rendered audit. |
 | Guided starting poses | Optional `placement.mode: "guided"` seeds roots without pinning them; omitted mode retains fixed legacy behavior. A one-candidate rendered proposal must pass all declared contacts/supports, whole-figure/furniture/floor clearance, self checks and rendered balance. Fixed companions, zero mobility, invalid hints, missing geometry, budgets, cancellation and capture-to-fixed are tested. Browser controls preserve the requested guide separately from the solved transform through fixed-mode switching, history, save/reload/export and reset, including a 320 px Axe check. |
 | Safe persistence and imports | Unit tests cover invalid versions, malformed JSON, unsafe keys, unknown scene choices, invalid landmark sides, duplicate IDs, quota errors and corrupt storage. A failed import does not partially add a pack. Re-importing creates fresh IDs. Browser recovery and invalid-import flows pass. |
-| Preset geometry | All 23 entries validate structurally and render. The complete rendered catalog audit is now 22/23 clear and 1 flagged. All eleven clothed reference studies and eleven named layouts, including the forward/reversed seated-over-reclining pair, pass the rendered audit. Only the head-to-toe named layout still requires work. The base-model total is 21/23, with 11/12 named entries clear and no newly flagged base or rendered entries. |
+| Preset geometry | All 23 entries validate structurally and pass the complete rendered catalog audit, with no unavailable checks. All eleven clothed reference studies and all twelve named layouts are rendered-clear. The base-model total is 22/23, with all 12/12 named entries clear; only the existing sofa proxy support-overlap flag remains, and its complete rendered result is clear. No previously clear base or rendered entry becomes flagged. |
 | Calibrated stock layouts | Shared recipes supply catalog/text aliases with clothed fixed poses or validated guided hints. The lying-facing and cuddle bed/floor recipes retain their two/three contacts, pass the base-model gate and remain unchanged by refinement. The chair-supported pair has independently fitted chair/bench variants. The seated embrace has verified floor/bed variants retaining all five original contacts. Both guided pairs retain primary seat/foot supports within 4 mm and explicit partner support; their coarse defaults and rendered results pass. Conflicting body, pose, contact, coverage and surface settings bypass calibration; portable JSON retains the selected ordinary pose/hints. |
 | Standing carry | Fixed floor/bed recipes preserve standing/lifted roles and all five contacts, including the original body-to-hand support direction. Contacts are approximately 2.4–3.7 mm, both carrier feet are approximately 2.0–3.0 mm from their plane, and complete figures/furniture/floor are clear. Both representations pass without refinement movement. Captured geometry is retained within 1e-7 m; absent meshes remain uncertified. |
 | Table-supported pair | The fixed primary has chest/hips on the finite table top and feet on the floor; the standing partner has a validated guided start and two floor supports. All six supports are approximately 1.8–2.0 mm and all three original partner contacts approximately 1.5–2.5 mm. Complete figures/table/floor are clear, both representations pass, capture retains the geometry within 1e-7 m, and missing partner/all geometry remains uncertified. |
@@ -34,6 +35,7 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 | Face-to-face reclining pair | A guided supine primary and fixed forearms-and-knees partner retain their original body types, one contact and surface/partner support ownership. Floor/bed defaults pass coarse and rendered checks. The primary's back/pelvis/head supports are 0.7–2.0 mm; the original contact is about 2.5 mm. Additional measurements verify both partner knees and forearms near 2 mm and relaxed feet close to the finite support plane. Complete figures/furniture/floor are clear. Fixed captures replay within 1e-7 m; missing either model preserves the coarse result without certification. |
 | Seated-over-reclining pair | Independent forward/reversed bed/floor recipes retain the original body/posture roles, three arrangement contacts and surface/partner ownership. Two explicit custom hand-to-knee supports hold the partner's knees above the plane, with upward-facing palms; the feet remain approximately 3 mm from the plane. All five contacts and the primary's back/pelvis/head supports measure within 4 mm. Both guided defaults pass coarse and rendered gates, with complete figure/furniture/floor clearance. Fixed capture replays within 1e-7 m; absent models remain uncertified. The final raw primary body-model support residual remains approximately 61 mm and is not confused with the measured rendered support. |
 | Hand-supported regions | Positive hand-support links resolve before mounted placement, so explicitly held regions are not first IK-seated on the mattress. Other supports, unmounted figures, ordinary or zero-strength contacts, fixed settings and global floor protection retain their contracts. Both endpoint orders retain authored reports while driving the free hand. A direct comparison against `7d88df7` leaves all 159 existing corpus poses and quality reports identical. |
+| Opposed head-to-toe pair | Both guided floor/bed starts preserve the original supine/prone body roles, longitudinal reversal, two 0.8-strength contacts and surface/partner ownership. Contact gaps are approximately 3.0/2.8 mm; primary supports are 0.9–3.6 mm; all hands and feet are 2.4–3.0 mm from the actual finite plane. Complete figures/furniture/floor are clear and both default representations pass. Actual head direction and palm frames, fixed capture within 1e-7 m, and missing primary/partner/all models are tested. The final primary raw coarse residual of 26.6 mm remains separately reported. |
 | Body-supported placement | Adaptive clearance reduces the seated-pair base support target from 523.7 mm to 3.4 mm. Chair cases pass across all four male/female pairings; bench and stature/build variations have measured support-plane regression tests. A 96-case comparison against `969f4f8` has 12 newly clean cases, no newly flagged cases and 78 unchanged results. Dressed contact failures remain separately reported. |
 | Surface-intersection escape | Bidirectional bounded IK trials clear both hand/arm intersections in the seated-support fixture, ending at approximately 2.3 mm and 1.8 mm. The supporting figure, both roots and lower-body joints stay unchanged; individual collision pairs and aggregate residuals cannot worsen. The lap target remains unresolved. |
 | Hand-to-body geometry | Coordinated free-arm reaches clear both standing-embrace hand/arm intersections at approximately 2.2 mm. The complete arms are checked against the entire target figure, including colored auxiliary meshes. The isolated limb stage preserves roots, lower-body joints and the target figure; its remaining body gap is handled separately. Regression tests retain this phase boundary. |
@@ -56,6 +58,42 @@ remain unresolved; loading a preset is not proof that its constraints were met.
 | CLI interoperability | The CLI renders built-in IDs and exported catalog files using the same surface-refinement pass. Clothed examples rendered successfully at 640×480 and 320×480. A seven-render PNG regression confirms saved-camera defaults, explicit view precedence and malformed stored-camera fallback for raw diagnostic scenes. Lighting/framing remain separate implementations. |
 
 ## Commands and results
+
+- The final production-build `catalog-camera.spec.js` regression passes
+  **4/4 scenarios** (3.7 minutes), covering all twelve named entries, warning
+  navigation with a deliberately unresolved imported scene, preview failure
+  recovery, refined-preview persistence and mobile camera/overflow behavior.
+  Combined with the new layout batch, **6/6 targeted browser scenarios pass**.
+  The production build succeeds and the last-run marker is `passed` with no
+  failed tests. This is not a fresh full-browser-suite claim.
+- The new production-build `head-to-toe-layout.spec.js` passes **2/2 browser
+  scenarios** (3.0 minutes): original contact/support measurements on bed/floor,
+  guided policies, saved reload/export, exact fixed capture/update/reload, and
+  explicit height/facing/unsupported-surface fallback. Both final screenshots
+  were inspected. Normal-path page/console/request errors are empty.
+- The final complete `npm test` rerun passes **392/392 tests** (390.9 seconds),
+  including all ten new layout checks, the deliberately unresolved partner-
+  support fixture and every existing calibrated layout, support/contact,
+  clothing, parser, catalog, persistence, preview and CLI regression.
+- The complete head-to-toe catalog audit reports **23/23 rendered-clear**,
+  including **12/12 named layouts**, with **no unavailable checks**, exit 0.
+  Its retained base results are **22/23 catalog-clear** and **12/12 named-clear**.
+  Only the existing sofa reference's coarse support-overlap flag remains; its
+  complete rendered supports, furniture and floor are clear. All **7/7 contact
+  fixtures** also pass on the final recipe, exit 0. No solver, contact-region,
+  furniture, support-ownership or tolerance changes were made this iteration.
+- The focused head-to-toe layout run passes **10/10 tests** (27.4 seconds),
+  covering all aliases, pure data application, floor/bed translation, explicit
+  edits, both independent geometry gates, original contact/role ownership,
+  actual opposed heads, resting/bracing palm frames, near-plane hands/feet,
+  exact fixed replay and unavailable primary/partner/all models.
+- The first full unit run passed 391/392 tests and exposed a legacy reporting
+  fixture that required the bundled head-to-toe preset to keep unresolved
+  contacts. The fixture now deliberately pins and separates the partner by
+  2 m, retaining the same null partner-support contract and explicit unresolved-
+  contact assertions. It no longer depends on a stock geometry defect.
+
+### Earlier verified iterations
 
 - The final all-named-entry production-browser regression passes **1/1
   scenario** (2.1 minutes), covering all twelve named definitions, refined
@@ -655,9 +693,12 @@ and the production build are distinct from a hosted deployment.
 
 ## Remaining goal audit
 
-The current complete catalog audit includes one flagged named layout. All
-eleven reference studies now pass the rendered support/contact and complete
-figure/furniture/floor checks at their existing quality thresholds.
+The current complete rendered catalog audit passes all 23 entries, including
+all twelve named layouts and eleven reference studies, with complete available
+support/contact and figure/furniture/floor checks at the existing thresholds.
+This closes the bundled geometry gap, not the full goal: the final requirement-
+by-requirement figure/UI/catalog audit and fresh end-to-end verification still
+remain. The measured slow custom-body fallback also remains documented.
 
 The seated female/male gaps of 78/108 mm are now corrected to approximately 2 mm.
 The low-kneel gap of 27 mm is now approximately 1 mm; the paired-kneel maximum
@@ -669,9 +710,10 @@ now closes its former 98 mm seat gap to below 4 mm and clears the backrest while
 retaining foot frames. Its raw coarse prop/balance estimates remain separately
 reported. The older comparisons below retain their original measurement scope.
 
-Catalog integration, solved-pair diagrams and touch zoom are now implemented and
-verified. Named-preset geometry remains the main unfinished requirement. The
-inherited flags include unreachable contact targets, overlap and support gaps.
+Catalog integration, solved-pair diagrams and touch zoom are implemented and
+verified. The inherited named-preset target, overlap and support gaps have now
+been resolved for their stock layouts. The history below records why earlier
+partial contact measurements were not sufficient evidence.
 The calibrated chair-supported layout now has approximately 2 mm seat/foot
 supports and 2–3 mm partner contacts, with no complete-figure crossing. Its
 independent bench variant also clears the furniture. The earlier automatic
@@ -733,17 +775,23 @@ of the existing 159 corpus poses or quality reports.
 
 The current named audit reports no base-model flags for spooning, lotus, chair
 straddle, lying-facing, standing embrace, standing carry, the table pair,
-hands-and-knees pair, face-to-face reclining pair, cowgirl or reverse cowgirl.
-All eleven also pass the dressed-mesh and whole-figure audit; only head-to-toe
-remains flagged.
-The head-to-toe definition
-still has unmet partner contacts. Its former 489 mm "support gap" was a stale
-floor-clamp displacement on a figure assigned partner support, not a measured
-gap to its partner. It now has a null surface residual and retains its contact
-failures. This reporting correction does not repair the pose.
-Next work needs both accurate anatomical regions and collision-safe contact
-refinement, not only the base solver. This is not a claim that every arbitrary
-combination of poses, builds and surfaces is satisfiable.
+hands-and-knees pair, face-to-face reclining pair, cowgirl, reverse cowgirl or
+head-to-toe. All twelve also pass the dressed-mesh and whole-figure audit.
+The head-to-toe definition now retains its original two contacts at approximately
+3.0/2.8 mm, primary supports at 0.9–3.6 mm, and all hands/feet at 2.4–3.0 mm on
+the finite floor/bed plane. A 450 mm shared translation prevents clipped-edge
+foot measurements from standing in for actual mattress support. Both guided
+defaults pass; the final raw primary coarse residual remains 26.6 mm, and fixed
+capture preserves the geometry. The partner keeps its original null surface
+residual; its former 489 mm report was a stale clamp displacement, not a
+measured partner gap. Unlike that earlier reporting correction, the new recipe
+changes the pose and passes the complete checks. This is not a claim that every
+arbitrary combination of poses, builds and surfaces is satisfiable.
+
+### Historical calibration findings
+
+The following findings describe earlier stages and rejected trials; they do
+not replace the current 23/23 rendered catalog result above.
 
 Side-lying calibration trials exposed both reporting defects. Mirroring defaults
 alone moved the figures farther apart, and arm/leg variants that looked better
@@ -761,8 +809,8 @@ could turn a requested 65-degree hip abduction into approximately 38 degrees.
 Fixed mode now makes such trial poses reproducible. Some fixed-angle trials
 brought the measured support gap below 2 mm, but still had other visible
 intersections or unmet hand contacts. None was substituted into the bundled
-catalog, and no collision/contact threshold was relaxed. Full-body clearance
-and reliable supported placement remain unfinished work.
+catalog, and no collision/contact threshold was relaxed. At that stage,
+full-body clearance and reliable supported placement were still unfinished.
 
 The standing-pair experiment is now integrated behind support, authoring and
 complete figure-clearance checks. In the stock case, a 6.7 mm root movement plus
@@ -823,7 +871,7 @@ the hand target to 54 mm (within the existing base target tolerance). The final
 drawn surfaces remain clear. Both calibrated recipes now have a base-model
 regression assertion as well as their stricter rendered-contact checks. No
 contact, anatomical region or tolerance changed to obtain either result.
-Nine rendered named layouts remain unresolved after this calibration.
+At that calibration milestone, nine rendered named layouts remained unresolved.
 
 The following seated calibration exposed a measurement blind spot. A diagnostic
 trial closed its three partner contacts and cleared the figures, but the drawn

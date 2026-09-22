@@ -30,7 +30,7 @@ npm ci
 npm run dev
 npm test
 node scripts/validate-surface-contacts.mjs
-# Existing named definitions still have geometry issues; this audit reports them:
+# Compare coarse-model estimates with the complete rendered audit:
 node scripts/validate-named-presets.mjs
 node scripts/validate-named-presets.mjs --rendered
 node scripts/validate-named-presets.mjs --catalog --rendered
@@ -52,7 +52,7 @@ and a 2D image you can export. Pose checks report unresolved constraints.
 ```
 npm install
 npm run dev          # webapp on :5173
-npm test             # 382 tests
+npm test             # 392 tests
 node scripts/render-cli.mjs "a woman seated on a chair wearing clothes"
 ```
 
@@ -272,9 +272,11 @@ Euler characteristic — rather than checking that functions return values.
 
 **Known residuals.** The current base-model scene sweep reports 25 of 159
 variants as not fully sound, with a worst residual penetration of 63mm. The
-current base-model named-preset gate flags 1 of 12 definitions. The rendered
-named audit flags 1 of 12, and the complete rendered catalog audit flags 1 of
-23 entries. All eleven clothed reference studies now pass that rendered audit,
+current base-model named-preset gate passes all 12 definitions. The rendered
+named audit also passes all 12, and the complete rendered catalog audit passes
+all 23 entries. The coarse catalog remains 22/23: the sofa reference retains a
+proxy support-overlap flag that its complete rendered check resolves. All
+eleven clothed reference studies pass the rendered audit,
 including the sofa recline's seat/foot and backrest checks. The chair-supported
 pair has verified chair/bench starting poses, and the seated embrace retains all
 five contacts on floor/bed. Their coarse fallbacks remain clear, and their drawn
@@ -291,14 +293,17 @@ The forward/reversed seated-over-reclining pair now has independently fitted
 bed/floor guides retaining its three original contacts plus two editable,
 palm-up hand-to-knee supports. Both figures pass coarse and rendered gates;
 captured layouts replay as ordinary fixed scenes.
+The opposed head-to-toe pair now retains both original contacts and its
+supine/prone roles, with near-plane hands/feet, verified finite-bed support and
+guided floor/bed starts passing both representations.
 Furniture
 clearance is checked against the complete drawn figure before reconciling a
 coarse-model overlap; whole-figure floor
 checks also cover parts outside the declared support regions.
 Rendered support checks retain coarse estimates separately and distinguish
-gaps, penetration and missing geometry. These quality gates remain open despite
-passing structural and browser checks; the CLI and app report the unresolved
-constraints.
+gaps, penetration and missing geometry. Passing bundled presets does not certify
+every user-authored variation; the CLI and app continue to report unresolved
+constraints rather than hiding them.
 
 The historical single-posture model audit's worst support gap was 30mm, in `inverted`: the skull reaches the rig's own
 `headTop` now that it is a head rather than a ball, so in a shoulder stand the

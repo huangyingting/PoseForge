@@ -10,9 +10,10 @@ categories and posture names together.
 
 The catalog combines eleven reference studies and twelve definitions adapted
 directly from `src/nlp/archetypes.js`, with clothed studio appearances. Original
-aliases remain searchable. Some inherited definitions have unresolved geometry;
-**Pose notes** badges and the viewport's **Pose checks** shortcut make that visible.
-Loading successfully does not mean every physical constraint was satisfied.
+aliases remain searchable. All bundled entries pass the current complete
+rendered audit; edited variations can still have unresolved constraints.
+**Pose notes** badges and the viewport's **Pose checks** shortcut make those
+visible. Loading successfully does not mean every physical constraint was satisfied.
 
 **Side by side facing** and **Spooning** use calibrated clothed reference
 layouts. Loading a card or typing one of its aliases (including `lying face to
@@ -48,6 +49,16 @@ Their support/clearance checks must pass before the rendered pose is adopted;
 capturing the layout saves an exact fixed pose. Aliases and JSON include the
 same explicit knee supports. Body, pose, opposite-facing and unsupported-surface
 requests bypass the stock fit and may need further adjustment.
+
+**Sixty nine** retains the original clothed supine/prone figures and their two
+opposed head/pelvis contacts, with a side view and independently checked bed and
+floor placement. Both figures use guided starts. The lower figure's back,
+pelvis and head keep surface support; the partner keeps its original
+partner-support assignment. The hands and feet are also measured against the
+finite supporting plane. Save/export keeps the complete ordinary scene, and
+Capture current layout freezes the accepted result. Explicit body, facing,
+posture, contact, clothing or unsupported-surface changes bypass calibration;
+missing models do not certify clearance.
 
 **Lotus**, also available as `seated embrace`, uses a calibrated clothed floor
 layout with all five original contacts: lap support, both hands on shoulders,
@@ -287,8 +298,8 @@ definition to `src/nlp/archetypes.js`. `presetFromArchetype` adapts the latter
 without reparsing its display title; the combined immutable `BUILTIN_PRESETS`
 feeds the UI and CLI. Each catalog entry stores a complete scene. Run `npm test`
 for schema/parity/regression checks and the geometry validators for pose quality.
-The named-position audit is a separate acceptance gate and currently reports
-unresolved inherited cases. Run `node scripts/validate-named-presets.mjs` for
+The named-position audit is a separate acceptance gate; all twelve stock named
+layouts currently pass both representations. Run `node scripts/validate-named-presets.mjs` for
 base-model constraints and add `--rendered` for dressed-mesh contact gaps and
 intersections. The latter preserves base results alongside surface measurements;
 passing the base gate alone is not sufficient. Add `--preset <built-in-id>` to

@@ -79,10 +79,22 @@ test("partner support is not mislabeled as a surface gap or as zero-distance sur
   const preset = BUILTIN_PRESETS.find(
     (entry) => entry.id === "builtin.named.sixty_nine",
   );
-  const solved = solveScene(checkScene(preset.scene));
+  // Exercise an intentionally unresolved fixed variation, rather than requiring
+  // the bundled head-to-toe recipe to keep its old contact defect forever.
+  const scene = checkScene(preset.scene);
+  for (const actor of scene.actors) {
+    actor.jointMode = "fixed";
+    actor.placement.mode = "fixed";
+  }
+  scene.actors[1].placement.position[0] += 2;
+  const solved = solveScene(scene);
   assert.equal(solved.actors[1].carried, true);
   assert.equal(solved.actors[1].supportBasis, "partner");
   assert.equal(solved.actors[1].seatResidual, null);
+  assert.deepEqual(
+    solved.actors[1].pose.root.position,
+    scene.actors[1].placement.position,
+  );
   assert.ok(
     solved.quality.unmetContacts > 0,
     "unmet partner contacts must remain visible",

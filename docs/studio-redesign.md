@@ -849,3 +849,46 @@ grip or support), retain imported kinds, and explain the nonzero hand-support
 rule. Test type changes through undo/redo, saved reload, exported packs and
 mobile accessibility. The two added knee supports remain ordinary editable
 scene data in aliases, catalog entries and exported user presets.
+
+## Opposed head-to-toe reclining layout
+
+The remaining inherited definition uses a female supine primary and male prone
+partner on a bed, with an absolute 180-degree longitudinal reversal. The fresh
+rendered audit reports two original region gaps of approximately 282/320 mm,
+a 31 mm primary support gap and a primary/mattress crossing. Keep both original
+head/pelvis contacts, their direction and 0.8 strengths, the posture/body roles,
+the bed default and the existing surface/partner support ownership. A generic
+side-by-side pose with different contacts would not complete this definition.
+
+Start from the verified clothed female supine support fit. Independently fit
+the opposed prone figure's root, trunk and limbs while retaining an actual
+head-to-toe orientation. Check contact patches and complete dressed figures,
+including hair, hands, feet, finite mattress and floor; clearing one target
+must not hide a crossing elsewhere. Do not change region ownership, furniture
+or quality tolerances to obtain a passing recipe. Compare fixed and guided
+placement against both independent coarse and rendered gates before integration.
+
+Only integrate a data recipe when its intended surfaces pass. Then extend
+alias/catalog parity, explicit-edit fallbacks, capture/reload and missing-model
+tests, real browser save/export flows and the complete catalog audit. Continue
+the overall figure/UI/catalog requirement audit after the final stock geometry
+case; passing the catalog alone does not establish full completion.
+
+The first two-contact fit passed both gates but left limbs elevated. Grounding
+the hands and feet exposed a new upper-back support discrepancy and an
+orientation-unverified patch near the mattress. Keep the verified supine root
+and head fit while independently fitting resting arms; do not accept a
+rendered-only solution or discard the furniture availability check. The revised
+fit retains approximately 3.0/2.8 mm original contact gaps, three primary
+supports within 4 mm, and near-plane hands/feet. A centered shared translation
+must be verified against the finite mattress before the bed recipe is accepted.
+
+A 450 mm shared longitudinal translation puts both pairs of feet on the finite
+mattress (the 300 mm trial left the partner's lowest foot region beyond its
+edge). The final independent floor/bed checks retain approximately 3.0/2.8 mm
+contacts, 0.9–3.6 mm primary supports and 2.4–3.0 mm hands/feet, with no complete
+figure, furniture or floor crossing. Both figures use guided starting poses;
+the original two arrangement contacts remain the entire contact graph. The
+primary's 26.6 mm raw body-model support residual remains diagnostic, while its
+coarse default passes independently. Verify replay, missing models and actual
+opposed head directions after integrating the ordinary data recipe.
