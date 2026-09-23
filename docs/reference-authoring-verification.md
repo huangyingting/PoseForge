@@ -1,5 +1,10 @@
 # Reference authoring verification
 
+This report records the authoring-tools milestone. The later
+[artistic collection](artistic-collection.md) supplies ready-to-view original
+compositions; the historical zero-shipped-content statement below applies to
+this earlier iteration only.
+
 **Result:** 51/51 targeted unit tests and 38 distinct browser scenarios passed.
 The final production build, formatting and whitespace checks passed. The
 dependency audit reported zero vulnerabilities. This implements an authoring

@@ -21,6 +21,7 @@ import {
   referenceStudyMatches,
 } from "../core/referenceStudies.js";
 import { captureSolvedPose } from "../core/placement.js";
+import { isArtisticPreview } from "../core/artisticStudies.js";
 
 const $ = (id) => document.getElementById(id);
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -131,7 +132,9 @@ function heading() {
       : current.id?.startsWith("user.")
         ? "My preset"
         : current.id?.startsWith("reference.")
-          ? "Approximate 3D"
+          ? isArtisticPreview(current)
+            ? "Artistic 3D"
+            : "Approximate 3D"
           : "Built-in study";
   let source = $("scene-source");
   if (!source) {
@@ -142,7 +145,7 @@ function heading() {
   }
   source.hidden = !current.source;
   source.textContent = current.source
-    ? `Source: SexPoses ${current.source.recordId} · ${current.id?.startsWith("reference.") ? "generated approximation" : "independent study"}, not a verified reconstruction`
+    ? `Source: SexPoses ${current.source.recordId} · ${isArtisticPreview(current) ? "artistic interpretation" : current.id?.startsWith("reference.") ? "generated approximation" : "independent study"}, not a verified reconstruction`
     : "";
   $("reference-actions").hidden = !current.source;
 }
@@ -211,11 +214,13 @@ async function selectReference(value, options = {}) {
     const usable = authored && referenceStudyMatches(authored, entry);
     const preset = usable
       ? checkReferenceStudy(authored, entry)
-      : await references.preset(entry);
+      : options.generated
+        ? await references.preset(entry)
+        : await references.artistic(entry);
     if (token !== referenceRequest) return false;
     if (authored && !usable)
       toast(
-        "The saved study no longer matches this source. Opening the generated approximation; the saved study was kept.",
+        "The saved study no longer matches this source. Opening its built-in artistic interpretation; the saved study was kept.",
       );
     selectPreset(preset, options);
     if (matchMedia("(max-width: 900px)").matches) canvas.focus();

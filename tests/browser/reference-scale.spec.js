@@ -113,7 +113,7 @@ test("reference families, annotation groups, statuses and mobile controls remain
   await expect(page.locator(".library-title > span")).toHaveText("379 groups");
   await page.getByLabel("Support status").selectOption("verified-3d");
   await expect(page.locator(".reference-card")).toHaveCount(0);
-  await expect(page.locator(".empty-state")).toContainText("approximate 3D");
+  await expect(page.locator(".empty-state")).toContainText("artistic 3D");
   await page.getByLabel("Support status").selectOption("all");
   await page.getByLabel("Group matching annotations").uncheck();
   await page.getByRole("button", { name: "Filters", exact: true }).click();

@@ -110,7 +110,7 @@ test("a reference has an independently edited, captured and replace-confirmed po
   await ready(page);
   await saveStudy(page, "My independent posture");
   await expect(page.locator(".reference-study-summary")).toHaveText(
-    "1 / 1,283 authored · unreviewed",
+    "1,283 artistic · 1 personal",
   );
   await page.getByRole("button", { name: "Filters", exact: true }).click();
   await page.getByLabel("Support status").selectOption("authored-3d");
@@ -187,9 +187,9 @@ test("a reference has an independently edited, captured and replace-confirmed po
     })
     .click();
   await ready(page);
-  await expect(page.locator("#scene-badge")).toHaveText("Approximate 3D");
+  await expect(page.locator("#scene-badge")).toHaveText("Artistic 3D");
   await expect(page.locator(".reference-study-summary")).toContainText(
-    "0 / 1,283",
+    "1,283 artistic · 0 personal",
   );
 });
 
@@ -269,7 +269,7 @@ test("bulk imports preview counts, keep existing by default, replace explicitly 
   await expect(page.locator("#scene-title")).toHaveText("Imported replacement");
   await ready(page);
   await expect(page.locator(".reference-study-summary")).toContainText(
-    "3 / 1,283",
+    "1,283 artistic · 3 personal",
   );
 });
 
@@ -310,7 +310,7 @@ test("all 1283 entries can be imported, exported and individually selected as au
   });
   await modal.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.locator(".reference-study-summary")).toContainText(
-    "1,283 / 1,283",
+    "1,283 artistic · 1,283 personal",
   );
   await page.getByLabel("Search references").fill(entries.at(-1).sourceId);
   await expect(page.locator(".reference-card")).toHaveCount(1);
@@ -401,14 +401,14 @@ test("saving an authored study cancels a pending generated selection", async ({
   const requested = new Promise((resolve) => {
     received = resolve;
   });
-  await page.route("**/catalog/reference-previews-v1.json", async (route) => {
+  await page.route("**/catalog/artistic-studies-v1.json", async (route) => {
     await new Promise((resolve) => {
       release = async () => {
         await route.fulfill({
           contentType: "application/json",
           body: readFileSync(
             new URL(
-              "../../public/catalog/reference-previews-v1.json",
+              "../../public/catalog/artistic-studies-v1.json",
               import.meta.url,
             ),
           ),
@@ -470,7 +470,7 @@ test("a committed reference save cannot replace a newer selection after its dial
   await expect(page.locator("#scene-title")).toHaveText("Standing · female");
   await page.getByRole("button", { name: "References", exact: true }).click();
   await expect(page.locator(".reference-study-summary")).toContainText(
-    "1 / 1,283",
+    "1,283 artistic · 1 personal",
   );
   await page.getByLabel("Search references").fill(solo.sourceId);
   await page

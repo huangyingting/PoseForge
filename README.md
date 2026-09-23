@@ -1,13 +1,16 @@
 # PoseForge
 
-PoseForge includes a responsive pose studio with **1,283 interactive 3D reference
-previews** and **23 authored stock presets**: eleven clothed reference studies
-and the twelve existing named position definitions. These are separate counts:
-reference records are not automatically distinct positions or verified 3D poses.
-Each reference opens an approximate clothed posture study in the existing 3D
-viewport. Participants are shown separately; original relationship, facing,
-furniture and contact details are not reconstructed. The records share **203
-distinct generated scenes** after deduplication, not 1,283 unique geometries.
+PoseForge includes **1,283 ready-to-view artistic 3D compositions**, one for
+every reference ID, plus **23 authored stock presets**. Open **References** and
+select a card: no authoring or import is required. The artistic compositions
+have distinct joint geometry, including all 2,567 participants, but are **original
+clothed interpretations—not source-matched reconstructions or verified physical
+poses**. Participants are displayed separately on a neutral floor.
+The collection composes eight whole-body bases, twenty designed gestures and
+three gaze directions. Its 1,283 compositions use 403 pose/gesture/gaze motifs;
+this is not a claim of 1,283 hand-sculpted base poses. Names, colours, model
+choice, actor ordering, placement, camera and head/neck changes do not count as uniqueness.
+The earlier **203 shared approximations** remain an optional fallback in details.
 The **References** collection includes source IDs, 22 broad posture families,
 379 matching-annotation groups, provenance details and explicit support status.
 No source photographs or raw descriptions are included. Use a card's **ⓘ**
@@ -29,8 +32,8 @@ save and PNG/SVG/JSON export work with reference previews.
 Each source can now have its own independently saved, clothed posture study.
 Use **Edit posture → Save reference study**, or **Reference studies** in the
 library for validated bulk import/export. Cards and reference links prefer the
-saved study while retaining the generated fallback. The coverage counter and
-**Authored · unreviewed** labels distinguish saved work from approximations;
+saved study over the built-in artistic interpretation. The coverage counter and
+**Artistic 3D / Authored · unreviewed** labels distinguish bundled and personal work;
 they do not certify uniqueness or source accuracy. See the
 [authoring guide](docs/reference-authoring.md).
 
@@ -55,6 +58,7 @@ default contacts. **A helping hand** is a working example you can edit and save.
 
 **Start here:** [studio design](docs/studio-redesign.md) ·
 [catalog and extension guide](docs/catalog.md) ·
+[artistic collection](docs/artistic-collection.md) ·
 [3D reference design](docs/reference-3d-plan.md) ·
 [3D reference verification](docs/reference-3d-verification.md) ·
 [large-catalog design](docs/catalog-scale-plan.md) ·

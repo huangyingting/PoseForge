@@ -4,6 +4,7 @@ export const CATALOG_PAGE_SIZE = 24;
 export const REFERENCE_STATUSES = [
   "reference-only",
   "approximate-3d",
+  "artistic-3d",
   "authored-3d",
   "needs-adjustment",
   "verified-3d",
@@ -11,6 +12,7 @@ export const REFERENCE_STATUSES = [
 export const STATUS_LABELS = {
   "reference-only": "Reference only",
   "approximate-3d": "Approximate 3D",
+  "artistic-3d": "Artistic 3D",
   "authored-3d": "Authored · unreviewed",
   "needs-adjustment": "Needs adjustment",
   "verified-3d": "Verified 3D preset",

@@ -1,0 +1,14 @@
+{
+  "format": "poseforge.artistic-manifest",
+  "version": 1,
+  "file": "catalog/artistic-studies-v1.json",
+  "bytes": 4359190,
+  "sha256": "4640214cf625579cd0eadd06fb03ea40e90d45a6d31ad8e1633a0d75d494d4db",
+  "records": 1283,
+  "participants": 2567,
+  "distinctJointCompositions": 1283,
+  "jointSignatureBinDegrees": 10,
+  "distinctIndividualMotifsUsed": 403,
+  "distinctBodyMotifsUsed": 141,
+  "semantics": "Original clothed artistic compositions, not source-matched reconstructions or verified physical poses."
+}

@@ -246,7 +246,7 @@ export function buildStudio(
         }),
         element("p", {
           textContent:
-            "Every reference opens an approximate clothed 3D posture study with separate participants. These are not reconstructed interactions or verified 3D poses. Personal presets need their own pose checks.",
+            "Every reference includes a ready-to-view artistic 3D composition with separate clothed figures. All 1,283 compositions have distinct joint geometry, but are not source reconstructions or verified physical poses. No editing or import is required.",
         }),
         element("p", {
           textContent: `Saved in this browser using ${library.mode ?? "local storage"}. Up to 5,000 presets / 32 MB. Export JSON for a portable backup; this is not cloud storage.`,
@@ -718,12 +718,14 @@ export function buildStudio(
     }
     const authored = authoredIndex();
     referenceProgress.hidden = false;
-    referenceProgress.textContent = `${authored.size.toLocaleString("en")} / ${references.length.toLocaleString("en")} authored · unreviewed`;
+    referenceProgress.textContent = `${references.length.toLocaleString("en")} artistic · ${authored.size.toLocaleString("en")} personal`;
+    referenceProgress.title =
+      "Built-in artistic interpretations are ready to view. Personal studies override them and remain unreviewed.";
     const filtered = queryReferences(
       references.map((entry) =>
         authored.has(entry.sourceId)
           ? { ...entry, status: "authored-3d" }
-          : entry,
+          : { ...entry, status: "artistic-3d" },
       ),
       {
         query: search.value,
@@ -744,7 +746,7 @@ export function buildStudio(
         element("p", {
           className: "empty-state",
           textContent:
-            "No matching references. These are approximate 3D posture previews, not verified 3D presets.",
+            "No matching references. These are artistic 3D posture studies, not verified 3D presets.",
         }),
       );
     for (const entry of paged.entries) {
@@ -809,7 +811,7 @@ export function buildStudio(
         className: "support-badge",
         textContent: authoredIndex().has(entry.sourceId)
           ? "Authored · unreviewed · not a verified reconstruction"
-          : "Approximate 3D · separate posture studies, not a verified reconstruction",
+          : "Artistic 3D · original interpretation, not a verified reconstruction",
       }),
       element("p", {
         textContent: `${entry.figures} figures · ${entry.family} · ${entry.surface}`,
@@ -822,7 +824,7 @@ export function buildStudio(
       }),
       element("p", {
         textContent:
-          "The 3D preview derives individual body postures from annotations. Participants are displayed separately on a neutral floor; original relationship, facing, furniture and contact details are not reconstructed. Source photos are not included.",
+          "This ready-to-view artistic composition uses a designed gesture palette and broad posture families, not measured source coordinates. Clothed participants are separate on a neutral floor. Original interactions are not reconstructed. The earlier generated approximation remains available below.",
       }),
     );
     const details = element("details", {}, [

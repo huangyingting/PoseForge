@@ -61,12 +61,14 @@ test.afterEach(() => {
   expect(sourceImages).toEqual([]);
 });
 
-async function loaded(page, entry) {
+async function loaded(page, entry, generated = false) {
   await expect(page.locator("#scene-title")).toHaveText(
     `Reference ${entry.sourceId}`,
   );
   await ready(page);
-  await expect(page.locator("#scene-badge")).toHaveText("Approximate 3D");
+  await expect(page.locator("#scene-badge")).toHaveText(
+    generated ? "Approximate 3D" : "Artistic 3D",
+  );
   await expect(page.locator("#viewport-error")).toBeHidden();
   const mesh = await page.evaluate(() => window.__referenceMesh);
   expect(mesh.title).toBe(`Reference ${entry.sourceId}`);
@@ -111,8 +113,23 @@ async function loaded(page, entry) {
   };
 }
 
-async function select(page, entry) {
+async function select(page, entry, generated = false) {
   await page.getByLabel("Search references").fill(entry.sourceId);
+  if (generated) {
+    await page
+      .getByRole("button", {
+        name: `Reference details ${entry.sourceId}`,
+        exact: true,
+      })
+      .click();
+    await page
+      .getByRole("button", {
+        name: "Open generated approximation",
+        exact: true,
+      })
+      .click();
+    return loaded(page, entry, true);
+  }
   await page
     .getByRole("button", {
       name: `Preview reference ${entry.sourceId}`,
@@ -128,10 +145,10 @@ for (let batch = 0; batch < 4; batch++) {
     page,
   }, info) => {
     test.setTimeout(420_000);
-    await page.goto(`/?reference=${subset[0].sourceId}`);
-    const results = [await loaded(page, subset[0])];
+    await page.goto(`/?reference=${subset[0].sourceId}&preview=generated`);
+    const results = [await loaded(page, subset[0], true)];
     for (const entry of subset.slice(1))
-      results.push(await select(page, entry));
+      results.push(await select(page, entry, true));
     expect(results).toHaveLength(subset.length);
     await info.attach("reference-render-coverage", {
       body: JSON.stringify(results),
@@ -149,7 +166,7 @@ test("solo and three-person previews support deep links, camera controls, saving
   await select(page, trio);
   await expect(page).toHaveURL(new RegExp(`reference=${trio.sourceId}`));
   await expect(page.locator(".notes")).toContainText(
-    "Participants are shown separately",
+    "Clothed figures are separate",
   );
   await page.screenshot({ path: info.outputPath("three-person-preview.png") });
   await page.getByRole("button", { name: "Front", exact: true }).click();
@@ -196,7 +213,7 @@ test("a failed preview download preserves the current study and retry loads it",
   page,
 }) => {
   let attempts = 0;
-  await page.route("**/catalog/reference-previews-v1.json", async (route) => {
+  await page.route("**/catalog/artistic-studies-v1.json", async (route) => {
     if (++attempts === 1)
       await route.fulfill({ status: 503, body: "not available" });
     else await route.continue();
@@ -225,7 +242,7 @@ test("a delayed reference request cannot overwrite a newer stock selection", asy
   const gate = new Promise((resolve) => {
     release = resolve;
   });
-  await page.route("**/catalog/reference-previews-v1.json", async (route) => {
+  await page.route("**/catalog/artistic-studies-v1.json", async (route) => {
     await gate;
     await route.continue();
   });
@@ -307,7 +324,7 @@ test("opening Save cancels a pending reference so it cannot replace the saved st
   const gate = new Promise((resolve) => {
     release = resolve;
   });
-  await page.route("**/catalog/reference-previews-v1.json", async (route) => {
+  await page.route("**/catalog/artistic-studies-v1.json", async (route) => {
     await gate;
     await route.continue();
   });
@@ -327,9 +344,7 @@ test("opening Save cancels a pending reference so it cannot replace the saved st
     .getByRole("dialog")
     .getByRole("button", { name: "Save preset", exact: true })
     .click();
-  const response = page.waitForResponse(
-    "**/catalog/reference-previews-v1.json",
-  );
+  const response = page.waitForResponse("**/catalog/artistic-studies-v1.json");
   release();
   await response;
   await page.evaluate(

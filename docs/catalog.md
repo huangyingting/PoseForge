@@ -7,18 +7,18 @@ For independent per-reference editing and bulk imports, see the
 unreviewed overrides; they do not change the committed source snapshot.
 
 **References** browses all 1,283 records in the committed SexPoses annotation
-snapshot. Clicking a card now opens its **Approximate 3D** posture study in the
+snapshot. Clicking a card opens its ready-to-view **Artistic 3D** composition in the
 studio. Source photos, raw descriptions, intimate contact labels and private
 file paths are not shipped. The normal
 **All / Positions / Saved / Favorites** collections contain playable 3D presets.
 There are still 23 authored stock presets; indexing a reference does not add a
-corresponding verified 3D layout. The 1,283 records map to 203 generated study
-scenes: source records may share the same approximate geometry.
+corresponding verified 3D layout. All 1,283 IDs have distinct artistic compositions;
+the earlier 203 shared approximations remain available in the details dialog.
 
 These are non-graphic, clothed individual posture studies. All participants are
 retained, including single- and three-person records, but they are displayed
-separately. Joint angles come from categorical annotations and the existing rig,
-not measured 3D coordinates. A neutral floor replaces original furniture and
+separately. Artistic joint angles come from a designed gesture vocabulary and
+whole-body bases, not measured source coordinates. A neutral floor replaces original furniture and
 external supports. Original relative facing, relationship and contact details
 are not reconstructed. **Pose checks** retains these approximation notes and
 any measured geometry problems; renderability is not physical certification.
@@ -54,7 +54,8 @@ fingerprint covers the complete original annotation for provenance.
 Both catalogs show at most 24 cards per page. **Previous / Next** preserves
 filters; changing a filter starts at page one. Reference metadata is downloaded
 only when References is opened. The separate preview pack is fetched on first
-3D selection. Both files have byte/hash/schema checks and revalidate cached
+3D selection. The artistic and legacy packs are separate; each loads only when
+selected. All files have byte/hash/schema checks and revalidate cached
 responses. Failed index downloads show Retry; a failed preview download keeps
 the previous study and can be retried by selecting the card again.
 
@@ -78,10 +79,12 @@ message rather than substituting an unclothed collision-field reference.
 
 Support labels mean:
 
+- **Artistic 3D**: bundled original clothed composition, ready without imports.
+  Distinct geometry does not certify source fidelity or physical validity.
 - **Approximate 3D**: generated clothed individual posture study, not a verified
   reconstruction. Every current source record has one.
-- **Authored · unreviewed**: a locally saved, source-matched study selected instead
-  of that reference's generated approximation. This is not a verification badge.
+- **Authored · unreviewed**: a locally saved, source-linked study selected instead
+  of the bundled artistic composition. This is not a verification badge.
 - **Needs adjustment**: personal/imported preset, not individually certified;
   inspect Pose checks to determine whether adjustment is actually needed.
 - **Verified 3D preset**: one of the audited immutable stock configurations.
@@ -105,6 +108,15 @@ performs no network requests. Broad families remain a discovery aid. The scene
 builder separately maps posture/limb/trunk annotations, notes deferred or unread
 detail, clamps through the existing rig and captures fixed joint/placement data.
 The unchanged engine performs the displayed pose measurements.
+
+The artistic collection is described in [its content guide](artistic-collection.md).
+Its checked-in pack is `public/catalog/artistic-studies-v1.json`, with integrity
+metadata in `src/data/artistic-manifest.json`. It rebuilds from the committed
+neutral source index and legacy model choices without sibling data or imagery:
+
+```sh
+node scripts/build-artistic-studies.mjs --check
+```
 
 ## Author and save a 3D preset
 

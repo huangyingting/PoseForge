@@ -1,5 +1,12 @@
 # Design documentation
 
+The [artistic collection](artistic-collection.md) is the current ready-to-view
+content delivery: 1,283 distinct, clothed compositions with no import required.
+Its [plan](artistic-collection-plan.md) distinguishes original interpretation
+from source reconstruction and defines the geometry/render coverage gates.
+The [verification report](artistic-collection-verification.md) records all 1,283
+direct renders, full-worker palette coverage and application regression checks.
+
 Start with the [studio redesign](studio-redesign.md) for the current interface
 contract and [catalog guide](catalog.md) for saving, importing and authoring
 portable presets. [Verification evidence](studio-verification.md) records the

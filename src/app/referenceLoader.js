@@ -4,7 +4,13 @@ import {
   referencePreset,
 } from "../core/referencePreviews.js";
 import manifest from "../data/reference-manifest.json" with { type: "json" };
+import artisticManifest from "../data/artistic-manifest.json" with { type: "json" };
+import {
+  checkArtisticStudies,
+  artisticPreset,
+} from "../core/artisticStudies.js";
 export { manifest as referenceManifest };
+export { artisticManifest };
 
 /** Lazy, retryable and shared. A failed fetch never publishes a partial index. */
 function verifiedLoader(
@@ -85,6 +91,12 @@ export function createReferenceService(options = {}) {
       checkReferencePreviews(pack, manifest.previews, await entries()),
     options,
   );
+  const artistic = verifiedLoader(
+    { ...artisticManifest, dataSha256: artisticManifest.sha256 },
+    async (pack) =>
+      checkArtisticStudies(pack, artisticManifest, await entries()),
+    options,
+  );
   return {
     entries,
     async find(sourceId) {
@@ -96,6 +108,9 @@ export function createReferenceService(options = {}) {
     },
     async preset(entry) {
       return referencePreset(entry, await scenes());
+    },
+    async artistic(entry) {
+      return artisticPreset(entry, await artistic());
     },
   };
 }

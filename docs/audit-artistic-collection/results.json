@@ -1,0 +1,675 @@
+{
+  "scope": "Ready-to-view original clothed, separate artistic compositions, not source reconstructions or verified physical poses.",
+  "baselineCommit": "80d9f9cbf3415dd3ff8850672ccd545a25d99cd3",
+  "recordedAt": "2026-09-23T07:13:44.412Z",
+  "environment": {
+    "node": "v24.17.0",
+    "playwright": "1.63.0",
+    "browser": "153.0.8010.12",
+    "graphics": "SwiftShader"
+  },
+  "hashes": {
+    "method": "SHA-256 over sorted path, NUL, contents, NUL",
+    "applicationInputs": [
+      "index.html",
+      "package.json",
+      "package-lock.json",
+      "src/**",
+      "public/**",
+      "scripts/build-artistic-studies.mjs"
+    ],
+    "application": "a97faea40c836945463312dc90de2601adfda5a05c8a8115d9f1a5f12f7696b0",
+    "tests": "ba52d6ad3b86f87b6b2376123dea8647eb334329a274646a9348e7c740b80ef1"
+  },
+  "manifest": {
+    "format": "poseforge.artistic-manifest",
+    "version": 1,
+    "file": "catalog/artistic-studies-v1.json",
+    "bytes": 4359190,
+    "sha256": "4640214cf625579cd0eadd06fb03ea40e90d45a6d31ad8e1633a0d75d494d4db",
+    "records": 1283,
+    "participants": 2567,
+    "distinctJointCompositions": 1283,
+    "jointSignatureBinDegrees": 10,
+    "distinctIndividualMotifsUsed": 403,
+    "distinctBodyMotifsUsed": 141,
+    "semantics": "Original clothed artistic compositions, not source-matched reconstructions or verified physical poses."
+  },
+  "coverage": {
+    "sourceRecords": 1283,
+    "participants": 2567,
+    "uniqueBodyJointCompositions": 1283,
+    "minimumCompositionBodyJointDifferenceDegrees": 25,
+    "minimumComparison": "Optimal actor matching, equal participant count, excluding head/neck, actor order, model choice, root placement, colour, camera and labels.",
+    "individualBodyJointVectors": 250,
+    "bodyMotifs": 141,
+    "motifsWithGaze": 403
+  },
+  "directRender": {
+    "scenes": 1283,
+    "participants": 2567,
+    "artifactSha256": "4640214cf625579cd0eadd06fb03ea40e90d45a6d31ad8e1633a0d75d494d4db",
+    "resolution": [
+      256,
+      192
+    ],
+    "minimumColouredPixels": 45,
+    "allFinite": true,
+    "allClothed": true,
+    "allScanned": true,
+    "errors": [],
+    "mode": "Direct existing scanned/clothed mesh pipeline and renderer, no worker surface refinement or final occlusion.",
+    "evidence": "rendered-scenes.json"
+  },
+  "coarseDiagnostics": {
+    "maxProxyPenetrationM": 0.000010263278833761574,
+    "maxProxySupportGapM": 0.05154711635958721,
+    "flaggedSourceIds": [
+      "img-0038",
+      "img-0058",
+      "img-0061",
+      "img-0071",
+      "img-0091",
+      "img-0102",
+      "img-0104",
+      "img-0155",
+      "img-0167",
+      "img-0176",
+      "img-0181",
+      "img-0183",
+      "img-0215",
+      "img-0218",
+      "img-0256",
+      "img-0279",
+      "img-0299",
+      "img-0304",
+      "img-0332",
+      "img-0333",
+      "img-0340",
+      "img-0341",
+      "img-0370",
+      "img-0375",
+      "img-0387",
+      "img-0394",
+      "img-0408",
+      "img-0429",
+      "img-0452",
+      "img-0453",
+      "img-0481",
+      "img-0495",
+      "img-0506",
+      "img-0507",
+      "img-0525",
+      "img-0526",
+      "img-0541",
+      "img-0547",
+      "img-0554",
+      "img-0563",
+      "img-0566",
+      "img-0575",
+      "img-0581",
+      "img-0590",
+      "img-0622",
+      "img-0643",
+      "img-0647",
+      "img-0668",
+      "img-0690",
+      "img-0693",
+      "img-0695",
+      "img-0697",
+      "img-0713",
+      "img-0727",
+      "img-0740",
+      "img-0746",
+      "img-0752",
+      "img-0769",
+      "img-0811",
+      "img-0836",
+      "img-0846",
+      "img-0858",
+      "img-0868",
+      "img-0870",
+      "img-0921",
+      "img-0927",
+      "img-0951",
+      "img-0960",
+      "img-0968",
+      "img-0969",
+      "img-0972",
+      "img-0976",
+      "img-0994",
+      "img-0998",
+      "img-1004",
+      "img-1006",
+      "img-1022",
+      "img-1038",
+      "img-1047",
+      "img-1051",
+      "img-1058",
+      "img-1062",
+      "img-1068",
+      "img-1072",
+      "img-1121",
+      "img-1160",
+      "img-1253"
+    ]
+  },
+  "fullWorker": {
+    "representatives": [
+      {
+        "sourceId": "img-0166",
+        "tokens": [
+          "figures:3",
+          "posture:kneeling",
+          "body:female",
+          "posture:seated_floor",
+          "body:male",
+          "posture:supine",
+          "gesture:low-open",
+          "gesture:reach",
+          "gesture:overhead"
+        ]
+      },
+      {
+        "sourceId": "img-0125",
+        "tokens": [
+          "figures:2",
+          "posture:standing",
+          "body:female",
+          "posture:supine_legs_raised",
+          "body:neutral",
+          "gesture:left-reach",
+          "gesture:left-open"
+        ]
+      },
+      {
+        "sourceId": "img-0266",
+        "tokens": [
+          "figures:2",
+          "posture:kneeling_low",
+          "body:male",
+          "posture:side_lying",
+          "body:female",
+          "gesture:reach-frame",
+          "gesture:open"
+        ]
+      },
+      {
+        "sourceId": "img-0005",
+        "tokens": [
+          "figures:2",
+          "posture:squatting",
+          "body:female",
+          "body:male",
+          "gesture:right-high",
+          "gesture:frame-reach"
+        ]
+      },
+      {
+        "sourceId": "img-0004",
+        "tokens": [
+          "figures:2",
+          "posture:supine_legs_raised",
+          "body:female",
+          "posture:supine",
+          "body:male",
+          "gesture:rest",
+          "gesture:right-diagonal"
+        ]
+      },
+      {
+        "sourceId": "img-0006",
+        "tokens": [
+          "figures:2",
+          "posture:supine",
+          "body:female",
+          "posture:supine_legs_raised",
+          "body:male",
+          "gesture:reach-open",
+          "gesture:high-v"
+        ]
+      },
+      {
+        "sourceId": "img-0048",
+        "tokens": [
+          "figures:2",
+          "posture:kneeling",
+          "body:female",
+          "posture:supine_legs_raised",
+          "body:male",
+          "gesture:gather",
+          "gesture:left-diagonal"
+        ]
+      },
+      {
+        "sourceId": "img-0050",
+        "tokens": [
+          "figures:2",
+          "posture:kneeling",
+          "body:female",
+          "posture:supine_legs_raised",
+          "body:male",
+          "gesture:right-open",
+          "gesture:frame"
+        ]
+      },
+      {
+        "sourceId": "img-0126",
+        "tokens": [
+          "figures:1",
+          "posture:supine",
+          "body:female",
+          "gesture:left-high"
+        ]
+      },
+      {
+        "sourceId": "img-0599",
+        "tokens": [
+          "figures:2",
+          "posture:kneeling_low",
+          "body:female",
+          "posture:supine",
+          "body:male",
+          "gesture:right-reach",
+          "gesture:open-reach"
+        ]
+      }
+    ],
+    "coveredTokens": [
+      "body:female",
+      "body:male",
+      "body:neutral",
+      "figures:1",
+      "figures:2",
+      "figures:3",
+      "gesture:frame",
+      "gesture:frame-reach",
+      "gesture:gather",
+      "gesture:high-v",
+      "gesture:left-diagonal",
+      "gesture:left-high",
+      "gesture:left-open",
+      "gesture:left-reach",
+      "gesture:low-open",
+      "gesture:open",
+      "gesture:open-reach",
+      "gesture:overhead",
+      "gesture:reach",
+      "gesture:reach-frame",
+      "gesture:reach-open",
+      "gesture:rest",
+      "gesture:right-diagonal",
+      "gesture:right-high",
+      "gesture:right-open",
+      "gesture:right-reach",
+      "posture:kneeling",
+      "posture:kneeling_low",
+      "posture:seated_floor",
+      "posture:side_lying",
+      "posture:squatting",
+      "posture:standing",
+      "posture:supine",
+      "posture:supine_legs_raised"
+    ],
+    "checks": "Actual scanned/clothed finite meshes and full-worker final joints/placements equal the baked data across every base, gesture, body type and participant count."
+  },
+  "checks": {
+    "units": {
+      "passed": 58,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 68849.228686,
+      "command": "node --test tests/architecture.test.js tests/catalog.test.js tests/persistentLibrary.test.js tests/referenceCatalog.test.js tests/referencePreviews.test.js tests/referenceStudies.test.js tests/artisticStudies.test.js tests/preview.test.js"
+    },
+    "browser": {
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "flaky": 0,
+      "run": {
+        "startTime": "2026-09-23T06:55:36.560Z",
+        "duration": 978677.167,
+        "expected": 42,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    },
+    "productionBuild": {
+      "passed": true,
+      "note": "The browser suite builds the production bundle before its preview server starts."
+    },
+    "reproducibleContent": {
+      "passed": true,
+      "note": "Unit gate rebuilt the artistic pack and manifest byte-for-byte from committed neutral metadata."
+    },
+    "dependencies": {
+      "vulnerabilities": 0
+    },
+    "formatting": {
+      "passed": true
+    },
+    "whitespace": {
+      "passed": true
+    }
+  },
+  "compactLayout": [
+    {
+      "width": 1440,
+      "height": 844,
+      "headerHeight": 56,
+      "libraryTopHeight": 160.59375,
+      "listHeight": 547.40625,
+      "fullyVisibleCards": 6,
+      "canvasWidth": 862,
+      "canvasHeight": 640.703125
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "headerHeight": 56,
+      "libraryTopHeight": 195.59375,
+      "listHeight": 436.40625,
+      "fullyVisibleCards": 5,
+      "canvasWidth": 502,
+      "canvasHeight": 567.203125
+    },
+    {
+      "width": 768,
+      "height": 1024,
+      "headerHeight": 56,
+      "libraryTopHeight": 180.59375,
+      "listHeight": 647.40625,
+      "fullyVisibleCards": 8,
+      "canvasWidth": 0,
+      "canvasHeight": 0
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "headerHeight": 56,
+      "libraryTopHeight": 180.59375,
+      "listHeight": 467.40625,
+      "fullyVisibleCards": 5,
+      "canvasWidth": 0,
+      "canvasHeight": 0
+    },
+    {
+      "width": 320,
+      "height": 700,
+      "headerHeight": 56,
+      "libraryTopHeight": 180.59375,
+      "listHeight": 323.40625,
+      "fullyVisibleCards": 4,
+      "canvasWidth": 0,
+      "canvasHeight": 0
+    }
+  ],
+  "browserCases": [
+    {
+      "file": "artistic.spec.js",
+      "title": "artistic posture and gesture palette survives the full worker, batch 1",
+      "status": "passed",
+      "durationMs": 48636
+    },
+    {
+      "file": "artistic.spec.js",
+      "title": "artistic posture and gesture palette survives the full worker, batch 2",
+      "status": "passed",
+      "durationMs": 24062
+    },
+    {
+      "file": "artistic.spec.js",
+      "title": "a fresh library has all artistic previews ready without importing or creating personal data",
+      "status": "passed",
+      "durationMs": 20156
+    },
+    {
+      "file": "artistic.spec.js",
+      "title": "artistic previews and their distinction from legacy approximations remain usable on mobile",
+      "status": "passed",
+      "durationMs": 30796
+    },
+    {
+      "file": "collections.spec.js",
+      "title": "positions are a visible collection and collection filters stay usable on narrow screens",
+      "status": "passed",
+      "durationMs": 17922
+    },
+    {
+      "file": "collections.spec.js",
+      "title": "unread description text remains visible as a warning through the worker and draft reload",
+      "status": "passed",
+      "durationMs": 32447
+    },
+    {
+      "file": "compact-ui.spec.js",
+      "title": "compact desktop and mobile layouts expose more rows and reserve the canvas for the scene",
+      "status": "passed",
+      "durationMs": 17215
+    },
+    {
+      "file": "compact-ui.spec.js",
+      "title": "filters disclose, stay indicated while closed, reset pagination, and clear search without losing focus",
+      "status": "passed",
+      "durationMs": 11089
+    },
+    {
+      "file": "compact-ui.spec.js",
+      "title": "focus view and search shortcuts preserve the scene, honor dialogs and leave typing alone",
+      "status": "passed",
+      "durationMs": 12311
+    },
+    {
+      "file": "compact-ui.spec.js",
+      "title": "responsive transitions and short landscape screens keep editing, filters and camera actions reachable",
+      "status": "passed",
+      "durationMs": 10609
+    },
+    {
+      "file": "compact-ui.spec.js",
+      "title": "compact controls, filters, information dialogs and enlarged text remain accessible",
+      "status": "passed",
+      "durationMs": 16274
+    },
+    {
+      "file": "compact-ui.spec.js",
+      "title": "keyboard-focused fields scroll below the sticky inspector tabs",
+      "status": "passed",
+      "durationMs": 10116
+    },
+    {
+      "file": "reference-3d.spec.js",
+      "title": "solo and three-person previews support deep links, camera controls, saving and exports",
+      "status": "passed",
+      "durationMs": 40784
+    },
+    {
+      "file": "reference-3d.spec.js",
+      "title": "a failed preview download preserves the current study and retry loads it",
+      "status": "passed",
+      "durationMs": 13964
+    },
+    {
+      "file": "reference-3d.spec.js",
+      "title": "a delayed reference request cannot overwrite a newer stock selection",
+      "status": "passed",
+      "durationMs": 14403
+    },
+    {
+      "file": "reference-3d.spec.js",
+      "title": "mobile reference selection opens the 3D studio while details remain separately accessible",
+      "status": "passed",
+      "durationMs": 18020
+    },
+    {
+      "file": "reference-3d.spec.js",
+      "title": "missing scanned models do not substitute an unclothed field for a clothed reference preview",
+      "status": "passed",
+      "durationMs": 5747
+    },
+    {
+      "file": "reference-3d.spec.js",
+      "title": "opening Save cancels a pending reference so it cannot replace the saved study",
+      "status": "passed",
+      "durationMs": 13036
+    },
+    {
+      "file": "reference-3d.spec.js",
+      "title": "keyboard preview selection retains focus on desktop and invalid deep links keep a usable study",
+      "status": "passed",
+      "durationMs": 17859
+    },
+    {
+      "file": "reference-authoring.spec.js",
+      "title": "a reference has an independently edited, captured and replace-confirmed pose across reload and export",
+      "status": "passed",
+      "durationMs": 53251
+    },
+    {
+      "file": "reference-authoring.spec.js",
+      "title": "bulk imports preview counts, keep existing by default, replace explicitly and reject an invalid batch atomically",
+      "status": "passed",
+      "durationMs": 28501
+    },
+    {
+      "file": "reference-authoring.spec.js",
+      "title": "all 1283 entries can be imported, exported and individually selected as authored test fixtures",
+      "status": "passed",
+      "durationMs": 39270
+    },
+    {
+      "file": "reference-authoring.spec.js",
+      "title": "mobile authoring and import are reachable, accessible and reject a missing participant",
+      "status": "passed",
+      "durationMs": 36311
+    },
+    {
+      "file": "reference-authoring.spec.js",
+      "title": "saving an authored study cancels a pending generated selection",
+      "status": "passed",
+      "durationMs": 31174
+    },
+    {
+      "file": "reference-authoring.spec.js",
+      "title": "a committed reference save cannot replace a newer selection after its dialog closes",
+      "status": "passed",
+      "durationMs": 18981
+    },
+    {
+      "file": "reference-scale.spec.js",
+      "title": "all 1283 reference IDs are reachable through bounded pages without changing or solving the active scene",
+      "status": "passed",
+      "durationMs": 12560
+    },
+    {
+      "file": "reference-scale.spec.js",
+      "title": "reference families, annotation groups, statuses and mobile controls remain accessible",
+      "status": "passed",
+      "durationMs": 14737
+    },
+    {
+      "file": "reference-scale.spec.js",
+      "title": "reference fetch failure is retryable and does not block preset editing",
+      "status": "passed",
+      "durationMs": 9750
+    },
+    {
+      "file": "reference-scale.spec.js",
+      "title": "source association survives save, export and reload without inheriting a verification badge",
+      "status": "passed",
+      "durationMs": 22178
+    },
+    {
+      "file": "reference-scale.spec.js",
+      "title": "1283 full four-figure presets persist beyond localStorage scale with bounded browsing and lossless export",
+      "status": "passed",
+      "durationMs": 27579
+    },
+    {
+      "file": "reference-scale.spec.js",
+      "title": "IndexedDB transaction failure keeps the prior saved library and permits retry",
+      "status": "passed",
+      "durationMs": 9534
+    },
+    {
+      "file": "reference-scale.spec.js",
+      "title": "unavailable IndexedDB has a visible functional legacy fallback",
+      "status": "passed",
+      "durationMs": 18072
+    },
+    {
+      "file": "reference-scale.spec.js",
+      "title": "two real tabs reject a stale library transaction and recover on reload",
+      "status": "passed",
+      "durationMs": 22277
+    },
+    {
+      "file": "studio.spec.js",
+      "title": "long metadata fits narrow screens and keyboard selection preserves focus",
+      "status": "passed",
+      "durationMs": 16640
+    },
+    {
+      "file": "studio.spec.js",
+      "title": "catalog, figure edits, undo, save, update, duplicate, reload and delete",
+      "status": "passed",
+      "durationMs": 41194
+    },
+    {
+      "file": "studio.spec.js",
+      "title": "valid and invalid imports are atomic, and downloaded JSON reloads",
+      "status": "passed",
+      "durationMs": 22929
+    },
+    {
+      "file": "studio.spec.js",
+      "title": "description, figure controls and workspace draft preserve the latest edits",
+      "status": "passed",
+      "durationMs": 44348
+    },
+    {
+      "file": "studio.spec.js",
+      "title": "PNG, transparent PNG, SVG and editable preset downloads contain real output",
+      "status": "passed",
+      "durationMs": 13523
+    },
+    {
+      "file": "studio.spec.js",
+      "title": "reference studies render, camera and material work, desktop has no overflow",
+      "status": "passed",
+      "durationMs": 55965
+    },
+    {
+      "file": "studio.spec.js",
+      "title": "mobile library, inspector, editing, saving and export remain reachable",
+      "status": "passed",
+      "durationMs": 24072
+    },
+    {
+      "file": "studio.spec.js",
+      "title": "desktop, mobile and save dialog meet automated accessibility checks",
+      "status": "passed",
+      "durationMs": 15364
+    },
+    {
+      "file": "studio.spec.js",
+      "title": "corrupt library can be recovered and a blocked WebGL preview keeps JSON editing usable",
+      "status": "passed",
+      "durationMs": 13364
+    }
+  ],
+  "verificationNotes": [
+    "All final evidence uses the same artistic pack SHA. Earlier head/gaze-inclusive draft runs were stopped and are not counted.",
+    "Uniqueness was strengthened to require different limb/torso joint layouts, not just a different gaze; the final closest pair differs by 25 degrees after optimal actor matching.",
+    "Independent upright figures are listed before recumbent figures to avoid legacy partner-support inference without modifying the solver.",
+    "The complete 1283-scene render inventory uses the existing mesh pipeline and renderer directly at 256x192, without worker surface refinement, final occlusion or shadows. Ten representative scenes cover every authored base, gesture, body type and participant count through the full application worker.",
+    "The source index, earlier 203-scene approximation pack, stock presets, solver, worker, renderer and model assets remain unchanged."
+  ],
+  "limits": [
+    "Original artistic interpretations, not source-matched reconstruction or 1283 hand-sculpted base poses.",
+    "87 compositions have coarse support gaps over 40 mm. Renderability and distinct geometry do not certify anatomy, support, balance, precise mesh separation or clothing fit.",
+    "The historical full unit suite was not rerun, and the full-worker path was not traversed for every composition. Physical-device and assistive-technology certification are not claimed.",
+    "No original source imagery, cloud service, new dependency or hosted deployment. Personal library contents are not changed by installing the built-in collection."
+  ]
+}

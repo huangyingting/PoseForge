@@ -1,9 +1,10 @@
 # Author a study for each reference
 
 The viewer supports an independent saved 3D posture study for every one of the
-1,283 source IDs. A fresh library starts with **0 authored studies** and retains
-the 203 shared generated approximations. This feature provides authoring and
-import tools; it does not supply 1,283 newly measured or verified poses.
+1,283 source IDs. A fresh library includes **1,283 artistic compositions** and
+starts with **0 personal authored overrides**. The 203 shared generated
+approximations remain optional fallbacks. Editing/import tools are optional;
+see the [artistic collection](artistic-collection.md) for the bundled content.
 
 ## Edit and save
 
@@ -29,7 +30,8 @@ The information button offers **Open generated approximation**, without deleting
 the authored version. That choice survives reload via `&preview=generated`.
 Opening the main reference card again selects the authored version. To remove an
 authored study, open it, choose **Save preset → Delete preset**, and confirm.
-Its generated fallback remains available. Deletion removes the local saved
+Its built-in artistic view returns, and its generated fallback remains available.
+Deletion removes the local saved
 study; recovery requires an exported backup or resaving the still-open scene.
 
 ## Bulk import and export
