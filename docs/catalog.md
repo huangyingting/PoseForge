@@ -7,8 +7,8 @@ For independent per-reference editing and bulk imports, see the
 unreviewed overrides; they do not change the committed source snapshot.
 
 **References** browses all 1,283 records in the committed SexPoses annotation
-snapshot. Clicking a card opens its ready-to-view **Artistic 3D** composition in the
-studio. Source photos, raw descriptions, intimate contact labels and private
+snapshot. Clicking a card opens its ready-to-view **Interaction 3D** scene in the
+studio (see [3D interaction studies](interaction-studies.md)). Source photos, raw descriptions, intimate contact labels and private
 file paths are not shipped. The normal
 **All / Positions / Saved / Favorites** collections contain playable 3D presets.
 There are still 23 authored stock presets; indexing a reference does not add a
@@ -79,6 +79,8 @@ message rather than substituting an unclothed collision-field reference.
 
 Support labels mean:
 
+- **Interaction 3D**: bundled clothed interaction composed from a template, with
+  the participants together and in contact; approximate, not a reconstruction.
 - **Artistic 3D**: bundled original clothed composition, ready without imports.
   Distinct geometry does not certify source fidelity or physical validity.
 - **Approximate 3D**: generated clothed individual posture study, not a verified

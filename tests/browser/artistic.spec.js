@@ -109,16 +109,8 @@ for (let batch = 0; batch < Math.ceil(representatives.length / 6); batch++) {
     page,
   }, info) => {
     test.setTimeout(240_000);
-    await page.goto(`/?reference=${records[0].sourceId}`);
-    await check(page, records[0]);
-    for (const record of records.slice(1)) {
-      await page.getByLabel("Search references").fill(record.sourceId);
-      await page
-        .getByRole("button", {
-          name: `Preview reference ${record.sourceId}`,
-          exact: true,
-        })
-        .click();
+    for (const record of records) {
+      await page.goto(`/?reference=${record.sourceId}&preview=artistic`);
       await check(page, record);
     }
     await info.attach("artistic-worker-coverage", {
@@ -137,10 +129,11 @@ test("a fresh library has all artistic previews ready without importing or creat
   page.on("request", (r) => {
     if (r.url().includes("/catalog/")) requests.push(r.url().split("/").at(-1));
   });
-  await page.goto("/?reference=img-0001");
+  await page.goto("/?reference=img-0001&preview=artistic");
   await check(page, pack.studies[0]);
+  await expect(page).toHaveURL(/preview=artistic/);
   await expect(page.locator(".reference-study-summary")).toHaveText(
-    "1,283 artistic · 0 personal",
+    "1,283 interaction · 0 personal",
   );
   await expect(page.locator("#scene-description")).toContainText(
     "Artistic interpretation, not a reconstruction",
@@ -148,7 +141,7 @@ test("a fresh library has all artistic previews ready without importing or creat
   expect(requests).toContain("artistic-studies-v1.json");
   expect(requests).not.toContain("reference-previews-v1.json");
   await page.getByRole("button", { name: "Filters", exact: true }).click();
-  await page.getByLabel("Support status").selectOption("artistic-3d");
+  await page.getByLabel("Support status").selectOption("interaction-3d");
   await expect(page.locator(".library-title > span")).toHaveText(
     "1,283 references",
   );
@@ -175,7 +168,7 @@ test("artistic previews and their distinction from legacy approximations remain 
 }, info) => {
   const record = pack.studies.find((p) => p.scene.actors.length === 3);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`/?reference=${record.sourceId}`);
+  await page.goto(`/?reference=${record.sourceId}&preview=artistic`);
   await check(page, record);
   await expect(page.locator("#viewport")).toBeFocused();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
@@ -200,12 +193,25 @@ test("artistic previews and their distinction from legacy approximations remain 
   await page.locator('[data-region="library"]').click();
   await page
     .getByRole("button", {
+      name: `Reference details ${record.sourceId}`,
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("button", { name: "Open artistic interpretation", exact: true })
+    .click();
+  await check(page, record);
+  await expect(page).toHaveURL(/preview=artistic/);
+  await page.locator('[data-region="library"]').click();
+  await page
+    .getByRole("button", {
       name: `Preview reference ${record.sourceId}`,
       exact: true,
     })
     .click();
-  await check(page, record);
-  await expect(page).not.toHaveURL(/preview=generated/);
+  await ready(page);
+  await expect(page.locator("#scene-badge")).toHaveText("Interaction 3D");
+  await expect(page).not.toHaveURL(/preview=/);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

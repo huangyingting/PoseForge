@@ -1,0 +1,154 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import {
+  checkInteractionStudies,
+  interactionPreset,
+  isInteractionPreview,
+  TEMPLATE_LABELS,
+} from "../src/core/interactionStudies.js";
+import { createReferenceService } from "../src/app/referenceLoader.js";
+import { composeStudy } from "../scripts/build-interaction-studies.mjs";
+import { TEMPLATES } from "../scripts/interaction-templates.mjs";
+import { mirrorSpec } from "../scripts/interaction-composer.mjs";
+import { serializeCatalog, parseCatalog } from "../src/core/catalog.js";
+import { solveScene } from "../src/core/solver.js";
+
+const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url));
+const indexBytes = read("public/catalog/sexposes-v1.json");
+const entries = JSON.parse(indexBytes).entries;
+const bytes = read("public/catalog/interaction-studies-v1.json");
+const manifest = JSON.parse(read("src/data/interaction-manifest.json"));
+const classifications = JSON.parse(read("scripts/data/interaction-classifications.json"));
+const pack = JSON.parse(bytes);
+const studies = checkInteractionStudies(pack, manifest, entries);
+const hash = (v) => createHash("sha256").update(v).digest("hex");
+
+test("every source reference has a verified, clothed 3D interaction with its participants together", () => {
+  assert.equal(bytes.length, manifest.bytes);
+  assert.equal(hash(bytes), manifest.sha256);
+  assert.equal(studies.size, 1283);
+  assert.equal(classifications.length, 1283);
+  let pairs = 0;
+  for (const entry of entries) {
+    const preset = interactionPreset(entry, studies);
+    assert.ok(isInteractionPreview(preset));
+    assert.equal(preset.source.annotationHash, entry.annotationHash);
+    const { scene } = preset;
+    if (scene.actors.length < 2) continue;
+    pairs += 1;
+    // Together, not an arrangement of separate studies: declared contacts link the participants.
+    assert.equal(scene.relationship.contactMode, "custom");
+    assert.ok(
+      scene.contacts.some((c) => c.fromActor !== c.toActor),
+      `${entry.sourceId} has no contact between participants`,
+    );
+    const restored = parseCatalog(serializeCatalog([preset]))[0];
+    assert.deepEqual(restored.scene, preset.scene);
+  }
+  assert.ok(pairs > 1200);
+  assert.equal(
+    manifest.participants,
+    pack.studies.reduce((n, s) => n + s.scene.actors.length, 0),
+  );
+});
+
+test("the template labels shown in the app match the composer templates", () => {
+  for (const [id, template] of Object.entries(TEMPLATES))
+    assert.equal(TEMPLATE_LABELS[id], template.label, id);
+  for (const record of pack.studies)
+    assert.ok(TEMPLATE_LABELS[record.template === "group_three" ? record.base : record.template]);
+});
+
+test("most interactions pass their placement and contact checks, and unmet ones are disclosed", () => {
+  assert.equal(manifest.passedChecks, pack.studies.filter((s) => s.checks.passed).length);
+  assert.ok(manifest.passedChecks / manifest.records > 0.8, `${manifest.passedChecks} passed`);
+  const failing = pack.studies.find((s) => !s.checks.passed);
+  if (failing) {
+    const entry = entries.find((e) => e.sourceId === failing.sourceId);
+    const preset = interactionPreset(entry, studies);
+    assert.ok(preset.inputWarnings.some((w) => w.includes("checks are unmet")));
+  }
+});
+
+test("baked scenes solve to their fixed placements with finite geometry", () => {
+  for (const record of pack.studies.filter((_, i) => i % 40 === 0)) {
+    const result = solveScene(record.scene);
+    result.actors.forEach((actor, i) => {
+      assert.ok(actor.evaluated.positions.flat().every(Number.isFinite));
+      assert.deepEqual(actor.pose.root.position, record.scene.actors[i].placement.position);
+    });
+  }
+});
+
+test("the offline composer reproduces the committed scenes", () => {
+  const byId = new Map(classifications.map((c) => [c.id, c]));
+  for (const id of ["img-0001", "img-0032", "img-0140", "img-0252"]) {
+    const record = pack.studies.find((s) => s.sourceId === id);
+    const study = composeStudy(byId.get(id));
+    assert.deepEqual(study.scene.actors, record.scene.actors, id);
+    assert.equal(study.passed, record.checks.passed, id);
+  }
+});
+
+test("mirroring a pose twice is exact and swaps left and right", () => {
+  const spec = structuredClone(pack.studies[0].scene.actors[0]);
+  spec.joints.hip_l.flexion = 40;
+  spec.joints.hip_r.flexion = 10;
+  const mirrored = mirrorSpec(spec);
+  assert.equal(mirrored.joints.hip_r.flexion, 40);
+  assert.equal(mirrored.joints.hip_l.flexion, 10);
+  const back = mirrorSpec(mirrored);
+  for (const bone of Object.keys(spec.joints))
+    for (const channel of Object.keys(spec.joints[bone]))
+      assert.ok(Math.abs(back.joints[bone][channel] - spec.joints[bone][channel]) < 1e-9);
+});
+
+test("malformed, stale, unclothed or free-floating interaction records reject the pack", () => {
+  for (const mutate of [
+    (p) => p.studies.pop(),
+    (p) => {
+      p.studies[0].annotationHash = "0".repeat(64);
+    },
+    (p) => {
+      p.studies[0].template = "unknown";
+    },
+    (p) => {
+      p.studies[0].scene.actors[0].wearing = [];
+    },
+    (p) => {
+      p.studies[0].scene.actors[0].jointMode = "guided";
+    },
+    (p) => {
+      p.studies[1].sourceId = p.studies[0].sourceId;
+    },
+    (p) => {
+      const pair = p.studies.find((s) => s.scene.actors.length > 1);
+      pair.scene.contacts = [];
+    },
+  ]) {
+    const copy = structuredClone(pack);
+    mutate(copy);
+    assert.throws(() => checkInteractionStudies(copy, manifest, entries));
+  }
+});
+
+test("interaction scenes load lazily through the shared verified service", async () => {
+  const requests = [];
+  const service = createReferenceService({
+    base: "/app/",
+    digest: hash,
+    fetcher: async (url) => {
+      requests.push(url);
+      if (url.endsWith("interaction-studies-v1.json")) return new Response(bytes);
+      if (url.endsWith("sexposes-v1.json")) return new Response(indexBytes);
+      throw new Error("Other packs are not needed.");
+    },
+  });
+  assert.equal(requests.length, 0);
+  const [a, b] = await Promise.all([service.interaction(entries[0]), service.interaction(entries[1])]);
+  assert.ok(a.tags.includes("interaction"));
+  assert.notEqual(a.source.recordId, b.source.recordId);
+  assert.equal(requests.length, 2);
+});

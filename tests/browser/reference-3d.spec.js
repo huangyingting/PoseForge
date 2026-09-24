@@ -10,11 +10,19 @@ const entries = JSON.parse(
     "utf8",
   ),
 ).entries;
+const interactionCounts = new Map(
+  JSON.parse(
+    readFileSync(
+      new URL("../../public/catalog/interaction-studies-v1.json", import.meta.url),
+      "utf8",
+    ),
+  ).studies.map((s) => [s.sourceId, s.scene.actors.length]),
+);
 const representatives = [
   ...new Map(entries.map((e) => [e.previewKey, e])).values(),
 ];
 const solo = entries.find((e) => e.figures === 1),
-  trio = entries.find((e) => e.figures === 3);
+  trio = entries.find((e) => interactionCounts.get(e.sourceId) === 3);
 let errors, sourceImages;
 test.beforeEach(async ({ page }) => {
   errors = [];
@@ -67,13 +75,14 @@ async function loaded(page, entry, generated = false) {
   );
   await ready(page);
   await expect(page.locator("#scene-badge")).toHaveText(
-    generated ? "Approximate 3D" : "Artistic 3D",
+    generated ? "Approximate 3D" : "Interaction 3D",
   );
   await expect(page.locator("#viewport-error")).toBeHidden();
   const mesh = await page.evaluate(() => window.__referenceMesh);
   expect(mesh.title).toBe(`Reference ${entry.sourceId}`);
-  expect(mesh.bodies).toHaveLength(entry.figures);
-  expect(mesh.actorCount).toBe(entry.figures);
+  const figures = generated ? entry.figures : interactionCounts.get(entry.sourceId);
+  expect(mesh.bodies).toHaveLength(figures);
+  expect(mesh.actorCount).toBe(figures);
   for (const body of mesh.bodies) {
     expect(body.source).toBe("scanned");
     expect(body.finite).toBe(true);
@@ -166,7 +175,7 @@ test("solo and three-person previews support deep links, camera controls, saving
   await select(page, trio);
   await expect(page).toHaveURL(new RegExp(`reference=${trio.sourceId}`));
   await expect(page.locator(".notes")).toContainText(
-    "Clothed figures are separate",
+    "Approximate 3D interaction",
   );
   await page.screenshot({ path: info.outputPath("three-person-preview.png") });
   await page.getByRole("button", { name: "Front", exact: true }).click();
@@ -189,9 +198,9 @@ test("solo and three-person previews support deep links, camera controls, saving
   ]);
   const preset = JSON.parse(await readFile(await json.path(), "utf8"))
     .presets[0];
-  expect(preset.scene.actors).toHaveLength(3);
+  expect(preset.scene.actors).toHaveLength(interactionCounts.get(trio.sourceId));
   expect(preset.source.recordId).toBe(trio.sourceId);
-  expect(preset.scene.contacts).toEqual([]);
+  expect(preset.scene.contacts.length).toBeGreaterThan(0);
   await page.locator("#save-preset").click();
   await page.getByLabel("Preset name").fill("Saved reference posture study");
   await page
@@ -213,7 +222,7 @@ test("a failed preview download preserves the current study and retry loads it",
   page,
 }) => {
   let attempts = 0;
-  await page.route("**/catalog/artistic-studies-v1.json", async (route) => {
+  await page.route("**/catalog/interaction-studies-v1.json", async (route) => {
     if (++attempts === 1)
       await route.fulfill({ status: 503, body: "not available" });
     else await route.continue();
@@ -242,7 +251,7 @@ test("a delayed reference request cannot overwrite a newer stock selection", asy
   const gate = new Promise((resolve) => {
     release = resolve;
   });
-  await page.route("**/catalog/artistic-studies-v1.json", async (route) => {
+  await page.route("**/catalog/interaction-studies-v1.json", async (route) => {
     await gate;
     await route.continue();
   });
@@ -286,7 +295,7 @@ test("mobile reference selection opens the 3D studio while details remain separa
     "not a verified reconstruction",
   );
   await page
-    .getByRole("button", { name: "Open 3D preview", exact: true })
+    .getByRole("button", { name: "Open 3D interaction", exact: true })
     .click();
   await loaded(page, trio);
   await page.screenshot({ path: info.outputPath("mobile-reference-3d.png") });
@@ -324,7 +333,7 @@ test("opening Save cancels a pending reference so it cannot replace the saved st
   const gate = new Promise((resolve) => {
     release = resolve;
   });
-  await page.route("**/catalog/artistic-studies-v1.json", async (route) => {
+  await page.route("**/catalog/interaction-studies-v1.json", async (route) => {
     await gate;
     await route.continue();
   });
@@ -344,7 +353,7 @@ test("opening Save cancels a pending reference so it cannot replace the saved st
     .getByRole("dialog")
     .getByRole("button", { name: "Save preset", exact: true })
     .click();
-  const response = page.waitForResponse("**/catalog/artistic-studies-v1.json");
+  const response = page.waitForResponse("**/catalog/interaction-studies-v1.json");
   release();
   await response;
   await page.evaluate(

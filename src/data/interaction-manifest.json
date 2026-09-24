@@ -1,0 +1,146 @@
+{
+  "format": "poseforge.interaction-manifest",
+  "version": 1,
+  "file": "catalog/interaction-studies-v1.json",
+  "bytes": 4474672,
+  "sha256": "20cf64730519a6002d54300ea39a6b209bf5b35d2215b34f3875139fa65c75aa",
+  "records": 1283,
+  "distinctScenes": 722,
+  "participants": 2549,
+  "passedChecks": 1170,
+  "templates": {
+    "cowgirl": {
+      "records": 64,
+      "passed": 59
+    },
+    "doggy": {
+      "records": 35,
+      "passed": 34
+    },
+    "doggy_low": {
+      "records": 46,
+      "passed": 46
+    },
+    "edge_missionary": {
+      "records": 55,
+      "passed": 48
+    },
+    "edge_seated_facing": {
+      "records": 31,
+      "passed": 22
+    },
+    "facesitting": {
+      "records": 28,
+      "passed": 21
+    },
+    "furniture_rear": {
+      "records": 82,
+      "passed": 76
+    },
+    "group_three": {
+      "records": 14,
+      "passed": 10
+    },
+    "kneeling_missionary": {
+      "records": 74,
+      "passed": 74
+    },
+    "kneeling_rear_upright": {
+      "records": 9,
+      "passed": 9
+    },
+    "lap_facing": {
+      "records": 99,
+      "passed": 96
+    },
+    "lap_reverse": {
+      "records": 65,
+      "passed": 65
+    },
+    "missionary": {
+      "records": 72,
+      "passed": 62
+    },
+    "oral_on_a": {
+      "records": 53,
+      "passed": 41
+    },
+    "oral_on_b_kneeling": {
+      "records": 30,
+      "passed": 18
+    },
+    "oral_on_b_lying": {
+      "records": 11,
+      "passed": 10
+    },
+    "other_pair": {
+      "records": 7,
+      "passed": 6
+    },
+    "prone_on_top": {
+      "records": 21,
+      "passed": 13
+    },
+    "prone_rear": {
+      "records": 53,
+      "passed": 47
+    },
+    "reclined_facing": {
+      "records": 27,
+      "passed": 25
+    },
+    "reverse_cowgirl": {
+      "records": 61,
+      "passed": 61
+    },
+    "scissors": {
+      "records": 32,
+      "passed": 24
+    },
+    "side_facing": {
+      "records": 24,
+      "passed": 21
+    },
+    "sixty_nine": {
+      "records": 34,
+      "passed": 29
+    },
+    "solo": {
+      "records": 31,
+      "passed": 31
+    },
+    "spooning": {
+      "records": 28,
+      "passed": 28
+    },
+    "squat_cowgirl": {
+      "records": 4,
+      "passed": 2
+    },
+    "standing_bent_over": {
+      "records": 17,
+      "passed": 17
+    },
+    "standing_carry": {
+      "records": 34,
+      "passed": 34
+    },
+    "standing_facing": {
+      "records": 20,
+      "passed": 20
+    },
+    "standing_rear": {
+      "records": 10,
+      "passed": 9
+    },
+    "supported_inversion": {
+      "records": 79,
+      "passed": 79
+    },
+    "wheelbarrow": {
+      "records": 33,
+      "passed": 33
+    }
+  },
+  "semantics": "Approximate clothed 3D interactions composed from a visual classification of each source image into an interaction template, with fixed placements, joints and declared contacts. Not measured reconstructions or verified physical poses."
+}

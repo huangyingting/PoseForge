@@ -246,7 +246,7 @@ export function buildStudio(
         }),
         element("p", {
           textContent:
-            "Every reference includes a ready-to-view artistic 3D composition with separate clothed figures. All 1,283 compositions have distinct joint geometry, but are not source reconstructions or verified physical poses. No editing or import is required.",
+            "Every reference opens as a ready-to-view 3D interaction: the clothed participants are placed together with their contacts, composed from a visual classification of the source into an interaction template. These are approximations, not source reconstructions or verified physical poses. The earlier artistic and generated studies remain available from each reference's details. No editing or import is required.",
         }),
         element("p", {
           textContent: `Saved in this browser using ${library.mode ?? "local storage"}. Up to 5,000 presets / 32 MB. Export JSON for a portable backup; this is not cloud storage.`,
@@ -718,14 +718,14 @@ export function buildStudio(
     }
     const authored = authoredIndex();
     referenceProgress.hidden = false;
-    referenceProgress.textContent = `${references.length.toLocaleString("en")} artistic · ${authored.size.toLocaleString("en")} personal`;
+    referenceProgress.textContent = `${references.length.toLocaleString("en")} interaction · ${authored.size.toLocaleString("en")} personal`;
     referenceProgress.title =
-      "Built-in artistic interpretations are ready to view. Personal studies override them and remain unreviewed.";
+      "Built-in 3D interactions are ready to view. Personal studies override them and remain unreviewed.";
     const filtered = queryReferences(
       references.map((entry) =>
         authored.has(entry.sourceId)
           ? { ...entry, status: "authored-3d" }
-          : { ...entry, status: "artistic-3d" },
+          : { ...entry, status: "interaction-3d" },
       ),
       {
         query: search.value,
@@ -746,7 +746,7 @@ export function buildStudio(
         element("p", {
           className: "empty-state",
           textContent:
-            "No matching references. These are artistic 3D posture studies, not verified 3D presets.",
+            "No matching references. These are approximate 3D interactions, not verified 3D presets.",
         }),
       );
     for (const entry of paged.entries) {
@@ -811,7 +811,7 @@ export function buildStudio(
         className: "support-badge",
         textContent: authoredIndex().has(entry.sourceId)
           ? "Authored · unreviewed · not a verified reconstruction"
-          : "Artistic 3D · original interpretation, not a verified reconstruction",
+          : "Interaction 3D · approximate composition, not a verified reconstruction",
       }),
       element("p", {
         textContent: `${entry.figures} figures · ${entry.family} · ${entry.surface}`,
@@ -824,7 +824,7 @@ export function buildStudio(
       }),
       element("p", {
         textContent:
-          "This ready-to-view artistic composition uses a designed gesture palette and broad posture families, not measured source coordinates. Clothed participants are separate on a neutral floor. Original interactions are not reconstructed. The earlier generated approximation remains available below.",
+          "This ready-to-view 3D interaction places the clothed participants together, with their contacts, following an interaction template chosen by visually classifying the source image. Poses are approximate, not measured source coordinates or physical certification. The artistic interpretation and the generated approximation remain available below.",
       }),
     );
     const details = element("details", {}, [
@@ -851,16 +851,20 @@ export function buildStudio(
     modal.append(
       details,
       button(
-        "Open 3D preview",
+        "Open 3D interaction",
         () => {
           modal.close();
           handlers.previewReference(entry);
         },
         "action primary",
       ),
+      button("Open artistic interpretation", () => {
+        modal.close();
+        handlers.previewReference(entry, { preview: "artistic" });
+      }),
       button("Open generated approximation", () => {
         modal.close();
-        handlers.previewReference(entry, { generated: true });
+        handlers.previewReference(entry, { preview: "generated" });
       }),
       button("Associate current study with this source", () => {
         handlers.associate({

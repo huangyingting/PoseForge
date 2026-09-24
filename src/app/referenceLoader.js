@@ -10,7 +10,12 @@ import {
   artisticPreset,
 } from "../core/artisticStudies.js";
 export { manifest as referenceManifest };
-export { artisticManifest };
+import interactionManifest from "../data/interaction-manifest.json" with { type: "json" };
+import {
+  checkInteractionStudies,
+  interactionPreset,
+} from "../core/interactionStudies.js";
+export { artisticManifest, interactionManifest };
 
 /** Lazy, retryable and shared. A failed fetch never publishes a partial index. */
 function verifiedLoader(
@@ -97,6 +102,12 @@ export function createReferenceService(options = {}) {
       checkArtisticStudies(pack, artisticManifest, await entries()),
     options,
   );
+  const interaction = verifiedLoader(
+    { ...interactionManifest, dataSha256: interactionManifest.sha256 },
+    async (pack) =>
+      checkInteractionStudies(pack, interactionManifest, await entries()),
+    options,
+  );
   return {
     entries,
     async find(sourceId) {
@@ -111,6 +122,9 @@ export function createReferenceService(options = {}) {
     },
     async artistic(entry) {
       return artisticPreset(entry, await artistic());
+    },
+    async interaction(entry) {
+      return interactionPreset(entry, await interaction());
     },
   };
 }

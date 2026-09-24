@@ -1,8 +1,15 @@
 # PoseForge
 
-PoseForge includes **1,283 ready-to-view artistic 3D compositions**, one for
-every reference ID, plus **23 authored stock presets**. Open **References** and
-select a card: no authoring or import is required. The artistic compositions
+PoseForge includes **1,283 ready-to-view 3D interactions**, one for every
+reference ID: the clothed participants are placed together, in contact, in the
+arrangement each source image shows, composed from 31 interaction templates
+(1,170 pass all of their distance, facing and overlap checks; unmet checks are
+shown). They are approximations, not measured reconstructions. See
+[3D interaction studies](docs/interaction-studies.md).
+
+Each reference also keeps its **artistic 3D composition** (**ⓘ → Open artistic
+interpretation** or `?preview=artistic`), plus **23 authored stock presets**.
+Open **References** and select a card: no authoring or import is required. The artistic compositions
 have distinct joint geometry, including all 2,567 participants, but are **original
 clothed interpretations—not source-matched reconstructions or verified physical
 poses**. Participants are displayed separately on a neutral floor.
@@ -32,8 +39,8 @@ save and PNG/SVG/JSON export work with reference previews.
 Each source can now have its own independently saved, clothed posture study.
 Use **Edit posture → Save reference study**, or **Reference studies** in the
 library for validated bulk import/export. Cards and reference links prefer the
-saved study over the built-in artistic interpretation. The coverage counter and
-**Artistic 3D / Authored · unreviewed** labels distinguish bundled and personal work;
+saved study over the built-in 3D interaction. The coverage counter and
+**Interaction 3D / Authored · unreviewed** labels distinguish bundled and personal work;
 they do not certify uniqueness or source accuracy. See the
 [authoring guide](docs/reference-authoring.md).
 

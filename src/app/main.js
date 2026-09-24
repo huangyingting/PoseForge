@@ -22,6 +22,7 @@ import {
 } from "../core/referenceStudies.js";
 import { captureSolvedPose } from "../core/placement.js";
 import { isArtisticPreview } from "../core/artisticStudies.js";
+import { isInteractionPreview } from "../core/interactionStudies.js";
 
 const $ = (id) => document.getElementById(id);
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -132,9 +133,11 @@ function heading() {
       : current.id?.startsWith("user.")
         ? "My preset"
         : current.id?.startsWith("reference.")
-          ? isArtisticPreview(current)
-            ? "Artistic 3D"
-            : "Approximate 3D"
+          ? isInteractionPreview(current)
+            ? "Interaction 3D"
+            : isArtisticPreview(current)
+              ? "Artistic 3D"
+              : "Approximate 3D"
           : "Built-in study";
   let source = $("scene-source");
   if (!source) {
@@ -145,7 +148,7 @@ function heading() {
   }
   source.hidden = !current.source;
   source.textContent = current.source
-    ? `Source: SexPoses ${current.source.recordId} · ${isArtisticPreview(current) ? "artistic interpretation" : current.id?.startsWith("reference.") ? "generated approximation" : "independent study"}, not a verified reconstruction`
+    ? `Source: SexPoses ${current.source.recordId} · ${isInteractionPreview(current) ? "approximate interaction" : isArtisticPreview(current) ? "artistic interpretation" : current.id?.startsWith("reference.") ? "generated approximation" : "independent study"}, not a verified reconstruction`
     : "";
   $("reference-actions").hidden = !current.source;
 }
@@ -196,7 +199,8 @@ function selectPreset(preset, options = {}) {
   )
     url.searchParams.set("reference", preset.source.recordId);
   else url.searchParams.set("preset", preset.id);
-  if (options.generated) url.searchParams.set("preview", "generated");
+  if (options.preview === "generated" || options.preview === "artistic")
+    url.searchParams.set("preview", options.preview);
   history.replaceState(null, "", url);
   showRegion("studio");
 }
@@ -208,19 +212,23 @@ async function selectReference(value, options = {}) {
   try {
     const entry =
       typeof value === "string" ? await references.find(value) : value;
-    const authored = options.generated
+    const alternate =
+      options.preview === "generated" || options.preview === "artistic";
+    const authored = alternate
       ? null
       : library.get(referenceStudyId(entry.sourceId));
     const usable = authored && referenceStudyMatches(authored, entry);
     const preset = usable
       ? checkReferenceStudy(authored, entry)
-      : options.generated
+      : options.preview === "generated"
         ? await references.preset(entry)
-        : await references.artistic(entry);
+        : options.preview === "artistic"
+          ? await references.artistic(entry)
+          : await references.interaction(entry);
     if (token !== referenceRequest) return false;
     if (authored && !usable)
       toast(
-        "The saved study no longer matches this source. Opening its built-in artistic interpretation; the saved study was kept.",
+        "The saved study no longer matches this source. Opening its built-in 3D interaction; the saved study was kept.",
       );
     selectPreset(preset, options);
     if (matchMedia("(max-width: 900px)").matches) canvas.focus();
@@ -687,7 +695,7 @@ else if (params.has("reference")) {
   });
   await selectReference(params.get("reference"), {
     history: false,
-    generated: params.get("preview") === "generated",
+    preview: params.get("preview"),
   });
 } else if (params.has("preset")) {
   const preset = library.get(params.get("preset"));
