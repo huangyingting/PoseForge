@@ -55,16 +55,16 @@ test("catalog, figure edits, undo, save, update, duplicate, reload and delete", 
   await page.goto("/");
   await ready(page);
   await expect(page.locator(".preset-name").first()).toBeInViewport();
-  await page.getByLabel("Search presets").fill("kneel");
+  await page.getByLabel("Search positions").fill("kneel");
   // Six stock presets plus the kneeling built-in positions.
   await expect(page.locator(".library-title > span")).not.toHaveText(
-    /^[0-6] studies$|^1,306 studies$/,
+    /^[0-6] positions$|^1,306 positions$/,
   );
   await expect(page.locator(".preset-card")).toHaveCount(24);
   await openLibraryFilters(page);
   await page.getByLabel("Category", { exact: true }).selectOption("Together");
   await expect(page.locator(".preset-card")).toHaveCount(1);
-  await page.getByLabel("Search presets").fill("");
+  await page.getByLabel("Search positions").fill("");
   await page.getByLabel("Category", { exact: true }).selectOption("all");
   await page
     .getByRole("button", { name: "Favorite Standing · female", exact: true })
@@ -161,10 +161,15 @@ test("valid and invalid imports are atomic, and downloaded JSON reloads", async 
   });
   await expect(page.locator("#toast")).toContainText("Import failed");
   await expect(page.locator(".preset-card")).toHaveCount(1);
+  await page.getByRole("button", { name: "Library tools", exact: true }).click();
+  const tools = page.getByRole("dialog", { name: "Library tools" });
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "Export library ↗", exact: true }).click(),
+    tools
+      .getByRole("button", { name: "Export saved presets", exact: true })
+      .click(),
   ]);
+  await tools.getByRole("button", { name: "Close dialog" }).click();
   const pack = JSON.parse(await readFile(await download.path(), "utf8"));
   expect(pack.presets).toHaveLength(1);
   expect(pack.presets[0].scene.actors[0].wearing).toEqual(["top", "shorts"]);

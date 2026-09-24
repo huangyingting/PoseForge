@@ -10,11 +10,13 @@ interpretation** / **Open generated approximation**) and through
 ## Library positions
 
 Every scene is also registered as a read-only built-in library preset
-(`builtin.position.<img-id>`), listed in **All** and **Positions** once the pack
-has loaded (a loading row with **Retry positions** is shown meanwhile). Titles are
-`<position name> <n> · <surface>`, numbered in source order within each name; the
-category is the position name; tags include the template, surface and source ID,
-so search works by name ("reverse cowgirl") or ID ("img-0042"). Positions can be
+(`builtin.position.<img-id>`), listed in the unified **Positions** catalog once
+the pack has loaded (a loading row with **Retry positions** is shown meanwhile).
+Titles are `<position name> · <surface> · <IMG-ID>` and descriptions state the
+actual classified arrangement, participants and surface. Ten broad categories
+expand to their related named positions and counts. Tags include the template,
+category, name, surface and source ID, so search works by name ("reverse
+cowgirl"), category ("partner on top") or ID ("img-0042"). Positions can be
 favorited and opened with `?preset=builtin.position.img-0042`.
 They cannot be deleted and are never written to local storage.
 

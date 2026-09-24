@@ -1,3 +1,4 @@
+import "@fontsource-variable/manrope";
 import { createRenderer, SKIN } from "../render/renderer.js";
 import { exportPNG, exportSVG, download } from "../render/exporters.js";
 import { parseDescription } from "../nlp/parser.js";
@@ -13,7 +14,7 @@ import { createPersistentLibrary } from "./persistentLibrary.js";
 import { buildStudio, toast, showRegion, openExport } from "./studioUI.js";
 import { bindCameraInput } from "./cameraInput.js";
 import { bindWorkspaceLayout } from "./workspaceLayout.js";
-import { createReferenceService } from "./referenceLoader.js";
+import { createPositionService } from "./referenceLoader.js";
 import {
   isReferenceStudy,
   referenceStudyId,
@@ -84,7 +85,7 @@ let future = [];
 let storageWarned = false;
 let exporting = false;
 let referenceRequest = 0;
-const references = createReferenceService();
+const positions = createPositionService();
 
 function status(message, busy = false) {
   $("status").textContent = message;
@@ -203,6 +204,7 @@ function selectPreset(preset, options = {}) {
     url.searchParams.set("preview", options.preview);
   history.replaceState(null, "", url);
   showRegion("studio");
+  if (matchMedia("(max-width: 900px)").matches) canvas.focus();
 }
 async function selectReference(value, options = {}) {
   const token = ++referenceRequest;
@@ -211,7 +213,7 @@ async function selectReference(value, options = {}) {
   );
   try {
     const entry =
-      typeof value === "string" ? await references.find(value) : value;
+      typeof value === "string" ? await positions.find(value) : value;
     const alternate =
       options.preview === "generated" || options.preview === "artistic";
     const authored = alternate
@@ -221,10 +223,10 @@ async function selectReference(value, options = {}) {
     const preset = usable
       ? checkReferenceStudy(authored, entry)
       : options.preview === "generated"
-        ? await references.preset(entry)
+        ? await positions.preset(entry)
         : options.preview === "artistic"
-          ? await references.artistic(entry)
-          : await references.interaction(entry);
+          ? await positions.artistic(entry)
+          : await positions.interaction(entry);
     if (token !== referenceRequest) return false;
     if (authored && !usable)
       toast(
@@ -282,7 +284,7 @@ const panel = buildPanel($("panel"), {
 let positionsReady = null;
 /** Download the built-in positions once; a failure can be retried. */
 function loadPositions() {
-  positionsReady ??= references
+  positionsReady ??= positions
     .positions()
     .then((list) => {
       registerPositions(list);
@@ -365,7 +367,7 @@ const studio = buildStudio(
       }
     },
   },
-  references,
+  positions,
 );
 
 function collectNotes(data) {
@@ -560,7 +562,7 @@ $("reference-save").onclick = async () => {
         completedActors.find((value) => value.id === actor.id),
       ),
     }));
-    const entry = await references.find(snapshot.source.recordId);
+    const entry = await positions.find(snapshot.source.recordId);
     if (token !== referenceRequest) return;
     studio.openReferenceSave(snapshot, entry, (preset) => {
       if (token === referenceRequest) selectPreset(preset);

@@ -48,16 +48,45 @@ test("all 1,283 positions are in the library and open in 3D, searchable, favorit
   await page.goto("/");
   await ready(page);
   await expect(page.locator(".library-title > span")).toHaveText(
-    /^1,3\d\d studies$/,
+    "1,306 positions",
   );
-  await page.getByRole("button", { name: "Positions", exact: true }).click();
-  await page.getByLabel("Search presets").fill(`reverse cowgirl ${record.sourceId}`);
+  await expect(
+    page.getByRole("button", { name: "Positions", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.getByText("Browse position categories", { exact: true }).click();
+  await expect(page.locator(".position-category")).toHaveCount(10);
+  await expect(
+    page.locator(".position-category").filter({ hasText: "Partner on top" }),
+  ).toContainText("Reverse cowgirl");
+  await page
+    .getByLabel("Search positions")
+    .fill(`reverse cowgirl ${record.sourceId}`);
   const card = page.locator(".preset-card");
   await expect(card).toHaveCount(1);
+  await expect(card.locator(".preset-name")).toContainText(
+    `Reverse cowgirl ·`,
+  );
+  await expect(card.locator(".preset-name")).toContainText(
+    record.sourceId.toUpperCase(),
+  );
+  await expect(card.locator(".preset-description")).toContainText(
+    "Astride, facing the partner's feet",
+  );
   await expect(card.locator(".support-badge")).toHaveText("Interaction 3D");
+  await page
+    .getByRole("button", {
+      name: `Position details ${record.sourceId}`,
+      exact: true,
+    })
+    .click();
+  await expect(page.getByRole("dialog")).toContainText("Reverse cowgirl");
+  await expect(page.getByRole("dialog")).toContainText(record.sourceId);
+  await page.keyboard.press("Escape");
   await card.locator(".preset-select").click();
   await loaded(page, record);
-  await expect(page.locator("#scene-title")).toHaveText(/^Reverse cowgirl \d+/);
+  await expect(page.locator("#scene-title")).toHaveText(
+    new RegExp(`^Reverse cowgirl · .* · ${record.sourceId.toUpperCase()}$`),
+  );
   await expect(page).toHaveURL(
     new RegExp(`preset=builtin.position.${record.sourceId}`),
   );
@@ -89,6 +118,6 @@ test("a failed positions download is retryable and leaves the stock presets usab
   await page.getByRole("button", { name: "Retry positions", exact: true }).click();
   await expect(page.locator(".positions-status")).toHaveCount(0);
   await expect(page.locator(".library-title > span")).toHaveText(
-    /^1,3\d\d studies$/,
+    "1,306 positions",
   );
 });

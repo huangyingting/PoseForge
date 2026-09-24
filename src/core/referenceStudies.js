@@ -28,7 +28,7 @@ export function referenceStudyMatches(preset, entry) {
 export function checkReferenceStudy(input, entry) {
   const preset = checkPreset(input);
   if (!preset.source || preset.id !== referenceStudyId(preset.source.recordId))
-    throw new Error("A reference study needs its own source-linked study ID.");
+    throw new Error("A position override needs its own source-linked ID.");
   if (entry && !referenceStudyMatches(preset, entry))
     throw new Error(
       `${preset.source.recordId}: source fingerprint or figure count does not match.`,
@@ -40,7 +40,7 @@ export function checkReferenceStudy(input, entry) {
     scene.contacts.length
   )
     throw new Error(
-      "Reference studies need a neutral floor and no partner contacts.",
+      "Position overrides need a neutral floor and no partner contacts.",
     );
   const bounds = scene.actors
     .map((actor) => {
@@ -56,7 +56,7 @@ export function checkReferenceStudy(input, entry) {
         )
       )
         throw new Error(
-          "Capture the completed layout first: reference studies need fixed placements and complete joint angles.",
+          "Capture the completed layout first: position overrides need fixed placements and complete joint angles.",
         );
       const skeleton = new Skeleton(actor);
       const evaluated = evaluatePose(skeleton, {

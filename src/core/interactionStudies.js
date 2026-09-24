@@ -81,33 +81,127 @@ export const POSITION_NAMES = {
   group_three: "Three people",
 };
 
+/** Broad browsing groups; each contains several related named positions. */
+export const POSITION_CATEGORIES = {
+  missionary: "Face-to-face",
+  prone_on_top: "Partner on top",
+  kneeling_missionary: "Face-to-face",
+  edge_missionary: "Face-to-face",
+  edge_seated_facing: "Seated & lap",
+  cowgirl: "Partner on top",
+  squat_cowgirl: "Partner on top",
+  reverse_cowgirl: "Partner on top",
+  sixty_nine: "Oral",
+  side_facing: "Side-by-side",
+  spooning: "Side-by-side",
+  scissors: "Side-by-side",
+  doggy: "From behind",
+  doggy_low: "From behind",
+  kneeling_rear_upright: "From behind",
+  standing_rear: "From behind",
+  standing_bent_over: "From behind",
+  furniture_rear: "From behind",
+  prone_rear: "From behind",
+  wheelbarrow: "Acrobatic & supported",
+  lap_facing: "Seated & lap",
+  lap_reverse: "Seated & lap",
+  reclined_facing: "Face-to-face",
+  standing_facing: "Standing & carried",
+  standing_carry: "Standing & carried",
+  supported_inversion: "Acrobatic & supported",
+  oral_on_a: "Oral",
+  oral_on_b_kneeling: "Oral",
+  oral_on_b_lying: "Oral",
+  facesitting: "Oral",
+  other_pair: "Other interactions",
+  solo: "Solo & group",
+  group_three: "Solo & group",
+};
+
 export const POSITION_PREFIX = "builtin.position.";
 export const isPosition = (preset) => typeof preset?.id === "string" && preset.id.startsWith(POSITION_PREFIX);
 
-const SURFACE_WORDS = { floor: "on the floor", bed: "on the bed", sofa: "on the sofa", chair: "on a chair", table: "at a table", bench: "on a bench" };
+const SURFACE_LABELS = {
+  floor: "Floor",
+  bed: "Bed",
+  sofa: "Sofa",
+  chair: "Chair",
+  table: "Table",
+  bench: "Bench",
+};
+const POSTURE_LABELS = {
+  standing: "standing",
+  seated: "seated",
+  kneeling: "kneeling",
+  reclining: "reclining",
+  crouching: "crouching",
+  supported: "supported",
+};
 
 /**
- * Every interaction study as a playable library position, numbered within its
- * position type in source order, e.g. "Cowgirl 12 · on the bed".
+ * Every interaction study as a playable, source-linked library position.
+ * Reference metadata is merged into the preset so the app has one catalog.
  */
-export function interactionPositions(studies) {
-  const counters = {};
+export function interactionPositions(studies, entries = []) {
+  const references = new Map(entries.map((entry) => [entry.sourceId, entry]));
   const out = [];
   for (const record of studies.values()) {
-    const name = POSITION_NAMES[record.template] ?? POSITION_NAMES.other_pair;
-    const n = (counters[name] = (counters[name] ?? 0) + 1);
-    const where = SURFACE_WORDS[record.surface] ?? "";
-    const title = `${name} ${n}${where ? ` · ${where}` : ""}`;
-    const label = templateLabel(record.template === "group_three" ? record.base : record.template);
+    const type =
+      record.template === "group_three" ? "group_three" : record.template;
+    const name = POSITION_NAMES[type] ?? POSITION_NAMES.other_pair;
+    const category =
+      POSITION_CATEGORIES[type] ?? POSITION_CATEGORIES.other_pair;
+    const reference = references.get(record.sourceId);
+    const surface =
+      reference?.surface ??
+      SURFACE_LABELS[record.surface] ??
+      record.surface.replace(/^\w/, (letter) => letter.toUpperCase());
+    const postures = reference?.postures?.map(
+      (posture) => POSTURE_LABELS[posture.toLowerCase()] ?? posture.toLowerCase(),
+    );
+    const figures = reference?.figures ?? record.scene.actors.length;
+    const postureText = postures?.length
+      ? [...new Set(postures)].join(" and ")
+      : record.scene.actors
+          .map((actor) => POSTURE_LABELS[actor.posture] ?? actor.posture)
+          .join(" and ");
+    const title = `${name} · ${surface} · ${record.sourceId.toUpperCase()}`;
+    const label = templateLabel(
+      record.template === "group_three" ? record.base : record.template,
+    );
     const warnings = [INTERACTION_NOTE];
     if (!record.checks.passed) warnings.push(`Some interaction checks are unmet: ${record.checks.failures.join("; ")}.`);
     if (record.note) warnings.push(record.note);
     out.push({
       id: `${POSITION_PREFIX}${record.sourceId}`,
       title,
-      description: `${label}. Approximate 3D interaction from reference ${record.sourceId}.`,
-      category: name,
-      tags: ["interaction", "position", record.template, record.surface, record.sourceId],
+      description: `${name}: ${label}. ${figures} clothed ${figures === 1 ? "figure" : "figures"} in ${postureText} positions on ${surface.toLowerCase()}. Approximate template-based 3D interpretation of source ${record.sourceId}.`,
+      category,
+      positionName: name,
+      positionCategory: category,
+      surface,
+      figures,
+      reference: reference
+        ? {
+            id: reference.id,
+            sourceId: reference.sourceId,
+            figures: reference.figures,
+            family: reference.family,
+            postures: [...reference.postures],
+            surface: reference.surface,
+            variant: reference.variant,
+            imageHash: reference.imageHash,
+          }
+        : null,
+      tags: [
+        "interaction",
+        "position",
+        record.template,
+        record.surface,
+        record.sourceId,
+        category,
+        name,
+      ],
       source: { dataset: "SexPoses", recordId: record.sourceId, annotationHash: record.annotationHash },
       scene: { ...structuredClone(record.scene), title },
       inputWarnings: warnings,
@@ -173,19 +267,8 @@ export function checkInteractionStudies(pack, descriptor, entries) {
 export function interactionPreset(entry, studies) {
   const record = studies.get(entry.sourceId);
   if (!record) throw new Error("Interaction study unavailable for this reference.");
-  const title = `Reference ${entry.sourceId}`;
-  const label = templateLabel(record.template === "group_three" ? record.base : record.template);
-  const warnings = [INTERACTION_NOTE];
-  if (!record.checks.passed) warnings.push(`Some interaction checks are unmet: ${record.checks.failures.join("; ")}.`);
-  if (record.note) warnings.push(record.note);
   return {
+    ...interactionPositions(new Map([[entry.sourceId, record]]), [entry])[0],
     id: entry.id,
-    title,
-    description: `${label}. ${INTERACTION_NOTE}`,
-    category: "Interaction studies",
-    tags: ["interaction", record.template],
-    source: { dataset: "SexPoses", recordId: entry.sourceId, annotationHash: entry.annotationHash },
-    scene: { ...structuredClone(record.scene), title },
-    inputWarnings: warnings,
   };
 }

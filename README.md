@@ -7,15 +7,19 @@ arrangement each source image shows, composed from 31 interaction templates
 shown). They are approximations, not measured reconstructions. See
 [3D interaction studies](docs/interaction-studies.md).
 
-All 1,283 are also **built-in library positions**: the **All** and **Positions**
-collections list them (e.g. "Cowgirl 12 · on the bed"), the category filter groups
-them by position name, search matches names or `img-NNNN` IDs, and they can be
-favorited and deep-linked with `?preset=builtin.position.img-0001`. Select one to
-view and orbit it in 3D.
+All 1,283 live in one **Positions** catalog with the 23 studio presets. Ten
+high-level categories (such as **Face-to-face**, **From behind**, **Seated &
+lap**, and **Oral**) expand to related named positions and counts. Cards use the
+actual position name, surface and source ID, for example
+`Reverse cowgirl · Bed · IMG-0042`; descriptions explain the participant
+arrangement. Search matches names, categories, surfaces and `img-NNNN` IDs.
+Positions can be favorited and deep-linked with
+`?preset=builtin.position.img-0001`.
 
-Each reference also keeps its **artistic 3D composition** (**ⓘ → Open artistic
+Each source-linked position also keeps its **artistic 3D composition** (**••• →
+Open artistic
 interpretation** or `?preview=artistic`), plus **23 authored stock presets**.
-Open **References** and select a card: no authoring or import is required. The artistic compositions
+Select a position card: no authoring or import is required. The artistic compositions
 have distinct joint geometry, including all 2,567 participants, but are **original
 clothed interpretations—not source-matched reconstructions or verified physical
 poses**. Participants are displayed separately on a neutral floor.
@@ -24,37 +28,37 @@ three gaze directions. Its 1,283 compositions use 403 pose/gesture/gaze motifs;
 this is not a claim of 1,283 hand-sculpted base poses. Names, colours, model
 choice, actor ordering, placement, camera and head/neck changes do not count as uniqueness.
 The earlier **203 shared approximations** remain an optional fallback in details.
-The **References** collection includes source IDs, 22 broad posture families,
-379 matching-annotation groups, provenance details and explicit support status.
-No source photographs or raw descriptions are included. Use a card's **ⓘ**
-button for provenance; its main action opens the 3D preview.
-The **Positions** collection makes those definitions searchable by their original
-English and Chinese aliases. Solved joint diagrams show the figures together,
-including their support props; pose notes identify unresolved geometry.
+Source metadata and the playable scene are one backend position object. No
+source photographs or raw descriptions are included. Use a card's **•••**
+button for provenance and alternate interpretations; its main action opens the
+3D position. Solved joint diagrams show the figures together, including their
+support props; pose notes identify unresolved geometry.
 
 Figure/contact editing, favorites, saved presets, undo/redo and JSON import/export
 let you build a personal library. The viewport supports drag/keyboard orbit,
 pinch/wheel/button zoom, natural and clay materials, and PNG/SVG export.
 Saved libraries use IndexedDB, migrate legacy data without deleting the backup,
 and accept up to **5,000 presets / 32 MB** (whichever limit is reached first).
-Both preset and reference collections use bounded 24-card pages. Reference data
-loads only when opened; the separate preview pack loads on first 3D selection.
+The unified catalog uses bounded 24-card pages. Position metadata and interaction
+scenes load together; artistic and generated alternatives remain lazy.
 Reference links use `?reference=img-0001`. Orbit, zoom, camera views, editing,
 save and PNG/SVG/JSON export work with reference previews.
 
-Each source can now have its own independently saved, clothed posture study.
-Use **Edit posture → Save reference study**, or **Reference studies** in the
-library for validated bulk import/export. Cards and reference links prefer the
-saved study over the built-in 3D interaction. The coverage counter and
+Each source-linked position can have one independently saved, clothed local
+override. Use **Edit posture → Save position override**, or **Library tools**
+for validated bulk import/export. The same position card prefers the override
+over the built-in 3D interaction. The
 **Interaction 3D / Authored · unreviewed** labels distinguish bundled and personal work;
 they do not certify uniqueness or source accuracy. See the
 [authoring guide](docs/reference-authoring.md).
 
-The compact workspace keeps search beside **Filters**, with active-filter counts
-and one-click reset. Library entries use short rows with visible quality labels.
+The compact workspace uses bundled **Manrope** typography, keeps search beside
+**Filters**, and provides a collapsible category browser plus active-filter
+counts and one-click reset. Library entries use short rows with visible quality labels.
 Press **/** to search; use **Focus** on desktop for a larger canvas and **Escape**
 to restore the sidebars. Smaller screens keep **Library / Studio / Edit** one tap
-away. The library's **ⓘ** button explains source counts, storage and shortcuts.
+away. **Library tools** consolidates preset and position-override transfers; the
+library's **ⓘ** button explains source counts, storage and shortcuts.
 See the [compact UI design](docs/compact-ui-plan.md) and
 [verification](docs/compact-ui-verification.md).
 

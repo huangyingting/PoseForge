@@ -4,13 +4,9 @@ import { createPreviewService } from "./previewService.js";
 import { download } from "../render/exporters.js";
 import { newId } from "./ids.js";
 import { positionCount } from "./libraryStore.js";
+import { catalogPage, STATUS_LABELS } from "../core/referenceCatalog.js";
 import {
-  catalogPage,
-  queryReferences,
-  STATUS_LABELS,
-} from "../core/referenceCatalog.js";
-import {
-  createReferenceService,
+  createPositionService,
   referenceManifest,
 } from "./referenceLoader.js";
 import {
@@ -92,7 +88,7 @@ function field(
 export function buildStudio(
   library,
   handlers,
-  referenceService = createReferenceService(),
+  positionService = createPositionService(),
 ) {
   const root = document.getElementById("library");
   const previews = createPreviewService();
@@ -113,17 +109,14 @@ export function buildStudio(
           { root, rootMargin: "160px" },
         );
   let selected = "";
-  let scope = "all";
+  let scope = "positions";
   let page = 0;
-  let references = null;
-  let referenceError = "";
-  let loadingReferences = false;
+  let sourceEntries = null;
   let positionsError = "";
   let loadingPositions = false;
   let disposed = false;
-  const loadReferences = referenceService.entries;
+  const loadSourceEntries = positionService.entries;
   let loadingReference = null;
-  let revealReference = false;
   const count = element("span");
   count.setAttribute("aria-live", "polite");
   const search = element("input", {
@@ -147,11 +140,9 @@ export function buildStudio(
   clearSearch.hidden = true;
   const scopes = element("div", { className: "library-scopes" });
   for (const [value, label] of [
-    ["all", "All"],
-    ["named", "Positions"],
+    ["positions", "Positions"],
     ["saved", "Saved"],
     ["favorites", "Favorites"],
-    ["references", "References"],
   ]) {
     const node = button(
       label,
@@ -179,12 +170,6 @@ export function buildStudio(
       element("option", { value, textContent }),
     ),
   ]);
-  const group = element("input", { id: "catalog-group", type: "checkbox" });
-  const groupField = element(
-    "label",
-    { className: "reference-group", htmlFor: group.id, hidden: true },
-    [group, document.createTextNode("Group matching annotations")],
-  );
   const filters = element(
     "div",
     { id: "catalog-filters", className: "catalog-filters", hidden: true },
@@ -200,7 +185,6 @@ export function buildStudio(
         }),
         supportStatus,
       ]),
-      groupField,
     ],
   );
   const filterToggle = button(
@@ -215,7 +199,6 @@ export function buildStudio(
     () => {
       category.value = "all";
       supportStatus.value = "all";
-      group.checked = false;
       page = 0;
       refresh();
       filterToggle.focus();
@@ -245,11 +228,11 @@ export function buildStudio(
       const modal = dialog("About the library");
       modal.append(
         element("p", {
-          textContent: `${library.index().filter((p) => p.status === "verified-3d").length} verified stock 3D presets · ${referenceManifest.records.toLocaleString("en")} source references.`,
+          textContent: `${referenceManifest.records.toLocaleString("en")} source-linked 3D positions plus ${library.index().filter((p) => p.status === "verified-3d").length} studio presets.`,
         }),
         element("p", {
           textContent:
-            "The library includes 1,283 built-in 3D positions (All and Positions), one per source reference. Every reference also opens as a ready-to-view 3D interaction: the clothed participants are placed together with their contacts, composed from a visual classification of the source into an interaction template. These are approximations, not source reconstructions or verified physical poses. The earlier artistic and generated studies remain available from each reference's details. No editing or import is required.",
+            "Positions and source references are one catalog. Browse broad categories, then choose a related named position. Every source-linked card opens a ready-to-view clothed 3D interaction; its details retain provenance plus the earlier artistic and generated alternatives. These are approximate template-based interpretations, not measured reconstructions or physical certification.",
         }),
         element("p", {
           textContent: `Saved in this browser using ${library.mode ?? "local storage"}. Up to 5,000 presets / 32 MB. Export JSON for a portable backup; this is not cloud storage.`,
@@ -279,6 +262,13 @@ export function buildStudio(
     search,
     clearSearch,
   ]);
+  const positionBrowser = element("details", {
+    className: "position-browser",
+  });
+  positionBrowser.append(
+    element("summary", { textContent: "Browse position categories" }),
+    element("div", { className: "position-browser-body" }),
+  );
   const top = element("div", { className: "library-top" }, [
     element("div", { className: "library-title" }, [
       element("h2", { textContent: "Library" }),
@@ -290,6 +280,7 @@ export function buildStudio(
       filterToggle,
     ]),
     scopes,
+    positionBrowser,
     filterBar,
     filters,
   ]);
@@ -315,51 +306,31 @@ export function buildStudio(
     accept: ".json,application/json",
     hidden: true,
   });
-  const exportLibrary = button(
-    "Export library ↗",
-    () => {
-      if (!library.saved().length)
-        return toast("Save your first preset to export a library.");
-      try {
-        download(
-          library.export(),
-          "poseforge-library.json",
-          "application/json",
-        );
-        toast("Your saved library was downloaded.");
-      } catch (error) {
-        toast(`Export failed: ${error.message}`);
-      }
-    },
+  const exportSavedLibrary = () => {
+    if (!library.saved().length)
+      return toast("Save your first preset to export a library.");
+    try {
+      download(
+        library.export(),
+        "poseforge-library.json",
+        "application/json",
+      );
+      toast("Your saved library was downloaded.");
+    } catch (error) {
+      toast(`Export failed: ${error.message}`);
+    }
+  };
+  const libraryTools = button(
+    "Library tools",
+    openLibraryTools,
     "text-button",
   );
-  const referenceTools = button(
-    "Reference studies",
-    openReferenceTools,
-    "text-button",
-  );
-  const importLibrary = button(
-    "+ Import presets",
-    () => file.click(),
-    "text-button",
-  );
-  const referenceProgress = element("p", {
-    className: "reference-study-summary",
-    hidden: true,
-  });
-  referenceProgress.setAttribute("aria-live", "polite");
-  top.append(referenceProgress);
   root.append(
     top,
     list,
     pagination,
     element("div", { className: "library-bottom" }, [
-      element("div", { className: "buttons" }, [
-        referenceTools,
-        importLibrary,
-        exportLibrary,
-        info,
-      ]),
+      element("div", { className: "buttons" }, [libraryTools, info]),
       element("p", {
         id: "library-storage",
         className: "sr-only",
@@ -440,7 +411,6 @@ export function buildStudio(
   search.oninput =
     category.onchange =
     supportStatus.onchange =
-    group.onchange =
       () => {
         page = 0;
         refresh();
@@ -449,40 +419,29 @@ export function buildStudio(
 
   function refresh() {
     const focusedPreset = document.activeElement?.dataset.preset;
-    const focusedReference = document.activeElement?.dataset.reference;
     previewCleanups.forEach((cleanup) => cleanup());
     previewCleanups = [];
     observer?.disconnect();
     starts.clear();
-    const isReferences = scope === "references";
-    referenceTools.hidden = !isReferences;
-    importLibrary.hidden = isReferences;
-    exportLibrary.hidden = isReferences;
-    referenceProgress.hidden = !isReferences || !references;
-    root.dataset.collection = isReferences ? "references" : "presets";
+    root.dataset.collection = "positions";
     const all = library.index();
-    categoryLabel.textContent = isReferences ? "Family" : "Category";
-    groupField.hidden = !isReferences;
-    search.placeholder = isReferences
-      ? "Search references…"
-      : "Search presets…";
-    search.title = isReferences
-      ? "Search by source ID, family, surface or figure count · /"
-      : "Search presets · /";
+    categoryLabel.textContent = "Category";
+    search.placeholder =
+      scope === "positions" ? "Search positions or source ID…" : "Search presets…";
+    search.title =
+      scope === "positions"
+        ? "Search by position name, category, surface or IMG ID · /"
+        : "Search presets · /";
     document.querySelector(`label[for="${search.id}"]`).textContent =
-      isReferences ? "Search references" : "Search presets";
+      scope === "positions" ? "Search positions" : "Search presets";
     const oldCategory = category.value || "all";
     category.replaceChildren(
       element("option", {
         value: "all",
-        textContent: isReferences ? "All families" : "All categories",
+        textContent: "All categories",
       }),
       ...[
-        ...new Set(
-          isReferences
-            ? Object.keys(referenceManifest.families)
-            : all.map((p) => p.category),
-        ),
+        ...new Set(all.map((p) => p.category)),
       ]
         .sort()
         .map((name) => element("option", { value: name, textContent: name })),
@@ -493,8 +452,7 @@ export function buildStudio(
     clearSearch.hidden = !search.value;
     const activeFilters =
       Number(category.value !== "all") +
-      Number(supportStatus.value !== "all") +
-      Number(isReferences && group.checked);
+      Number(supportStatus.value !== "all");
     filterToggle.textContent = activeFilters
       ? `Filters (${activeFilters})`
       : "Filters";
@@ -508,14 +466,6 @@ export function buildStudio(
     });
     list.replaceChildren();
     pagination.hidden = true;
-    if (isReferences) {
-      renderReferences();
-      if (focusedReference)
-        list
-          .querySelector(`[data-reference="${focusedReference}"]`)
-          ?.focus({ preventScroll: true });
-      return;
-    }
     const favorites = library.favorites();
     const filtered = searchCatalog(all, {
       query: search.value,
@@ -525,11 +475,19 @@ export function buildStudio(
     }).filter(
       (p) => supportStatus.value === "all" || p.status === supportStatus.value,
     );
-    count.textContent = `${filtered.length.toLocaleString("en")} studies`;
+    const itemLabel =
+      scope === "positions"
+        ? filtered.length === 1
+          ? "position"
+          : "positions"
+        : filtered.length === 1
+          ? "study"
+          : "studies";
+    count.textContent = `${filtered.length.toLocaleString("en")} ${itemLabel}`;
     if (
       handlers.loadPositions &&
       !positionCount() &&
-      (scope === "all" || scope === "named")
+      scope === "positions"
     ) {
       const status = element("div", { className: "positions-status" }, [
         element("p", {
@@ -559,14 +517,38 @@ export function buildStudio(
       }
       list.append(status);
     }
+    renderPositionBrowser(all);
     const paged = updatePages(filtered);
     for (const entry of paged.entries) {
       const preset = library.get(entry.id);
-      const choose = button("", () => handlers.select(preset), "preset-select");
+      const authored =
+        preset.source &&
+        library.get(referenceStudyId(preset.source.recordId));
+      const playable = isReferenceStudy(authored) ? authored : preset;
+      const status = isReferenceStudy(authored) ? "authored-3d" : entry.status;
+      const isSelected = Boolean(
+        playable.id === selected ||
+        (preset.source &&
+          (selected === `reference.sexposes.${preset.source.recordId}` ||
+            selected === referenceStudyId(preset.source.recordId))),
+      );
+      const choose = button(
+        "",
+        () => handlers.select(playable),
+        "preset-select",
+      );
       choose.dataset.preset = preset.id;
+      if (preset.source) choose.dataset.source = preset.source.recordId;
       choose.setAttribute("aria-label", `Load ${preset.title}`);
       choose.title = preset.title;
-      choose.setAttribute("aria-pressed", String(preset.id === selected));
+      choose.setAttribute("aria-pressed", String(isSelected));
+      choose.setAttribute(
+        "aria-busy",
+        String(Boolean(
+          preset.source &&
+            loadingReference === `reference.sexposes.${preset.source.recordId}`,
+        )),
+      );
       const picture = element(
         "span",
         { className: "preset-preview", title: "Authored pose preview" },
@@ -575,7 +557,7 @@ export function buildStudio(
       const previewNote = element("span", {
         className: "preset-note",
         id: newId("preview-note"),
-        textContent: "Preparing preview…",
+        textContent: "",
       });
       choose.setAttribute("aria-describedby", previewNote.id);
       choose.append(
@@ -587,20 +569,26 @@ export function buildStudio(
           }),
           element("span", {
             className: "preset-meta",
-            textContent: `${preset.scene.actors.length === 1 ? "Solo" : `${preset.scene.actors.length} figures`} · ${preset.category}`,
+            textContent: `${preset.scene.actors.length === 1 ? "Solo" : `${preset.scene.actors.length} figures`} · ${preset.surface ?? preset.category}`,
+          }),
+          element("span", {
+            className: "preset-description",
+            textContent: preset.description,
           }),
           previewNote,
           element("span", {
-            className: `support-badge ${entry.status}`,
-            textContent: STATUS_LABELS[entry.status],
+            className: `support-badge ${status}`,
+            textContent: STATUS_LABELS[status],
             title:
-              entry.status === "interaction-3d"
+              status === "authored-3d"
+                ? "Your locally authored override for this source. It is unreviewed."
+                : status === "interaction-3d"
                 ? "Approximate 3D interaction composed from a template; not a measured reconstruction."
-                : entry.status === "verified-3d"
+                : status === "verified-3d"
                 ? "Audited stock configuration only; edits need their own checks."
                 : "This personal preset has not been individually certified. Inspect Pose checks; adjustment may be needed.",
           }),
-          ...(preset.source
+          ...(preset.source && !preset.positionName
             ? [
                 element("span", {
                   className: "source-note",
@@ -629,18 +617,30 @@ export function buildStudio(
         "aria-pressed",
         String(favorites.includes(preset.id)),
       );
+      const details = preset.source
+        ? button(
+            "•••",
+            () => openPositionDetails(preset),
+            "position-details icon-button",
+          )
+        : null;
+      if (details)
+        details.setAttribute(
+          "aria-label",
+          `Position details ${preset.source.recordId}`,
+        );
       list.append(
         element(
           "article",
           {
-            className: `preset-card${preset.id === selected ? " selected" : ""}`,
+            className: `preset-card${isSelected ? " selected" : ""}`,
           },
-          [choose, favorite],
+          [choose, favorite, ...(details ? [details] : [])],
         ),
       );
       const start = () =>
         previewCleanups.push(
-          previews.subscribe(preset.scene, (result) => {
+          previews.subscribe(playable.scene, (result) => {
             if (result.preview) {
               try {
                 picture.replaceChildren(poseDiagram(result.preview));
@@ -666,7 +666,7 @@ export function buildStudio(
               "Authored poses only. Load this preset to inspect it.";
           }),
         );
-      if (preset.id === selected) start();
+      if (isSelected) start();
       else if (observer) {
         starts.set(choose, start);
         observer.observe(choose);
@@ -692,12 +692,11 @@ export function buildStudio(
           button(
             "Explore all studies",
             () => {
-              scope = "all";
+              scope = "positions";
               page = 0;
               supportStatus.value = "all";
               search.value = "";
               category.value = "all";
-              group.checked = false;
               refresh();
             },
             "text-button",
@@ -710,6 +709,60 @@ export function buildStudio(
         ?.focus({ preventScroll: true });
   }
 
+  function renderPositionBrowser(entries) {
+    positionBrowser.hidden = scope !== "positions" || !positionCount();
+    if (positionBrowser.hidden) return;
+    const body = positionBrowser.querySelector(".position-browser-body");
+    const groups = new Map();
+    for (const entry of entries.filter((item) => item.positionName)) {
+      const categoryName = entry.positionCategory ?? entry.category;
+      const positionName = entry.positionName ?? entry.title;
+      if (!groups.has(categoryName)) groups.set(categoryName, new Map());
+      const names = groups.get(categoryName);
+      names.set(positionName, (names.get(positionName) ?? 0) + 1);
+    }
+    body.replaceChildren(
+      ...[...groups]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([categoryName, names]) => {
+          const total = [...names.values()].reduce((sum, value) => sum + value, 0);
+          const section = element("details", {
+            className: "position-category",
+            open: category.value === categoryName,
+          });
+          section.append(
+            element("summary", {}, [
+              element("span", { textContent: categoryName }),
+              element("small", {
+                textContent: `${total.toLocaleString("en")} positions`,
+              }),
+            ]),
+            element(
+              "div",
+              { className: "position-types" },
+              [...names]
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([name, totalForName]) =>
+                  button(
+                    `${name} · ${totalForName}`,
+                    () => {
+                      category.value = categoryName;
+                      search.value = name;
+                      page = 0;
+                      positionBrowser.open = false;
+                      refresh();
+                      list.focus({ preventScroll: true });
+                    },
+                    "position-type",
+                  ),
+                ),
+            ),
+          );
+          return section;
+        }),
+    );
+  }
+
   function updatePages(entries) {
     const result = catalogPage(entries, page);
     page = result.page;
@@ -720,130 +773,22 @@ export function buildStudio(
     return result;
   }
 
-  function renderReferences() {
-    count.textContent = `${referenceManifest.records.toLocaleString("en")} references`;
-    if (!references) {
-      const message = element("div", { className: "empty-state" }, [
-        element("p", {
-          textContent:
-            referenceError ||
-            "Loading the source index. The studio remains available…",
-        }),
-      ]);
-      list.append(message);
-      if (referenceError)
-        message.append(
-          button("Retry references", () => {
-            referenceError = "";
-            refresh();
-          }),
-        );
-      else if (!loadingReferences) {
-        loadingReferences = true;
-        loadReferences()
-          .then((entries) => {
-            references = entries;
-          })
-          .catch((error) => {
-            referenceError = error.message;
-          })
-          .finally(() => {
-            loadingReferences = false;
-            if (!disposed && scope === "references") refresh();
-          });
-      }
-      return;
-    }
-    const authored = authoredIndex();
-    referenceProgress.hidden = false;
-    referenceProgress.textContent = `${references.length.toLocaleString("en")} interaction · ${authored.size.toLocaleString("en")} personal`;
-    referenceProgress.title =
-      "Built-in 3D interactions are ready to view. Personal studies override them and remain unreviewed.";
-    const filtered = queryReferences(
-      references.map((entry) =>
-        authored.has(entry.sourceId)
-          ? { ...entry, status: "authored-3d" }
-          : { ...entry, status: "interaction-3d" },
-      ),
-      {
-        query: search.value,
-        family: category.value,
-        status: supportStatus.value,
-        group: group.checked,
-      },
-    );
-    if (revealReference) {
-      const index = filtered.findIndex((entry) => referenceSelected(entry));
-      if (index >= 0) page = Math.floor(index / 24);
-      revealReference = false;
-    }
-    count.textContent = `${filtered.length.toLocaleString("en")} ${group.checked ? "groups" : "references"}`;
-    const paged = updatePages(filtered);
-    if (!filtered.length)
-      list.append(
-        element("p", {
-          className: "empty-state",
-          textContent:
-            "No matching references. These are approximate 3D interactions, not verified 3D presets.",
-        }),
+  async function openPositionDetails(preset) {
+    try {
+      sourceEntries ??= await loadSourceEntries();
+      const entry = sourceEntries.find(
+        (candidate) => candidate.sourceId === preset.source.recordId,
       );
-    for (const entry of paged.entries) {
-      const choose = button(
-        "",
-        () => handlers.previewReference(entry),
-        "reference-select",
-      );
-      choose.dataset.reference = entry.id;
-      choose.setAttribute("aria-label", `Preview reference ${entry.sourceId}`);
-      choose.setAttribute("aria-pressed", String(referenceSelected(entry)));
-      choose.setAttribute("aria-busy", String(loadingReference === entry.id));
-      choose.append(
-        element("span", {
-          className: "reference-mark",
-          textContent: "3D",
-          ariaHidden: "true",
-        }),
-        element("span", { className: "reference-info" }, [
-          element("span", { className: "reference-line" }, [
-            element("strong", { textContent: entry.sourceId }),
-            element("span", {
-              className: "support-badge",
-              textContent:
-                loadingReference === entry.id
-                  ? "Loading 3D…"
-                  : STATUS_LABELS[entry.status],
-            }),
-          ]),
-          element("span", {
-            className: "reference-family",
-            textContent: entry.family,
-          }),
-          element("small", {
-            textContent: `${entry.figures} figures · ${entry.surface}${entry.members ? ` · ${entry.members.length} matching records` : ""}`,
-          }),
-        ]),
-      );
-      const details = button(
-        "ⓘ",
-        () => openReference(entry),
-        "reference-details icon-button",
-      );
-      details.setAttribute("aria-label", `Reference details ${entry.sourceId}`);
-      list.append(
-        element(
-          "article",
-          {
-            className: `reference-card${referenceSelected(entry) ? " selected" : ""}`,
-          },
-          [choose, details],
-        ),
-      );
+      if (!entry) throw new Error("Source metadata was not found.");
+      openReference(entry, preset);
+    } catch (error) {
+      toast(`Position details unavailable: ${error.message}`);
     }
   }
 
-  function openReference(entry) {
-    const modal = dialog(`Reference ${entry.sourceId}`);
-    const peers = references.filter((e) => e.variant === entry.variant);
+  function openReference(entry, preset = null) {
+    const modal = dialog(preset?.positionName ?? `Position ${entry.sourceId}`);
+    const peers = sourceEntries.filter((e) => e.variant === entry.variant);
     modal.append(
       element("p", {
         className: "support-badge",
@@ -852,10 +797,13 @@ export function buildStudio(
           : "Interaction 3D · approximate composition, not a verified reconstruction",
       }),
       element("p", {
-        textContent: `${entry.figures} figures · ${entry.family} · ${entry.surface}`,
+        className: "position-detail-lead",
+        textContent:
+          preset?.description ??
+          `${entry.figures} figures · ${entry.family} · ${entry.surface}`,
       }),
       element("p", {
-        textContent: `Source: SexPoses / ${referenceManifest.sourceFile} / ${entry.sourceId}`,
+        textContent: `${entry.figures} figures · ${entry.family} · ${entry.surface} · Source ${entry.sourceId}`,
       }),
       element("p", {
         textContent: `${peers.length} records share this structured annotation. This is not proof of anatomically identical positions.`,
@@ -919,12 +867,6 @@ export function buildStudio(
     modal.showModal();
   }
 
-  function referenceSelected(entry) {
-    return (
-      selected === entry.id || selected === referenceStudyId(entry.sourceId)
-    );
-  }
-
   function authoredIndex() {
     const saved = new Map(
       library
@@ -933,7 +875,7 @@ export function buildStudio(
         .map((p) => [p.id, p]),
     );
     return new Map(
-      (references ?? [])
+      (sourceEntries ?? [])
         .filter((entry) =>
           referenceStudyMatches(
             saved.get(referenceStudyId(entry.sourceId)),
@@ -953,7 +895,7 @@ export function buildStudio(
       entry,
     );
     const existing = library.get(checked.id);
-    const modal = dialog("Save reference study");
+    const modal = dialog("Save position override");
     const title = field("Study name", snapshot.title, { required: true });
     const replace = element("input", {
       type: "checkbox",
@@ -962,7 +904,7 @@ export function buildStudio(
     const error = element("p", { className: "dialog-error", role: "alert" });
     const form = element("form", {}, [
       element("p", {
-        textContent: `${entry.sourceId} · ${entry.figures} figures. Saves the completed joint angles and placements as this reference's active study. This is unreviewed, not a verified reconstruction.`,
+        textContent: `${entry.sourceId} · ${entry.figures} figures. Saves these joint angles and placements as the active version of this position. This local override is unreviewed.`,
       }),
       title.wrapper,
       ...(existing
@@ -973,7 +915,7 @@ export function buildStudio(
               [
                 replace,
                 document.createTextNode(
-                  "Replace the existing authored study for this reference",
+                  "Replace the existing override for this position",
                 ),
               ],
             ),
@@ -985,7 +927,7 @@ export function buildStudio(
         element("button", {
           type: "submit",
           className: "action primary",
-          textContent: "Save study",
+          textContent: "Save override",
         }),
       ]),
     ]);
@@ -1005,9 +947,9 @@ export function buildStudio(
             {
               ...checked,
               title: title.input.value,
-              category: "Reference studies",
+              category: "Position overrides",
               description:
-                "Locally authored, separate clothed posture study. Unreviewed; not a verified reconstruction.",
+                "Locally authored clothed position override. Unreviewed; not a verified reconstruction.",
               scene: { ...checked.scene, title: title.input.value },
             },
           ],
@@ -1021,7 +963,7 @@ export function buildStudio(
         onSaved(result.written[0]);
         modal.close();
         toast(
-          `Authored study saved for ${entry.sourceId}. It remains unreviewed.`,
+          `Position override saved for ${entry.sourceId}. It remains unreviewed.`,
         );
       } catch (e) {
         error.textContent = e.message;
@@ -1035,17 +977,37 @@ export function buildStudio(
     title.input.focus();
   }
 
-  async function openReferenceTools() {
-    const modal = dialog("Reference studies");
-    const message = element("p", { textContent: "Loading reference index…" });
+  async function openLibraryTools() {
+    const modal = dialog("Library tools");
+    const message = element("p", { textContent: "Loading position catalog…" });
     const error = element("p", { className: "dialog-error", role: "alert" });
-    modal.append(message, error);
+    modal.append(
+      element("section", { className: "tool-section" }, [
+        element("h3", { textContent: "Saved presets" }),
+        element("p", {
+          textContent:
+            "Import presets into this browser or export all saved presets as one portable PoseForge library.",
+        }),
+        element("div", { className: "buttons" }, [
+          button("Import presets", () => {
+            modal.close();
+            file.click();
+          }),
+          button("Export saved presets", exportSavedLibrary),
+        ]),
+      ]),
+      element("section", { className: "tool-section" }, [
+        element("h3", { textContent: "Position overrides" }),
+        message,
+      ]),
+      error,
+    );
     modal.showModal();
     try {
-      references = await loadReferences();
+      sourceEntries = await loadSourceEntries();
       if (!modal.isConnected) return;
       const updateCount = () => {
-        message.textContent = `${authoredIndex().size.toLocaleString("en")} / ${references.length.toLocaleString("en")} references have authored studies in this browser. All are unreviewed. Export JSON for backup or transfer.`;
+        message.textContent = `${authoredIndex().size.toLocaleString("en")} / ${sourceEntries.length.toLocaleString("en")} source-linked positions have local overrides. Overrides are unreviewed and replace the built-in scene when selected.`;
       };
       updateCount();
       const input = element("input", {
@@ -1057,18 +1019,18 @@ export function buildStudio(
       modal.append(
         element("p", {
           textContent:
-            "Import source-linked PoseForge catalog JSON. Each study must include the matching source ID and annotation hash, all participants, fixed joints/placements, clothing, a neutral floor and separate figures. The entire batch is checked before anything is saved.",
+            "Import source-linked position overrides. Every override must retain its source ID and annotation hash, all participants, fixed joints and placements, clothing, and a neutral floor. The complete batch is checked before anything is saved.",
         }),
-        button("Export authored studies", () => {
+        button("Export position overrides", () => {
           try {
             const presets = [...authoredIndex().values()].map((p) =>
               library.get(p.id),
             );
             if (!presets.length)
-              throw new Error("No authored reference studies to export yet.");
+              throw new Error("No position overrides to export yet.");
             download(
               serializeReferenceStudies(presets),
-              "poseforge-reference-studies.json",
+              "poseforge-position-overrides.json",
               "application/json",
             );
           } catch (e) {
@@ -1078,7 +1040,7 @@ export function buildStudio(
         element("div", { className: "field" }, [
           element("label", {
             htmlFor: input.id,
-            textContent: "Import reference studies (JSON)",
+            textContent: "Import position overrides (JSON)",
           }),
           input,
         ]),
@@ -1096,14 +1058,14 @@ export function buildStudio(
             throw new Error("Catalog files must be no larger than 32 MB.");
           const text = await chosen.text();
           if (token !== revision || !modal.isConnected) return;
-          const studies = parseReferenceStudies(text, references);
+          const studies = parseReferenceStudies(text, sourceEntries);
           const conflicts = studies.filter((p) => library.get(p.id)).length;
           const replace = element("input", {
             type: "checkbox",
             id: newId("replace-batch"),
           });
           const apply = button(
-            "Import studies",
+            "Import overrides",
             async () => {
               apply.disabled = true;
               input.disabled = true;
@@ -1111,7 +1073,7 @@ export function buildStudio(
               try {
                 const result = await library.saveReferenceStudies(
                   studies,
-                  references,
+                  sourceEntries,
                   { replace: replace.checked },
                 );
                 review.replaceChildren(
@@ -1146,7 +1108,7 @@ export function buildStudio(
                 [
                   replace,
                   document.createTextNode(
-                    `Replace ${conflicts} existing authored studies`,
+                    `Replace ${conflicts} existing position overrides`,
                   ),
                 ],
               ),
@@ -1288,7 +1250,7 @@ export function buildStudio(
     openReferenceSave,
     setReferenceLoading(id) {
       loadingReference = id;
-      if (scope === "references") refresh();
+      refresh();
     },
     focusSearch() {
       showRegion("library");
@@ -1309,19 +1271,18 @@ export function buildStudio(
       const changed = selected !== id;
       selected = id;
       if (id?.startsWith("reference.") || isReferenceStudy({ id })) {
-        if (scope !== "references") {
-          scope = "references";
-          search.value = "";
+        if (scope !== "positions") {
+          scope = "positions";
           category.value = "all";
           supportStatus.value = "all";
-          group.checked = false;
         }
-        revealReference = changed;
+        search.value = id.split(".").at(-1);
+        page = 0;
       }
       refresh();
       if (changed)
         list
-          .querySelector(".preset-card.selected, .reference-card.selected")
+          .querySelector(".preset-card.selected")
           ?.scrollIntoView({ block: "nearest" });
     },
   };

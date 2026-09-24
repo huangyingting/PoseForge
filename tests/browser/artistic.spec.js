@@ -132,18 +132,16 @@ test("a fresh library has all artistic previews ready without importing or creat
   await page.goto("/?reference=img-0001&preview=artistic");
   await check(page, pack.studies[0]);
   await expect(page).toHaveURL(/preview=artistic/);
-  await expect(page.locator(".reference-study-summary")).toHaveText(
-    "1,283 interaction · 0 personal",
-  );
   await expect(page.locator("#scene-description")).toContainText(
     "Artistic interpretation, not a reconstruction",
   );
   expect(requests).toContain("artistic-studies-v1.json");
   expect(requests).not.toContain("reference-previews-v1.json");
+  await page.getByLabel("Search positions").fill("");
   await page.getByRole("button", { name: "Filters", exact: true }).click();
   await page.getByLabel("Support status").selectOption("interaction-3d");
   await expect(page.locator(".library-title > span")).toHaveText(
-    "1,283 references",
+    "1,283 positions",
   );
   await page.locator("#open-export").click();
   const [download] = await Promise.all([
@@ -158,7 +156,7 @@ test("a fresh library has all artistic previews ready without importing or creat
   expect(exported.source.recordId).toBe("img-0001");
   await page.getByRole("button", { name: "Saved", exact: true }).click();
   await expect(page.locator(".preset-card")).toHaveCount(0);
-  await page.getByRole("button", { name: "References", exact: true }).click();
+  await page.getByRole("button", { name: "Positions", exact: true }).click();
   await expect(page.locator("#toast")).toBeHidden();
   await page.screenshot({ path: info.outputPath("artistic-desktop.png") });
 });
@@ -174,10 +172,10 @@ test("artistic previews and their distinction from legacy approximations remain 
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.screenshot({ path: info.outputPath("artistic-mobile.png") });
   await page.locator('[data-region="library"]').click();
-  await page.getByLabel("Search references").fill(record.sourceId);
+  await page.getByLabel("Search positions").fill(record.sourceId);
   await page
     .getByRole("button", {
-      name: `Reference details ${record.sourceId}`,
+      name: `Position details ${record.sourceId}`,
       exact: true,
     })
     .click();
@@ -193,7 +191,7 @@ test("artistic previews and their distinction from legacy approximations remain 
   await page.locator('[data-region="library"]').click();
   await page
     .getByRole("button", {
-      name: `Reference details ${record.sourceId}`,
+      name: `Position details ${record.sourceId}`,
       exact: true,
     })
     .click();
@@ -203,12 +201,7 @@ test("artistic previews and their distinction from legacy approximations remain 
   await check(page, record);
   await expect(page).toHaveURL(/preview=artistic/);
   await page.locator('[data-region="library"]').click();
-  await page
-    .getByRole("button", {
-      name: `Preview reference ${record.sourceId}`,
-      exact: true,
-    })
-    .click();
+  await page.locator(`[data-source="${record.sourceId}"]`).click();
   await ready(page);
   await expect(page.locator("#scene-badge")).toHaveText("Interaction 3D");
   await expect(page).not.toHaveURL(/preview=/);

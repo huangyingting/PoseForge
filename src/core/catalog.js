@@ -294,6 +294,7 @@ export function searchCatalog(
       .toLocaleLowerCase();
     return (
       (category === "all" || preset.category === category) &&
+      (scope !== "positions" || preset.id.startsWith("builtin.")) &&
       (scope !== "named" ||
         preset.id.startsWith("builtin.named.") ||
         preset.id.startsWith("builtin.position.")) &&

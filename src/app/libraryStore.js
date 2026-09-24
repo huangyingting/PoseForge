@@ -106,21 +106,41 @@ export function createLibrary(storage, idFactory = () => newId()) {
     all: () => structuredClone([...stock(), ...saved]),
     get: (id) =>
       structuredClone(findStock(id) ?? saved.find((p) => p.id === id)),
-    index: () =>
-      [...stock(), ...saved].map((p) => ({
+    index() {
+      const authoredSources = new Set(
+        saved
+          .filter(isReferenceStudy)
+          .map((preset) => preset.source.recordId),
+      );
+      return [...stock(), ...saved].map((p) => ({
         id: p.id,
         title: p.title,
         description: p.description,
         category: p.category,
+        ...(p.positionName
+          ? {
+              positionName: p.positionName,
+              positionCategory: p.positionCategory,
+              surface: p.surface,
+              figures: p.figures,
+            }
+          : {}),
         tags: [...p.tags],
         ...(p.source ? { source: { ...p.source } } : {}),
         scene: { actors: p.scene.actors.map((a) => ({ posture: a.posture })) },
-        status: p.id.startsWith("builtin.position.")
-          ? "interaction-3d"
+        status:
+          p.id.startsWith("builtin.position.") &&
+          authoredSources.has(p.source?.recordId)
+            ? "authored-3d"
+            : isReferenceStudy(p)
+              ? "authored-3d"
+              : p.id.startsWith("builtin.position.")
+                ? "interaction-3d"
           : p.id.startsWith("builtin.")
             ? "verified-3d"
             : "needs-adjustment",
-      })),
+      }));
+    },
     saved: () => structuredClone(saved),
     favorites: () => [...favorites],
     save(input, updateId = null) {
@@ -183,7 +203,7 @@ export function createLibrary(storage, idFactory = () => newId()) {
         inputs.length < 1 ||
         inputs.length > MAX_PRESETS
       )
-        throw new Error(`Provide 1–${MAX_PRESETS} reference studies.`);
+        throw new Error(`Provide 1–${MAX_PRESETS} position overrides.`);
       const checked = prepareReferenceStudies(inputs, entries);
       const next = new Map(saved.map((p) => [p.id, p]));
       const written = [];

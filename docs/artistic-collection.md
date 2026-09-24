@@ -3,9 +3,10 @@
 See the [verification report](artistic-collection-verification.md) for exact
 render coverage, screenshots and remaining geometry limitations.
 
-Open **References** and select any record. Every one of the 1,283 source IDs
-has an included **Artistic 3D** composition; no import, manual editing or local
-library initialization is required. All 2,567 participants are retained: 12
+Open a source-linked card in **Positions**, choose **••• Position details**, then
+**Open artistic interpretation**. Every one of the 1,283 source IDs has an
+included **Artistic 3D** composition; no import, manual editing or local library
+initialization is required. All 2,567 participants are retained: 12
 solo records, 1,258 pairs and 13 three-person compositions. Clothed figures are
 displayed separately on a neutral floor.
 

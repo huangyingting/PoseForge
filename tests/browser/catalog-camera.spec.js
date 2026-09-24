@@ -115,9 +115,9 @@ test("every existing named definition loads and renders; known quality notes are
       );
     }
   }
-  await page.getByLabel("Search presets").fill("拥抱");
+  await page.getByLabel("Search positions").fill("拥抱");
   await expect(page.locator(".preset-card")).toHaveCount(1);
-  await page.getByLabel("Search presets").fill("");
+  await page.getByLabel("Search positions").fill("");
   // Keep warning navigation covered even after all bundled layouts are fixed.
   const warning = structuredClone(
     NAMED_PRESETS.find((p) => p.id === "builtin.named.chair_straddle"),
@@ -182,9 +182,9 @@ test("live refined previews survive filter changes and match saved copies", asyn
   const image = page.locator(".preset-card.selected svg");
   await expect(image).toHaveAttribute("data-basis", "refined");
   const before = await image.evaluate((node) => node.innerHTML);
-  await page.getByLabel("Search presets").fill("no matching study");
+  await page.getByLabel("Search positions").fill("no matching study");
   await expect(page.locator(".preset-card")).toHaveCount(0);
-  await page.getByLabel("Search presets").fill("");
+  await page.getByLabel("Search positions").fill("");
   await expect(image).toHaveAttribute("data-basis", "refined");
   expect(await image.evaluate((node) => node.innerHTML)).toBe(before);
   await page.locator("#save-preset").click();

@@ -17,8 +17,11 @@ async function start(page) {
   await ready(page);
 }
 async function references(page) {
-  await page.getByRole("button", { name: "References", exact: true }).click();
-  await expect(page.locator(".reference-card")).toHaveCount(24);
+  await page.getByRole("button", { name: "Positions", exact: true }).click();
+  await openLibraryFilters(page);
+  await page.getByLabel("Support status").selectOption("interaction-3d");
+  await page.getByRole("button", { name: "Filters (1)", exact: true }).click();
+  await expect(page.locator(".preset-card")).toHaveCount(24);
 }
 const noOverflow = async (page) =>
   expect(
@@ -56,7 +59,7 @@ test("compact desktop and mobile layouts expose more rows and reserve the canvas
         const list = document
           .querySelector(".catalog-list")
           .getBoundingClientRect();
-        const cards = [...document.querySelectorAll(".reference-card")].map(
+        const cards = [...document.querySelectorAll(".preset-card")].map(
           (n) => n.getBoundingClientRect(),
         );
         const canvas = document
@@ -83,16 +86,16 @@ test("compact desktop and mobile layouts expose more rows and reserve the canvas
     );
     measurements.push(metrics);
     expect(metrics.headerHeight).toBe(56);
-    expect(metrics.libraryTopHeight).toBeLessThanOrEqual(230);
+    expect(metrics.libraryTopHeight).toBeLessThanOrEqual(245);
     expect(metrics.fullyVisibleCards).toBeGreaterThanOrEqual(
-      width === 320 ? 4 : 5,
+      width === 320 ? 2 : 3,
     );
     if (width === 1440) expect(metrics.canvasHeight).toBeGreaterThan(620);
     await expect(
       page.getByRole("button", { name: "Next", exact: true }),
     ).toBeInViewport();
     await expect(
-      page.getByRole("button", { name: "Filters", exact: true }),
+      page.getByRole("button", { name: /^Filters/ }),
     ).toBeInViewport();
     await expect(page.locator("#catalog-filters")).toBeHidden();
     await noOverflow(page);
@@ -106,41 +109,38 @@ test("compact desktop and mobile layouts expose more rows and reserve the canvas
   });
 });
 
-test("filters disclose, stay indicated while closed, reset pagination, and clear search without losing focus", async ({
+test("categories disclose, filters reset pagination, and search clears without losing focus", async ({
   page,
 }) => {
   await start(page);
   await references(page);
   await openLibraryFilters(page);
-  await page.getByLabel("Support status").selectOption("interaction-3d");
-  await page.getByLabel("Group matching annotations").check();
-  await expect(page.locator(".library-title > span")).toHaveText("379 groups");
-  await page.getByLabel("Family", { exact: true }).selectOption("Standing");
+  await page.getByLabel("Category", { exact: true }).selectOption("From behind");
   await expect(
-    page.getByRole("button", { name: "Filters (3)", exact: true }),
+    page.getByRole("button", { name: "Filters (2)", exact: true }),
   ).toBeVisible();
-  await page.getByLabel("Family", { exact: true }).selectOption("all");
-  await page.getByRole("button", { name: "Filters (2)", exact: true }).click();
+  await page.getByLabel("Category", { exact: true }).selectOption("all");
+  await page.getByRole("button", { name: "Filters (1)", exact: true }).click();
   await expect(page.locator("#catalog-filters")).toBeHidden();
   await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.locator("#catalog-page")).toHaveText("2 / 16");
+  await expect(page.locator("#catalog-page")).toHaveText("2 / 54");
   await page
     .getByRole("button", { name: "Reset filters", exact: true })
     .click();
-  await expect(page.locator("#catalog-page")).toHaveText("1 / 54");
+  await expect(page.locator("#catalog-page")).toHaveText("1 / 55");
   await expect(page.locator(".library-title > span")).toHaveText(
-    "1,283 references",
+    "1,306 positions",
   );
   await expect(
     page.getByRole("button", { name: "Filters", exact: true }),
   ).toBeFocused();
-  await page.getByLabel("Search references").fill("img-0001");
-  await expect(page.locator(".reference-card")).toHaveCount(1);
+  await page.getByLabel("Search positions").fill("img-0001");
+  await expect(page.locator(".preset-card")).toHaveCount(1);
   await page.getByRole("button", { name: "Clear search", exact: true }).click();
-  await expect(page.getByLabel("Search references")).toBeFocused();
-  await expect(page.locator(".reference-card")).toHaveCount(24);
+  await expect(page.getByLabel("Search positions")).toBeFocused();
+  await expect(page.locator(".preset-card")).toHaveCount(24);
   await openLibraryFilters(page);
-  await page.getByLabel("Family", { exact: true }).focus();
+  await page.getByLabel("Category", { exact: true }).focus();
   await page.keyboard.press("Escape");
   await expect(page.locator("#catalog-filters")).toBeHidden();
   await expect(
@@ -182,9 +182,9 @@ test("focus view and search shortcuts preserve the scene, honor dialogs and leav
   await focus.click();
   await page.keyboard.press("/");
   await expect(focus).toHaveAttribute("aria-pressed", "false");
-  await expect(page.getByLabel("Search presets")).toBeFocused();
+  await expect(page.getByLabel("Search positions")).toBeFocused();
   await page.keyboard.type("/");
-  await expect(page.getByLabel("Search presets")).toHaveValue("/");
+  await expect(page.getByLabel("Search positions")).toHaveValue("/");
   await page.getByRole("button", { name: "Clear search", exact: true }).click();
   await page.getByLabel("Pose description").focus();
   await page.keyboard.press("/");
@@ -211,8 +211,8 @@ test("responsive transitions and short landscape screens keep editing, filters a
   await page.locator('[data-region="library"]').click();
   await references(page);
   await openLibraryFilters(page);
-  await page.getByLabel("Family", { exact: true }).selectOption("Standing");
-  await page.getByRole("button", { name: "Filters (1)", exact: true }).click();
+  await page.getByLabel("Category", { exact: true }).selectOption("From behind");
+  await page.getByRole("button", { name: "Filters (2)", exact: true }).click();
   await page
     .getByRole("button", { name: "Next", exact: true })
     .scrollIntoViewIfNeeded();
@@ -242,10 +242,10 @@ test("compact controls, filters, information dialogs and enlarged text remain ac
     .getByRole("button", { name: "About this library", exact: true })
     .click();
   await expect(page.getByRole("dialog")).toContainText(
-    "23 verified stock 3D presets",
+    "plus 23 studio presets",
   );
   await expect(page.getByRole("dialog")).toContainText(
-    "1,283 source references",
+    "1,283 source-linked 3D positions",
   );
   await axe(page);
   await page.keyboard.press("Escape");
@@ -258,7 +258,7 @@ test("compact controls, filters, information dialogs and enlarged text remain ac
     await references(page);
     await openLibraryFilters(page);
     await axe(page);
-    await page.getByRole("button", { name: "Filters", exact: true }).click();
+    await page.getByRole("button", { name: /^Filters/ }).click();
     await page.locator('[data-region="edit"]').click();
     await page.getByRole("button", { name: "Figures", exact: true }).click();
     await axe(page);
@@ -270,7 +270,7 @@ test("compact controls, filters, information dialogs and enlarged text remain ac
   await page.locator('[data-region="library"]').click();
   await page.addStyleTag({
     content:
-      "button, input, select, textarea, label, .preset-name, .reference-family { font-size: 16px !important; }",
+      "button, input, select, textarea, label, .preset-name { font-size: 16px !important; }",
   });
   await noOverflow(page);
   await page

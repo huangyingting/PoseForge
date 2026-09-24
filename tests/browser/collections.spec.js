@@ -11,7 +11,7 @@ test("positions are a visible collection and collection filters stay usable on n
   await ready(page);
   await page.getByRole("button", { name: "Positions", exact: true }).click();
   await expect(page.locator(".library-title > span")).toHaveText(
-    "1,295 studies",
+    "1,306 positions",
   );
   await expect(page.locator(".preset-card")).toHaveCount(24);
   await expect(
@@ -21,9 +21,9 @@ test("positions are a visible collection and collection filters stay usable on n
   await page.getByLabel("Category", { exact: true }).selectOption("Side-lying");
   await expect(page.locator(".preset-card")).toHaveCount(2);
   await page.getByLabel("Category", { exact: true }).selectOption("all");
-  await page.getByLabel("Search presets").fill("拥抱");
+  await page.getByLabel("Search positions").fill("拥抱");
   await expect(page.locator(".preset-card")).toHaveCount(1);
-  await page.getByLabel("Search presets").fill("");
+  await page.getByLabel("Search positions").fill("");
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 });
     await page
@@ -49,7 +49,7 @@ test("positions are a visible collection and collection filters stay usable on n
   await page.screenshot({ path: info.outputPath("positions-mobile.png") });
   await page.getByRole("button", { name: "Saved", exact: true }).click();
   await expect(page.locator(".preset-card")).toHaveCount(0);
-  await page.getByRole("button", { name: "All", exact: true }).click();
+  await page.getByRole("button", { name: "Positions", exact: true }).click();
   await expect(page.locator(".preset-card")).toHaveCount(24);
 });
 

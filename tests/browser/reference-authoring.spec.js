@@ -35,24 +35,24 @@ test.afterEach(() => expect(errors).toEqual([]));
 async function start(page, entry = solo) {
   await page.goto(`/?reference=${entry.sourceId}`);
   await ready(page);
-  await expect(page.locator("#scene-title")).toHaveText(
-    `Reference ${entry.sourceId}`,
+  await expect(page.locator("#scene-title")).toContainText(
+    entry.sourceId.toUpperCase(),
   );
 }
 async function saveStudy(page, title, replace = false) {
   await page
-    .getByRole("button", { name: "Save reference study", exact: true })
+    .getByRole("button", { name: "Save position override", exact: true })
     .click();
   const modal = page.getByRole("dialog", {
-    name: "Save reference study",
+    name: "Save position override",
     exact: true,
   });
   await page.getByLabel("Study name", { exact: true }).fill(title);
   if (replace)
     await page
-      .getByLabel("Replace the existing authored study for this reference")
+      .getByLabel("Replace the existing override for this position")
       .check();
-  await modal.getByRole("button", { name: "Save study", exact: true }).click();
+  await modal.getByRole("button", { name: "Save override", exact: true }).click();
   await expect(modal).toHaveCount(0);
   await expect(page.locator("#scene-title")).toHaveText(title);
   await ready(page);
@@ -64,12 +64,12 @@ async function tools(page) {
   if (await page.locator('[data-region="library"]').isVisible())
     await page.locator('[data-region="library"]').click();
   await page
-    .getByRole("button", { name: "Reference studies", exact: true })
+    .getByRole("button", { name: "Library tools", exact: true })
     .click();
-  return page.getByRole("dialog", { name: "Reference studies", exact: true });
+  return page.getByRole("dialog", { name: "Library tools", exact: true });
 }
 async function upload(page, presets) {
-  await page.getByLabel("Import reference studies (JSON)").setInputFiles({
+  await page.getByLabel("Import position overrides (JSON)").setInputFiles({
     name: "studies.json",
     mimeType: "application/json",
     buffer: Buffer.from(serializeCatalog(presets)),
@@ -79,7 +79,7 @@ async function exported(page, modal) {
   const [download] = await Promise.all([
     page.waitForEvent("download"),
     modal
-      .getByRole("button", { name: "Export authored studies", exact: true })
+      .getByRole("button", { name: "Export position overrides", exact: true })
       .click(),
   ]);
   return JSON.parse(await readFile(await download.path(), "utf8")).presets;
@@ -109,14 +109,10 @@ test("a reference has an independently edited, captured and replace-confirmed po
   await page.getByLabel("Flexion", { exact: true }).dispatchEvent("change");
   await ready(page);
   await saveStudy(page, "My independent posture");
-  await expect(page.locator(".reference-study-summary")).toHaveText(
-    "1,283 interaction · 1 personal",
-  );
   await page.getByRole("button", { name: "Filters", exact: true }).click();
   await page.getByLabel("Support status").selectOption("authored-3d");
-  await page.getByLabel("Group matching annotations").check();
-  await expect(page.locator(".reference-card")).toHaveCount(1);
-  await expect(page.locator(".reference-card .support-badge")).toHaveText(
+  await expect(page.locator(".preset-card")).toHaveCount(1);
+  await expect(page.locator(".preset-card .support-badge")).toHaveText(
     "Authored · unreviewed",
   );
   await page
@@ -129,15 +125,15 @@ test("a reference has an independently edited, captured and replace-confirmed po
   );
   await ready(page);
   await page
-    .getByRole("button", { name: "Save reference study", exact: true })
+    .getByRole("button", { name: "Save position override", exact: true })
     .click();
   await page.getByLabel("Study name", { exact: true }).fill("Updated posture");
-  await page.getByRole("button", { name: "Save study", exact: true }).click();
+  await page.getByRole("button", { name: "Save override", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("Confirm replacement");
   await page
-    .getByLabel("Replace the existing authored study for this reference")
+    .getByLabel("Replace the existing override for this position")
     .check();
-  await page.getByRole("button", { name: "Save study", exact: true }).click();
+  await page.getByRole("button", { name: "Save override", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await ready(page);
   const modal = await tools(page);
@@ -153,7 +149,7 @@ test("a reference has an independently edited, captured and replace-confirmed po
   await page.screenshot({ path: info.outputPath("authored-desktop.png") });
   await page
     .getByRole("button", {
-      name: `Reference details ${solo.sourceId}`,
+      name: `Position details ${solo.sourceId}`,
       exact: true,
     })
     .click();
@@ -166,12 +162,7 @@ test("a reference has an independently edited, captured and replace-confirmed po
   await page.reload();
   await ready(page);
   await expect(page.locator("#scene-badge")).toHaveText("Approximate 3D");
-  await page
-    .getByRole("button", {
-      name: `Preview reference ${solo.sourceId}`,
-      exact: true,
-    })
-    .click();
+  await page.locator(`[data-source="${solo.sourceId}"]`).click();
   await expect(page.locator("#scene-title")).toHaveText("Updated posture");
   await ready(page);
   await page.locator("#save-preset").click();
@@ -180,16 +171,11 @@ test("a reference has an independently edited, captured and replace-confirmed po
     .click();
   await page.getByRole("button", { name: "Confirm", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await page
-    .getByRole("button", {
-      name: `Preview reference ${solo.sourceId}`,
-      exact: true,
-    })
-    .click();
+  await page.locator(`[data-source="${solo.sourceId}"]`).click();
   await ready(page);
   await expect(page.locator("#scene-badge")).toHaveText("Interaction 3D");
-  await expect(page.locator(".reference-study-summary")).toContainText(
-    "1,283 interaction · 0 personal",
+  await expect(page.locator(".preset-card .support-badge")).toHaveText(
+    "Interaction 3D",
   );
 });
 
@@ -203,7 +189,7 @@ test("bulk imports preview counts, keep existing by default, replace explicitly 
     "2 valid studies · 2 new · 0 already authored",
   );
   await expect(modal).toContainText(
-    "0 / 1,283 references have authored studies",
+    "0 / 1,283 source-linked positions have local overrides",
   );
   await page.evaluate(() => {
     window.__studyPut = IDBObjectStore.prototype.put;
@@ -214,19 +200,19 @@ test("bulk imports preview counts, keep existing by default, replace explicitly 
     };
   });
   await modal
-    .getByRole("button", { name: "Import studies", exact: true })
+    .getByRole("button", { name: "Import overrides", exact: true })
     .click();
   await expect(modal.getByRole("alert")).toContainText(
     "Could not save the library",
   );
   await expect(modal).toContainText(
-    "0 / 1,283 references have authored studies",
+    "0 / 1,283 source-linked positions have local overrides",
   );
   await page.evaluate(() => {
     IDBObjectStore.prototype.put = window.__studyPut;
   });
   await modal
-    .getByRole("button", { name: "Import studies", exact: true })
+    .getByRole("button", { name: "Import overrides", exact: true })
     .click();
   await expect(modal).toContainText(
     "Saved 2 studies; kept 0 existing studies.",
@@ -237,7 +223,7 @@ test("bulk imports preview counts, keep existing by default, replace explicitly 
     "2 valid studies · 1 new · 1 already authored",
   );
   await modal
-    .getByRole("button", { name: "Import studies", exact: true })
+    .getByRole("button", { name: "Import overrides", exact: true })
     .click();
   await expect(modal).toContainText(
     "Saved 1 studies; kept 1 existing studies.",
@@ -248,9 +234,9 @@ test("bulk imports preview counts, keep existing by default, replace explicitly 
     ).title,
   ).toBe(`Reference ${solo.sourceId}`);
   await upload(page, [edited]);
-  await page.getByLabel("Replace 1 existing authored studies").check();
+  await page.getByLabel("Replace 1 existing position overrides").check();
   await modal
-    .getByRole("button", { name: "Import studies", exact: true })
+    .getByRole("button", { name: "Import overrides", exact: true })
     .click();
   await expect(modal).toContainText(
     "Saved 1 studies; kept 0 existing studies.",
@@ -268,9 +254,10 @@ test("bulk imports preview counts, keep existing by default, replace explicitly 
   await page.reload();
   await expect(page.locator("#scene-title")).toHaveText("Imported replacement");
   await ready(page);
-  await expect(page.locator(".reference-study-summary")).toContainText(
-    "1,283 interaction · 3 personal",
-  );
+  await page.getByLabel("Search positions").fill("");
+  await page.getByRole("button", { name: "Filters", exact: true }).click();
+  await page.getByLabel("Support status").selectOption("authored-3d");
+  await expect(page.locator(".library-title > span")).toHaveText("3 positions");
 });
 
 test("all 1283 entries can be imported, exported and individually selected as authored test fixtures", async ({
@@ -285,7 +272,7 @@ test("all 1283 entries can be imported, exported and individually selected as au
     "1283 valid studies · 1283 new · 0 already authored",
   );
   await modal
-    .getByRole("button", { name: "Import studies", exact: true })
+    .getByRole("button", { name: "Import overrides", exact: true })
     .click();
   await expect(modal).toContainText(
     "Saved 1283 studies; kept 0 existing studies.",
@@ -309,17 +296,9 @@ test("all 1283 entries can be imported, exported and individually selected as au
     contentType: "application/json",
   });
   await modal.getByRole("button", { name: "Close dialog" }).click();
-  await expect(page.locator(".reference-study-summary")).toContainText(
-    "1,283 interaction · 1,283 personal",
-  );
-  await page.getByLabel("Search references").fill(entries.at(-1).sourceId);
-  await expect(page.locator(".reference-card")).toHaveCount(1);
-  await page
-    .getByRole("button", {
-      name: `Preview reference ${entries.at(-1).sourceId}`,
-      exact: true,
-    })
-    .click();
+  await page.getByLabel("Search positions").fill(entries.at(-1).sourceId);
+  await expect(page.locator(".preset-card")).toHaveCount(1);
+  await page.locator(`[data-source="${entries.at(-1).sourceId}"]`).click();
   await ready(page);
   await expect(page.locator("#scene-badge")).toHaveText(
     "Authored · unreviewed",
@@ -348,7 +327,7 @@ test("mobile authoring and import are reachable, accessible and reject a missing
   await ready(page);
   await page.locator('[data-region="studio"]').click();
   await page
-    .getByRole("button", { name: "Save reference study", exact: true })
+    .getByRole("button", { name: "Save position override", exact: true })
     .click();
   await expect(page.locator("#toast")).toContainText(
     "figure count does not match",
@@ -364,7 +343,7 @@ test("mobile authoring and import are reachable, accessible and reject a missing
     path: info.outputPath("authored-mobile-import.png"),
   });
   await modal
-    .getByRole("button", { name: "Import studies", exact: true })
+    .getByRole("button", { name: "Import overrides", exact: true })
     .click();
   await expect(modal).toContainText("Saved 1 studies");
   await modal.getByRole("button", { name: "Close dialog" }).click();
@@ -373,11 +352,8 @@ test("mobile authoring and import are reachable, accessible and reject a missing
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
-  await page.getByLabel("Search references").fill(trio.sourceId);
-  const card = page.getByRole("button", {
-    name: `Preview reference ${trio.sourceId}`,
-    exact: true,
-  });
+  await page.getByLabel("Search positions").fill(trio.sourceId);
+  const card = page.locator(`[data-source="${trio.sourceId}"]`);
   await card.focus();
   await page.keyboard.press("Enter");
   await ready(page);
@@ -419,13 +395,7 @@ test("saving an authored study cancels a pending generated selection", async ({
   // The startup positions preload shares this held pack request.
   await page.reload();
   await ready(page);
-  await page.getByLabel("Search references").fill(trio.sourceId);
-  await page
-    .getByRole("button", {
-      name: `Preview reference ${trio.sourceId}`,
-      exact: true,
-    })
-    .click();
+  await page.goto(`/?reference=${trio.sourceId}`);
   await requested;
   await saveStudy(page, "Saved while another preview was pending", true);
   await release();
@@ -444,7 +414,7 @@ test("a committed reference save cannot replace a newer selection after its dial
 }) => {
   await start(page);
   await page
-    .getByRole("button", { name: "Save reference study", exact: true })
+    .getByRole("button", { name: "Save position override", exact: true })
     .click();
   await page
     .getByLabel("Study name", { exact: true })
@@ -456,7 +426,10 @@ test("a committed reference save cannot replace a newer selection after its dial
       if (this.name === "library") {
         IDBObjectStore.prototype.put = put;
         document.querySelector("dialog[open]").close();
-        document.querySelector('[data-scope="all"]').click();
+        document.querySelector('[data-scope="positions"]').click();
+        const search = document.querySelector("#catalog-search");
+        search.value = "";
+        search.dispatchEvent(new Event("input", { bubbles: true }));
         document
           .querySelector('[data-preset="builtin.standing-female"]')
           .click();
@@ -464,22 +437,14 @@ test("a committed reference save cannot replace a newer selection after its dial
       return request;
     };
   });
-  await page.getByRole("button", { name: "Save study", exact: true }).click();
+  await page.getByRole("button", { name: "Save override", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.locator("#scene-title")).toHaveText("Standing · female");
   await ready(page);
   await expect(page.locator("#scene-title")).toHaveText("Standing · female");
-  await page.getByRole("button", { name: "References", exact: true }).click();
-  await expect(page.locator(".reference-study-summary")).toContainText(
-    "1,283 interaction · 1 personal",
-  );
-  await page.getByLabel("Search references").fill(solo.sourceId);
-  await page
-    .getByRole("button", {
-      name: `Preview reference ${solo.sourceId}`,
-      exact: true,
-    })
-    .click();
+  await page.getByRole("button", { name: "Positions", exact: true }).click();
+  await page.getByLabel("Search positions").fill(solo.sourceId);
+  await page.locator(`[data-source="${solo.sourceId}"]`).click();
   await expect(page.locator("#scene-title")).toHaveText("Saved in background");
   await ready(page);
 });

@@ -70,16 +70,16 @@ test.afterEach(() => {
 });
 
 async function loaded(page, entry, generated = false) {
-  await expect(page.locator("#scene-title")).toHaveText(
-    `Reference ${entry.sourceId}`,
-  );
+  const sceneTitle = page.locator("#scene-title");
+  if (generated) await expect(sceneTitle).toHaveText(`Reference ${entry.sourceId}`);
+  else await expect(sceneTitle).toContainText(entry.sourceId.toUpperCase());
   await ready(page);
   await expect(page.locator("#scene-badge")).toHaveText(
     generated ? "Approximate 3D" : "Interaction 3D",
   );
   await expect(page.locator("#viewport-error")).toBeHidden();
   const mesh = await page.evaluate(() => window.__referenceMesh);
-  expect(mesh.title).toBe(`Reference ${entry.sourceId}`);
+  expect(mesh.title).toBe(await sceneTitle.textContent());
   const figures = generated ? entry.figures : interactionCounts.get(entry.sourceId);
   expect(mesh.bodies).toHaveLength(figures);
   expect(mesh.actorCount).toBe(figures);
@@ -123,11 +123,11 @@ async function loaded(page, entry, generated = false) {
 }
 
 async function select(page, entry, generated = false) {
-  await page.getByLabel("Search references").fill(entry.sourceId);
+  await page.getByLabel("Search positions").fill(entry.sourceId);
   if (generated) {
     await page
       .getByRole("button", {
-        name: `Reference details ${entry.sourceId}`,
+        name: `Position details ${entry.sourceId}`,
         exact: true,
       })
       .click();
@@ -140,10 +140,7 @@ async function select(page, entry, generated = false) {
     return loaded(page, entry, true);
   }
   await page
-    .getByRole("button", {
-      name: `Preview reference ${entry.sourceId}`,
-      exact: true,
-    })
+    .locator(`[data-source="${entry.sourceId}"]`)
     .click();
   return loaded(page, entry);
 }
@@ -173,7 +170,9 @@ test("solo and three-person previews support deep links, camera controls, saving
   await page.goto(`/?reference=${solo.sourceId}`);
   await loaded(page, solo);
   await select(page, trio);
-  await expect(page).toHaveURL(new RegExp(`reference=${trio.sourceId}`));
+  await expect(page).toHaveURL(
+    new RegExp(`preset=builtin.position.${trio.sourceId}`),
+  );
   await expect(page.locator(".notes")).toContainText(
     "Approximate 3D interaction",
   );
@@ -228,18 +227,16 @@ test("a failed preview download preserves the current study and retry loads it",
   });
   await page.goto("/?preset=builtin.standing-female");
   await ready(page);
-  await page.getByRole("button", { name: "References", exact: true }).click();
-  await page.getByLabel("Search references").fill(solo.sourceId);
-  const preview = page.getByRole("button", {
-    name: `Preview reference ${solo.sourceId}`,
-    exact: true,
-  });
-  await preview.click();
-  await expect(page.locator("#toast")).toContainText("3D preview unavailable");
+  await expect(page.locator(".positions-status")).toContainText(
+    "could not load",
+  );
   await expect(page.locator("#scene-title")).toHaveText("Standing · female");
-  await expect(preview).toHaveAttribute("aria-busy", "false");
   failing = false;
-  await preview.click();
+  await page
+    .getByRole("button", { name: "Retry positions", exact: true })
+    .click();
+  await page.getByLabel("Search positions").fill(solo.sourceId);
+  await page.locator(`[data-source="${solo.sourceId}"]`).click();
   await loaded(page, solo);
 });
 
@@ -256,16 +253,8 @@ test("a delayed reference request cannot overwrite a newer stock selection", asy
   });
   await page.goto("/?preset=builtin.standing-female");
   await ready(page);
-  await page.getByRole("button", { name: "References", exact: true }).click();
-  await page.getByLabel("Search references").fill(solo.sourceId);
-  await page
-    .getByRole("button", {
-      name: `Preview reference ${solo.sourceId}`,
-      exact: true,
-    })
-    .click();
-  await page.getByRole("button", { name: "All", exact: true }).click();
-  await page.getByLabel("Search presets").fill("Standing · male");
+  await page.goto(`/?reference=${solo.sourceId}`);
+  await page.getByLabel("Search positions").fill("Standing · male");
   await page
     .getByRole("button", { name: "Load Standing · male", exact: true })
     .click();
@@ -283,10 +272,10 @@ test("mobile reference selection opens the 3D studio while details remain separa
   await loaded(page, solo);
   await expect(page.locator("#stage")).toBeVisible();
   await page.locator('[data-region="library"]').click();
-  await page.getByLabel("Search references").fill(trio.sourceId);
+  await page.getByLabel("Search positions").fill(trio.sourceId);
   await page
     .getByRole("button", {
-      name: `Reference details ${trio.sourceId}`,
+      name: `Position details ${trio.sourceId}`,
       exact: true,
     })
     .click();
@@ -338,14 +327,7 @@ test("opening Save cancels a pending reference so it cannot replace the saved st
   });
   await page.goto("/?preset=builtin.standing-female");
   await ready(page);
-  await page.getByRole("button", { name: "References", exact: true }).click();
-  await page.getByLabel("Search references").fill(entries[0].sourceId);
-  await page
-    .getByRole("button", {
-      name: `Preview reference ${entries[0].sourceId}`,
-      exact: true,
-    })
-    .click();
+  await page.goto(`/?reference=${entries[0].sourceId}`);
   await page.locator("#save-preset").click();
   await page.getByLabel("Preset name").fill("Keep my standing study");
   await page
@@ -378,12 +360,8 @@ test("keyboard preview selection retains focus on desktop and invalid deep links
     "Source reference not found",
   );
   await ready(page);
-  await page.getByRole("button", { name: "References", exact: true }).click();
-  await page.getByLabel("Search references").fill(solo.sourceId);
-  const preview = page.getByRole("button", {
-    name: `Preview reference ${solo.sourceId}`,
-    exact: true,
-  });
+  await page.getByLabel("Search positions").fill(solo.sourceId);
+  const preview = page.locator(`[data-source="${solo.sourceId}"]`);
   await preview.focus();
   await page.keyboard.press("Enter");
   await loaded(page, solo);

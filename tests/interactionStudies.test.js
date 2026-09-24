@@ -8,7 +8,7 @@ import {
   isInteractionPreview,
   TEMPLATE_LABELS,
 } from "../src/core/interactionStudies.js";
-import { createReferenceService } from "../src/app/referenceLoader.js";
+import { createPositionService } from "../src/app/referenceLoader.js";
 import { composeStudy } from "../scripts/build-interaction-studies.mjs";
 import { TEMPLATES } from "../scripts/interaction-templates.mjs";
 import { mirrorSpec } from "../scripts/interaction-composer.mjs";
@@ -136,7 +136,7 @@ test("malformed, stale, unclothed or free-floating interaction records reject th
 
 test("interaction scenes load lazily through the shared verified service", async () => {
   const requests = [];
-  const service = createReferenceService({
+  const service = createPositionService({
     base: "/app/",
     digest: hash,
     fetcher: async (url) => {
@@ -150,6 +150,11 @@ test("interaction scenes load lazily through the shared verified service", async
   const [a, b] = await Promise.all([service.interaction(entries[0]), service.interaction(entries[1])]);
   assert.ok(a.tags.includes("interaction"));
   assert.notEqual(a.source.recordId, b.source.recordId);
+  const unified = await service.positions();
+  assert.equal(unified.length, 1283);
+  assert.equal(unified[0].reference.sourceId, unified[0].source.recordId);
+  assert.equal(unified[0].figures, unified[0].reference.figures);
+  assert.ok(unified[0].positionCategory);
   assert.equal(requests.length, 2);
 });
 
@@ -160,8 +165,15 @@ test("every interaction is a named, playable library position that can be listed
   const positions = interactionPositions(studies);
   assert.equal(positions.length, 1283);
   assert.equal(new Set(positions.map((p) => p.title)).size, 1283);
+  assert.equal(
+    new Set(positions.map((p) => p.positionCategory)).size,
+    10,
+  );
   for (const p of positions) {
     assert.ok(isPosition(p));
+    assert.match(p.title, / · [A-Z][^·]+ · IMG-\d{4}$/);
+    assert.ok(p.description.includes(p.positionName));
+    assert.equal(p.category, p.positionCategory);
     assert.deepEqual(checkPreset(p).scene, p.scene);
   }
   const memory = new Map();

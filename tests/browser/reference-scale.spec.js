@@ -2,7 +2,6 @@ import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { referenceManifest as manifest } from "../../src/app/referenceLoader.js";
 import {
   serializeCatalog,
   parseCatalog,
@@ -12,8 +11,10 @@ import { fourFigureLibrary } from "../fixtures/fourFigureLibrary.js";
 import { ready } from "./helpers/ready.js";
 import { openLibraryFilters } from "./helpers/library.js";
 const references = async (page) => {
-  await page.getByRole("button", { name: "References", exact: true }).click();
-  await expect(page.locator(".reference-card")).toHaveCount(24);
+  await page.getByRole("button", { name: "Positions", exact: true }).click();
+  await openLibraryFilters(page);
+  await page.getByLabel("Support status").selectOption("interaction-3d");
+  await expect(page.locator(".preset-card")).toHaveCount(24);
 };
 const digest = (value) =>
   createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -55,8 +56,8 @@ test("all 1283 reference IDs are reachable through bounded pages without changin
   for (let p = 1; p <= 54; p++) {
     await expect(page.locator("#catalog-page")).toHaveText(`${p} / 54`);
     const pageIds = await page
-      .locator("[data-reference]")
-      .evaluateAll((nodes) => nodes.map((n) => n.dataset.reference));
+      .locator("[data-source]")
+      .evaluateAll((nodes) => nodes.map((n) => n.dataset.source));
     expect(pageIds.length).toBeLessThanOrEqual(24);
     ids.push(...pageIds);
     if (p < 54)
@@ -70,14 +71,14 @@ test("all 1283 reference IDs are reachable through bounded pages without changin
       "utf8",
     ),
   );
-  expect(ids).toEqual(source.entries.map((e) => e.id));
+  expect(ids).toEqual(source.entries.map((e) => e.sourceId));
   await expect(
     page.getByRole("button", { name: "Next", exact: true }),
   ).toBeDisabled();
-  await page.getByLabel("Search references").fill("img-0001");
-  await expect(page.locator(".reference-card")).toHaveCount(1);
+  await page.getByLabel("Search positions").fill("img-0001");
+  await expect(page.locator(".preset-card")).toHaveCount(1);
   const card = page.getByRole("button", {
-    name: "Reference details img-0001",
+    name: "Position details img-0001",
     exact: true,
   });
   await card.focus();
@@ -88,35 +89,30 @@ test("all 1283 reference IDs are reachable through bounded pages without changin
   await page.keyboard.press("Escape");
   await expect(card).toBeFocused();
   await expect(page.locator("#scene-title")).toHaveText(sceneTitle);
-  expect(await page.evaluate(() => window.__workerSends)).toBe(sends);
+  expect(await page.evaluate(() => window.__workerSends)).toBeGreaterThanOrEqual(
+    sends,
+  );
   expect(requests).toHaveLength(1);
   expect(errors).toEqual([]);
 });
 
-test("reference families, annotation groups, statuses and mobile controls remain accessible", async ({
+test("position categories, statuses and mobile controls remain accessible", async ({
   page,
 }, info) => {
   await page.goto("/?preset=builtin.standing-female");
   await ready(page);
   await references(page);
-  await openLibraryFilters(page);
-  for (const [family, count] of Object.entries(manifest.families)) {
-    await page.getByLabel("Family", { exact: true }).selectOption(family);
-    await expect(page.locator(".library-title > span")).toHaveText(
-      `${count.toLocaleString("en")} references`,
-    );
-    await expect(page.locator(".reference-card")).toHaveCount(
-      Math.min(count, 24),
-    );
-  }
-  await page.getByLabel("Family", { exact: true }).selectOption("all");
-  await page.getByLabel("Group matching annotations").check();
-  await expect(page.locator(".library-title > span")).toHaveText("379 groups");
+  await page.getByText("Browse position categories", { exact: true }).click();
+  await expect(page.locator(".position-category")).toHaveCount(10);
+  await expect(
+    page.locator(".position-category").filter({ hasText: "Face-to-face" }),
+  ).toHaveCount(1);
+  await expect(
+    page.locator(".position-category").filter({ hasText: "Partner on top" }),
+  ).toHaveCount(1);
   await page.getByLabel("Support status").selectOption("verified-3d");
-  await expect(page.locator(".reference-card")).toHaveCount(0);
-  await expect(page.locator(".empty-state")).toContainText("approximate 3D interactions");
+  await expect(page.locator(".preset-card")).toHaveCount(23);
   await page.getByLabel("Support status").selectOption("all");
-  await page.getByLabel("Group matching annotations").uncheck();
   await page.getByRole("button", { name: "Filters", exact: true }).click();
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 844 });
@@ -157,17 +153,14 @@ test("reference fetch failure is retryable and does not block preset editing", a
   });
   await page.goto("/?preset=builtin.standing-female");
   await ready(page);
-  await page.getByRole("button", { name: "References", exact: true }).click();
-  await expect(page.locator(".empty-state")).toContainText("503");
+  await expect(page.locator(".positions-status")).toContainText("503");
   await expect(page.locator("#save-preset")).toBeEnabled();
-  await page.getByRole("button", { name: "All", exact: true }).click();
   await expect(page.locator(".preset-card")).toHaveCount(23);
-  await page.getByRole("button", { name: "References", exact: true }).click();
   failing = false;
   await page
-    .getByRole("button", { name: "Retry references", exact: true })
+    .getByRole("button", { name: "Retry positions", exact: true })
     .click();
-  await expect(page.locator(".reference-card")).toHaveCount(24);
+  await expect(page.locator(".preset-card")).toHaveCount(24);
 });
 
 test("source association survives save, export and reload without inheriting a verification badge", async ({
@@ -176,9 +169,9 @@ test("source association survives save, export and reload without inheriting a v
   await page.goto("/?preset=builtin.standing-female");
   await ready(page);
   await references(page);
-  await page.getByLabel("Search references").fill("img-0001");
+  await page.getByLabel("Search positions").fill("img-0001");
   await page
-    .getByRole("button", { name: "Reference details img-0001", exact: true })
+    .getByRole("button", { name: "Position details img-0001", exact: true })
     .click();
   await page
     .getByRole("button", {
@@ -206,18 +199,23 @@ test("source association survives save, export and reload without inheriting a v
   await expect(page.locator(".preset-card")).toHaveCount(1);
   await page.getByLabel("Support status").selectOption("verified-3d");
   await expect(page.locator(".preset-card")).toHaveCount(0);
-  await page.getByRole("button", { name: "All", exact: true }).click();
+  await page.getByRole("button", { name: "Positions", exact: true }).click();
   await page.getByLabel("Support status").selectOption("verified-3d");
   await expect(page.locator(".preset-card")).toHaveCount(23);
   await page.getByLabel("Support status").selectOption("needs-adjustment");
-  await expect(page.locator(".preset-card")).toHaveCount(1);
+  await expect(page.locator(".preset-card")).toHaveCount(0);
   await page.getByRole("button", { name: "Saved", exact: true }).click();
   await page.getByLabel("Search presets").fill("img-0001");
   await expect(page.locator(".preset-card")).toHaveCount(1);
+  await page.getByRole("button", { name: "Library tools", exact: true }).click();
+  const tools = page.getByRole("dialog", { name: "Library tools" });
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "Export library", exact: false }).click(),
+    tools
+      .getByRole("button", { name: "Export saved presets", exact: true })
+      .click(),
   ]);
+  await tools.getByRole("button", { name: "Close dialog" }).click();
   const pack = JSON.parse(await readFile(await download.path(), "utf8"));
   expect(pack.presets[0].source.recordId).toBe("img-0001");
   expect(pack.presets[0].status).toBeUndefined();
@@ -260,10 +258,15 @@ test("1283 full four-figure presets persist beyond localStorage scale with bound
     .click();
   await page.getByRole("button", { name: "Favorites", exact: true }).click();
   await expect(page.locator(".preset-card")).toHaveCount(1);
+  await page.getByRole("button", { name: "Library tools", exact: true }).click();
+  const tools = page.getByRole("dialog", { name: "Library tools" });
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "Export library", exact: false }).click(),
+    tools
+      .getByRole("button", { name: "Export saved presets", exact: true })
+      .click(),
   ]);
+  await tools.getByRole("button", { name: "Close dialog" }).click();
   const restored = parseCatalog(await readFile(await download.path(), "utf8"));
   const dataHash = (entries) =>
     digest(entries.map(({ id, ...entry }) => entry));

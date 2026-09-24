@@ -89,7 +89,7 @@ export function createReferenceLoader(options = {}) {
 }
 
 /** One shared lazy index and one deduplicated scene pack; no source images. */
-export function createReferenceService(options = {}) {
+export function createPositionService(options = {}) {
   const entries = createReferenceLoader(options);
   const scenes = verifiedLoader(
     { ...manifest.previews, dataSha256: manifest.previews.sha256 },
@@ -127,9 +127,13 @@ export function createReferenceService(options = {}) {
     async interaction(entry) {
       return interactionPreset(entry, await interaction());
     },
-    /** Every interaction study as a playable library position. */
+    /** Unified source metadata and 3D scenes as playable library positions. */
     async positions() {
-      return interactionPositions(await interaction());
+      const [index, studies] = await Promise.all([entries(), interaction()]);
+      return interactionPositions(studies, index);
     },
   };
 }
+
+// Compatibility for external consumers while the app uses position terminology.
+export const createReferenceService = createPositionService;

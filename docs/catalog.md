@@ -1,18 +1,18 @@
 # Building a pose library
 
-## References and verified presets are separate
+## One position catalog
 
 For independent per-reference editing and bulk imports, see the
-[reference authoring guide](reference-authoring.md). Authored studies are local,
-unreviewed overrides; they do not change the committed source snapshot.
+[reference authoring guide](reference-authoring.md). Local position overrides
+are unreviewed and do not change the committed source snapshot.
 
-**References** browses all 1,283 records in the committed SexPoses annotation
-snapshot. Clicking a card opens its ready-to-view **Interaction 3D** scene in the
-studio (see [3D interaction studies](interaction-studies.md)). Source photos, raw descriptions, intimate contact labels and private
-file paths are not shipped. The normal
-**All / Positions / Saved / Favorites** collections contain playable 3D presets.
-They include the 23 authored stock presets plus all 1,283 interaction scenes as
-built-in positions (`builtin.position.img-NNNN`, grouped by position name). All 1,283 IDs have distinct artistic compositions;
+**Positions** is the single catalog for the 23 studio presets and all 1,283
+source-linked interaction scenes (`builtin.position.img-NNNN`). Each source
+record and its playable **Interaction 3D** scene are merged into one backend
+position object containing the human position name, broad category, surface,
+participants, source provenance and 3D scene. Source photos, raw descriptions,
+intimate contact labels and private file paths are not shipped. All 1,283 IDs
+also have distinct artistic compositions;
 the earlier 203 shared approximations remain available in the details dialog.
 
 These are non-graphic, clothed individual posture studies. All participants are
@@ -23,8 +23,10 @@ external supports. Original relative facing, relationship and contact details
 are not reconstructed. **Pose checks** retains these approximation notes and
 any measured geometry problems; renderability is not physical certification.
 
-The compact library keeps search and collections visible. Open **Filters** for
-category/family, support status and grouping. A count on the Filters button
+The compact library keeps search and **Positions / Saved / Favorites** visible.
+**Browse position categories** expands ten broad categories into their related
+named positions and counts. Open **Filters** for category and support status. A
+count on the Filters button
 indicates active filters even while the controls are closed; **Reset filters**
 clears those filters and returns to page one. The **×** search control clears
 only the search text. **ⓘ About this library** explains catalog counts and local
@@ -37,13 +39,10 @@ restores them. Search also exits focus mode. Small screens use the bottom
 controls reachable. Descriptive contact guidance is under **Contact help**;
 contact controls and measured warnings remain visible.
 
-Search references by source ID (for example `img-0001`), broad posture family,
-support surface or figure count. A standalone digit from 1 to 4 means the number
-of figures. **Family**, **Support status**, and **Group matching annotations**
-compose with search. The snapshot has 22 broad family combinations and 379
-structured-annotation groups. Matching annotations are not proof of identical
-anatomy, and different annotations are not proof of distinct positions. All
-1,283 source IDs remain reachable without grouping.
+Search positions by actual name, broad category, support surface or source ID
+(for example `img-0001`). Titles use
+`<position name> · <surface> · <IMG-ID>`; descriptions explain the classified
+participant arrangement. All 1,283 source IDs remain directly reachable.
 
 The group fingerprint includes the ordered participants' structured pose fields
 and the full relationship annotation. Participant `id` and `gender` fields,
@@ -51,17 +50,17 @@ captions and tags are excluded; relationship strings and list order are retained
 It does not resolve synonyms or compare solved geometry. The separate annotation
 fingerprint covers the complete original annotation for provenance.
 
-Both catalogs show at most 24 cards per page. **Previous / Next** preserves
-filters; changing a filter starts at page one. Reference metadata is downloaded
-only when References is opened. The separate preview pack is fetched on first
-3D selection. The artistic and legacy packs are separate; each loads only when
-selected. All files have byte/hash/schema checks and revalidate cached
-responses. Failed index downloads show Retry; a failed preview download keeps
-the previous study and can be retried by selecting the card again.
+The catalog shows at most 24 cards per page. **Previous / Next** preserves
+filters; changing a filter starts at page one. Source metadata and interaction
+scenes load together for Positions. Artistic and generated alternatives remain
+separate and load only when selected. All files have byte/hash/schema checks and
+revalidate cached responses. Failed position downloads show Retry while the 23
+studio presets remain usable.
 
-The main card action changes the 3D scene; its **ⓘ Reference details** button
+The main card action changes the 3D scene; its **••• Position details** button
 opens provenance and matching IDs without replacing the current study. Details
-also offers **Open 3D preview**. **Associate current study with this source** links your current
+also offers artistic and generated alternatives. **Associate current study with
+this source** links your current
 independently authored study to the source record; save it to persist the link.
 Source IDs and annotation fingerprints survive preset export and import.
 Association does not generate a reconstruction or confer verification.
@@ -76,6 +75,11 @@ Save creates an independent personal preset with its source link; it does not
 alter the generated reference. Diagnostic captions are not inserted as natural-
 language parser commands. Missing scanned models show an explicit unavailable
 message rather than substituting an unclothed collision-field reference.
+
+**Library tools** is the one transfer surface. It imports/exports saved presets
+and validates source-linked position overrides in the same sheet. A local
+override replaces the built-in scene when its position card is selected; it
+does not create a second catalog item.
 
 Support labels mean:
 

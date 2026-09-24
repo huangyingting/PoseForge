@@ -26,10 +26,15 @@ async function seed(page, saved) {
   await ready(page);
 }
 async function exported(page) {
+  await page.getByRole("button", { name: "Library tools", exact: true }).click();
+  const modal = page.getByRole("dialog", { name: "Library tools" });
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "Export library", exact: false }).click(),
+    modal
+      .getByRole("button", { name: "Export saved presets", exact: true })
+      .click(),
   ]);
+  await modal.getByRole("button", { name: "Close dialog" }).click();
   return readFile(await download.path());
 }
 
@@ -69,7 +74,7 @@ test("a legacy 200-preset four-figure library migrates and re-imports without da
   await page.reload();
   await ready(page);
   await expect(page.locator(".library-title > span")).toHaveText(
-    `${(BUILTIN_PRESETS.length + 1283).toLocaleString("en")} studies`,
+    `${(BUILTIN_PRESETS.length + 1283).toLocaleString("en")} positions`,
   );
   await page.locator("#catalog-file").setInputFiles({
     name: "capacity-library.json",
