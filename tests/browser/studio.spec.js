@@ -56,7 +56,11 @@ test("catalog, figure edits, undo, save, update, duplicate, reload and delete", 
   await ready(page);
   await expect(page.locator(".preset-name").first()).toBeInViewport();
   await page.getByLabel("Search presets").fill("kneel");
-  await expect(page.locator(".preset-card")).toHaveCount(6);
+  // Six stock presets plus the kneeling built-in positions.
+  await expect(page.locator(".library-title > span")).not.toHaveText(
+    /^[0-6] studies$|^1,306 studies$/,
+  );
+  await expect(page.locator(".preset-card")).toHaveCount(24);
   await openLibraryFilters(page);
   await page.getByLabel("Category", { exact: true }).selectOption("Together");
   await expect(page.locator(".preset-card")).toHaveCount(1);

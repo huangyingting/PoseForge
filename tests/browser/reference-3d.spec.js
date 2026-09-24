@@ -221,10 +221,9 @@ test("solo and three-person previews support deep links, camera controls, saving
 test("a failed preview download preserves the current study and retry loads it", async ({
   page,
 }) => {
-  let attempts = 0;
+  let failing = true;
   await page.route("**/catalog/interaction-studies-v1.json", async (route) => {
-    if (++attempts === 1)
-      await route.fulfill({ status: 503, body: "not available" });
+    if (failing) await route.fulfill({ status: 503, body: "not available" });
     else await route.continue();
   });
   await page.goto("/?preset=builtin.standing-female");
@@ -239,9 +238,9 @@ test("a failed preview download preserves the current study and retry loads it",
   await expect(page.locator("#toast")).toContainText("3D preview unavailable");
   await expect(page.locator("#scene-title")).toHaveText("Standing · female");
   await expect(preview).toHaveAttribute("aria-busy", "false");
+  failing = false;
   await preview.click();
   await loaded(page, solo);
-  expect(attempts).toBe(2);
 });
 
 test("a delayed reference request cannot overwrite a newer stock selection", async ({

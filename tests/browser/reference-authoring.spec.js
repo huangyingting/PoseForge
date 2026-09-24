@@ -394,8 +394,6 @@ test("saving an authored study cancels a pending generated selection", async ({
 }) => {
   await start(page);
   await saveStudy(page, "Keep this authored pose");
-  await page.reload();
-  await ready(page);
   let release;
   let received;
   const requested = new Promise((resolve) => {
@@ -418,6 +416,9 @@ test("saving an authored study cancels a pending generated selection", async ({
       received();
     });
   });
+  // The startup positions preload shares this held pack request.
+  await page.reload();
+  await ready(page);
   await page.getByLabel("Search references").fill(trio.sourceId);
   await page
     .getByRole("button", {

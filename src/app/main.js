@@ -8,7 +8,7 @@ import {
   serializeCatalog,
 } from "../core/catalog.js";
 import { buildPanel } from "./ui.js";
-import { DRAFT_KEY } from "./libraryStore.js";
+import { DRAFT_KEY, registerPositions } from "./libraryStore.js";
 import { createPersistentLibrary } from "./persistentLibrary.js";
 import { buildStudio, toast, showRegion, openExport } from "./studioUI.js";
 import { bindCameraInput } from "./cameraInput.js";
@@ -22,7 +22,7 @@ import {
 } from "../core/referenceStudies.js";
 import { captureSolvedPose } from "../core/placement.js";
 import { isArtisticPreview } from "../core/artisticStudies.js";
-import { isInteractionPreview } from "../core/interactionStudies.js";
+import { isInteractionPreview, isPosition } from "../core/interactionStudies.js";
 
 const $ = (id) => document.getElementById(id);
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -132,13 +132,13 @@ function heading() {
       ? "Authored · unreviewed"
       : current.id?.startsWith("user.")
         ? "My preset"
-        : current.id?.startsWith("reference.")
-          ? isInteractionPreview(current)
-            ? "Interaction 3D"
-            : isArtisticPreview(current)
+        : isInteractionPreview(current)
+          ? "Interaction 3D"
+          : current.id?.startsWith("reference.")
+            ? isArtisticPreview(current)
               ? "Artistic 3D"
               : "Approximate 3D"
-          : "Built-in study";
+            : "Built-in study";
   let source = $("scene-source");
   if (!source) {
     source = document.createElement("p");
@@ -279,10 +279,27 @@ const panel = buildPanel($("panel"), {
   onText: textScene,
   onHistory: travel,
 });
+let positionsReady = null;
+/** Download the built-in positions once; a failure can be retried. */
+function loadPositions() {
+  positionsReady ??= references
+    .positions()
+    .then((list) => {
+      registerPositions(list);
+      studio?.refresh();
+      return list.length;
+    })
+    .catch((error) => {
+      positionsReady = null;
+      throw error;
+    });
+  return positionsReady;
+}
 const studio = buildStudio(
   library,
   {
     select: selectPreset,
+    loadPositions,
     previewReference: selectReference,
     associate(source) {
       if (!current) return;
@@ -698,6 +715,8 @@ else if (params.has("reference")) {
     preview: params.get("preview"),
   });
 } else if (params.has("preset")) {
+  if (isPosition({ id: params.get("preset") }))
+    await loadPositions().catch(() => {});
   const preset = library.get(params.get("preset"));
   if (!preset)
     toast("That preset is not in this browser. Opening a starter study.");

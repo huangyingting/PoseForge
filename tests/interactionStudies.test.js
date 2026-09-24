@@ -152,3 +152,37 @@ test("interaction scenes load lazily through the shared verified service", async
   assert.notEqual(a.source.recordId, b.source.recordId);
   assert.equal(requests.length, 2);
 });
+
+test("every interaction is a named, playable library position that can be listed, searched and favorited", async () => {
+  const { interactionPositions, isPosition } = await import("../src/core/interactionStudies.js");
+  const { createLibrary, registerPositions } = await import("../src/app/libraryStore.js");
+  const { checkPreset, searchCatalog } = await import("../src/core/catalog.js");
+  const positions = interactionPositions(studies);
+  assert.equal(positions.length, 1283);
+  assert.equal(new Set(positions.map((p) => p.title)).size, 1283);
+  for (const p of positions) {
+    assert.ok(isPosition(p));
+    assert.deepEqual(checkPreset(p).scene, p.scene);
+  }
+  const memory = new Map();
+  const storage = { getItem: (k) => memory.get(k) ?? null, setItem: (k, v) => memory.set(k, v), removeItem: (k) => memory.delete(k) };
+  registerPositions(positions);
+  try {
+    const library = createLibrary(storage);
+    const index = library.index();
+    const listed = index.filter((p) => p.status === "interaction-3d");
+    assert.equal(listed.length, 1283);
+    assert.equal(searchCatalog(index, { scope: "named" }).filter((p) => isPosition(p)).length, 1283);
+    assert.ok(searchCatalog(index, { query: "reverse cowgirl" }).length >= 61);
+    assert.equal(searchCatalog(index, { query: "img-0001" }).filter(isPosition).length, 1);
+    const one = library.get(positions[0].id);
+    assert.equal(one.scene.actors.length, positions[0].scene.actors.length);
+    one.scene.actors[0].joints.head.rotation = 999;
+    assert.notEqual(library.get(positions[0].id).scene.actors[0].joints.head.rotation, 999);
+    library.favorite(positions[0].id);
+    assert.deepEqual(createLibrary(storage).favorites(), [positions[0].id]);
+    assert.throws(() => library.remove(positions[0].id), /Built-in/);
+  } finally {
+    registerPositions([]);
+  }
+});

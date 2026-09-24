@@ -14,6 +14,7 @@ import interactionManifest from "../data/interaction-manifest.json" with { type:
 import {
   checkInteractionStudies,
   interactionPreset,
+  interactionPositions,
 } from "../core/interactionStudies.js";
 export { artisticManifest, interactionManifest };
 
@@ -125,6 +126,10 @@ export function createReferenceService(options = {}) {
     },
     async interaction(entry) {
       return interactionPreset(entry, await interaction());
+    },
+    /** Every interaction study as a playable library position. */
+    async positions() {
+      return interactionPositions(await interaction());
     },
   };
 }

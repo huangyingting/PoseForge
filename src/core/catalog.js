@@ -294,7 +294,9 @@ export function searchCatalog(
       .toLocaleLowerCase();
     return (
       (category === "all" || preset.category === category) &&
-      (scope !== "named" || preset.id.startsWith("builtin.named.")) &&
+      (scope !== "named" ||
+        preset.id.startsWith("builtin.named.") ||
+        preset.id.startsWith("builtin.position.")) &&
       (scope !== "saved" || preset.id.startsWith("user.")) &&
       (scope !== "favorites" || favorites.includes(preset.id)) &&
       words.every((word) => haystack.includes(word))

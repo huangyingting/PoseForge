@@ -44,10 +44,84 @@ export const TEMPLATE_LABELS = {
   solo: "Single figure",
 };
 
+/** Short position names for the library, one per template. */
+export const POSITION_NAMES = {
+  missionary: "Missionary",
+  prone_on_top: "Lying on top",
+  kneeling_missionary: "Kneeling missionary",
+  edge_missionary: "Edge missionary",
+  edge_seated_facing: "Seated edge, face to face",
+  cowgirl: "Cowgirl",
+  squat_cowgirl: "Squatting cowgirl",
+  reverse_cowgirl: "Reverse cowgirl",
+  sixty_nine: "Sixty-nine",
+  side_facing: "Side by side, facing",
+  spooning: "Spooning",
+  scissors: "Scissors",
+  doggy: "Doggy style",
+  doggy_low: "Chest-down doggy",
+  kneeling_rear_upright: "Kneeling from behind",
+  standing_rear: "Standing from behind",
+  standing_bent_over: "Standing bent over",
+  furniture_rear: "Bent over furniture",
+  prone_rear: "Lying face down from behind",
+  wheelbarrow: "Wheelbarrow",
+  lap_facing: "Lap, face to face",
+  lap_reverse: "Reverse lap",
+  reclined_facing: "Reclined, face to face",
+  standing_facing: "Standing, face to face",
+  standing_carry: "Standing carry",
+  supported_inversion: "Hips raised",
+  oral_on_a: "Oral, partner reclining",
+  oral_on_b_kneeling: "Oral, kneeling",
+  oral_on_b_lying: "Oral, partner lying",
+  facesitting: "Facesitting",
+  other_pair: "Close pair",
+  solo: "Solo",
+  group_three: "Three people",
+};
+
+export const POSITION_PREFIX = "builtin.position.";
+export const isPosition = (preset) => typeof preset?.id === "string" && preset.id.startsWith(POSITION_PREFIX);
+
+const SURFACE_WORDS = { floor: "on the floor", bed: "on the bed", sofa: "on the sofa", chair: "on a chair", table: "at a table", bench: "on a bench" };
+
+/**
+ * Every interaction study as a playable library position, numbered within its
+ * position type in source order, e.g. "Cowgirl 12 · on the bed".
+ */
+export function interactionPositions(studies) {
+  const counters = {};
+  const out = [];
+  for (const record of studies.values()) {
+    const name = POSITION_NAMES[record.template] ?? POSITION_NAMES.other_pair;
+    const n = (counters[name] = (counters[name] ?? 0) + 1);
+    const where = SURFACE_WORDS[record.surface] ?? "";
+    const title = `${name} ${n}${where ? ` · ${where}` : ""}`;
+    const label = templateLabel(record.template === "group_three" ? record.base : record.template);
+    const warnings = [INTERACTION_NOTE];
+    if (!record.checks.passed) warnings.push(`Some interaction checks are unmet: ${record.checks.failures.join("; ")}.`);
+    if (record.note) warnings.push(record.note);
+    out.push({
+      id: `${POSITION_PREFIX}${record.sourceId}`,
+      title,
+      description: `${label}. Approximate 3D interaction from reference ${record.sourceId}.`,
+      category: name,
+      tags: ["interaction", "position", record.template, record.surface, record.sourceId],
+      source: { dataset: "SexPoses", recordId: record.sourceId, annotationHash: record.annotationHash },
+      scene: { ...structuredClone(record.scene), title },
+      inputWarnings: warnings,
+    });
+  }
+  return out;
+}
+
 export const templateLabel = (template) => TEMPLATE_LABELS[template] ?? TEMPLATE_LABELS.other_pair;
 
 export const isInteractionPreview = (preset) =>
-  typeof preset?.id === "string" && preset.id.startsWith("reference.") && Boolean(preset.tags?.includes("interaction"));
+  typeof preset?.id === "string" &&
+  (preset.id.startsWith("reference.") || preset.id.startsWith("builtin.position.")) &&
+  Boolean(preset.tags?.includes("interaction"));
 
 const TEMPLATE_IDS = new Set([...Object.keys(TEMPLATE_LABELS), "group_three"]);
 

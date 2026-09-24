@@ -14,6 +14,20 @@ import {
 } from "../core/referenceStudies.js";
 
 export const LIBRARY_KEY = "poseforge.library.v1";
+
+// Built-in positions arrive after startup from a separately downloaded pack.
+// They are shared stock: every library instance lists them, none stores them.
+let positions = [];
+let positionIndex = new Map();
+const stock = () => (positions.length ? [...BUILTIN_PRESETS, ...positions] : BUILTIN_PRESETS);
+const findStock = (id) => positionIndex.get(id) ?? BUILTIN_PRESETS.find((p) => p.id === id);
+
+/** Register the built-in interaction positions (replacing any earlier set). */
+export function registerPositions(list) {
+  positions = list.map((p) => Object.freeze(p));
+  positionIndex = new Map(positions.map((p) => [p.id, p]));
+}
+export const positionCount = () => positions.length;
 export const DRAFT_KEY = "poseforge.workspace.v1";
 
 /** Commit to storage before replacing memory: a failed write loses no saved work. */
@@ -89,11 +103,11 @@ export function createLibrary(storage, idFactory = () => newId()) {
     get error() {
       return loadError;
     },
-    all: () => structuredClone([...BUILTIN_PRESETS, ...saved]),
+    all: () => structuredClone([...stock(), ...saved]),
     get: (id) =>
-      structuredClone([...BUILTIN_PRESETS, ...saved].find((p) => p.id === id)),
+      structuredClone(findStock(id) ?? saved.find((p) => p.id === id)),
     index: () =>
-      [...BUILTIN_PRESETS, ...saved].map((p) => ({
+      [...stock(), ...saved].map((p) => ({
         id: p.id,
         title: p.title,
         description: p.description,
@@ -101,9 +115,11 @@ export function createLibrary(storage, idFactory = () => newId()) {
         tags: [...p.tags],
         ...(p.source ? { source: { ...p.source } } : {}),
         scene: { actors: p.scene.actors.map((a) => ({ posture: a.posture })) },
-        status: p.id.startsWith("builtin.")
-          ? "verified-3d"
-          : "needs-adjustment",
+        status: p.id.startsWith("builtin.position.")
+          ? "interaction-3d"
+          : p.id.startsWith("builtin.")
+            ? "verified-3d"
+            : "needs-adjustment",
       })),
     saved: () => structuredClone(saved),
     favorites: () => [...favorites],
@@ -141,7 +157,7 @@ export function createLibrary(storage, idFactory = () => newId()) {
       );
     },
     favorite(id) {
-      if (![...BUILTIN_PRESETS, ...saved].some((p) => p.id === id))
+      if (!findStock(id) && !saved.some((p) => p.id === id))
         throw new Error("Preset not found.");
       commit(
         saved,

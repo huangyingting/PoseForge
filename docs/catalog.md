@@ -11,8 +11,8 @@ snapshot. Clicking a card opens its ready-to-view **Interaction 3D** scene in th
 studio (see [3D interaction studies](interaction-studies.md)). Source photos, raw descriptions, intimate contact labels and private
 file paths are not shipped. The normal
 **All / Positions / Saved / Favorites** collections contain playable 3D presets.
-There are still 23 authored stock presets; indexing a reference does not add a
-corresponding verified 3D layout. All 1,283 IDs have distinct artistic compositions;
+They include the 23 authored stock presets plus all 1,283 interaction scenes as
+built-in positions (`builtin.position.img-NNNN`, grouped by position name). All 1,283 IDs have distinct artistic compositions;
 the earlier 203 shared approximations remain available in the details dialog.
 
 These are non-graphic, clothed individual posture studies. All participants are

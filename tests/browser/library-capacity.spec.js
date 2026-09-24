@@ -68,8 +68,8 @@ test("a legacy 200-preset four-figure library migrates and re-imports without da
   );
   await page.reload();
   await ready(page);
-  await expect(page.locator(".preset-card")).toHaveCount(
-    BUILTIN_PRESETS.length,
+  await expect(page.locator(".library-title > span")).toHaveText(
+    `${(BUILTIN_PRESETS.length + 1283).toLocaleString("en")} studies`,
   );
   await page.locator("#catalog-file").setInputFiles({
     name: "capacity-library.json",

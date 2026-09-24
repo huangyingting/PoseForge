@@ -10,7 +10,10 @@ test("positions are a visible collection and collection filters stay usable on n
   await page.goto("/");
   await ready(page);
   await page.getByRole("button", { name: "Positions", exact: true }).click();
-  await expect(page.locator(".preset-card")).toHaveCount(12);
+  await expect(page.locator(".library-title > span")).toHaveText(
+    "1,295 studies",
+  );
+  await expect(page.locator(".preset-card")).toHaveCount(24);
   await expect(
     page.getByRole("button", { name: "Load Missionary", exact: true }),
   ).toBeVisible();
@@ -47,7 +50,7 @@ test("positions are a visible collection and collection filters stay usable on n
   await page.getByRole("button", { name: "Saved", exact: true }).click();
   await expect(page.locator(".preset-card")).toHaveCount(0);
   await page.getByRole("button", { name: "All", exact: true }).click();
-  await expect(page.locator(".preset-card")).toHaveCount(23);
+  await expect(page.locator(".preset-card")).toHaveCount(24);
 });
 
 test("unread description text remains visible as a warning through the worker and draft reload", async ({

@@ -7,6 +7,17 @@ remain available from each reference's **ⓘ** details (**Open artistic
 interpretation** / **Open generated approximation**) and through
 `?reference=img-0001&preview=artistic|generated`.
 
+## Library positions
+
+Every scene is also registered as a read-only built-in library preset
+(`builtin.position.<img-id>`), listed in **All** and **Positions** once the pack
+has loaded (a loading row with **Retry positions** is shown meanwhile). Titles are
+`<position name> <n> · <surface>`, numbered in source order within each name; the
+category is the position name; tags include the template, surface and source ID,
+so search works by name ("reverse cowgirl") or ID ("img-0042"). Positions can be
+favorited and opened with `?preset=builtin.position.img-0042`.
+They cannot be deleted and are never written to local storage.
+
 These are **approximations composed from templates**, not measured
 reconstructions: the source images give no 3D coordinates, so each is read by eye
 and rebuilt from a small vocabulary of interaction templates. Checks are geometric

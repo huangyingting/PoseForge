@@ -7,6 +7,12 @@ arrangement each source image shows, composed from 31 interaction templates
 shown). They are approximations, not measured reconstructions. See
 [3D interaction studies](docs/interaction-studies.md).
 
+All 1,283 are also **built-in library positions**: the **All** and **Positions**
+collections list them (e.g. "Cowgirl 12 · on the bed"), the category filter groups
+them by position name, search matches names or `img-NNNN` IDs, and they can be
+favorited and deep-linked with `?preset=builtin.position.img-0001`. Select one to
+view and orbit it in 3D.
+
 Each reference also keeps its **artistic 3D composition** (**ⓘ → Open artistic
 interpretation** or `?preview=artistic`), plus **23 authored stock presets**.
 Open **References** and select a card: no authoring or import is required. The artistic compositions

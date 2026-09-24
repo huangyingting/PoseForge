@@ -3,6 +3,7 @@ import { authoredPreview, poseDiagram } from "./diagram.js";
 import { createPreviewService } from "./previewService.js";
 import { download } from "../render/exporters.js";
 import { newId } from "./ids.js";
+import { positionCount } from "./libraryStore.js";
 import {
   catalogPage,
   queryReferences,
@@ -117,6 +118,8 @@ export function buildStudio(
   let references = null;
   let referenceError = "";
   let loadingReferences = false;
+  let positionsError = "";
+  let loadingPositions = false;
   let disposed = false;
   const loadReferences = referenceService.entries;
   let loadingReference = null;
@@ -246,7 +249,7 @@ export function buildStudio(
         }),
         element("p", {
           textContent:
-            "Every reference opens as a ready-to-view 3D interaction: the clothed participants are placed together with their contacts, composed from a visual classification of the source into an interaction template. These are approximations, not source reconstructions or verified physical poses. The earlier artistic and generated studies remain available from each reference's details. No editing or import is required.",
+            "The library includes 1,283 built-in 3D positions (All and Positions), one per source reference. Every reference also opens as a ready-to-view 3D interaction: the clothed participants are placed together with their contacts, composed from a visual classification of the source into an interaction template. These are approximations, not source reconstructions or verified physical poses. The earlier artistic and generated studies remain available from each reference's details. No editing or import is required.",
         }),
         element("p", {
           textContent: `Saved in this browser using ${library.mode ?? "local storage"}. Up to 5,000 presets / 32 MB. Export JSON for a portable backup; this is not cloud storage.`,
@@ -522,7 +525,40 @@ export function buildStudio(
     }).filter(
       (p) => supportStatus.value === "all" || p.status === supportStatus.value,
     );
-    count.textContent = `${filtered.length} studies`;
+    count.textContent = `${filtered.length.toLocaleString("en")} studies`;
+    if (
+      handlers.loadPositions &&
+      !positionCount() &&
+      (scope === "all" || scope === "named")
+    ) {
+      const status = element("div", { className: "positions-status" }, [
+        element("p", {
+          textContent: positionsError
+            ? `The 3D positions could not load: ${positionsError}`
+            : "Loading 1,283 3D positions…",
+        }),
+      ]);
+      if (positionsError)
+        status.append(
+          button("Retry positions", () => {
+            positionsError = "";
+            refresh();
+          }),
+        );
+      else if (!loadingPositions) {
+        loadingPositions = true;
+        handlers
+          .loadPositions()
+          .catch((error) => {
+            positionsError = error.message;
+          })
+          .finally(() => {
+            loadingPositions = false;
+            if (!disposed) refresh();
+          });
+      }
+      list.append(status);
+    }
     const paged = updatePages(filtered);
     for (const entry of paged.entries) {
       const preset = library.get(entry.id);
@@ -558,7 +594,9 @@ export function buildStudio(
             className: `support-badge ${entry.status}`,
             textContent: STATUS_LABELS[entry.status],
             title:
-              entry.status === "verified-3d"
+              entry.status === "interaction-3d"
+                ? "Approximate 3D interaction composed from a template; not a measured reconstruction."
+                : entry.status === "verified-3d"
                 ? "Audited stock configuration only; edits need their own checks."
                 : "This personal preset has not been individually certified. Inspect Pose checks; adjustment may be needed.",
           }),
