@@ -45,6 +45,14 @@ Position links use `?preset=builtin.position.img-0001`; alternate views add
 `&variant=artistic|generated`. Orbit, zoom, editing, save and export use the
 same position contract.
 
+The normalized data model has one owner for each fact: `scene.actors` contains
+all participants, `scene.contacts` is the connected interaction graph,
+`scene.support.surface` owns support, `source` owns provenance, and `position`
+contains taxonomy/variant only. The same contract supports one to four
+participants. See the [position architecture](docs/position-architecture.md)
+for module ownership, IDs, lazy loading, cancellation, persistence, migration
+and extension rules.
+
 Each source-linked position can have one independently saved, clothed local
 override. Use **Edit posture → Save position override**, or **Library tools**
 for validated bulk import/export. The same position card prefers the override

@@ -16,13 +16,15 @@ intimate contact labels and private file paths are not shipped. All 1,283 IDs
 also have distinct artistic compositions;
 the earlier 203 shared approximations remain available in the details dialog.
 
-These are non-graphic, clothed individual posture studies. All participants are
-retained, including single- and three-person records, but they are displayed
-separately. Artistic joint angles come from a designed gesture vocabulary and
-whole-body bases, not measured source coordinates. A neutral floor replaces original furniture and
-external supports. Original relative facing, relationship and contact details
-are not reconstructed. **Pose checks** retains these approximation notes and
-any measured geometry problems; renderability is not physical certification.
+The canonical **Interaction 3D** scenes are non-graphic, clothed interactions:
+all participants are retained together with a connected contact graph, including
+single- and three-person records. They are template-composed approximations, not
+measured reconstructions. The artistic and generated alternatives deliberately
+display participants separately. Their joint angles come from designed gesture
+vocabularies and whole-body bases rather than measured source coordinates, and a
+neutral floor replaces original furniture and external supports. **Pose checks**
+retains approximation notes and measured geometry problems; renderability is not
+physical certification.
 
 The compact library keeps search and **Positions / Saved / Favorites** visible.
 **Browse position categories** expands ten broad categories into their related

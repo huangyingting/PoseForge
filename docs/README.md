@@ -1,7 +1,8 @@
 # Design documentation
 
 Start with the [position architecture](position-architecture.md) for the current
-domain contracts and module boundaries. The
+domain contracts, normalized data model, IDs, loading lifecycle, module
+boundaries, persistence rules and multi-person extension path. The
 [interaction studies](interaction-studies.md) describe the 1,283 canonical
 source-linked positions. The [position override guide](position-overrides.md)
 documents local replacements and portable import/export.

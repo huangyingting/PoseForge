@@ -10,8 +10,10 @@ see the [artistic collection](artistic-collection.md) for the bundled content.
 
 1. Open **Positions**, search by position name or source ID, and select a card.
 2. Choose **Edit posture**. Use the existing figure controls, joint sliders and
-   Placement controls. Keep all participants, with top and shorts, separate on
-   a neutral floor. No partner contacts are accepted in this workflow.
+   Placement controls. Keep every participant, clothed, in the complete
+   interaction. Multi-person overrides must retain a connected participant
+   graph through **Scene → Partner contacts**; they are not separate posture
+   studies.
 3. Wait for the preview to finish, then choose **Save position override**. On
    mobile, return to **Studio** to access this action. The save captures the
    completed joint angles and placements; name it and choose **Save override**.
@@ -25,11 +27,12 @@ cards.
 Authored is a storage/workflow label, not a claim of physical quality, source
 fidelity, distinct geometry, or independent review. Pose checks remain visible.
 
-The information button offers **Open generated approximation**, without deleting
-the authored version. That choice survives reload via `&variant=generated`.
+The information button offers **Open artistic interpretation** and **Open
+generated approximation**, without deleting the authored version. That choice
+survives reload via `&variant=artistic` or `&variant=generated`.
 Opening the main position card again selects the authored version. To remove an
 override, open it, choose **Save preset → Delete preset**, and confirm.
-Its built-in artistic view returns, and its generated fallback remains available.
+Its built-in interaction returns, and both alternate variants remain available.
 Deletion removes the local saved
 study; recovery requires an exported backup or resaving the still-open scene.
 
