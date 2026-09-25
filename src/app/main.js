@@ -14,16 +14,20 @@ import { createPersistentLibrary } from "./persistentLibrary.js";
 import { buildStudio, toast, showRegion, openExport } from "./studioUI.js";
 import { bindCameraInput } from "./cameraInput.js";
 import { bindWorkspaceLayout } from "./workspaceLayout.js";
-import { createPositionService } from "./referenceLoader.js";
+import { createPositionService } from "./positionService.js";
 import {
-  isReferenceStudy,
-  referenceStudyId,
-  checkReferenceStudy,
-  referenceStudyMatches,
-} from "../core/referenceStudies.js";
+  isPositionOverride,
+  positionOverrideId,
+} from "../core/positionOverrides.js";
+import {
+  isBuiltInPosition,
+  isPositionVariant,
+  positionId,
+  positionSourceId,
+} from "../core/positionContract.js";
 import { captureSolvedPose } from "../core/placement.js";
-import { isArtisticPreview } from "../core/artisticStudies.js";
-import { isInteractionPreview, isPosition } from "../core/interactionStudies.js";
+import { isArtisticPosition } from "../core/artisticStudies.js";
+import { isInteractionPosition } from "../core/interactionStudies.js";
 
 const $ = (id) => document.getElementById(id);
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -61,7 +65,7 @@ try {
 }
 canvas.addEventListener("webglcontextlost", (event) => {
   event.preventDefault();
-  delete $("viewport-error").dataset.referenceMissing;
+  delete $("viewport-error").dataset.positionMissing;
   $("viewport-error").hidden = false;
   $("viewport-error").textContent =
     "The 3D connection was interrupted. Reload to restore the preview; your latest scene is saved in this browser.";
@@ -84,7 +88,7 @@ let past = [];
 let future = [];
 let storageWarned = false;
 let exporting = false;
-let referenceRequest = 0;
+let positionRequest = 0;
 const positions = createPositionService();
 
 function status(message, busy = false) {
@@ -129,16 +133,16 @@ function heading() {
   $("scene-description").title = $("scene-description").textContent;
   $("scene-badge").textContent = current.dirty
     ? "Unsaved changes"
-    : isReferenceStudy(current)
+    : isPositionOverride(current)
       ? "Authored · unreviewed"
       : current.id?.startsWith("user.")
         ? "My preset"
-        : isInteractionPreview(current)
+        : isInteractionPosition(current)
           ? "Interaction 3D"
-          : current.id?.startsWith("reference.")
-            ? isArtisticPreview(current)
-              ? "Artistic 3D"
-              : "Approximate 3D"
+          : isArtisticPosition(current)
+            ? "Artistic 3D"
+            : isPositionVariant(current, "generated")
+              ? "Approximate 3D"
             : "Built-in study";
   let source = $("scene-source");
   if (!source) {
@@ -149,9 +153,9 @@ function heading() {
   }
   source.hidden = !current.source;
   source.textContent = current.source
-    ? `Source: SexPoses ${current.source.recordId} · ${isInteractionPreview(current) ? "approximate interaction" : isArtisticPreview(current) ? "artistic interpretation" : current.id?.startsWith("reference.") ? "generated approximation" : "independent study"}, not a verified reconstruction`
+    ? `Source: SexPoses ${current.source.recordId} · ${isInteractionPosition(current) ? "approximate interaction" : isArtisticPosition(current) ? "artistic interpretation" : current.position?.variant === "generated" ? "generated approximation" : "independent study"}, not a verified reconstruction`
     : "";
-  $("reference-actions").hidden = !current.source;
+  $("position-actions").hidden = !current.source;
 }
 function solve(scene, { frame = false } = {}) {
   request += 1;
@@ -160,19 +164,19 @@ function solve(scene, { frame = false } = {}) {
   shouldFrame = frame;
   $("save-preset").disabled = true;
   $("open-export").disabled = true;
-  $("reference-save").disabled = true;
+  $("position-save").disabled = true;
   $("panel").setAttribute("aria-busy", "true");
   status("Shaping your study…", true);
   worker.postMessage({ id: request, scene });
 }
-function cancelReferenceLoad() {
-  referenceRequest += 1;
-  studio.setReferenceLoading(null);
+function cancelPositionLoad() {
+  positionRequest += 1;
+  studio.setPositionLoading(null);
 }
-function apply(next, { history = true, frame = false } = {}) {
-  cancelReferenceLoad();
-  if ($("viewport-error").dataset.referenceMissing) {
-    delete $("viewport-error").dataset.referenceMissing;
+function apply(next, { history = true, frame = false, selectedId } = {}) {
+  cancelPositionLoad();
+  if ($("viewport-error").dataset.positionMissing) {
+    delete $("viewport-error").dataset.positionMissing;
     if (view) $("viewport-error").hidden = true;
   }
   if (history) remember();
@@ -186,63 +190,70 @@ function apply(next, { history = true, frame = false } = {}) {
     current.scene,
     SKIN.map((color) => `#${color.toString(16).padStart(6, "0")}`),
   );
-  studio.setSelected(current.id);
+  studio.setSelected(
+    selectedId ??
+      (current.source && current.position?.variant !== "studio"
+        ? positionId(current.source.recordId)
+        : current.id),
+  );
   persist();
   solve(current.scene, { frame });
 }
 function selectPreset(preset, options = {}) {
-  apply({ ...preset, dirty: false }, { frame: true, ...options });
+  apply(
+    { ...preset, dirty: false },
+    {
+      frame: true,
+      ...options,
+      selectedId: options.catalogId ?? preset.id,
+    },
+  );
   const url = new URL(location.href);
   url.search = "";
-  if (
-    (preset.id?.startsWith("reference.") || isReferenceStudy(preset)) &&
-    preset.source
-  )
-    url.searchParams.set("reference", preset.source.recordId);
-  else url.searchParams.set("preset", preset.id);
-  if (options.preview === "generated" || options.preview === "artistic")
-    url.searchParams.set("preview", options.preview);
+  url.searchParams.set("preset", options.catalogId ?? preset.id);
+  if (options.variant === "generated" || options.variant === "artistic")
+    url.searchParams.set("variant", options.variant);
   history.replaceState(null, "", url);
   showRegion("studio");
   if (matchMedia("(max-width: 900px)").matches) canvas.focus();
 }
-async function selectReference(value, options = {}) {
-  const token = ++referenceRequest;
-  studio.setReferenceLoading(
-    typeof value === "string" ? `reference.sexposes.${value}` : value.id,
-  );
+async function selectPosition(value, options = {}) {
+  const token = ++positionRequest;
+  const sourceId = typeof value === "string" ? value : value.sourceId;
+  const catalogId = positionId(sourceId);
+  studio.setPositionLoading(catalogId);
   try {
+    if (!options.variant) {
+      const override = library.get(positionOverrideId(sourceId));
+      if (isPositionOverride(override)) {
+        if (token !== positionRequest) return false;
+        selectPreset(override, { ...options, catalogId });
+        return true;
+      }
+    }
     const entry =
-      typeof value === "string" ? await positions.find(value) : value;
-    const alternate =
-      options.preview === "generated" || options.preview === "artistic";
-    const authored = alternate
-      ? null
-      : library.get(referenceStudyId(entry.sourceId));
-    const usable = authored && referenceStudyMatches(authored, entry);
-    const preset = usable
-      ? checkReferenceStudy(authored, entry)
-      : options.preview === "generated"
-        ? await positions.preset(entry)
-        : options.preview === "artistic"
-          ? await positions.artistic(entry)
-          : await positions.interaction(entry);
-    if (token !== referenceRequest) return false;
-    if (authored && !usable)
-      toast(
-        "The saved study no longer matches this source. Opening its built-in 3D interaction; the saved study was kept.",
-      );
-    selectPreset(preset, options);
+      typeof value === "string" ? await positions.source(value) : value;
+    if (token !== positionRequest) return false;
+    await loadPositions();
+    if (token !== positionRequest) return false;
+    const preset =
+      options.variant === "generated"
+        ? await positions.variant(entry, "generated")
+        : options.variant === "artistic"
+          ? await positions.variant(entry, "artistic")
+          : library.resolve(catalogId);
+    if (!preset) throw new Error("Position is not available.");
+    selectPreset(preset, { ...options, catalogId });
     if (matchMedia("(max-width: 900px)").matches) canvas.focus();
     return true;
   } catch (error) {
-    if (token === referenceRequest)
+    if (token === positionRequest)
       toast(
-        `3D preview unavailable: ${error.message} Your current study was kept. Select the reference to retry.`,
+        `3D position unavailable: ${error.message} Your current study was kept. Select the position to retry.`,
       );
     return false;
   } finally {
-    if (token === referenceRequest) studio.setReferenceLoading(null);
+    if (token === positionRequest) studio.setPositionLoading(null);
   }
 }
 function edit(scene) {
@@ -264,6 +275,11 @@ function textScene(text) {
       description: text,
       category: "My studies",
       tags: [],
+      position: {
+        type: "custom",
+        name: "Custom study",
+        variant: "studio",
+      },
       scene: parsed.scene,
       dirty: true,
       inputWarnings: parsed.warnings,
@@ -302,10 +318,10 @@ const studio = buildStudio(
   {
     select: selectPreset,
     loadPositions,
-    previewReference: selectReference,
+    openPosition: selectPosition,
     associate(source) {
       if (!current) return;
-      cancelReferenceLoad();
+      cancelPositionLoad();
       remember();
       current = { ...current, source, dirty: true };
       heading();
@@ -319,6 +335,11 @@ const studio = buildStudio(
           description: "",
           category: "My studies",
           tags: [],
+          position: {
+            type: "custom",
+            name: "Untitled study",
+            variant: "studio",
+          },
           dirty: true,
           scene: {
             actors: [
@@ -345,7 +366,7 @@ const studio = buildStudio(
       showRegion("studio");
     },
     saved(preset) {
-      cancelReferenceLoad();
+      cancelPositionLoad();
       current = { ...preset, dirty: false };
       heading();
       persist();
@@ -356,7 +377,7 @@ const studio = buildStudio(
     },
     deleted(id) {
       if (current.id === id) {
-        cancelReferenceLoad();
+        cancelPositionLoad();
         current.id = null;
         current.dirty = true;
         heading();
@@ -375,9 +396,9 @@ function collectNotes(data) {
     ? current.inputWarnings.filter((message) => typeof message === "string")
     : [];
   const notes = [
-    ...(isReferenceStudy(current)
+    ...(isPositionOverride(current)
       ? [
-          "Locally authored, separate clothed posture study. Unreviewed; not a verified reconstruction.",
+          "Locally authored position override. Unreviewed; not a verified reconstruction.",
         ]
       : []),
     ...inputWarnings,
@@ -420,7 +441,7 @@ function collectNotes(data) {
 function workerFailure(message) {
   ready = false;
   completedActors = null;
-  $("reference-save").disabled = true;
+  $("position-save").disabled = true;
   panel.setSolvedActors([], { complete: false });
   $("show-notes").hidden = false;
   $("panel").setAttribute("aria-busy", "false");
@@ -437,14 +458,14 @@ worker.onmessage = ({ data }) => {
   if (data.id !== request) return;
   if (data.stage === "error") return workerFailure(data.error.split("\n")[0]);
   if (
-    (current.id?.startsWith("reference.") || isReferenceStudy(current)) &&
+    current.source &&
     data.meshes.some((mesh) => mesh.source !== "scanned")
   ) {
     const message =
-      "Clothed 3D reference preview unavailable because a body model could not load. Reload to retry.";
+      "Clothed 3D position unavailable because a body model could not load. Reload to retry.";
     if (view) {
       $("viewport-error").textContent = message;
-      $("viewport-error").dataset.referenceMissing = "true";
+      $("viewport-error").dataset.positionMissing = "true";
       $("viewport-error").hidden = false;
     }
     return workerFailure(message);
@@ -474,7 +495,7 @@ worker.onmessage = ({ data }) => {
   completedActors = ready ? data.actors : null;
   $("save-preset").disabled = !ready;
   $("open-export").disabled = !ready;
-  $("reference-save").disabled = !ready;
+  $("position-save").disabled = !ready;
   $("panel").setAttribute("aria-busy", String(!ready));
   status(
     ready
@@ -499,7 +520,7 @@ document.querySelectorAll("[data-view]").forEach(
     (node.onclick = () => {
       setView(node.dataset.view);
       if (current) {
-        cancelReferenceLoad();
+        cancelPositionLoad();
         remember();
         current.scene.camera = { view: node.dataset.view };
         current.dirty = true;
@@ -540,20 +561,20 @@ $("material").onchange = () => {
 };
 $("save-preset").onclick = () => {
   if (ready) {
-    cancelReferenceLoad();
+    cancelPositionLoad();
     studio.openSave(clone(current));
   }
 };
-$("reference-edit").onclick = () => {
-  cancelReferenceLoad();
+$("position-edit").onclick = () => {
+  cancelPositionLoad();
   workspace.setFocus(false);
   showRegion("edit");
   panel.showFigures();
 };
-$("reference-save").onclick = async () => {
+$("position-save").onclick = async () => {
   if (!ready || !current.source || !completedActors) return;
-  cancelReferenceLoad();
-  const token = referenceRequest;
+  cancelPositionLoad();
+  const token = positionRequest;
   const snapshot = clone(current);
   try {
     snapshot.scene.actors = snapshot.scene.actors.map((actor) => ({
@@ -562,20 +583,30 @@ $("reference-save").onclick = async () => {
         completedActors.find((value) => value.id === actor.id),
       ),
     }));
-    const entry = await positions.find(snapshot.source.recordId);
-    if (token !== referenceRequest) return;
-    studio.openReferenceSave(snapshot, entry, (preset) => {
-      if (token === referenceRequest) selectPreset(preset);
+    let base =
+      library.get(positionId(snapshot.source.recordId)) ??
+      library.get(positionOverrideId(snapshot.source.recordId));
+    if (!base) {
+      await loadPositions();
+      base = library.get(positionId(snapshot.source.recordId));
+    }
+    if (!base) throw new Error("The source position is unavailable.");
+    if (token !== positionRequest) return;
+    studio.openPositionSave(snapshot, base, (preset) => {
+      if (token === positionRequest)
+        selectPreset(preset, {
+          catalogId: positionId(snapshot.source.recordId),
+        });
       else studio.refresh();
     });
   } catch (error) {
-    if (token === referenceRequest)
-      toast(`Reference study not saved: ${error.message}`);
+    if (token === positionRequest)
+      toast(`Position override not saved: ${error.message}`);
   }
 };
 $("open-export").onclick = () => {
   if (ready) {
-    cancelReferenceLoad();
+    cancelPositionLoad();
     openExport(exportImage);
   }
 };
@@ -707,21 +738,20 @@ try {
   );
 }
 if (params.has("q")) textScene(params.get("q"));
-else if (params.has("reference")) {
-  apply(restored ?? { ...BUILTIN_PRESETS[0], dirty: false }, {
-    history: false,
-    frame: true,
-  });
-  await selectReference(params.get("reference"), {
-    history: false,
-    preview: params.get("preview"),
-  });
-} else if (params.has("preset")) {
-  if (isPosition({ id: params.get("preset") }))
-    await loadPositions().catch(() => {});
-  const preset = library.get(params.get("preset"));
-  if (!preset)
-    toast("That preset is not in this browser. Opening a starter study.");
-  selectPreset(preset ?? BUILTIN_PRESETS[0], { history: false });
+else if (params.has("preset")) {
+  const id = params.get("preset");
+  const sourceId = positionSourceId(id);
+  if (sourceId) {
+    apply(restored ?? BUILTIN_PRESETS[0], { history: false, frame: true });
+    await selectPosition(sourceId, {
+      history: false,
+      variant: params.get("variant"),
+    });
+  } else {
+    const preset = library.resolve(id);
+    if (!preset)
+      toast("That preset is not in this browser. Opening a starter study.");
+    selectPreset(preset ?? BUILTIN_PRESETS[0], { history: false });
+  }
 } else if (restored) apply(restored, { history: false, frame: true });
 else selectPreset(BUILTIN_PRESETS[0], { history: false });

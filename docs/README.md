@@ -1,7 +1,13 @@
 # Design documentation
 
-The [artistic collection](artistic-collection.md) is the current ready-to-view
-content delivery: 1,283 distinct, clothed compositions with no import required.
+Start with the [position architecture](position-architecture.md) for the current
+domain contracts and module boundaries. The
+[interaction studies](interaction-studies.md) describe the 1,283 canonical
+source-linked positions. The [position override guide](position-overrides.md)
+documents local replacements and portable import/export.
+
+The [artistic collection](artistic-collection.md) is an alternate ready-to-view
+variant: 1,283 distinct, clothed compositions with no import required.
 Its [plan](artistic-collection-plan.md) distinguishes original interpretation
 from source reconstruction and defines the geometry/render coverage gates.
 The [verification report](artistic-collection-verification.md) records all 1,283
@@ -11,29 +17,16 @@ Start with the [studio redesign](studio-redesign.md) for the current interface
 contract and [catalog guide](catalog.md) for saving, importing and authoring
 portable presets. [Verification evidence](studio-verification.md) records the
 historical studio checks and limitations. The [catalog scale plan](catalog-scale-plan.md)
-and [catalog scale verification](catalog-scale-verification.md) cover the later
-1,283-record reference index and larger persistent libraries. The documents below
+and [catalog scale verification](catalog-scale-verification.md) cover the
+1,283-record source index and larger persistent libraries. The documents below
 describe the underlying geometry engine.
 
 The later [compact UI plan](compact-ui-plan.md) and
 [UI verification](compact-ui-verification.md) cover the tighter layout,
 filter disclosure, denser rows, keyboard search and desktop focus mode.
 
-The [3D reference plan](reference-3d-plan.md) and
-[verification](reference-3d-verification.md) cover interactive posture previews
-for every source record, with separate clothed figures and explicit approximation
-notes. Original source interactions are not reconstructed.
-
-The [reference authoring plan](reference-authoring-plan.md) and
-[workflow guide](reference-authoring.md) describe independently saved reference
-studies, coverage status and validated bulk import/export. Authored does not mean
-verified, accurate to the source, or geometrically unique.
-The [authoring verification report](reference-authoring-verification.md) records
-the full-size import/export checks, browser evidence and remaining limitations.
-
-The 23 authored presets passed the previous complete rendered audit. The new
-reference index does not certify additional 3D poses; it labels all imported
-references separately from authored presets.
+Older plan and audit documents are historical evidence. Their former
+reference-era names and routes are not runtime contracts.
 
 These describe *why* the system is built the way it is. The code carries the
 "what" in its own comments; these carry the reasoning, the measurements, and the

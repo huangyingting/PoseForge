@@ -1,24 +1,6 @@
-/** Source index with separately loaded approximate posture studies. */
-import { REFERENCE_PREVIEW_NOTES } from "./referencePreviews.js";
+/** Source index with separately loaded generated posture studies. */
+import { GENERATED_STUDY_NOTES } from "./generatedStudies.js";
 export const CATALOG_PAGE_SIZE = 24;
-export const REFERENCE_STATUSES = [
-  "reference-only",
-  "approximate-3d",
-  "artistic-3d",
-  "interaction-3d",
-  "authored-3d",
-  "needs-adjustment",
-  "verified-3d",
-];
-export const STATUS_LABELS = {
-  "reference-only": "Reference only",
-  "approximate-3d": "Approximate 3D",
-  "artistic-3d": "Artistic 3D",
-  "interaction-3d": "Interaction 3D",
-  "authored-3d": "Authored · unreviewed",
-  "needs-adjustment": "Needs adjustment",
-  "verified-3d": "Verified 3D preset",
-};
 const FAMILIES = new Set([
   "Standing",
   "Seated",
@@ -40,9 +22,9 @@ const SURFACES = new Set([
 const digest = (value) =>
   typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
 
-export function checkReferences(pack, manifest) {
+export function checkSourceCatalog(pack, manifest) {
   if (
-    pack?.format !== "poseforge.references" ||
+    pack?.format !== "poseforge.sources" ||
     pack.version !== 1 ||
     !Array.isArray(pack.entries) ||
     pack.entries.length !== manifest.records ||
@@ -50,7 +32,7 @@ export function checkReferences(pack, manifest) {
     pack.entries.length > 20_000
   )
     throw new Error(
-      "Reference catalog count or format does not match its manifest.",
+      "Source catalog count or format does not match its manifest.",
     );
   const ids = new Set();
   for (const e of pack.entries) {
@@ -58,7 +40,7 @@ export function checkReferences(pack, manifest) {
       !e ||
       typeof e.sourceId !== "string" ||
       !/^[a-z0-9][a-z0-9_.-]{0,99}$/i.test(e.sourceId ?? "") ||
-      e.id !== `reference.sexposes.${e.sourceId}` ||
+      e.id !== `source.sexposes.${e.sourceId}` ||
       ids.has(e.id) ||
       !Number.isInteger(e.figures) ||
       e.figures < 1 ||
@@ -68,15 +50,14 @@ export function checkReferences(pack, manifest) {
       e.postures.some((p) => !FAMILIES.has(p)) ||
       e.family !== [...new Set(e.postures)].sort().join(" + ") ||
       !SURFACES.has(e.surface) ||
-      e.status !== "approximate-3d" ||
-      !digest(e.previewKey) ||
-      !Array.isArray(e.previewNotes) ||
-      e.previewNotes.length > 8 ||
+      !digest(e.generatedKey) ||
+      !Array.isArray(e.generatedNotes) ||
+      e.generatedNotes.length > 8 ||
       !["separate-participants", "approximate-joints", "assumed-floor"].every(
-        (code) => e.previewNotes.includes(code),
+        (code) => e.generatedNotes.includes(code),
       ) ||
-      e.previewNotes.some(
-        (code) => !Object.hasOwn(REFERENCE_PREVIEW_NOTES, code),
+      e.generatedNotes.some(
+        (code) => !Object.hasOwn(GENERATED_STUDY_NOTES, code),
       ) ||
       ![e.annotationHash, e.variant, e.imageHash].every(digest) ||
       Object.keys(e).some(
@@ -88,16 +69,15 @@ export function checkReferences(pack, manifest) {
             "family",
             "postures",
             "surface",
-            "status",
             "annotationHash",
             "variant",
             "imageHash",
-            "previewKey",
-            "previewNotes",
+            "generatedKey",
+            "generatedNotes",
           ].includes(k),
       )
     )
-      throw new Error("Invalid or duplicate reference metadata.");
+      throw new Error("Invalid or duplicate source metadata.");
     ids.add(e.id);
   }
   for (const key of ["figures", "families"]) {
@@ -109,31 +89,30 @@ export function checkReferences(pack, manifest) {
       counts.size !== Object.keys(manifest[key]).length ||
       [...counts].some(([name, count]) => manifest[key][name] !== count)
     )
-      throw new Error("Reference family counts do not match the manifest.");
+      throw new Error("Source family counts do not match the manifest.");
   }
   if (
     new Set(pack.entries.map((e) => e.variant)).size !== manifest.variants ||
     new Set(pack.entries.map((e) => e.imageHash)).size !==
       manifest.uniqueImages ||
-    new Set(pack.entries.map((e) => e.previewKey)).size !==
-      manifest.previews?.scenes
+    new Set(pack.entries.map((e) => e.generatedKey)).size !==
+      manifest.generated?.scenes
   )
-    throw new Error("Reference grouping does not match the manifest.");
+    throw new Error("Source grouping does not match the manifest.");
   return pack.entries.map((e) =>
     Object.freeze({
       ...e,
       postures: Object.freeze([...e.postures]),
-      previewNotes: Object.freeze([...e.previewNotes]),
+      generatedNotes: Object.freeze([...e.generatedNotes]),
     }),
   );
 }
 
-export function queryReferences(
+export function querySources(
   entries,
   {
     query = "",
     family = "all",
-    status = "all",
     group = false,
     favorites = null,
   } = {},
@@ -142,7 +121,6 @@ export function queryReferences(
   const filtered = entries.filter(
     (e) =>
       (family === "all" || e.family === family) &&
-      (status === "all" || status === e.status) &&
       (!favorites || favorites.includes(e.id)) &&
       words.every((word) =>
         /^[1-4]$/.test(word)
@@ -155,7 +133,7 @@ export function queryReferences(
   if (!group) return filtered;
   const groups = new Map();
   for (const e of filtered) {
-    const key = e.status === "authored-3d" ? e.id : e.variant;
+    const key = e.variant;
     if (groups.has(key)) groups.get(key).members.push(e.sourceId);
     else groups.set(key, { ...e, members: [e.sourceId] });
   }

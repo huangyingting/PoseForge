@@ -2,16 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { buildReferenceCatalog } from "../scripts/build-reference-catalog.mjs";
+import { buildSourceCatalog } from "../scripts/build-source-catalog.mjs";
 import {
-  checkReferences,
-  queryReferences,
+  checkSourceCatalog,
+  querySources,
   catalogPage,
-} from "../src/core/referenceCatalog.js";
+} from "../src/core/sourceCatalog.js";
 import {
-  createReferenceLoader,
-  referenceManifest as manifest,
-} from "../src/app/referenceLoader.js";
+  createSourceCatalogLoader,
+  sourceManifest as manifest,
+} from "../src/app/positionService.js";
 import {
   BUILTIN_PRESETS,
   checkPreset,
@@ -43,18 +43,14 @@ const row = (id = "img-0001") => ({
   },
 });
 
-test("committed reference snapshot reconciles all counts, hashes and allowlisted fields", () => {
-  const entries = checkReferences(pack, manifest);
+test("committed source snapshot reconciles all counts, hashes and allowlisted fields", () => {
+  const entries = checkSourceCatalog(pack, manifest);
   assert.equal(entries.length, 1283);
   assert.equal(hash(bytes), manifest.dataSha256);
   assert.equal(bytes.length, manifest.bytes);
   assert.deepEqual(manifest.figures, { 1: 12, 2: 1258, 3: 13 });
   assert.equal(manifest.variants, 379);
   assert.equal(Object.keys(manifest.families).length, 22);
-  assert.equal(
-    entries.every((e) => e.status === "approximate-3d"),
-    true,
-  );
   assert.equal(Object.isFrozen(entries[0]), true);
 });
 
@@ -62,29 +58,29 @@ test("offline importer preserves source identity and deterministic groups withou
   const first = row(),
     second = row("img-0002");
   const text = [first, second].map(JSON.stringify).join("\n");
-  const output = buildReferenceCatalog(text);
+  const output = buildSourceCatalog(text);
   assert.equal(output.manifest.records, 2);
   assert.equal(output.manifest.variants, 1);
   assert.equal(output.manifest.uniqueImages, 1);
   assert.equal(
     output.data,
-    buildReferenceCatalog([second, first].map(JSON.stringify).join("\n")).data,
+    buildSourceCatalog([second, first].map(JSON.stringify).join("\n")).data,
   );
-  assert.equal(output.data, buildReferenceCatalog(text).data);
+  assert.equal(output.data, buildSourceCatalog(text).data);
   assert.ok(!/private|image_path|description_en|contacts/.test(output.data));
   second.visual_annotation.participants[0].arms = ["raised"];
-  const changed = buildReferenceCatalog(
+  const changed = buildSourceCatalog(
     [first, second].map(JSON.stringify).join("\n"),
   );
   assert.equal(changed.manifest.variants, 2);
   assert.equal(changed.entries[1].id, output.entries[1].id);
 });
 
-test("malformed inputs and duplicate IDs fail the whole reference import", () => {
-  assert.throws(() => buildReferenceCatalog(""), /No reference/);
-  assert.throws(() => buildReferenceCatalog("{"));
+test("malformed inputs and duplicate IDs fail the whole source import", () => {
+  assert.throws(() => buildSourceCatalog(""), /No source/);
+  assert.throws(() => buildSourceCatalog("{"));
   assert.throws(
-    () => buildReferenceCatalog([row(), row()].map(JSON.stringify).join("\n")),
+    () => buildSourceCatalog([row(), row()].map(JSON.stringify).join("\n")),
     /Duplicate/,
   );
   for (const mutate of [
@@ -106,7 +102,7 @@ test("malformed inputs and duplicate IDs fail the whole reference import", () =>
   ]) {
     const r = row();
     mutate(r);
-    assert.throws(() => buildReferenceCatalog(JSON.stringify(r)));
+    assert.throws(() => buildSourceCatalog(JSON.stringify(r)));
   }
 });
 
@@ -128,30 +124,22 @@ test("all pages expose every reference exactly once and clamp invalid page reque
 });
 
 test("source search, family, status and annotation grouping compose without claiming unique positions", () => {
-  assert.equal(queryReferences(pack.entries, { query: "IMG-0001" }).length, 1);
+  assert.equal(querySources(pack.entries, { query: "IMG-0001" }).length, 1);
   for (const [family, count] of Object.entries(manifest.families))
-    assert.equal(queryReferences(pack.entries, { family }).length, count);
+    assert.equal(querySources(pack.entries, { family }).length, count);
   assert.equal(
-    queryReferences(pack.entries, { group: true }).length,
+    querySources(pack.entries, { group: true }).length,
     manifest.variants,
   );
   assert.equal(
-    queryReferences(pack.entries, { group: true }).reduce(
+    querySources(pack.entries, { group: true }).reduce(
       (n, e) => n + e.members.length,
       0,
     ),
     1283,
   );
-  assert.equal(
-    queryReferences(pack.entries, { status: "verified-3d" }).length,
-    0,
-  );
-  assert.equal(
-    queryReferences(pack.entries, { status: "needs-adjustment" }).length,
-    0,
-  );
   assert.ok(
-    queryReferences(pack.entries, { query: "2 figures floor" }).every(
+    querySources(pack.entries, { query: "2 figures floor" }).every(
       (e) => e.figures === 2 && e.surface === "Floor",
     ),
   );
@@ -175,13 +163,13 @@ test("metadata validation rejects count drift, duplicate IDs and forged support 
   ]) {
     const p = structuredClone(pack);
     mutate(p);
-    assert.throws(() => checkReferences(p, manifest));
+    assert.throws(() => checkSourceCatalog(p, manifest));
   }
 });
 
-test("reference loader is lazy, shares requests, retries failure and verifies bytes", async () => {
+test("source loader is lazy, shares requests, retries failure and verifies bytes", async () => {
   let requests = 0;
-  const load = createReferenceLoader({
+  const load = createSourceCatalogLoader({
     base: "/nested/",
     fetcher: async (url, options) => {
       assert.equal(url, "/nested/catalog/sexposes-v1.json");
@@ -203,7 +191,7 @@ test("reference loader is lazy, shares requests, retries failure and verifies by
     Buffer.concat([bytes, Buffer.from(" ")]),
     Buffer.from(bytes.toString().replace("img-0001", "img-0000")),
   ]) {
-    const bad = createReferenceLoader({
+    const bad = createSourceCatalogLoader({
       fetcher: async () => new Response(data),
       digest: hash,
     });

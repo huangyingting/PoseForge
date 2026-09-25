@@ -4,6 +4,8 @@ import {
   BODY_TYPES,
   JOINT_MODES,
   MAX_CONTACT_TYPE_LENGTH,
+  MAX_SCENE_ACTORS,
+  MIN_SCENE_ACTORS,
 } from "./scene.js";
 import {
   POSTURE_NAMES,
@@ -17,6 +19,9 @@ import { HAIR_STYLES } from "./hair.js";
 import { GARMENT_COLOURS } from "./garments.js";
 import { HAND_SHAPE_NAMES } from "./handPose.js";
 import { FOOT_SHAPE_NAMES } from "./footPose.js";
+import {
+  checkPositionMetadata,
+} from "./positionContract.js";
 
 export const CATALOG_FORMAT = "poseforge.catalog";
 export const CATALOG_VERSION = 1;
@@ -65,10 +70,12 @@ export function checkScene(input) {
   if (
     !record(input) ||
     !Array.isArray(input.actors) ||
-    input.actors.length < 1 ||
-    input.actors.length > 4
+    input.actors.length < MIN_SCENE_ACTORS ||
+    input.actors.length > MAX_SCENE_ACTORS
   ) {
-    fail("A scene needs between 1 and 4 figures.");
+    fail(
+      `A scene needs between ${MIN_SCENE_ACTORS} and ${MAX_SCENE_ACTORS} figures.`,
+    );
   }
   checkTree(input);
   for (const [key, limit] of [
@@ -196,22 +203,42 @@ export function checkScene(input) {
 export function checkPreset(input) {
   if (!record(input)) fail("Every preset must be an object.");
   checkTree(input);
+  for (const field of [
+    "figures",
+    "surface",
+    "positionName",
+    "positionCategory",
+    "reference",
+  ])
+    if (Object.hasOwn(input, field))
+      fail(`Preset field "${field}" is not part of the position contract.`);
   const id = boundedText(input.id, "Preset ID", 100, true);
   if (!/^[a-z0-9][a-z0-9_.-]*$/i.test(id))
     fail("Preset IDs may use letters, numbers, dots, dashes and underscores.");
   if (!Array.isArray(input.tags) || input.tags.length > 12)
     fail("Tags must be a list of at most 12 items.");
   const source = input.source == null ? null : checkSource(input.source);
+  const title = boundedText(input.title, "Title", 80, true);
+  const category = boundedText(input.category, "Category", 40, true);
+  const scene = checkScene(input.scene);
+  const position = checkPositionMetadata(
+    input.position ?? {
+      type: "custom",
+      name: title,
+      variant: "studio",
+    },
+  );
   return {
     id,
-    title: boundedText(input.title, "Title", 80, true),
+    title,
     description: boundedText(input.description, "Description", 500),
-    category: boundedText(input.category, "Category", 40, true),
+    category,
     tags: [
       ...new Set(input.tags.map((tag) => boundedText(tag, "Tag", 32, true))),
     ],
-    scene: checkScene(input.scene),
+    scene,
     ...(source ? { source } : {}),
+    position,
   };
 }
 
@@ -335,6 +362,11 @@ const preset = (
   category,
   description,
   tags,
+  position: {
+    type: id,
+    name: title,
+    variant: "studio",
+  },
   scene: {
     title,
     description,
@@ -518,6 +550,11 @@ export function presetFromArchetype(definition) {
     description: definition.label,
     category,
     tags: ["named", "pair", ...definition.phrases],
+    position: {
+      type: definition.id,
+      name: title,
+      variant: "studio",
+    },
     scene: JSON.parse(JSON.stringify(checked.scene)),
   });
 }

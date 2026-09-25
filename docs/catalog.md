@@ -2,15 +2,16 @@
 
 ## One position catalog
 
-For independent per-reference editing and bulk imports, see the
-[reference authoring guide](reference-authoring.md). Local position overrides
+For independent source-linked editing and bulk imports, see the
+[position override guide](position-overrides.md). Local position overrides
 are unreviewed and do not change the committed source snapshot.
 
 **Positions** is the single catalog for the 23 studio presets and all 1,283
 source-linked interaction scenes (`builtin.position.img-NNNN`). Each source
 record and its playable **Interaction 3D** scene are merged into one backend
-position object containing the human position name, broad category, surface,
-participants, source provenance and 3D scene. Source photos, raw descriptions,
+position object using the shared preset contract: taxonomy in `position`,
+participants in `scene.actors`, interactions in `scene.contacts`, provenance in
+`source`, and no duplicated participant/surface fields. Source photos, raw descriptions,
 intimate contact labels and private file paths are not shipped. All 1,283 IDs
 also have distinct artistic compositions;
 the earlier 203 shared approximations remain available in the details dialog.
@@ -65,16 +66,18 @@ independently authored study to the source record; save it to persist the link.
 Source IDs and annotation fingerprints survive preset export and import.
 Association does not generate a reconstruction or confer verification.
 
-Share or reload a preview with `?reference=<source-id>`, for example
-`?reference=img-0001`. Invalid IDs/download failures leave a usable prior study.
+Share or reload a position with `?preset=builtin.position.<source-id>`, for
+example `?preset=builtin.position.img-0001`. Add
+`&variant=artistic|generated` for an alternate view. Invalid IDs/download
+failures leave a usable prior study.
 Late preview requests cannot replace a newer selection, edited or saved study.
 On mobile, successful selection opens Studio and focuses the preview canvas.
 
 Use the existing camera controls, Focus, figure/joint editing and export actions.
 Save creates an independent personal preset with its source link; it does not
-alter the generated reference. Diagnostic captions are not inserted as natural-
+alter the generated position. Diagnostic captions are not inserted as natural-
 language parser commands. Missing scanned models show an explicit unavailable
-message rather than substituting an unclothed collision-field reference.
+message rather than substituting an unclothed collision-field model.
 
 **Library tools** is the one transfer surface. It imports/exports saved presets
 and validates source-linked position overrides in the same sheet. A local
@@ -89,23 +92,23 @@ Support labels mean:
   Distinct geometry does not certify source fidelity or physical validity.
 - **Approximate 3D**: generated clothed individual posture study, not a verified
   reconstruction. Every current source record has one.
-- **Authored · unreviewed**: a locally saved, source-linked study selected instead
-  of the bundled artistic composition. This is not a verification badge.
+- **Authored · unreviewed**: a locally saved, source-linked interaction selected
+  instead of the bundled interaction. This is not a verification badge.
 - **Needs adjustment**: personal/imported preset, not individually certified;
   inspect Pose checks to determine whether adjustment is actually needed.
 - **Verified 3D preset**: one of the audited immutable stock configurations.
   Edited copies require their own checks. JSON cannot import a verification badge.
 
-The checked-in manifest is `src/data/reference-manifest.json`; metadata lives in
+The checked-in manifest is `src/data/source-manifest.json`; metadata lives in
 `public/catalog/sexposes-v1.json`; deduplicated scene data lives in
-`public/catalog/reference-previews-v1.json`. Source IDs, annotation hashes and manifest
+`public/catalog/generated-studies-v1.json`. Source IDs, annotation hashes and manifest
 hashes permit offline reconciliation without redistributing source imagery.
 A fresh clone does not need the sibling SexPoses checkout. To regenerate from
 an explicitly supplied annotation file, or verify byte-for-byte reproducibility:
 
 ```sh
-node scripts/build-reference-catalog.mjs /path/to/annotations.jsonl
-node scripts/build-reference-catalog.mjs /path/to/annotations.jsonl --check
+node scripts/build-source-catalog.mjs /path/to/annotations.jsonl
+node scripts/build-source-catalog.mjs /path/to/annotations.jsonl --check
 ```
 
 The importer rejects missing/duplicate IDs, unmapped postures and malformed

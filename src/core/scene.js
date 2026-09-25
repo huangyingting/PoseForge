@@ -31,11 +31,12 @@ import {
   resolvePosture,
   resolveSurface,
 } from "./poseLibrary.js";
-
 /** Body presets the actor spec accepts. */
 export const BODY_TYPES = ["female", "male", "neutral"];
 export const JOINT_MODES = ["guided", "fixed"];
 export const MAX_CONTACT_TYPE_LENGTH = 80;
+export const MIN_SCENE_ACTORS = 1;
+export const MAX_SCENE_ACTORS = 4;
 
 /**
  * @typedef {object} ActorSpec
@@ -258,11 +259,16 @@ export function validateScene(scene) {
     if (!blank) note("error", "no people in the scene, used a single standing figure");
     actorSpecs.push({ posture: "standing" });
   }
-  if (actorSpecs.length > 4) {
-    note("warning", `${actorSpecs.length} people given, only the first 4 are placed`);
+  if (actorSpecs.length > MAX_SCENE_ACTORS) {
+    note(
+      "warning",
+      `${actorSpecs.length} people given, only the first ${MAX_SCENE_ACTORS} are placed`,
+    );
   }
 
-  const actors = actorSpecs.slice(0, 4).map((spec, index) => {
+  const actors = actorSpecs
+    .slice(0, MAX_SCENE_ACTORS)
+    .map((spec, index) => {
     const id = spec.id || `actor${index}`;
     const posture = resolvePosture(spec.posture, spec.support ?? null);
     if (!posture) {
@@ -356,7 +362,7 @@ export function validateScene(scene) {
       arms: spec.arms,
       legs: spec.legs,
       trunk: spec.trunk,
-    });
+      });
     for (const phrase of limbs.unread) {
       note("warning", `${id}: could not read "${phrase}", left the body as the posture has it`);
     }

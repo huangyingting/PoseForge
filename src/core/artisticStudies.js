@@ -1,13 +1,15 @@
 /** Original non-graphic compositions, not source-matched reconstructions. */
-import { checkReferenceStudy, referenceStudyId } from "./referenceStudies.js";
+import { checkPreset } from "./catalog.js";
+import {
+  checkSeparatePositionScene,
+  isPositionVariant,
+} from "./positionContract.js";
 import { POSEABLE_BONES, CHANNELS } from "./skeleton.js";
 
 export const ARTISTIC_NOTE =
   "Artistic interpretation, not a reconstruction of the source. Clothed figures are separate; pose checks are not physical certification.";
-export const isArtisticPreview = (preset) =>
-  typeof preset?.id === "string" &&
-  preset.id.startsWith("reference.") &&
-  preset.tags?.includes("artistic");
+export const isArtisticPosition = (preset) =>
+  isPositionVariant(preset, "artistic");
 
 /** Ignore labels, actor order, body choice, colours, placement, camera and gaze. */
 export function artisticJointSignature(scene, { includeGaze = false } = {}) {
@@ -53,13 +55,18 @@ export function checkArtisticStudies(pack, descriptor, entries) {
       )
     )
       throw new Error("Invalid or duplicate artistic source mapping.");
-    const preset = checkReferenceStudy(
+    const preset = checkPreset(
       {
-        id: referenceStudyId(entry.sourceId),
+        id: `builtin.artistic.${entry.sourceId}`,
         title: record.title,
         description: ARTISTIC_NOTE,
         category: "Artistic studies",
         tags: ["artistic", "posture-study"],
+        position: {
+          type: "artistic_interpretation",
+          name: "Artistic interpretation",
+          variant: "artistic",
+        },
         source: {
           dataset: "SexPoses",
           recordId: entry.sourceId,
@@ -67,8 +74,10 @@ export function checkArtisticStudies(pack, descriptor, entries) {
         },
         scene: record.scene,
       },
-      entry,
     );
+    if (preset.scene.actors.length !== entry.figures)
+      throw new Error("Artistic position has the wrong participant count.");
+    checkSeparatePositionScene(preset.scene);
     const key = artisticJointSignature(preset.scene);
     if (geometry.has(key))
       throw new Error("Artistic studies must have distinct joint geometry.");
@@ -81,20 +90,25 @@ export function checkArtisticStudies(pack, descriptor, entries) {
 export function artisticPreset(entry, studies) {
   const record = studies.get(entry.sourceId);
   if (!record)
-    throw new Error("Artistic study unavailable for this reference.");
-  const title = `Reference ${entry.sourceId}`;
-  return {
-    id: entry.id,
+    throw new Error("Artistic position unavailable for this source.");
+  const title = `Artistic interpretation · ${entry.sourceId.toUpperCase()}`;
+  const preset = checkPreset({
+    id: `builtin.artistic.${entry.sourceId}`,
     title,
     description: `${ARTISTIC_NOTE} ${record.title.split(" · ")[1] ?? ""}`,
     category: "Artistic studies",
     tags: ["artistic", "posture-study"],
+    position: {
+      type: "artistic_interpretation",
+      name: "Artistic interpretation",
+      variant: "artistic",
+    },
     source: {
       dataset: "SexPoses",
       recordId: entry.sourceId,
       annotationHash: entry.annotationHash,
     },
     scene: { ...structuredClone(record.scene), title },
-    inputWarnings: [ARTISTIC_NOTE],
-  };
+  });
+  return { ...preset, inputWarnings: [ARTISTIC_NOTE] };
 }

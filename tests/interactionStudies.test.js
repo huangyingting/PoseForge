@@ -5,10 +5,10 @@ import { createHash } from "node:crypto";
 import {
   checkInteractionStudies,
   interactionPreset,
-  isInteractionPreview,
+  isInteractionPosition,
   TEMPLATE_LABELS,
 } from "../src/core/interactionStudies.js";
-import { createPositionService } from "../src/app/referenceLoader.js";
+import { createPositionService } from "../src/app/positionService.js";
 import { composeStudy } from "../scripts/build-interaction-studies.mjs";
 import { TEMPLATES } from "../scripts/interaction-templates.mjs";
 import { mirrorSpec } from "../scripts/interaction-composer.mjs";
@@ -33,7 +33,7 @@ test("every source reference has a verified, clothed 3D interaction with its par
   let pairs = 0;
   for (const entry of entries) {
     const preset = interactionPreset(entry, studies);
-    assert.ok(isInteractionPreview(preset));
+    assert.ok(isInteractionPosition(preset));
     assert.equal(preset.source.annotationHash, entry.annotationHash);
     const { scene } = preset;
     if (scene.actors.length < 2) continue;
@@ -147,33 +147,48 @@ test("interaction scenes load lazily through the shared verified service", async
     },
   });
   assert.equal(requests.length, 0);
-  const [a, b] = await Promise.all([service.interaction(entries[0]), service.interaction(entries[1])]);
+  const [a, b] = await Promise.all([
+    service.variant(entries[0]),
+    service.variant(entries[1]),
+  ]);
   assert.ok(a.tags.includes("interaction"));
   assert.notEqual(a.source.recordId, b.source.recordId);
   const unified = await service.positions();
   assert.equal(unified.length, 1283);
-  assert.equal(unified[0].reference.sourceId, unified[0].source.recordId);
-  assert.equal(unified[0].figures, unified[0].reference.figures);
-  assert.ok(unified[0].positionCategory);
+  assert.equal(unified[0].scene.actors.length, entries[0].figures);
+  assert.ok(unified[0].position.name);
   assert.equal(requests.length, 2);
 });
 
 test("every interaction is a named, playable library position that can be listed, searched and favorited", async () => {
-  const { interactionPositions, isPosition } = await import("../src/core/interactionStudies.js");
+  const { interactionPositions } = await import("../src/core/interactionStudies.js");
+  const { isBuiltInPosition } = await import("../src/core/positionContract.js");
   const { createLibrary, registerPositions } = await import("../src/app/libraryStore.js");
   const { checkPreset, searchCatalog } = await import("../src/core/catalog.js");
   const positions = interactionPositions(studies);
   assert.equal(positions.length, 1283);
   assert.equal(new Set(positions.map((p) => p.title)).size, 1283);
   assert.equal(
-    new Set(positions.map((p) => p.positionCategory)).size,
+    new Set(positions.map((p) => p.category)).size,
     10,
   );
   for (const p of positions) {
-    assert.ok(isPosition(p));
+    assert.ok(isBuiltInPosition(p));
     assert.match(p.title, / · [A-Z][^·]+ · IMG-\d{4}$/);
-    assert.ok(p.description.includes(p.positionName));
-    assert.equal(p.category, p.positionCategory);
+    assert.ok(p.description.includes(p.position.name));
+    assert.equal(p.position.variant, "interaction");
+    for (const duplicate of [
+      "figures",
+      "surface",
+      "positionName",
+      "positionCategory",
+      "reference",
+    ])
+      assert.equal(
+        Object.hasOwn(p, duplicate),
+        false,
+        `${p.id} duplicates ${duplicate}`,
+      );
     assert.deepEqual(checkPreset(p).scene, p.scene);
   }
   const memory = new Map();
@@ -184,9 +199,9 @@ test("every interaction is a named, playable library position that can be listed
     const index = library.index();
     const listed = index.filter((p) => p.status === "interaction-3d");
     assert.equal(listed.length, 1283);
-    assert.equal(searchCatalog(index, { scope: "named" }).filter((p) => isPosition(p)).length, 1283);
+    assert.equal(searchCatalog(index, { scope: "named" }).filter((p) => isBuiltInPosition(p)).length, 1283);
     assert.ok(searchCatalog(index, { query: "reverse cowgirl" }).length >= 61);
-    assert.equal(searchCatalog(index, { query: "img-0001" }).filter(isPosition).length, 1);
+    assert.equal(searchCatalog(index, { query: "img-0001" }).filter(isBuiltInPosition).length, 1);
     const one = library.get(positions[0].id);
     assert.equal(one.scene.actors.length, positions[0].scene.actors.length);
     one.scene.actors[0].joints.head.rotation = 999;

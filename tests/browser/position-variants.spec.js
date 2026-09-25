@@ -19,7 +19,7 @@ const interactionCounts = new Map(
   ).studies.map((s) => [s.sourceId, s.scene.actors.length]),
 );
 const representatives = [
-  ...new Map(entries.map((e) => [e.previewKey, e])).values(),
+  ...new Map(entries.map((e) => [e.generatedKey, e])).values(),
 ];
 const solo = entries.find((e) => e.figures === 1),
   trio = entries.find((e) => interactionCounts.get(e.sourceId) === 3);
@@ -39,7 +39,7 @@ test.beforeEach(async ({ page }) => {
         super(...args);
         this.addEventListener("message", ({ data }) => {
           if (data.stage !== "final") return;
-          window.__referenceMesh = {
+          window.__positionMesh = {
             title: data.scene.title,
             bodies: data.meshes.map((m) => ({
               source: m.source,
@@ -71,14 +71,17 @@ test.afterEach(() => {
 
 async function loaded(page, entry, generated = false) {
   const sceneTitle = page.locator("#scene-title");
-  if (generated) await expect(sceneTitle).toHaveText(`Reference ${entry.sourceId}`);
+  if (generated)
+    await expect(sceneTitle).toHaveText(
+      `Generated approximation · ${entry.sourceId.toUpperCase()}`,
+    );
   else await expect(sceneTitle).toContainText(entry.sourceId.toUpperCase());
   await ready(page);
   await expect(page.locator("#scene-badge")).toHaveText(
     generated ? "Approximate 3D" : "Interaction 3D",
   );
   await expect(page.locator("#viewport-error")).toBeHidden();
-  const mesh = await page.evaluate(() => window.__referenceMesh);
+  const mesh = await page.evaluate(() => window.__positionMesh);
   expect(mesh.title).toBe(await sceneTitle.textContent());
   const figures = generated ? entry.figures : interactionCounts.get(entry.sourceId);
   expect(mesh.bodies).toHaveLength(figures);
@@ -115,7 +118,7 @@ async function loaded(page, entry, generated = false) {
   expect(coloured).toBeGreaterThan(8);
   return {
     sourceId: entry.sourceId,
-    previewKey: entry.previewKey,
+    generatedKey: entry.generatedKey,
     figures: entry.figures,
     colouredPixels: coloured,
     mesh,
@@ -147,16 +150,18 @@ async function select(page, entry, generated = false) {
 
 for (let batch = 0; batch < 4; batch++) {
   const subset = representatives.slice(batch * 51, (batch + 1) * 51);
-  test(`distinct reference geometries render with real clothed meshes and pixels, batch ${batch + 1}`, async ({
+  test(`distinct generated geometries render with real clothed meshes and pixels, batch ${batch + 1}`, async ({
     page,
   }, info) => {
-    test.setTimeout(420_000);
-    await page.goto(`/?reference=${subset[0].sourceId}&preview=generated`);
+    test.setTimeout(600_000);
+    await page.goto(
+      `/?preset=builtin.position.${subset[0].sourceId}&variant=generated`,
+    );
     const results = [await loaded(page, subset[0], true)];
     for (const entry of subset.slice(1))
       results.push(await select(page, entry, true));
     expect(results).toHaveLength(subset.length);
-    await info.attach("reference-render-coverage", {
+    await info.attach("position-render-coverage", {
       body: JSON.stringify(results),
       contentType: "application/json",
     });
@@ -167,7 +172,7 @@ test("solo and three-person previews support deep links, camera controls, saving
   page,
 }, info) => {
   test.setTimeout(180_000);
-  await page.goto(`/?reference=${solo.sourceId}`);
+  await page.goto(`/?preset=builtin.position.${solo.sourceId}`);
   await loaded(page, solo);
   await select(page, trio);
   await expect(page).toHaveURL(
@@ -201,7 +206,7 @@ test("solo and three-person previews support deep links, camera controls, saving
   expect(preset.source.recordId).toBe(trio.sourceId);
   expect(preset.scene.contacts.length).toBeGreaterThan(0);
   await page.locator("#save-preset").click();
-  await page.getByLabel("Preset name").fill("Saved reference posture study");
+  await page.getByLabel("Preset name").fill("Saved generated posture study");
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Save preset", exact: true })
@@ -212,7 +217,7 @@ test("solo and three-person previews support deep links, camera controls, saving
   await page.reload();
   await ready(page);
   await expect(page.locator("#scene-title")).toHaveText(
-    "Saved reference posture study",
+    "Saved generated posture study",
   );
   await expect(page.locator("#scene-source")).toContainText(trio.sourceId);
 });
@@ -240,7 +245,7 @@ test("a failed preview download preserves the current study and retry loads it",
   await loaded(page, solo);
 });
 
-test("a delayed reference request cannot overwrite a newer stock selection", async ({
+test("a delayed position request cannot overwrite a newer stock selection", async ({
   page,
 }) => {
   let release;
@@ -253,7 +258,7 @@ test("a delayed reference request cannot overwrite a newer stock selection", asy
   });
   await page.goto("/?preset=builtin.standing-female");
   await ready(page);
-  await page.goto(`/?reference=${solo.sourceId}`);
+  await page.goto(`/?preset=builtin.position.${solo.sourceId}`);
   await page.getByLabel("Search positions").fill("Standing · male");
   await page
     .getByRole("button", { name: "Load Standing · male", exact: true })
@@ -264,11 +269,11 @@ test("a delayed reference request cannot overwrite a newer stock selection", asy
   await expect(page).toHaveURL(/preset=builtin.standing-male/);
 });
 
-test("mobile reference selection opens the 3D studio while details remain separately accessible", async ({
+test("mobile position selection opens the 3D studio while details remain separately accessible", async ({
   page,
 }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`/?reference=${solo.sourceId}`);
+  await page.goto(`/?preset=builtin.position.${solo.sourceId}`);
   await loaded(page, solo);
   await expect(page.locator("#stage")).toBeVisible();
   await page.locator('[data-region="library"]').click();
@@ -286,7 +291,7 @@ test("mobile reference selection opens the 3D studio while details remain separa
     .getByRole("button", { name: "Open 3D interaction", exact: true })
     .click();
   await loaded(page, trio);
-  await page.screenshot({ path: info.outputPath("mobile-reference-3d.png") });
+  await page.screenshot({ path: info.outputPath("mobile-position-3d.png") });
   expect(
     (
       await new AxeBuilder({ page })
@@ -301,20 +306,20 @@ test("mobile reference selection opens the 3D studio while details remain separa
   ).toBe(true);
 });
 
-test("missing scanned models do not substitute an unclothed field for a clothed reference preview", async ({
+test("missing scanned models do not substitute an unclothed field for a clothed position", async ({
   page,
 }) => {
   await page.route("**/*.glb", (route) => route.abort());
-  await page.goto(`/?reference=${solo.sourceId}`);
+  await page.goto(`/?preset=builtin.position.${solo.sourceId}`);
   await expect(page.locator("#viewport-error")).toContainText(
-    "Clothed 3D reference preview unavailable",
+    "Clothed 3D position unavailable",
     { timeout: 60_000 },
   );
   await expect(page.locator("#save-preset")).toBeDisabled();
   await expect(page.locator("#status")).not.toContainText("Ready");
 });
 
-test("opening Save cancels a pending reference so it cannot replace the saved study", async ({
+test("opening Save cancels a pending position so it cannot replace the saved study", async ({
   page,
 }) => {
   let release;
@@ -327,14 +332,16 @@ test("opening Save cancels a pending reference so it cannot replace the saved st
   });
   await page.goto("/?preset=builtin.standing-female");
   await ready(page);
-  await page.goto(`/?reference=${entries[0].sourceId}`);
+  await page.goto(`/?preset=builtin.position.${entries[0].sourceId}`);
   await page.locator("#save-preset").click();
   await page.getByLabel("Preset name").fill("Keep my standing study");
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Save preset", exact: true })
     .click();
-  const response = page.waitForResponse("**/catalog/interaction-studies-v1.json");
+  const response = page.waitForResponse(
+    "**/catalog/interaction-studies-v1.json",
+  );
   release();
   await response;
   await page.evaluate(
@@ -347,7 +354,7 @@ test("opening Save cancels a pending reference so it cannot replace the saved st
     "Keep my standing study",
   );
   await expect(page).toHaveURL(/preset=user\./);
-  expect((await page.evaluate(() => window.__referenceMesh)).actorCount).toBe(
+  expect((await page.evaluate(() => window.__positionMesh)).actorCount).toBe(
     1,
   );
 });
@@ -355,9 +362,9 @@ test("opening Save cancels a pending reference so it cannot replace the saved st
 test("keyboard preview selection retains focus on desktop and invalid deep links keep a usable study", async ({
   page,
 }) => {
-  await page.goto("/?reference=missing-reference");
+  await page.goto("/?preset=builtin.position.missing-position");
   await expect(page.locator("#toast")).toContainText(
-    "Source reference not found",
+    "Position source not found",
   );
   await ready(page);
   await page.getByLabel("Search positions").fill(solo.sourceId);

@@ -559,7 +559,7 @@ p {
 .category-field label {
   flex-shrink: 0;
 }
-.reference-group {
+.position-group {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -568,7 +568,7 @@ p {
   min-height: 32px;
   margin: 0;
 }
-.reference-group input {
+.position-group input {
   width: 15px;
   min-height: 15px;
 }
@@ -597,7 +597,7 @@ p {
 .support-badge.interaction-3d {
   color: var(--accent-strong);
 }
-.reference-hash {
+.position-hash {
   overflow-wrap: anywhere;
   font-family: monospace;
   font-size: 11px;
@@ -755,7 +755,7 @@ p {
   margin-top: 0;
   color: #586656;
 }
-.reference-actions {
+.position-actions {
   margin: -2px 0 8px;
   flex-wrap: wrap;
 }
@@ -1599,7 +1599,7 @@ dialog .buttons {
   summary {
     min-height: 32px;
   }
-  .reference-group {
+  .position-group {
     min-height: 40px;
   }
   .mobile-history .action {

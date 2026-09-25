@@ -81,13 +81,15 @@ test.afterEach(() => {
 });
 async function check(page, record) {
   await expect(page.locator("#scene-title")).toHaveText(
-    `Reference ${record.sourceId}`,
+    `Artistic interpretation · ${record.sourceId.toUpperCase()}`,
   );
   await ready(page);
   await expect(page.locator("#scene-badge")).toHaveText("Artistic 3D");
   await expect(page.locator("#viewport-error")).toBeHidden();
   const result = await page.evaluate(() => window.__artisticResult);
-  expect(result.title).toBe(`Reference ${record.sourceId}`);
+  expect(result.title).toBe(
+    `Artistic interpretation · ${record.sourceId.toUpperCase()}`,
+  );
   expect(result.meshes).toHaveLength(record.scene.actors.length);
   for (const m of result.meshes) {
     expect(m.source).toBe("scanned");
@@ -110,7 +112,9 @@ for (let batch = 0; batch < Math.ceil(representatives.length / 6); batch++) {
   }, info) => {
     test.setTimeout(240_000);
     for (const record of records) {
-      await page.goto(`/?reference=${record.sourceId}&preview=artistic`);
+      await page.goto(
+        `/?preset=builtin.position.${record.sourceId}&variant=artistic`,
+      );
       await check(page, record);
     }
     await info.attach("artistic-worker-coverage", {
@@ -129,14 +133,16 @@ test("a fresh library has all artistic previews ready without importing or creat
   page.on("request", (r) => {
     if (r.url().includes("/catalog/")) requests.push(r.url().split("/").at(-1));
   });
-  await page.goto("/?reference=img-0001&preview=artistic");
+  await page.goto(
+    "/?preset=builtin.position.img-0001&variant=artistic",
+  );
   await check(page, pack.studies[0]);
-  await expect(page).toHaveURL(/preview=artistic/);
+  await expect(page).toHaveURL(/variant=artistic/);
   await expect(page.locator("#scene-description")).toContainText(
     "Artistic interpretation, not a reconstruction",
   );
   expect(requests).toContain("artistic-studies-v1.json");
-  expect(requests).not.toContain("reference-previews-v1.json");
+  expect(requests).not.toContain("generated-studies-v1.json");
   await page.getByLabel("Search positions").fill("");
   await page.getByRole("button", { name: "Filters", exact: true }).click();
   await page.getByLabel("Support status").selectOption("interaction-3d");
@@ -166,7 +172,9 @@ test("artistic previews and their distinction from legacy approximations remain 
 }, info) => {
   const record = pack.studies.find((p) => p.scene.actors.length === 3);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`/?reference=${record.sourceId}&preview=artistic`);
+  await page.goto(
+    `/?preset=builtin.position.${record.sourceId}&variant=artistic`,
+  );
   await check(page, record);
   await expect(page.locator("#viewport")).toBeFocused();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
@@ -187,7 +195,7 @@ test("artistic previews and their distinction from legacy approximations remain 
     .click();
   await ready(page);
   await expect(page.locator("#scene-badge")).toHaveText("Approximate 3D");
-  await expect(page).toHaveURL(/preview=generated/);
+  await expect(page).toHaveURL(/variant=generated/);
   await page.locator('[data-region="library"]').click();
   await page
     .getByRole("button", {
@@ -199,12 +207,12 @@ test("artistic previews and their distinction from legacy approximations remain 
     .getByRole("button", { name: "Open artistic interpretation", exact: true })
     .click();
   await check(page, record);
-  await expect(page).toHaveURL(/preview=artistic/);
+  await expect(page).toHaveURL(/variant=artistic/);
   await page.locator('[data-region="library"]').click();
   await page.locator(`[data-source="${record.sourceId}"]`).click();
   await ready(page);
   await expect(page.locator("#scene-badge")).toHaveText("Interaction 3D");
-  await expect(page).not.toHaveURL(/preview=/);
+  await expect(page).not.toHaveURL(/variant=/);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

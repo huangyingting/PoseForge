@@ -4,19 +4,23 @@ import { createPreviewService } from "./previewService.js";
 import { download } from "../render/exporters.js";
 import { newId } from "./ids.js";
 import { positionCount } from "./libraryStore.js";
-import { catalogPage, STATUS_LABELS } from "../core/referenceCatalog.js";
+import { catalogPage } from "../core/sourceCatalog.js";
+import {
+  POSITION_STATUS_LABELS,
+  isBuiltInPosition,
+} from "../core/positionContract.js";
 import {
   createPositionService,
-  referenceManifest,
-} from "./referenceLoader.js";
+  sourceManifest,
+} from "./positionService.js";
 import {
-  isReferenceStudy,
-  referenceStudyId,
-  referenceStudyMatches,
-  checkReferenceStudy,
-  parseReferenceStudies,
-  serializeReferenceStudies,
-} from "../core/referenceStudies.js";
+  isPositionOverride,
+  positionOverrideId,
+  positionOverrideMatches,
+  checkPositionOverride,
+  parsePositionOverrides,
+  serializePositionOverrides,
+} from "../core/positionOverrides.js";
 
 export const element = (tag, props = {}, children = []) => {
   const node = Object.assign(document.createElement(tag), props);
@@ -115,8 +119,8 @@ export function buildStudio(
   let positionsError = "";
   let loadingPositions = false;
   let disposed = false;
-  const loadSourceEntries = positionService.entries;
-  let loadingReference = null;
+  const loadSourceEntries = positionService.sources;
+  let loadingPosition = null;
   const count = element("span");
   count.setAttribute("aria-live", "polite");
   const search = element("input", {
@@ -148,6 +152,7 @@ export function buildStudio(
       label,
       () => {
         scope = value;
+        search.value = "";
         page = 0;
         category.value = "all";
         supportStatus.value = "all";
@@ -166,7 +171,7 @@ export function buildStudio(
   });
   const supportStatus = element("select", { id: "catalog-status" }, [
     element("option", { value: "all", textContent: "All statuses" }),
-    ...Object.entries(STATUS_LABELS).map(([value, textContent]) =>
+    ...Object.entries(POSITION_STATUS_LABELS).map(([value, textContent]) =>
       element("option", { value, textContent }),
     ),
   ]);
@@ -228,11 +233,11 @@ export function buildStudio(
       const modal = dialog("About the library");
       modal.append(
         element("p", {
-          textContent: `${referenceManifest.records.toLocaleString("en")} source-linked 3D positions plus ${library.index().filter((p) => p.status === "verified-3d").length} studio presets.`,
+          textContent: `${sourceManifest.records.toLocaleString("en")} source-linked 3D positions plus ${library.index().filter((p) => p.status === "verified-3d").length} studio presets.`,
         }),
         element("p", {
           textContent:
-            "Positions and source references are one catalog. Browse broad categories, then choose a related named position. Every source-linked card opens a ready-to-view clothed 3D interaction; its details retain provenance plus the earlier artistic and generated alternatives. These are approximate template-based interpretations, not measured reconstructions or physical certification.",
+            "Positions and source records are one catalog. Browse broad categories, then choose a related named position. Every source-linked card opens a ready-to-view clothed 3D interaction; its details retain provenance plus the artistic and generated alternatives. These are approximate template-based interpretations, not measured reconstructions or physical certification.",
         }),
         element("p", {
           textContent: `Saved in this browser using ${library.mode ?? "local storage"}. Up to 5,000 presets / 32 MB. Export JSON for a portable backup; this is not cloud storage.`,
@@ -521,20 +526,16 @@ export function buildStudio(
     const paged = updatePages(filtered);
     for (const entry of paged.entries) {
       const preset = library.get(entry.id);
-      const authored =
-        preset.source &&
-        library.get(referenceStudyId(preset.source.recordId));
-      const playable = isReferenceStudy(authored) ? authored : preset;
-      const status = isReferenceStudy(authored) ? "authored-3d" : entry.status;
+      const playable = library.resolve(entry.id);
+      const authored = isPositionOverride(playable) ? playable : null;
+      const status = authored ? "authored-3d" : entry.status;
       const isSelected = Boolean(
         playable.id === selected ||
-        (preset.source &&
-          (selected === `reference.sexposes.${preset.source.recordId}` ||
-            selected === referenceStudyId(preset.source.recordId))),
+        preset.id === selected,
       );
       const choose = button(
         "",
-        () => handlers.select(playable),
+        () => handlers.select(playable, { catalogId: preset.id }),
         "preset-select",
       );
       choose.dataset.preset = preset.id;
@@ -546,7 +547,7 @@ export function buildStudio(
         "aria-busy",
         String(Boolean(
           preset.source &&
-            loadingReference === `reference.sexposes.${preset.source.recordId}`,
+            loadingPosition === preset.id,
         )),
       );
       const picture = element(
@@ -569,7 +570,13 @@ export function buildStudio(
           }),
           element("span", {
             className: "preset-meta",
-            textContent: `${preset.scene.actors.length === 1 ? "Solo" : `${preset.scene.actors.length} figures`} · ${preset.surface ?? preset.category}`,
+            textContent: `${preset.scene.actors.length === 1 ? "Solo" : `${preset.scene.actors.length} figures`} · ${
+              preset.scene.support?.surface
+                ? preset.scene.support.surface
+                    .replace(/_/g, " ")
+                    .replace(/^\w/, (letter) => letter.toUpperCase())
+                : preset.category
+            }`,
           }),
           element("span", {
             className: "preset-description",
@@ -578,7 +585,7 @@ export function buildStudio(
           previewNote,
           element("span", {
             className: `support-badge ${status}`,
-            textContent: STATUS_LABELS[status],
+            textContent: POSITION_STATUS_LABELS[status],
             title:
               status === "authored-3d"
                 ? "Your locally authored override for this source. It is unreviewed."
@@ -588,14 +595,6 @@ export function buildStudio(
                 ? "Audited stock configuration only; edits need their own checks."
                 : "This personal preset has not been individually certified. Inspect Pose checks; adjustment may be needed.",
           }),
-          ...(preset.source && !preset.positionName
-            ? [
-                element("span", {
-                  className: "source-note",
-                  textContent: `Source ${preset.source.recordId}`,
-                }),
-              ]
-            : []),
         ]),
       );
       const favorite = button(
@@ -714,9 +713,9 @@ export function buildStudio(
     if (positionBrowser.hidden) return;
     const body = positionBrowser.querySelector(".position-browser-body");
     const groups = new Map();
-    for (const entry of entries.filter((item) => item.positionName)) {
-      const categoryName = entry.positionCategory ?? entry.category;
-      const positionName = entry.positionName ?? entry.title;
+    for (const entry of entries.filter(isBuiltInPosition)) {
+      const categoryName = entry.category;
+      const positionName = entry.position.name;
       if (!groups.has(categoryName)) groups.set(categoryName, new Map());
       const names = groups.get(categoryName);
       names.set(positionName, (names.get(positionName) ?? 0) + 1);
@@ -780,14 +779,14 @@ export function buildStudio(
         (candidate) => candidate.sourceId === preset.source.recordId,
       );
       if (!entry) throw new Error("Source metadata was not found.");
-      openReference(entry, preset);
+      openPositionDetailsSheet(entry, preset);
     } catch (error) {
       toast(`Position details unavailable: ${error.message}`);
     }
   }
 
-  function openReference(entry, preset = null) {
-    const modal = dialog(preset?.positionName ?? `Position ${entry.sourceId}`);
+  function openPositionDetailsSheet(entry, preset = null) {
+    const modal = dialog(preset?.position?.name ?? `Position ${entry.sourceId}`);
     const peers = sourceEntries.filter((e) => e.variant === entry.variant);
     modal.append(
       element("p", {
@@ -818,19 +817,19 @@ export function buildStudio(
     ]);
     details.append(
       element("p", {
-        className: "reference-hash",
+        className: "position-hash",
         textContent: `Annotation SHA-256: ${entry.annotationHash}`,
       }),
       element("p", {
-        className: "reference-hash",
+        className: "position-hash",
         textContent: `Variant: ${entry.variant}`,
       }),
       element("p", {
-        className: "reference-hash",
+        className: "position-hash",
         textContent: `Image SHA-256: ${entry.imageHash}`,
       }),
       element("p", {
-        className: "reference-hash",
+        className: "position-hash",
         textContent: peers.map((p) => p.sourceId).join(", "),
       }),
     );
@@ -840,17 +839,17 @@ export function buildStudio(
         "Open 3D interaction",
         () => {
           modal.close();
-          handlers.previewReference(entry);
+          handlers.openPosition(entry);
         },
         "action primary",
       ),
       button("Open artistic interpretation", () => {
         modal.close();
-        handlers.previewReference(entry, { preview: "artistic" });
+        handlers.openPosition(entry, { variant: "artistic" });
       }),
       button("Open generated approximation", () => {
         modal.close();
-        handlers.previewReference(entry, { preview: "generated" });
+        handlers.openPosition(entry, { variant: "generated" });
       }),
       button("Associate current study with this source", () => {
         handlers.associate({
@@ -871,28 +870,37 @@ export function buildStudio(
     const saved = new Map(
       library
         .index()
-        .filter(isReferenceStudy)
-        .map((p) => [p.id, p]),
+        .filter(isPositionOverride)
+        .map((preset) => [preset.source.recordId, preset]),
     );
     return new Map(
-      (sourceEntries ?? [])
-        .filter((entry) =>
-          referenceStudyMatches(
-            saved.get(referenceStudyId(entry.sourceId)),
-            entry,
+      library
+        .index()
+        .filter(isBuiltInPosition)
+        .filter((position) =>
+          positionOverrideMatches(
+            saved.get(position.source.recordId),
+            position,
           ),
         )
-        .map((entry) => [
-          entry.sourceId,
-          saved.get(referenceStudyId(entry.sourceId)),
+        .map((position) => [
+          position.source.recordId,
+          saved.get(position.source.recordId),
         ]),
     );
   }
 
-  function openReferenceSave(snapshot, entry, onSaved) {
-    const checked = checkReferenceStudy(
-      { ...snapshot, id: referenceStudyId(entry.sourceId) },
-      entry,
+  function openPositionSave(snapshot, position, onSaved) {
+    const checked = checkPositionOverride(
+      {
+        ...snapshot,
+        id: positionOverrideId(position.source.recordId),
+        position: {
+          ...position.position,
+          variant: "override",
+        },
+      },
+      position,
     );
     const existing = library.get(checked.id);
     const modal = dialog("Save position override");
@@ -904,14 +912,14 @@ export function buildStudio(
     const error = element("p", { className: "dialog-error", role: "alert" });
     const form = element("form", {}, [
       element("p", {
-        textContent: `${entry.sourceId} · ${entry.figures} figures. Saves these joint angles and placements as the active version of this position. This local override is unreviewed.`,
+        textContent: `${position.source.recordId} · ${position.scene.actors.length} figures. Saves this complete interaction as the active version of the position. This local override is unreviewed.`,
       }),
       title.wrapper,
       ...(existing
         ? [
             element(
               "label",
-              { htmlFor: replace.id, className: "reference-group" },
+              { htmlFor: replace.id, className: "position-group" },
               [
                 replace,
                 document.createTextNode(
@@ -942,7 +950,7 @@ export function buildStudio(
       const submit = form.querySelector('[type="submit"]');
       submit.disabled = true;
       try {
-        const result = await library.saveReferenceStudies(
+        const result = await library.savePositionOverrides(
           [
             {
               ...checked,
@@ -953,7 +961,6 @@ export function buildStudio(
               scene: { ...checked.scene, title: title.input.value },
             },
           ],
-          [entry],
           { replace: replace.checked },
         );
         if (!result.written.length)
@@ -963,7 +970,7 @@ export function buildStudio(
         onSaved(result.written[0]);
         modal.close();
         toast(
-          `Position override saved for ${entry.sourceId}. It remains unreviewed.`,
+          `Position override saved for ${position.source.recordId}. It remains unreviewed.`,
         );
       } catch (e) {
         error.textContent = e.message;
@@ -1004,6 +1011,8 @@ export function buildStudio(
     );
     modal.showModal();
     try {
+      if (!positionCount() && handlers.loadPositions)
+        await handlers.loadPositions();
       sourceEntries = await loadSourceEntries();
       if (!modal.isConnected) return;
       const updateCount = () => {
@@ -1012,14 +1021,14 @@ export function buildStudio(
       updateCount();
       const input = element("input", {
         type: "file",
-        id: newId("reference-import"),
+        id: newId("position-import"),
         accept: ".json,application/json",
       });
       const review = element("div");
       modal.append(
         element("p", {
           textContent:
-            "Import source-linked position overrides. Every override must retain its source ID and annotation hash, all participants, fixed joints and placements, clothing, and a neutral floor. The complete batch is checked before anything is saved.",
+            "Import source-linked position overrides. Every override must retain its source ID and annotation hash, all participants, fixed joints and placements, clothing, and a connected interaction graph. The complete batch is checked before anything is saved.",
         }),
         button("Export position overrides", () => {
           try {
@@ -1029,7 +1038,7 @@ export function buildStudio(
             if (!presets.length)
               throw new Error("No position overrides to export yet.");
             download(
-              serializeReferenceStudies(presets),
+              serializePositionOverrides(presets),
               "poseforge-position-overrides.json",
               "application/json",
             );
@@ -1058,7 +1067,10 @@ export function buildStudio(
             throw new Error("Catalog files must be no larger than 32 MB.");
           const text = await chosen.text();
           if (token !== revision || !modal.isConnected) return;
-          const studies = parseReferenceStudies(text, sourceEntries);
+          const sourcePositions = library
+            .index()
+            .filter(isBuiltInPosition);
+          const studies = parsePositionOverrides(text, sourcePositions);
           const conflicts = studies.filter((p) => library.get(p.id)).length;
           const replace = element("input", {
             type: "checkbox",
@@ -1071,9 +1083,8 @@ export function buildStudio(
               input.disabled = true;
               replace.disabled = true;
               try {
-                const result = await library.saveReferenceStudies(
+                const result = await library.savePositionOverrides(
                   studies,
-                  sourceEntries,
                   { replace: replace.checked },
                 );
                 review.replaceChildren(
@@ -1104,7 +1115,7 @@ export function buildStudio(
             review.append(
               element(
                 "label",
-                { htmlFor: replace.id, className: "reference-group" },
+                { htmlFor: replace.id, className: "position-group" },
                 [
                   replace,
                   document.createTextNode(
@@ -1247,9 +1258,9 @@ export function buildStudio(
   return {
     refresh,
     openSave,
-    openReferenceSave,
-    setReferenceLoading(id) {
-      loadingReference = id;
+    openPositionSave,
+    setPositionLoading(id) {
+      loadingPosition = id;
       refresh();
     },
     focusSearch() {
@@ -1270,7 +1281,7 @@ export function buildStudio(
     setSelected(id) {
       const changed = selected !== id;
       selected = id;
-      if (id?.startsWith("reference.") || isReferenceStudy({ id })) {
+      if (isBuiltInPosition({ id }) || isPositionOverride({ id })) {
         if (scope !== "positions") {
           scope = "positions";
           category.value = "all";

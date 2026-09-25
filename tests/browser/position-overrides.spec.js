@@ -2,9 +2,12 @@ import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import AxeBuilder from "@axe-core/playwright";
-import { referencePreset } from "../../src/core/referencePreviews.js";
+import {
+  checkInteractionStudies,
+  interactionPreset,
+} from "../../src/core/interactionStudies.js";
 import { serializeCatalog } from "../../src/core/catalog.js";
-import { referenceStudyId } from "../../src/core/referenceStudies.js";
+import { positionOverrideId } from "../../src/core/positionOverrides.js";
 import { ready } from "./helpers/ready.js";
 
 const entries = JSON.parse(
@@ -12,19 +15,26 @@ const entries = JSON.parse(
     new URL("../../public/catalog/sexposes-v1.json", import.meta.url),
   ),
 ).entries;
-const scenes = new Map(
+const interactionManifest = JSON.parse(
+  readFileSync(
+    new URL("../../src/data/interaction-manifest.json", import.meta.url),
+  ),
+);
+const studies = checkInteractionStudies(
   JSON.parse(
     readFileSync(
       new URL(
-        "../../public/catalog/reference-previews-v1.json",
+        "../../public/catalog/interaction-studies-v1.json",
         import.meta.url,
       ),
     ),
-  ).scenes.map(({ key, scene }) => [key, scene]),
+  ),
+  interactionManifest,
+  entries,
 );
 const solo = entries.find((e) => e.figures === 1);
 const trio = entries.find((e) => e.figures === 3);
-const preset = (entry) => referencePreset(entry, scenes);
+const preset = (entry) => interactionPreset(entry, studies);
 let errors;
 test.beforeEach(async ({ page }) => {
   errors = [];
@@ -33,7 +43,7 @@ test.beforeEach(async ({ page }) => {
 test.afterEach(() => expect(errors).toEqual([]));
 
 async function start(page, entry = solo) {
-  await page.goto(`/?reference=${entry.sourceId}`);
+  await page.goto(`/?preset=builtin.position.${entry.sourceId}`);
   await ready(page);
   await expect(page.locator("#scene-title")).toContainText(
     entry.sourceId.toUpperCase(),
@@ -85,7 +95,7 @@ async function exported(page, modal) {
   return JSON.parse(await readFile(await download.path(), "utf8")).presets;
 }
 
-test("a reference has an independently edited, captured and replace-confirmed pose across reload and export", async ({
+test("a position has an independently edited, captured and replace-confirmed override across reload and export", async ({
   page,
 }, info) => {
   test.setTimeout(180_000);
@@ -118,7 +128,9 @@ test("a reference has an independently edited, captured and replace-confirmed po
   await page
     .getByRole("button", { name: "Reset filters", exact: true })
     .click();
-  await expect(page).toHaveURL(new RegExp(`reference=${solo.sourceId}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`preset=builtin\\.position\\.${solo.sourceId}$`),
+  );
   await page.reload();
   await expect(page.locator("#scene-title")).toHaveText(
     "My independent posture",
@@ -139,7 +151,7 @@ test("a reference has an independently edited, captured and replace-confirmed po
   const modal = await tools(page);
   const data = await exported(page, modal);
   expect(data).toHaveLength(1);
-  expect(data[0].id).toBe(referenceStudyId(solo.sourceId));
+  expect(data[0].id).toBe(positionOverrideId(solo.sourceId));
   expect(data[0].scene.actors[0].joints.elbow_l.flexion).toBeCloseTo(60, 6);
   expect(data[0].scene.actors[0].jointMode).toBe("fixed");
   expect(data[0].source.annotationHash).toBe(solo.annotationHash);
@@ -158,7 +170,7 @@ test("a reference has an independently edited, captured and replace-confirmed po
     .click();
   await ready(page);
   await expect(page.locator("#scene-badge")).toHaveText("Approximate 3D");
-  await expect(page).toHaveURL(/preview=generated/);
+  await expect(page).toHaveURL(/variant=generated/);
   await page.reload();
   await ready(page);
   await expect(page.locator("#scene-badge")).toHaveText("Approximate 3D");
@@ -232,7 +244,7 @@ test("bulk imports preview counts, keep existing by default, replace explicitly 
     (await exported(page, modal)).find(
       (p) => p.source.recordId === solo.sourceId,
     ).title,
-  ).toBe(`Reference ${solo.sourceId}`);
+  ).toBe(preset(solo).title);
   await upload(page, [edited]);
   await page.getByLabel("Replace 1 existing position overrides").check();
   await modal
@@ -283,8 +295,10 @@ test("all 1283 entries can be imported, exported and individually selected as au
   expect(output.map((p) => p.source.recordId).sort()).toEqual(
     entries.map((e) => e.sourceId).sort(),
   );
-  expect(output.reduce((n, p) => n + p.scene.actors.length, 0)).toBe(2567);
-  await info.attach("reference-authoring-scale", {
+  expect(output.reduce((n, p) => n + p.scene.actors.length, 0)).toBe(
+    interactionManifest.participants,
+  );
+  await info.attach("position-override-scale", {
     body: JSON.stringify({
       sourceRecords: output.length,
       uniqueSourceIds: new Set(output.map((p) => p.source.recordId)).size,
@@ -330,7 +344,7 @@ test("mobile authoring and import are reachable, accessible and reject a missing
     .getByRole("button", { name: "Save position override", exact: true })
     .click();
   await expect(page.locator("#toast")).toContainText(
-    "figure count does not match",
+    "participant count does not match",
   );
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.reload();
@@ -395,7 +409,7 @@ test("saving an authored study cancels a pending generated selection", async ({
   // The startup positions preload shares this held pack request.
   await page.reload();
   await ready(page);
-  await page.goto(`/?reference=${trio.sourceId}`);
+  await page.goto(`/?preset=builtin.position.${trio.sourceId}`);
   await requested;
   await saveStudy(page, "Saved while another preview was pending", true);
   await release();
@@ -406,10 +420,12 @@ test("saving an authored study cancels a pending generated selection", async ({
   await expect(page.locator("#scene-badge")).toHaveText(
     "Authored · unreviewed",
   );
-  await expect(page).toHaveURL(new RegExp(`reference=${solo.sourceId}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`preset=builtin\\.position\\.${solo.sourceId}$`),
+  );
 });
 
-test("a committed reference save cannot replace a newer selection after its dialog closes", async ({
+test("a committed override save cannot replace a newer selection after its dialog closes", async ({
   page,
 }) => {
   await start(page);

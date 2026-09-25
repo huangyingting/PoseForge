@@ -87,6 +87,23 @@ test("imports reject unknown versions, duplicate IDs, unsafe keys and unreasonab
   );
   assert.throws(() => parseCatalog(" ".repeat(MAX_PACK_BYTES + 1)), /32 MB/);
   assert.throws(() => checkPreset(JSON.parse('{"__proto__":{}}')), /Unsafe/);
+  assert.throws(
+    () => checkPreset({ ...example(), figures: 2 }),
+    /not part of the position contract/,
+  );
+  assert.throws(
+    () =>
+      checkPreset({
+        ...example(),
+        position: {
+          type: "custom",
+          name: "Example",
+          variant: "studio",
+          participants: [],
+        },
+      }),
+    /unsupported field/,
+  );
 });
 
 test("a malformed contact type rejects the complete pack without modifying saved data", () => {

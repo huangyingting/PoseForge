@@ -1,11 +1,11 @@
 {
-  "format": "poseforge.reference-manifest",
+  "format": "poseforge.source-manifest",
   "version": 1,
   "dataset": "SexPoses",
   "sourceFile": "annotated-pose-dataset/annotations.jsonl",
   "sourceSha256": "c65f48910f389046a75c70fcb1a6c9cabda4586aa99c12f8bbddf4b20262a3bf",
-  "dataSha256": "34b4f635d91e89b27450eb8af45411275e8acb89e2ab95eb11e7b7c7ec89b540",
-  "bytes": 767139,
+  "dataSha256": "6d2134566a2e590f0d8369485d407378b4cc6fc45f24570e6273f0e71bf78237",
+  "bytes": 735061,
   "records": 1283,
   "variants": 379,
   "uniqueImages": 1283,
@@ -39,11 +39,11 @@
     "Supported": 5
   },
   "file": "catalog/sexposes-v1.json",
-  "previews": {
-    "file": "catalog/reference-previews-v1.json",
-    "bytes": 655258,
-    "sha256": "622a054dab50ec2eda309232b24fdfc474abd24dd2af5e2c1e62db2b87712675",
+  "generated": {
+    "file": "catalog/generated-studies-v1.json",
+    "bytes": 655257,
+    "sha256": "ded357c7a908a6ac6ff7ef5deff27abaa40909a35f7eb5b632df1cdf664a7eb0",
     "scenes": 203
   },
-  "semantics": "Approximate individual 3D posture studies with separate participants, not reconstructions of source relationships or verified anatomical positions."
+  "semantics": "Source metadata plus generated individual posture studies. Generated studies keep participants separate and are not reconstructions of source relationships."
 }

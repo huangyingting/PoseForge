@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createPostureSceneBuilder } from "./reference-posture-scenes.mjs";
+import { createGeneratedStudyBuilder } from "./generated-posture-scenes.mjs";
 
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 function canonical(value) {
@@ -39,9 +39,9 @@ function surfaceFamily(value = "") {
 const digest = (value) =>
   typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
 
-export function buildReferenceCatalog(text) {
+export function buildSourceCatalog(text) {
   const ids = new Set();
-  const buildPreview = createPostureSceneBuilder();
+  const buildPreview = createGeneratedStudyBuilder();
   const scenes = new Map();
   const entries = text
     .split(/\r?\n/)
@@ -62,7 +62,7 @@ export function buildReferenceCatalog(text) {
           (p) => !p || typeof p !== "object" || typeof p.posture !== "string",
         )
       )
-        throw new Error(`Invalid reference record on line ${index + 1}.`);
+        throw new Error(`Invalid source record on line ${index + 1}.`);
       if (ids.has(a.image_id))
         throw new Error(`Duplicate source ID: ${a.image_id}`);
       ids.add(a.image_id);
@@ -78,28 +78,27 @@ export function buildReferenceCatalog(text) {
         relationship: a.relationship ?? {},
       };
       return {
-        id: `reference.sexposes.${a.image_id}`,
+        id: `source.sexposes.${a.image_id}`,
         sourceId: a.image_id,
         figures: a.participants.length,
         family: [...new Set(postures)].sort().join(" + "),
         postures,
         surface: surfaceFamily(a.relationship?.support_surface),
-        status: "approximate-3d",
-        previewKey: preview.key,
-        previewNotes: preview.notes,
+        generatedKey: preview.key,
+        generatedNotes: preview.notes,
         annotationHash: hash(JSON.stringify(canonical(a))),
         variant: hash(JSON.stringify(canonical(geometry))),
         imageHash: row.normalized_sha256,
       };
     })
     .sort((a, b) => a.sourceId.localeCompare(b.sourceId, "en"));
-  if (!entries.length) throw new Error("No reference records found.");
+  if (!entries.length) throw new Error("No source records found.");
   const data =
-    JSON.stringify({ format: "poseforge.references", version: 1, entries }) +
+    JSON.stringify({ format: "poseforge.sources", version: 1, entries }) +
     "\n";
   const previewData =
     JSON.stringify({
-      format: "poseforge.reference-previews",
+      format: "poseforge.generated-studies",
       version: 1,
       scenes: [...scenes]
         .sort(([a], [b]) => a.localeCompare(b))
@@ -115,7 +114,7 @@ export function buildReferenceCatalog(text) {
         ]),
     );
   const manifest = {
-    format: "poseforge.reference-manifest",
+    format: "poseforge.source-manifest",
     version: 1,
     dataset: "SexPoses",
     sourceFile: "annotated-pose-dataset/annotations.jsonl",
@@ -128,14 +127,14 @@ export function buildReferenceCatalog(text) {
     figures: counts("figures"),
     families: counts("family"),
     file: "catalog/sexposes-v1.json",
-    previews: {
-      file: "catalog/reference-previews-v1.json",
+    generated: {
+      file: "catalog/generated-studies-v1.json",
       bytes: Buffer.byteLength(previewData),
       sha256: hash(previewData),
       scenes: scenes.size,
     },
     semantics:
-      "Approximate individual 3D posture studies with separate participants, not reconstructions of source relationships or verified anatomical positions.",
+      "Source metadata plus generated individual posture studies. Generated studies keep participants separate and are not reconstructions of source relationships.",
   };
   return { data, manifest, entries, previewData };
 }
@@ -147,17 +146,17 @@ if (
   const input = process.argv[2];
   if (!input)
     throw new Error(
-      "Usage: node scripts/build-reference-catalog.mjs <annotations.jsonl> [--check]",
+      "Usage: node scripts/build-source-catalog.mjs <annotations.jsonl> [--check]",
     );
   const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-  const { data, manifest, previewData } = buildReferenceCatalog(
+  const { data, manifest, previewData } = buildSourceCatalog(
     readFileSync(input, "utf8"),
   );
   const outputs = [
     [resolve(root, "public", manifest.file), data],
-    [resolve(root, "public", manifest.previews.file), previewData],
+    [resolve(root, "public", manifest.generated.file), previewData],
     [
-      resolve(root, "src/data/reference-manifest.json"),
+      resolve(root, "src/data/source-manifest.json"),
       JSON.stringify(manifest, null, 2) + "\n",
     ],
   ];

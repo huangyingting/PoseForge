@@ -55,7 +55,7 @@ The library counter distinguishes **1,283 artistic** studies from **personal**
 overrides; personal work remains **Authored · unreviewed**. Removing a personal
 override returns to the artistic default. The details dialog's **Open generated
 approximation** retains the previous 203-scene fallback, and its selection can
-be reloaded with `preview=generated`.
+be reloaded with `variant=generated`.
 
 Orbit, camera views, Focus, editing, saving, source links and PNG/SVG/JSON exports
 work as before. Editable exports preserve source identity and an `artistic` tag

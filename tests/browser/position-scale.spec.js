@@ -10,7 +10,7 @@ import {
 import { fourFigureLibrary } from "../fixtures/fourFigureLibrary.js";
 import { ready } from "./helpers/ready.js";
 import { openLibraryFilters } from "./helpers/library.js";
-const references = async (page) => {
+const positions = async (page) => {
   await page.getByRole("button", { name: "Positions", exact: true }).click();
   await openLibraryFilters(page);
   await page.getByLabel("Support status").selectOption("interaction-3d");
@@ -28,7 +28,7 @@ test.beforeEach(async ({ context }) => {
 });
 test.afterEach(() => expect(browserErrors).toEqual([]));
 
-test("all 1283 reference IDs are reachable through bounded pages without changing or solving the active scene", async ({
+test("all 1283 position IDs are reachable through bounded pages without changing or solving the active scene", async ({
   page,
 }) => {
   const errors = [],
@@ -50,7 +50,7 @@ test("all 1283 reference IDs are reachable through bounded pages without changin
   // The index is fetched once at startup to list the built-in 3D positions.
   expect(requests.length).toBeLessThanOrEqual(1);
   const sceneTitle = await page.locator("#scene-title").textContent();
-  await references(page);
+  await positions(page);
   const sends = await page.evaluate(() => window.__workerSends);
   const ids = [];
   for (let p = 1; p <= 54; p++) {
@@ -101,7 +101,7 @@ test("position categories, statuses and mobile controls remain accessible", asyn
 }, info) => {
   await page.goto("/?preset=builtin.standing-female");
   await ready(page);
-  await references(page);
+  await positions(page);
   await page.getByText("Browse position categories", { exact: true }).click();
   await expect(page.locator(".position-category")).toHaveCount(10);
   await expect(
@@ -137,12 +137,12 @@ test("position categories, statuses and mobile controls remain accessible", asyn
       ).violations,
     ).toEqual([]);
     await page.screenshot({
-      path: info.outputPath(`reference-catalog-${width}.png`),
+      path: info.outputPath(`position-catalog-${width}.png`),
     });
   }
 });
 
-test("reference fetch failure is retryable and does not block preset editing", async ({
+test("position fetch failure is retryable and does not block preset editing", async ({
   page,
 }) => {
   let failing = true;
@@ -168,7 +168,7 @@ test("source association survives save, export and reload without inheriting a v
 }) => {
   await page.goto("/?preset=builtin.standing-female");
   await ready(page);
-  await references(page);
+  await positions(page);
   await page.getByLabel("Search positions").fill("img-0001");
   await page
     .getByRole("button", { name: "Position details img-0001", exact: true })

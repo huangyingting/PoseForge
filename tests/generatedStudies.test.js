@@ -3,16 +3,16 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import {
-  checkReferencePreviews,
-  referencePreset,
-  REFERENCE_PREVIEW_NOTES,
-} from "../src/core/referencePreviews.js";
-import { checkReferences } from "../src/core/referenceCatalog.js";
+  checkGeneratedStudies,
+  generatedPosition,
+  GENERATED_STUDY_NOTES,
+} from "../src/core/generatedStudies.js";
+import { checkSourceCatalog } from "../src/core/sourceCatalog.js";
 import {
-  createReferenceService,
-  referenceManifest as manifest,
-} from "../src/app/referenceLoader.js";
-import { createPostureSceneBuilder } from "../scripts/reference-posture-scenes.mjs";
+  createPositionService,
+  sourceManifest as manifest,
+} from "../src/app/positionService.js";
+import { createGeneratedStudyBuilder } from "../scripts/generated-posture-scenes.mjs";
 import {
   checkScene,
   parseCatalog,
@@ -24,20 +24,20 @@ const indexBytes = readFileSync(
   new URL("../public/catalog/sexposes-v1.json", import.meta.url),
 );
 const previewBytes = readFileSync(
-  new URL("../public/catalog/reference-previews-v1.json", import.meta.url),
+  new URL("../public/catalog/generated-studies-v1.json", import.meta.url),
 );
-const entries = checkReferences(JSON.parse(indexBytes), manifest);
+const entries = checkSourceCatalog(JSON.parse(indexBytes), manifest);
 const pack = JSON.parse(previewBytes);
-const scenes = checkReferencePreviews(pack, manifest.previews, entries);
+const scenes = checkGeneratedStudies(pack, manifest.generated, entries);
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
-test("all 1283 references map to complete portable previews without dropping any participants", () => {
-  assert.equal(hash(previewBytes), manifest.previews.sha256);
-  assert.equal(previewBytes.length, manifest.previews.bytes);
+test("all 1283 sources map to complete generated studies without dropping participants", () => {
+  assert.equal(hash(previewBytes), manifest.generated.sha256);
+  assert.equal(previewBytes.length, manifest.generated.bytes);
   assert.equal(scenes.size, 203);
   let figures = 0;
   for (const entry of entries) {
-    const preset = referencePreset(entry, scenes);
+    const preset = generatedPosition(entry, scenes);
     const restored = parseCatalog(serializeCatalog([preset]))[0];
     assert.equal(restored.scene.actors.length, entry.figures);
     assert.equal(restored.source.recordId, entry.sourceId);
@@ -87,7 +87,7 @@ test("every distinct preview has finite complete rigs and separated figures with
 });
 
 test("generation is deterministic, includes all figures and reports deferred or unavailable annotation detail", () => {
-  const build = createPostureSceneBuilder();
+  const build = createGeneratedStudyBuilder();
   const annotation = {
     image_id: "example",
     participants: [
@@ -103,7 +103,7 @@ test("generation is deterministic, includes all figures and reports deferred or 
   assert.ok(result.notes.includes("unspecified-body-type"));
   assert.ok(result.notes.includes("unread-limb-detail"));
   assert.ok(
-    result.notes.every((code) => Object.hasOwn(REFERENCE_PREVIEW_NOTES, code)),
+    result.notes.every((code) => Object.hasOwn(GENERATED_STUDY_NOTES, code)),
   );
   assert.ok(!JSON.stringify(result).includes("not-copied"));
   assert.throws(
@@ -132,20 +132,20 @@ test("preview validation rejects missing mappings, invented keys, wrong counts, 
     const copy = structuredClone(pack);
     mutate(copy);
     assert.throws(() =>
-      checkReferencePreviews(copy, manifest.previews, entries),
+      checkGeneratedStudies(copy, manifest.generated, entries),
     );
   }
   assert.throws(
     () =>
-      checkReferencePreviews(pack, manifest.previews, [
-        { ...entries[0], previewKey: "0".repeat(64) },
+      checkGeneratedStudies(pack, manifest.generated, [
+        { ...entries[0], generatedKey: "0".repeat(64) },
       ]),
     /missing/,
   );
-  const first = referencePreset(entries[0], scenes);
+  const first = generatedPosition(entries[0], scenes);
   first.scene.actors[0].joints.hip_l.flexion = 999;
   assert.notEqual(
-    referencePreset(entries[0], scenes).scene.actors[0].joints.hip_l.flexion,
+    generatedPosition(entries[0], scenes).scene.actors[0].joints.hip_l.flexion,
     999,
   );
 });
@@ -153,12 +153,12 @@ test("preview validation rejects missing mappings, invented keys, wrong counts, 
 test("shared preview service loads only on demand, retries and retains independent source identity", async () => {
   const requests = [];
   let fail = true;
-  const service = createReferenceService({
+  const service = createPositionService({
     base: "/app/",
     digest: hash,
     fetcher: async (url) => {
       requests.push(url);
-      if (url.endsWith("reference-previews-v1.json")) {
+      if (url.endsWith("generated-studies-v1.json")) {
         if (fail) {
           fail = false;
           return new Response("unavailable", { status: 503 });
@@ -169,16 +169,16 @@ test("shared preview service loads only on demand, retries and retains independe
     },
   });
   assert.equal(requests.length, 0);
-  const list = await service.entries();
+  const list = await service.sources();
   assert.equal(requests.length, 1);
-  await assert.rejects(service.preset(list[0]), /503/);
+  await assert.rejects(service.variant(list[0], "generated"), /503/);
   const [a, b] = await Promise.all([
-    service.preset(list[0]),
-    service.preset(list[1]),
+    service.variant(list[0], "generated"),
+    service.variant(list[1], "generated"),
   ]);
   assert.equal(requests.length, 3);
   assert.notEqual(a.source.recordId, b.source.recordId);
-  assert.equal((await service.find(list[0].sourceId)).id, a.id);
-  await assert.rejects(service.find("missing"), /not found/);
+  assert.equal((await service.source(list[0].sourceId)).sourceId, list[0].sourceId);
+  await assert.rejects(service.source("missing"), /not found/);
   assert.ok(requests.every((url) => url.startsWith("/app/catalog/")));
 });

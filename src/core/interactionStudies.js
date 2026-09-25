@@ -1,7 +1,10 @@
 /** Composed 3D interaction studies: approximate, clothed, source-linked. */
-import { checkScene } from "./catalog.js";
-import { isFixedPlacement } from "./placement.js";
-import { POSEABLE_BONES, CHANNELS } from "./skeleton.js";
+import { checkPreset, checkScene } from "./catalog.js";
+import {
+  checkFixedPositionScene,
+  isPositionVariant,
+  positionId,
+} from "./positionContract.js";
 
 export const INTERACTION_SEMANTICS =
   "Approximate clothed 3D interactions composed from a visual classification of each source image into an interaction template, with fixed placements, joints and declared contacts. Not measured reconstructions or verified physical poses.";
@@ -118,9 +121,6 @@ export const POSITION_CATEGORIES = {
   group_three: "Solo & group",
 };
 
-export const POSITION_PREFIX = "builtin.position.";
-export const isPosition = (preset) => typeof preset?.id === "string" && preset.id.startsWith(POSITION_PREFIX);
-
 const SURFACE_LABELS = {
   floor: "Floor",
   bed: "Bed",
@@ -140,26 +140,36 @@ const POSTURE_LABELS = {
 
 /**
  * Every interaction study as a playable, source-linked library position.
- * Reference metadata is merged into the preset so the app has one catalog.
+ * Source metadata is merged into the preset so the app has one catalog.
  */
 export function interactionPositions(studies, entries = []) {
-  const references = new Map(entries.map((entry) => [entry.sourceId, entry]));
+  const sources = new Map(entries.map((entry) => [entry.sourceId, entry]));
   const out = [];
   for (const record of studies.values()) {
     const type =
-      record.template === "group_three" ? "group_three" : record.template;
-    const name = POSITION_NAMES[type] ?? POSITION_NAMES.other_pair;
+      record.scene.actors.length > 3
+        ? `group_${record.scene.actors.length}`
+        : record.template === "group_three"
+          ? "group_three"
+          : record.template;
+    const name =
+      POSITION_NAMES[type] ??
+      (record.scene.actors.length > 3
+        ? `${record.scene.actors.length}-person interaction`
+        : POSITION_NAMES.other_pair);
     const category =
-      POSITION_CATEGORIES[type] ?? POSITION_CATEGORIES.other_pair;
-    const reference = references.get(record.sourceId);
+      record.scene.actors.length > 2
+        ? POSITION_CATEGORIES.group_three
+        : POSITION_CATEGORIES[type] ?? POSITION_CATEGORIES.other_pair;
+    const sourceEntry = sources.get(record.sourceId);
     const surface =
-      reference?.surface ??
+      sourceEntry?.surface ??
       SURFACE_LABELS[record.surface] ??
       record.surface.replace(/^\w/, (letter) => letter.toUpperCase());
-    const postures = reference?.postures?.map(
+    const postures = sourceEntry?.postures?.map(
       (posture) => POSTURE_LABELS[posture.toLowerCase()] ?? posture.toLowerCase(),
     );
-    const figures = reference?.figures ?? record.scene.actors.length;
+    const figures = sourceEntry?.figures ?? record.scene.actors.length;
     const postureText = postures?.length
       ? [...new Set(postures)].join(" and ")
       : record.scene.actors
@@ -172,27 +182,16 @@ export function interactionPositions(studies, entries = []) {
     const warnings = [INTERACTION_NOTE];
     if (!record.checks.passed) warnings.push(`Some interaction checks are unmet: ${record.checks.failures.join("; ")}.`);
     if (record.note) warnings.push(record.note);
-    out.push({
-      id: `${POSITION_PREFIX}${record.sourceId}`,
+    const preset = checkPreset({
+      id: positionId(record.sourceId),
       title,
       description: `${name}: ${label}. ${figures} clothed ${figures === 1 ? "figure" : "figures"} in ${postureText} positions on ${surface.toLowerCase()}. Approximate template-based 3D interpretation of source ${record.sourceId}.`,
       category,
-      positionName: name,
-      positionCategory: category,
-      surface,
-      figures,
-      reference: reference
-        ? {
-            id: reference.id,
-            sourceId: reference.sourceId,
-            figures: reference.figures,
-            family: reference.family,
-            postures: [...reference.postures],
-            surface: reference.surface,
-            variant: reference.variant,
-            imageHash: reference.imageHash,
-          }
-        : null,
+      position: {
+        type,
+        name,
+        variant: "interaction",
+      },
       tags: [
         "interaction",
         "position",
@@ -204,18 +203,16 @@ export function interactionPositions(studies, entries = []) {
       ],
       source: { dataset: "SexPoses", recordId: record.sourceId, annotationHash: record.annotationHash },
       scene: { ...structuredClone(record.scene), title },
-      inputWarnings: warnings,
     });
+    out.push({ ...preset, inputWarnings: warnings });
   }
   return out;
 }
 
 export const templateLabel = (template) => TEMPLATE_LABELS[template] ?? TEMPLATE_LABELS.other_pair;
 
-export const isInteractionPreview = (preset) =>
-  typeof preset?.id === "string" &&
-  (preset.id.startsWith("reference.") || preset.id.startsWith("builtin.position.")) &&
-  Boolean(preset.tags?.includes("interaction"));
+export const isInteractionPosition = (preset) =>
+  isPositionVariant(preset, "interaction");
 
 const TEMPLATE_IDS = new Set([...Object.keys(TEMPLATE_LABELS), "group_three"]);
 
@@ -246,19 +243,7 @@ export function checkInteractionStudies(pack, descriptor, entries) {
     )
       throw new Error("Invalid or duplicate interaction source mapping.");
     const scene = checkScene(record.scene);
-    if (scene.actors.length < 1 || scene.actors.length > 3) throw new Error("Interaction studies have one to three participants.");
-    if (scene.actors.length > 1 && !scene.contacts?.some((c) => c.fromActor !== c.toActor))
-      throw new Error("Interaction studies need a contact between participants.");
-    for (const actor of scene.actors) {
-      if (!actor.wearing?.includes("top") || !actor.wearing?.includes("shorts"))
-        throw new Error("Every interaction figure must wear a top and shorts.");
-      if (
-        actor.jointMode !== "fixed" ||
-        !isFixedPlacement(actor.placement) ||
-        POSEABLE_BONES.some(({ name }) => CHANNELS.some((channel) => !Number.isFinite(actor.joints?.[name]?.[channel])))
-      )
-        throw new Error("Interaction studies need fixed placements and complete joint angles.");
-    }
+    checkFixedPositionScene(scene);
     studies.set(record.sourceId, { ...record, scene });
   }
   return studies;
@@ -266,9 +251,6 @@ export function checkInteractionStudies(pack, descriptor, entries) {
 
 export function interactionPreset(entry, studies) {
   const record = studies.get(entry.sourceId);
-  if (!record) throw new Error("Interaction study unavailable for this reference.");
-  return {
-    ...interactionPositions(new Map([[entry.sourceId, record]]), [entry])[0],
-    id: entry.id,
-  };
+  if (!record) throw new Error("Interaction position unavailable for this source.");
+  return interactionPositions(new Map([[entry.sourceId, record]]), [entry])[0];
 }

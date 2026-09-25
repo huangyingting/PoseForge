@@ -7,7 +7,7 @@ import {
   checkArtisticStudies,
   artisticPreset,
 } from "../src/core/artisticStudies.js";
-import { createReferenceService } from "../src/app/referenceLoader.js";
+import { createPositionService } from "../src/app/positionService.js";
 import { buildArtisticStudies } from "../scripts/build-artistic-studies.mjs";
 import { serializeCatalog, parseCatalog } from "../src/core/catalog.js";
 import { solveScene } from "../src/core/solver.js";
@@ -192,7 +192,7 @@ test("malformed, incomplete, unclothed, stale or duplicate artistic records reje
 test("artistic scenes load automatically through a shared lazy retryable verified service", async () => {
   const requests = [];
   let fail = true;
-  const service = createReferenceService({
+  const service = createPositionService({
     base: "/app/",
     digest: hash,
     fetcher: async (url) => {
@@ -209,24 +209,24 @@ test("artistic scenes load automatically through a shared lazy retryable verifie
     },
   });
   assert.equal(requests.length, 0);
-  await assert.rejects(service.artistic(entries[0]), /503/);
+  await assert.rejects(service.variant(entries[0], "artistic"), /503/);
   const [a, b] = await Promise.all([
-    service.artistic(entries[0]),
-    service.artistic(entries[1]),
+    service.variant(entries[0], "artistic"),
+    service.variant(entries[1], "artistic"),
   ]);
   assert.ok(a.tags.includes("artistic"));
   assert.notEqual(a.source.recordId, b.source.recordId);
   assert.equal(requests.length, 3);
   a.scene.actors[0].joints.head.rotation = 999;
   assert.notEqual(
-    (await service.artistic(entries[0])).scene.actors[0].joints.head.rotation,
+    (await service.variant(entries[0], "artistic")).scene.actors[0].joints.head.rotation,
     999,
   );
 });
 
 test("the committed content rebuilds deterministically without source imagery or sibling data", () => {
   const approximate = new Map(
-    JSON.parse(read("public/catalog/reference-previews-v1.json")).scenes.map(
+    JSON.parse(read("public/catalog/generated-studies-v1.json")).scenes.map(
       (p) => [p.key, p.scene],
     ),
   );

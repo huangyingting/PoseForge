@@ -1,7 +1,7 @@
 # PoseForge
 
 PoseForge includes **1,283 ready-to-view 3D interactions**, one for every
-reference ID: the clothed participants are placed together, in contact, in the
+source record: the clothed participants are placed together, in contact, in the
 arrangement each source image shows, composed from 31 interaction templates
 (1,170 pass all of their distance, facing and overlap checks; unmet checks are
 shown). They are approximations, not measured reconstructions. See
@@ -18,7 +18,7 @@ Positions can be favorited and deep-linked with
 
 Each source-linked position also keeps its **artistic 3D composition** (**••• →
 Open artistic
-interpretation** or `?preview=artistic`), plus **23 authored stock presets**.
+interpretation** or `?variant=artistic`), plus **23 authored stock presets**.
 Select a position card: no authoring or import is required. The artistic compositions
 have distinct joint geometry, including all 2,567 participants, but are **original
 clothed interpretations—not source-matched reconstructions or verified physical
@@ -41,8 +41,9 @@ Saved libraries use IndexedDB, migrate legacy data without deleting the backup,
 and accept up to **5,000 presets / 32 MB** (whichever limit is reached first).
 The unified catalog uses bounded 24-card pages. Position metadata and interaction
 scenes load together; artistic and generated alternatives remain lazy.
-Reference links use `?reference=img-0001`. Orbit, zoom, camera views, editing,
-save and PNG/SVG/JSON export work with reference previews.
+Position links use `?preset=builtin.position.img-0001`; alternate views add
+`&variant=artistic|generated`. Orbit, zoom, editing, save and export use the
+same position contract.
 
 Each source-linked position can have one independently saved, clothed local
 override. Use **Edit posture → Save position override**, or **Library tools**
@@ -50,7 +51,7 @@ for validated bulk import/export. The same position card prefers the override
 over the built-in 3D interaction. The
 **Interaction 3D / Authored · unreviewed** labels distinguish bundled and personal work;
 they do not certify uniqueness or source accuracy. See the
-[authoring guide](docs/reference-authoring.md).
+[override guide](docs/position-overrides.md).
 
 The compact workspace uses bundled **Manrope** typography, keeps search beside
 **Filters**, and provides a collapsible category browser plus active-filter
@@ -76,8 +77,7 @@ default contacts. **A helping hand** is a working example you can edit and save.
 **Start here:** [studio design](docs/studio-redesign.md) ·
 [catalog and extension guide](docs/catalog.md) ·
 [artistic collection](docs/artistic-collection.md) ·
-[3D reference design](docs/reference-3d-plan.md) ·
-[3D reference verification](docs/reference-3d-verification.md) ·
+[position architecture](docs/position-architecture.md) ·
 [large-catalog design](docs/catalog-scale-plan.md) ·
 [catalog-scale verification](docs/catalog-scale-verification.md) ·
 [importable example](examples/reference-study.json).

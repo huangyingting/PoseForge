@@ -1,11 +1,11 @@
 # 3D interaction studies
 
-Every one of the 1,283 SexPoses references now opens as a **3D interaction**:
+Every one of the 1,283 SexPoses source records opens as a **3D interaction**:
 the clothed participants are placed together, in contact, in the arrangement the
 source image shows. The earlier artistic interpretation and generated approximation
-remain available from each reference's **ⓘ** details (**Open artistic
+remain available from each position's **•••** details (**Open artistic
 interpretation** / **Open generated approximation**) and through
-`?reference=img-0001&preview=artistic|generated`.
+`?preset=builtin.position.img-0001&variant=artistic|generated`.
 
 ## Library positions
 
@@ -49,8 +49,10 @@ and rebuilt from a small vocabulary of interaction templates. Checks are geometr
    reproduce exactly.
 
 Every figure wears a top and shorts, uses fixed joints and a fixed placement, and
-every multi-person scene declares at least one contact between participants; the
-loader rejects the whole pack otherwise.
+every multi-person scene has a connected contact graph across all participants;
+the loader rejects the whole pack otherwise. The shared contract supports one
+to four participants, so four-person positions can use the same actor/contact
+model without a new subsystem.
 
 ## Coverage
 

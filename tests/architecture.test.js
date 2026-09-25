@@ -129,3 +129,17 @@ test("the core never reaches for the browser", () => {
     assert.equal(hit, null, `${relative(root, file)} touches ${hit?.[1]}, so it cannot run headless`);
   }
 });
+
+test("the runtime has no reference-era modules, APIs or URL routes", () => {
+  const forbidden =
+    /\b(createReference|ReferenceStudies|referenceStudy|referenceLoader|referenceCatalog|referencePreviews)\b|[?&]reference=|[?&]preview=/;
+  for (const file of sources("src")) {
+    const source = readFileSync(file, "utf8");
+    assert.equal(
+      forbidden.exec(source),
+      null,
+      `${relative(root, file)} still exposes a reference-era runtime path`,
+    );
+    forbidden.lastIndex = 0;
+  }
+});

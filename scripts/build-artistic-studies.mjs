@@ -146,7 +146,7 @@ export function buildArtisticStudies(entries, approximateScenes) {
     motifSets = new Set(),
     studies = [];
   for (const entry of entries) {
-    const original = approximateScenes.get(entry.previewKey);
+    const original = approximateScenes.get(entry.generatedKey);
     if (!original || original.actors.length !== entry.figures)
       throw new Error("Missing participant template.");
     const choices = entry.postures.map((family, i) =>
@@ -255,7 +255,7 @@ if (
   ).entries;
   const scenes = new Map(
     JSON.parse(
-      readFileSync(resolve(root, "public/catalog/reference-previews-v1.json")),
+      readFileSync(resolve(root, "public/catalog/generated-studies-v1.json")),
     ).scenes.map((p) => [p.key, p.scene]),
   );
   const { data, manifest, omitted } = buildArtisticStudies(entries, scenes);

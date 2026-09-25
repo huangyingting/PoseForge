@@ -1,6 +1,7 @@
-import { checkScene } from "./catalog.js";
+import { checkPreset, checkScene } from "./catalog.js";
+import { checkSeparatePositionScene } from "./positionContract.js";
 
-export const REFERENCE_PREVIEW_NOTES = {
+export const GENERATED_STUDY_NOTES = {
   "separate-participants":
     "Participants are shown separately. Original relationship, facing and contact details are not reconstructed.",
   "approximate-joints":
@@ -17,16 +18,16 @@ export const REFERENCE_PREVIEW_NOTES = {
     "An unspecified body choice uses the existing neutral model, which shares a scan with the female model.",
 };
 
-export function checkReferencePreviews(pack, descriptor, entries) {
+export function checkGeneratedStudies(pack, descriptor, entries) {
   if (
-    pack?.format !== "poseforge.reference-previews" ||
+    pack?.format !== "poseforge.generated-studies" ||
     pack.version !== 1 ||
     !Array.isArray(pack.scenes) ||
     pack.scenes.length !== descriptor.scenes ||
     pack.scenes.length < 1 ||
     pack.scenes.length > 20_000
   )
-    throw new Error("Invalid reference preview pack.");
+    throw new Error("Invalid generated study pack.");
   const scenes = new Map();
   for (const value of pack.scenes) {
     if (
@@ -35,58 +36,51 @@ export function checkReferencePreviews(pack, descriptor, entries) {
       !/^[a-f0-9]{64}$/.test(value.key) ||
       scenes.has(value.key)
     )
-      throw new Error("Invalid or duplicate reference preview key.");
+      throw new Error("Invalid or duplicate generated study key.");
     const scene = checkScene(value.scene);
-    if (
-      scene.support.surface !== "floor" ||
-      scene.relationship.contactMode !== "custom" ||
-      scene.contacts.length ||
-      scene.actors.some(
-        (a) =>
-          a.jointMode !== "fixed" ||
-          !a.placement ||
-          a.placement.mode === "guided" ||
-          !a.wearing?.includes("top") ||
-          !a.wearing?.includes("shorts"),
-      )
-    )
-      throw new Error(
-        "Reference previews must be clothed, separate fixed posture studies.",
-      );
+    checkSeparatePositionScene(scene);
     scenes.set(value.key, scene);
   }
   const used = new Set();
   for (const entry of entries) {
-    const scene = scenes.get(entry.previewKey);
+    const scene = scenes.get(entry.generatedKey);
     if (!scene || scene.actors.length !== entry.figures)
-      throw new Error("A source reference is missing its complete 3D preview.");
-    used.add(entry.previewKey);
+      throw new Error("A source is missing its complete generated study.");
+    used.add(entry.generatedKey);
   }
   if (used.size !== scenes.size)
-    throw new Error("The preview pack contains unreferenced scenes.");
+    throw new Error("The generated study pack contains unused scenes.");
   return scenes;
 }
 
-export function referencePreset(entry, scenes) {
-  const scene = scenes.get(entry.previewKey);
-  if (!scene) throw new Error("This reference has no available 3D preview.");
-  const title = `Reference ${entry.sourceId}`;
+export function generatedPosition(entry, scenes) {
+  const scene = scenes.get(entry.generatedKey);
+  if (!scene) throw new Error("This source has no generated study.");
+  const title = `Generated approximation · ${entry.sourceId.toUpperCase()}`;
   const description =
     "Approximate clothed posture study. Participants are separate; original relationships and contacts are not reconstructed.";
-  return {
-    id: entry.id,
+  const preset = checkPreset({
+    id: `builtin.generated.${entry.sourceId}`,
     title,
     description,
-    category: "Reference previews",
-    tags: ["reference", "approximate", "posture-study"],
+    category: "Generated approximations",
+    tags: ["position", "generated", "approximate", "posture-study"],
+    position: {
+      type: "generated_posture_study",
+      name: "Generated approximation",
+      variant: "generated",
+    },
     scene: { ...structuredClone(scene), title, description: "" },
     source: {
       dataset: "SexPoses",
       recordId: entry.sourceId,
       annotationHash: entry.annotationHash,
     },
-    inputWarnings: entry.previewNotes.map(
-      (code) => REFERENCE_PREVIEW_NOTES[code],
+  });
+  return {
+    ...preset,
+    inputWarnings: entry.generatedNotes.map(
+      (code) => GENERATED_STUDY_NOTES[code],
     ),
   };
 }

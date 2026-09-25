@@ -1,15 +1,15 @@
-import { checkReferences } from "../core/referenceCatalog.js";
+import { checkSourceCatalog } from "../core/sourceCatalog.js";
 import {
-  checkReferencePreviews,
-  referencePreset,
-} from "../core/referencePreviews.js";
-import manifest from "../data/reference-manifest.json" with { type: "json" };
+  checkGeneratedStudies,
+  generatedPosition,
+} from "../core/generatedStudies.js";
+import manifest from "../data/source-manifest.json" with { type: "json" };
 import artisticManifest from "../data/artistic-manifest.json" with { type: "json" };
 import {
   checkArtisticStudies,
   artisticPreset,
 } from "../core/artisticStudies.js";
-export { manifest as referenceManifest };
+export { manifest as sourceManifest };
 import interactionManifest from "../data/interaction-manifest.json" with { type: "json" };
 import {
   checkInteractionStudies,
@@ -40,29 +40,29 @@ function verifiedLoader(
         descriptor.bytes < 1 ||
         descriptor.bytes > 32_000_000
       )
-        throw new Error("Invalid reference download size.");
+        throw new Error("Invalid catalog download size.");
       const response = await fetcher(`${base}${descriptor.file}`, {
         signal: AbortSignal.timeout(15_000),
         cache: "no-cache",
       });
       if (!response.ok)
-        throw new Error(`Reference download failed (${response.status}).`);
+        throw new Error(`Catalog download failed (${response.status}).`);
       const reader = response.body?.getReader();
       const chunks = [];
       let size = 0;
-      if (!reader) throw new Error("Reference download is unavailable.");
+      if (!reader) throw new Error("Catalog download is unavailable.");
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         size += value.length;
         if (size > descriptor.bytes) {
           await reader.cancel();
-          throw new Error("Reference download exceeds its declared size.");
+          throw new Error("Catalog download exceeds its declared size.");
         }
         chunks.push(value);
       }
       if (size !== descriptor.bytes)
-        throw new Error("Reference download is incomplete.");
+        throw new Error("Catalog download is incomplete.");
       const bytes = new Uint8Array(size);
       let offset = 0;
       for (const chunk of chunks) {
@@ -70,7 +70,7 @@ function verifiedLoader(
         offset += chunk.length;
       }
       if ((await digest(bytes)) !== descriptor.dataSha256)
-        throw new Error("Reference download failed its integrity check.");
+        throw new Error("Catalog download failed its integrity check.");
       return validate(JSON.parse(new TextDecoder().decode(bytes)));
     })().catch((error) => {
       pending = null;
@@ -80,21 +80,21 @@ function verifiedLoader(
   };
 }
 
-export function createReferenceLoader(options = {}) {
+export function createSourceCatalogLoader(options = {}) {
   return verifiedLoader(
     manifest,
-    (pack) => checkReferences(pack, manifest),
+    (pack) => checkSourceCatalog(pack, manifest),
     options,
   );
 }
 
 /** One shared lazy index and one deduplicated scene pack; no source images. */
 export function createPositionService(options = {}) {
-  const entries = createReferenceLoader(options);
+  const entries = createSourceCatalogLoader(options);
   const scenes = verifiedLoader(
-    { ...manifest.previews, dataSha256: manifest.previews.sha256 },
+    { ...manifest.generated, dataSha256: manifest.generated.sha256 },
     async (pack) =>
-      checkReferencePreviews(pack, manifest.previews, await entries()),
+      checkGeneratedStudies(pack, manifest.generated, await entries()),
     options,
   );
   const artistic = verifiedLoader(
@@ -110,22 +110,22 @@ export function createPositionService(options = {}) {
     options,
   );
   return {
-    entries,
-    async find(sourceId) {
+    sources: entries,
+    async source(sourceId) {
       const entry = (await entries()).find(
         (value) => value.sourceId === sourceId,
       );
-      if (!entry) throw new Error("Source reference not found.");
+      if (!entry) throw new Error("Position source not found.");
       return entry;
     },
-    async preset(entry) {
-      return referencePreset(entry, await scenes());
-    },
-    async artistic(entry) {
-      return artisticPreset(entry, await artistic());
-    },
-    async interaction(entry) {
-      return interactionPreset(entry, await interaction());
+    async variant(entry, variant = "interaction") {
+      if (variant === "interaction")
+        return interactionPreset(entry, await interaction());
+      if (variant === "artistic")
+        return artisticPreset(entry, await artistic());
+      if (variant === "generated")
+        return generatedPosition(entry, await scenes());
+      throw new Error(`Unknown position variant: ${variant}.`);
     },
     /** Unified source metadata and 3D scenes as playable library positions. */
     async positions() {
@@ -134,6 +134,3 @@ export function createPositionService(options = {}) {
     },
   };
 }
-
-// Compatibility for external consumers while the app uses position terminology.
-export const createReferenceService = createPositionService;

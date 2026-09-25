@@ -16,17 +16,17 @@ see the [artistic collection](artistic-collection.md) for the bundled content.
    mobile, return to **Studio** to access this action. The save captures the
    completed joint angles and placements; name it and choose **Save override**.
 4. If an override already exists, explicitly confirm replacement. It
-   updates only this source ID; other references, even matching annotations,
+   updates only this source ID; other records, even matching annotations,
    keep their own saved data.
 
-Cards and `?reference=img-0001` links prefer the local override. The
+Cards and `?preset=builtin.position.img-0001` links prefer the local override. The
 **Authored · unreviewed** filter finds them without creating duplicate position
 cards.
 Authored is a storage/workflow label, not a claim of physical quality, source
 fidelity, distinct geometry, or independent review. Pose checks remain visible.
 
 The information button offers **Open generated approximation**, without deleting
-the authored version. That choice survives reload via `&preview=generated`.
+the authored version. That choice survives reload via `&variant=generated`.
 Opening the main position card again selects the authored version. To remove an
 override, open it, choose **Save preset → Delete preset**, and confirm.
 Its built-in artistic view returns, and its generated fallback remains available.
@@ -44,7 +44,7 @@ annotation fingerprints, participant data, joint angles and placements.
 format, version 1. An exported editable preset with a source association can
 also be imported here. Each preset needs `source.dataset = "SexPoses"`, the
 exact `source.recordId`, and the matching `source.annotationHash` from the
-current catalog. Export a reference's editable preset to obtain that structure;
+current catalog. Export a source-linked position to obtain that structure;
 do not invent annotation hashes. The generated preset already has complete
 fixed joints/placements; for other studies use **Capture current layout** in
 Figures before exporting.
@@ -55,11 +55,11 @@ the replacement checkbox explicitly opts in to updating them. A failed record
 or storage transaction saves none of the batch. Duplicate source IDs, unknown
 or stale sources and incorrect participant counts are errors, not omissions.
 
-Every accepted study must have complete fixed joints and placements, top and
-shorts, no partner contacts, a floor, and at least 0.25 m between coarse figure
-bounds along world X. Separation is checked using posed body proxies without
-intimate anatomy, not a precise rendered-mesh collision test. This does not
-certify self-collision, support, balance, clothing fit or source accuracy.
+Every accepted override must have complete fixed joints and placements, top and
+shorts, and a connected participant contact graph for multi-person positions.
+It retains the position's complete interaction and may use any supported
+surface. This does not certify self-collision, support, balance, clothing fit or
+source accuracy.
 Parser-command text is cleared while descriptive preset metadata is retained.
 
 The existing browser-local library limit remains **5,000 presets / 32 MB**.
@@ -67,7 +67,8 @@ The importer commits the batch in one transaction. Cross-tab conflicts and
 quota failures leave the previous library intact; export a backup and reload
 after a cross-tab conflict. No cloud storage or server upload is added.
 
-One active override per source uses `user.reference.sexposes.<source-id>`
-internally for backward-compatible storage. Ordinary saved copies allocate
-personal IDs and do not change active source bindings. Use **Library tools →
-Import position overrides** to restore bindings from a portable backup.
+One active override per source uses `user.position.sexposes.<source-id>`.
+Libraries saved by earlier versions are migrated once at the storage boundary.
+Ordinary saved copies allocate personal IDs and do not change active source
+bindings. Use **Library tools → Import position overrides** to restore bindings
+from a portable backup.

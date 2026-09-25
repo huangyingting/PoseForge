@@ -16,7 +16,7 @@ async function start(page) {
   await page.goto("/?preset=builtin.standing-female");
   await ready(page);
 }
-async function references(page) {
+async function positions(page) {
   await page.getByRole("button", { name: "Positions", exact: true }).click();
   await openLibraryFilters(page);
   await page.getByLabel("Support status").selectOption("interaction-3d");
@@ -53,7 +53,7 @@ test("compact desktop and mobile layouts expose more rows and reserve the canvas
   ]) {
     await page.setViewportSize({ width, height });
     if (width <= 900) await page.locator('[data-region="library"]').click();
-    await references(page);
+    await positions(page);
     const metrics = await page.evaluate(
       ({ width, height }) => {
         const list = document
@@ -113,7 +113,7 @@ test("categories disclose, filters reset pagination, and search clears without l
   page,
 }) => {
   await start(page);
-  await references(page);
+  await positions(page);
   await openLibraryFilters(page);
   await page.getByLabel("Category", { exact: true }).selectOption("From behind");
   await expect(
@@ -209,7 +209,7 @@ test("responsive transitions and short landscape screens keep editing, filters a
   await page.getByText("Contact help", { exact: true }).click();
   await page.setViewportSize({ width: 844, height: 390 });
   await page.locator('[data-region="library"]').click();
-  await references(page);
+  await positions(page);
   await openLibraryFilters(page);
   await page.getByLabel("Category", { exact: true }).selectOption("From behind");
   await page.getByRole("button", { name: "Filters (2)", exact: true }).click();
@@ -255,7 +255,7 @@ test("compact controls, filters, information dialogs and enlarged text remain ac
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 });
     await page.locator('[data-region="library"]').click();
-    await references(page);
+    await positions(page);
     await openLibraryFilters(page);
     await axe(page);
     await page.getByRole("button", { name: /^Filters/ }).click();

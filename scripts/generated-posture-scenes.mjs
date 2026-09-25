@@ -1,4 +1,4 @@
-/** Canonical, non-interacting posture studies derived from categorical annotations. */
+/** Canonical generated posture studies derived from categorical annotations. */
 import { createHash } from "node:crypto";
 import { resolvePosture } from "../src/core/poseLibrary.js";
 import { limbJoints } from "../src/core/limbPose.js";
@@ -7,7 +7,7 @@ import { solveScene } from "../src/core/solver.js";
 import { captureSolvedPose } from "../src/core/placement.js";
 import { checkScene } from "../src/core/catalog.js";
 
-export function createPostureSceneBuilder() {
+export function createGeneratedStudyBuilder() {
   const actors = new Map();
   return (annotation) => {
     const notes = new Set([

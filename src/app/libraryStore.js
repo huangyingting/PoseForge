@@ -8,10 +8,17 @@ import {
 } from "../core/catalog.js";
 import { newId } from "./ids.js";
 import {
-  isReferenceStudy,
-  checkReferenceStudy,
-  prepareReferenceStudies,
-} from "../core/referenceStudies.js";
+  isPositionOverride,
+  checkPositionOverride,
+  positionOverrideId,
+  positionOverrideMatches,
+  preparePositionOverrides,
+} from "../core/positionOverrides.js";
+import {
+  isBuiltInPosition,
+  isPositionVariant,
+} from "../core/positionContract.js";
+import { migrateLibraryData } from "./libraryMigrations.js";
 
 export const LIBRARY_KEY = "poseforge.library.v1";
 
@@ -19,13 +26,29 @@ export const LIBRARY_KEY = "poseforge.library.v1";
 // They are shared stock: every library instance lists them, none stores them.
 let positions = [];
 let positionIndex = new Map();
+let positionSourceIndex = new Map();
 const stock = () => (positions.length ? [...BUILTIN_PRESETS, ...positions] : BUILTIN_PRESETS);
 const findStock = (id) => positionIndex.get(id) ?? BUILTIN_PRESETS.find((p) => p.id === id);
 
 /** Register the built-in interaction positions (replacing any earlier set). */
 export function registerPositions(list) {
-  positions = list.map((p) => Object.freeze(p));
+  positions = list.map((input) => {
+    const position = checkPreset(input);
+    if (
+      !isBuiltInPosition(position) ||
+      !isPositionVariant(position, "interaction") ||
+      !position.source
+    )
+      throw new Error("Registered positions must be source-linked interactions.");
+    const inputWarnings = Array.isArray(input.inputWarnings)
+      ? input.inputWarnings.filter((message) => typeof message === "string")
+      : [];
+    return Object.freeze({ ...position, inputWarnings });
+  });
   positionIndex = new Map(positions.map((p) => [p.id, p]));
+  positionSourceIndex = new Map(
+    positions.map((position) => [position.source.recordId, position]),
+  );
 }
 export const positionCount = () => positions.length;
 export const DRAFT_KEY = "poseforge.workspace.v1";
@@ -40,17 +63,11 @@ export function createLibrary(storage, idFactory = () => newId()) {
     if (text) {
       if (new TextEncoder().encode(text).length > MAX_PACK_BYTES)
         throw new Error("Library too large");
-      const data = JSON.parse(text);
-      if (
-        data.version !== 1 ||
-        !Array.isArray(data.saved) ||
-        !Array.isArray(data.favorites)
-      )
-        throw new Error("Invalid saved library");
+      const data = migrateLibraryData(JSON.parse(text));
       if (data.saved.length > MAX_PRESETS) throw new Error("Library too large");
       saved = data.saved.map(checkPreset);
       saved = saved.map((p) =>
-        isReferenceStudy(p) ? checkReferenceStudy(p) : p,
+        isPositionOverride(p) ? checkPositionOverride(p) : p,
       );
       if (
         saved.length > MAX_PRESETS ||
@@ -99,30 +116,54 @@ export function createLibrary(storage, idFactory = () => newId()) {
     }
     throw new Error("Could not create a unique preset ID.");
   }
+  const materialize = (preset) => {
+    if (!isPositionOverride(preset)) return preset;
+    const position = positionSourceIndex.get(preset.source.recordId);
+    return positionOverrideMatches(preset, position)
+      ? checkPositionOverride(preset, position)
+      : preset;
+  };
   return {
     get error() {
       return loadError;
     },
-    all: () => structuredClone([...stock(), ...saved]),
+    all: () => structuredClone([...stock(), ...saved.map(materialize)]),
     get: (id) =>
-      structuredClone(findStock(id) ?? saved.find((p) => p.id === id)),
+      structuredClone(
+        materialize(findStock(id) ?? saved.find((p) => p.id === id)),
+      ),
+    resolve(id) {
+      const preset = findStock(id) ?? saved.find((p) => p.id === id);
+      if (!preset || !isBuiltInPosition(preset) || !preset.source)
+        return structuredClone(preset);
+      const override = saved.find(
+        (candidate) =>
+          candidate.id === positionOverrideId(preset.source.recordId),
+      );
+      return structuredClone(
+        positionOverrideMatches(override, preset)
+          ? checkPositionOverride(override, preset)
+          : preset,
+      );
+    },
     index() {
       const authoredSources = new Set(
         saved
-          .filter(isReferenceStudy)
+          .filter(isPositionOverride)
+          .filter((override) => {
+            const position = positionSourceIndex.get(override.source.recordId);
+            return positionOverrideMatches(override, position);
+          })
           .map((preset) => preset.source.recordId),
       );
-      return [...stock(), ...saved].map((p) => ({
+      return [...stock(), ...saved.map(materialize)].map((p) => ({
         id: p.id,
         title: p.title,
         description: p.description,
         category: p.category,
-        ...(p.positionName
+        ...(p.position
           ? {
-              positionName: p.positionName,
-              positionCategory: p.positionCategory,
-              surface: p.surface,
-              figures: p.figures,
+              position: { ...p.position },
             }
           : {}),
         tags: [...p.tags],
@@ -132,7 +173,7 @@ export function createLibrary(storage, idFactory = () => newId()) {
           p.id.startsWith("builtin.position.") &&
           authoredSources.has(p.source?.recordId)
             ? "authored-3d"
-            : isReferenceStudy(p)
+            : isPositionOverride(p)
               ? "authored-3d"
               : p.id.startsWith("builtin.position.")
                 ? "interaction-3d"
@@ -141,24 +182,23 @@ export function createLibrary(storage, idFactory = () => newId()) {
             : "needs-adjustment",
       }));
     },
-    saved: () => structuredClone(saved),
+    saved: () => structuredClone(saved.map(materialize)),
     favorites: () => [...favorites],
     save(input, updateId = null) {
       if (updateId && !saved.some((p) => p.id === updateId))
         throw new Error("Only your own saved presets can be updated.");
       const id = updateId ?? freshId(new Set(saved.map((p) => p.id)));
       let next = checkPreset({ ...input, id });
-      if (isReferenceStudy(next)) {
+      if (isPositionOverride(next)) {
         const previous = saved.find((p) => p.id === updateId);
-        next = checkReferenceStudy(
+        const sourcePosition = positionSourceIndex.get(next.source?.recordId);
+        next = checkPositionOverride(
           next,
-          previous
-            ? {
-                sourceId: previous.source.recordId,
-                annotationHash: previous.source.annotationHash,
-                figures: previous.scene.actors.length,
-              }
-            : undefined,
+          sourcePosition ??
+            (previous && {
+              source: previous.source,
+              scene: previous.scene,
+            }),
         );
       }
       commit(
@@ -197,14 +237,17 @@ export function createLibrary(storage, idFactory = () => newId()) {
       commit([...saved, ...added]);
       return structuredClone(added);
     },
-    saveReferenceStudies(inputs, entries, { replace = false } = {}) {
+    savePositionOverrides(inputs, { replace = false } = {}) {
       if (
         !Array.isArray(inputs) ||
         inputs.length < 1 ||
         inputs.length > MAX_PRESETS
       )
         throw new Error(`Provide 1–${MAX_PRESETS} position overrides.`);
-      const checked = prepareReferenceStudies(inputs, entries);
+      const checked = preparePositionOverrides(inputs, [
+        ...saved.filter(isPositionOverride),
+        ...positions,
+      ]);
       const next = new Map(saved.map((p) => [p.id, p]));
       const written = [];
       let skipped = 0;
@@ -219,7 +262,7 @@ export function createLibrary(storage, idFactory = () => newId()) {
       if (written.length) commit([...next.values()]);
       return { written: structuredClone(written), skipped };
     },
-    export: () => serializeCatalog(saved),
+    export: () => serializeCatalog(saved.map(materialize)),
     raw: () => storage.getItem(LIBRARY_KEY) ?? "",
     reset() {
       storage.removeItem(LIBRARY_KEY);
