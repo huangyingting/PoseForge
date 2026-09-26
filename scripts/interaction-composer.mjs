@@ -20,6 +20,7 @@ import { landmarkPoint } from "../src/core/landmarks.js";
 import { detectContacts, detectPropContacts, penetrationReport, contactKey } from "../src/core/collision.js";
 import { resolveLandmark } from "../src/core/landmarks.js";
 import { resolveSurface } from "../src/core/poseLibrary.js";
+import { withBounds } from "../src/core/propShapes.js";
 import { quatFromAxisAngle, quatMultiply, quatNormalize, quatRotate } from "../src/core/math.js";
 import { checkScene } from "../src/core/catalog.js";
 
@@ -37,13 +38,7 @@ export function propsFor(surfaceName) {
   const surface = resolveSurface(surfaceName);
   return {
     surface,
-    props: (surface.props || []).map((prop) => ({
-      ...prop,
-      box: {
-        min: prop.center.map((c, i) => c - prop.size[i] / 2),
-        max: prop.center.map((c, i) => c + prop.size[i] / 2),
-      },
-    })),
+    props: (surface.props || []).map(withBounds),
   };
 }
 
@@ -271,7 +266,7 @@ function frontFlat(actor) {
 }
 
 /** Apply one rigid placement step to a fixed spec. */
-function applyPlace(spec, index, move, specs) {
+function applyPlace(spec, index, move, specs, props) {
   let out = move.mirror ? mirrorSpec(spec) : spec;
   if (move.around) {
     // Stand off from another actor (at its head, in front, beside or behind),
@@ -316,6 +311,33 @@ function applyPlace(spec, index, move, specs) {
     const d = sub(b, a).map((v, k) => (axes.includes(k) ? v : 0));
     out = moveSpec(out, { translate: d });
   }
+  if (move.settle) {
+    // Moved on (down, unless it says otherwise) until it just meets the furniture
+    // or the floor, or backed off until it is clear of them: a ball or a wedge
+    // has no one seat height to rest at.
+    const { along = [0, -1, 0], floor = 0 } = move.settle;
+    // A figure posed resting on the floor may start a hair into it; that is not something to back away from.
+    const limit = Math.min(floor, lowest(liveActor(out, index))) - 1e-4;
+    const clear = (s) => {
+      const actor = liveActor(moveSpec(out, { translate: along.map((v) => v * s) }), index);
+      return lowest(actor) >= limit && !detectPropContacts([{ id: "settle", volumes: actor.volumes }], props).length;
+    };
+    // Stepped to the first change, which a ball narrower than the move could pass right through.
+    const start = clear(0);
+    const step = start ? 0.02 : -0.02;
+    let s = 0;
+    while (clear(s + step) === start) {
+      s += step;
+      if (Math.abs(s) > 2) throw new Error(`settle: actor ${index} ${start ? "meets nothing" : "cannot get clear"} along [${along}]`);
+    }
+    let [good, bad] = start ? [s, s + step] : [s + step, s];
+    for (let i = 0; i < 12; i += 1) {
+      const mid = (bad + good) / 2;
+      if (clear(mid)) good = mid;
+      else bad = mid;
+    }
+    out = moveSpec(out, { translate: along.map((v) => v * good) });
+  }
   return out;
 }
 
@@ -346,7 +368,7 @@ function runFit(specs, step, props) {
  *   mode: "solver" | "fit",
  *   relationship, contacts,                      // solver mode
  *   soloSurface: [name...],                      // fit mode: where each is posed alone
- *   place: [{ index, yaw, pitch, pelvisTo, rest, alignTo }], // initial rigid moves
+ *   place: [{ index, yaw, pitch, pelvisTo, rest, alignTo, settle }], // initial rigid moves
  *   fit: [{ moving, anchors, free, yawRange, pitchRange (± or [min, max]), pivot, floor }],
  *   limbContacts: [...],                         // closed by IK afterwards; `optional` ones may fall short
  * }
@@ -378,7 +400,7 @@ export function compose(input) {
     });
     const solved = solveScene(scene);
     specs = scene.actors.map((a, i) => applyOverride({ ...a, ...captureSolvedPose(solved.actors[i]) }, solved.actors[i], plan.actors[i].override));
-    for (const move of plan.place ?? []) specs[move.index] = applyPlace(specs[move.index], move.index, move, specs);
+    for (const move of plan.place ?? []) specs[move.index] = applyPlace(specs[move.index], move.index, move, specs, props);
     // Refine from where the solver put them; snapping would start inside the partner.
     for (const step of plan.fit ?? []) specs[step.moving] = runFit(specs, withIgnore({ snap: false, ...step }), props).spec;
   } else {
@@ -392,13 +414,13 @@ export function compose(input) {
     specs = options.map((list) => list[0]);
     const placeFor = (index) => (plan.place ?? []).filter((m) => m.index === index);
     // Place fixed actors first (those with no candidates).
-    for (let i = 0; i < specs.length; i += 1) for (const move of placeFor(i)) specs[i] = applyPlace(specs[i], i, move, specs);
+    for (let i = 0; i < specs.length; i += 1) for (const move of placeFor(i)) specs[i] = applyPlace(specs[i], i, move, specs, props);
     for (const step of plan.fit ?? []) {
       let best = null;
       for (const [k, candidate] of options[step.moving].entries()) {
         const trial = specs.slice();
         trial[step.moving] = candidate;
-        for (const move of placeFor(step.moving)) trial[step.moving] = applyPlace(trial[step.moving], step.moving, move, trial);
+        for (const move of placeFor(step.moving)) trial[step.moving] = applyPlace(trial[step.moving], step.moving, move, trial, props);
         const fitted = runFit(trial, withIgnore(step), props);
         const cost = fitted.cost + (candidate.prefer ?? 0);
         if (!best || cost < best.cost) best = { ...fitted, cost, k };
@@ -413,7 +435,7 @@ export function compose(input) {
     const { soloSurface, prefer, ...clean } = spec;
     let third = soloFixed(clean, soloSurface ?? plan.surface);
     const trial = [...specs, third];
-    trial[input.thirdIndex] = applyPlace(third, input.thirdIndex, input.thirdPlace, trial);
+    trial[input.thirdIndex] = applyPlace(third, input.thirdIndex, input.thirdPlace, trial, props);
     const step = { ...input.thirdFit, anchors: input.thirdFit.anchors.map((a) => ({ ...a })) };
     trial[input.thirdIndex] = fitPlacement(trial, input.thirdIndex, step.anchors, props, { free: step.free, keep: step.keep }).spec;
     specs = trial;

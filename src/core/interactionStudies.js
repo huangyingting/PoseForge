@@ -137,7 +137,12 @@ const SURFACE_LABELS = {
   chair: "Chair",
   table: "Table",
   bench: "Bench",
+  ball: "Exercise ball",
+  wedge: "Wedge cushion",
+  car_seat: "Car seat",
 };
+// Props the source annotations have no word for: the scene's own name is more specific.
+const SPECIFIC_SURFACES = new Set(["ball", "wedge", "car_seat"]);
 // How each support reads inside a sentence; the labels above are headings.
 const SURFACE_PHRASES = {
   Floor: "on the floor",
@@ -147,6 +152,9 @@ const SURFACE_PHRASES = {
   Chair: "on a chair",
   Table: "on a table",
   Bench: "on a bench",
+  "Exercise ball": "on an exercise ball",
+  "Wedge cushion": "on a wedge cushion",
+  "Car seat": "on a car's back seat",
   Wall: "against a wall",
   Other: "on another support",
 };
@@ -184,6 +192,7 @@ export function interactionPositions(studies, entries = []) {
         : POSITION_CATEGORIES[type] ?? POSITION_CATEGORIES.other_pair;
     const sourceEntry = sources.get(record.sourceId);
     const surface =
+      (SPECIFIC_SURFACES.has(record.surface) ? SURFACE_LABELS[record.surface] : null) ??
       sourceEntry?.surface ??
       SURFACE_LABELS[record.surface] ??
       record.surface.replace(/^\w/, (letter) => letter.toUpperCase());

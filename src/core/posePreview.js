@@ -1,6 +1,7 @@
 /** Small, renderer-independent joint snapshots for catalog diagrams. */
 import { landmarkPoint } from "./landmarks.js";
 import { validateScene } from "./scene.js";
+import { propOutline } from "./propShapes.js";
 
 export const PREVIEW_SEGMENTS = [
   ["pelvis", "spine01", 5],
@@ -83,10 +84,12 @@ export function solvedPreview(solved, basis = "base") {
       head: rounded(landmarkPoint(actor, "head")),
       face: rounded(landmarkPoint(actor, "face")),
     })),
-    props: solved.props.map(({ kind, center, size }) => ({
+    props: solved.props.map(({ kind, center, size, shape, profile }) => ({
       kind,
       center: rounded(center),
       size: rounded(size),
+      ...(shape && shape !== "box" ? { shape } : {}),
+      ...(profile ? { profile: profile.map(rounded) } : {}),
     })),
   };
 }
@@ -107,12 +110,6 @@ const project = (point) => [
   -dot(point, up),
   dot(point, forward),
 ];
-const corners = (prop) =>
-  Array.from({ length: 8 }, (_, index) =>
-    prop.center.map(
-      (n, axis) => n + prop.size[axis] * ((index >> axis) & 1 ? 0.5 : -0.5),
-    ),
-  );
 
 export function projectPreview(preview) {
   const points = preview.actors.flatMap((actor) => [
@@ -120,8 +117,8 @@ export function projectPreview(preview) {
     actor.head,
     actor.face,
   ]);
-  const props = preview.props.map((prop) => corners(prop));
-  points.push(...props.flat());
+  const props = preview.props.map(propOutline);
+  points.push(...props.flat(2));
   const projected = points.map(project);
   if (!projected.length || projected.flat().some((n) => !Number.isFinite(n)))
     throw new Error("Invalid preview geometry.");
@@ -156,6 +153,8 @@ export function projectPreview(preview) {
       face: transform(actor.face),
       radius: Math.max(2, actor.stature * 0.046 * scale),
     })),
-    props: props.map((points) => points.map(transform)),
+    props: props.map((segments) =>
+      segments.map((segment) => segment.map(transform)),
+    ),
   };
 }

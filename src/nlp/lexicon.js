@@ -209,6 +209,14 @@ add("surface", "sofa", ["on the sofa", "on the couch", "sofa", "couch", "沙发"
 add("surface", "chair", ["on the chair", "chair", "stool", "armchair", "椅子", "凳子"]);
 add("surface", "table", ["on the table", "table", "desk", "counter", "桌子", "桌上", "书桌"]);
 add("surface", "bench", ["bench", "ottoman", "long chair", "长凳", "长椅"]);
+add("surface", "ball", [
+  "exercise ball", "gym ball", "yoga ball", "swiss ball", "stability ball", "fitness ball",
+  "on the ball", "on a ball", "over the ball", "over a ball", "健身球", "瑜伽球", "抗力球",
+]);
+add("surface", "wedge", ["wedge cushion", "wedge pillow", "sex wedge", "wedge", "楔形垫", "楔形枕", "三角垫"]);
+add("surface", "car_seat", [
+  "car seat", "back seat", "backseat", "in the car", "in a car", "car", "车座", "汽车座椅", "后座", "车里", "车上", "车内",
+]);
 add("surface", "floor", ["on the floor", "floor", "ground", "carpet", "rug", "地上", "地板", "地面"]);
 
 // ---------------------------------------------------------------------------

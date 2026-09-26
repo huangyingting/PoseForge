@@ -1017,6 +1017,11 @@ export function reconcileArrangement(arrangement, primaryPosture, secondaryPostu
  * `height` is the top of the prop, where the trunk rests. `ground` is where
  * feet and knees go. They are equal exactly when the surface is one you get on
  * top of.
+ *
+ * A ball and a wedge are not boxes, and say so (see `propShapes.js`); their
+ * `height` is their crest, and what is under a point on them is read from the
+ * shape. A car's back seat is a low cushion with a raked backrest, the rake
+ * being why it is a prism rather than the chair's upright box.
  */
 export const SURFACES = {
   floor: { height: 0, ground: 0, props: [] },
@@ -1051,6 +1056,50 @@ export const SURFACES = {
     ground: 0,
     props: [{ kind: "bench", size: [1.4, 0.45, 0.42], center: [0, 0.225, 0] }],
   },
+  // A 65 cm exercise ball, the commonest size.
+  ball: {
+    height: 0.65,
+    ground: 0,
+    props: [{ kind: "ball", shape: "sphere", size: [0.65, 0.65, 0.65], center: [0, 0.325, 0] }],
+  },
+  // Tall end at -z, like a backrest.
+  wedge: {
+    height: 0.18,
+    ground: 0,
+    props: [
+      {
+        kind: "wedge",
+        shape: "prism",
+        size: [0.6, 0.18, 0.6],
+        center: [0, 0.09, 0],
+        profile: [
+          [-0.3, -0.09],
+          [0.3, -0.09],
+          [-0.3, 0.09],
+        ],
+      },
+    ],
+  },
+  car_seat: {
+    height: 0.4,
+    ground: 0,
+    props: [
+      { kind: "car-seat", size: [1.4, 0.4, 0.5], center: [0, 0.2, 0] },
+      {
+        kind: "car-seat-back",
+        shape: "prism",
+        size: [1.4, 0.97, 0.32],
+        center: [0, 0.485, -0.41],
+        profile: [
+          [0.04, -0.485],
+          [0.16, -0.485],
+          [0.16, -0.085],
+          [-0.04, 0.485],
+          [-0.16, 0.485],
+        ],
+      },
+    ],
+  },
 };
 
 /**
@@ -1076,9 +1125,10 @@ export const SURFACE_ALIASES = {
   "seat_or_floor": "chair",
   "bed_and_floor": "bed",
   stool: "chair",
-  "exercise ball": "bench",
-  exercise_ball: "bench",
-  ball: "bench",
+  "exercise ball": "ball",
+  exercise_ball: "ball",
+  "car seat": "car_seat",
+  "wedge cushion": "wedge",
 };
 
 export function resolveSurface(name) {

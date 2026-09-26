@@ -18,6 +18,7 @@
 import { parseDescription } from "../nlp/parser.js";
 import { validateScene } from "../core/scene.js";
 import { solveScene } from "../core/solver.js";
+import { propData } from "../core/propShapes.js";
 import { surfaceContactSteps } from '../core/surfaceContacts.js';
 import { solvedPreview } from '../core/posePreview.js';
 import { buildHumanTemplate, skinHumanMesh } from "../core/humanMesh.js";
@@ -205,7 +206,7 @@ function summarise(solved) {
   return {
     preview: solvedPreview(solved, 'refined'),
     surface: solved.surface,
-    props: solved.props.map(({ kind, size, center }) => ({ kind, size, center })),
+    props: solved.props.map(propData),
     quality: {
       maxDepth: solved.quality.maxDepth,
       proxyMaxDepth: solved.quality.proxyMaxDepth,

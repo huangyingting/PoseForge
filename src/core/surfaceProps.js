@@ -1,5 +1,6 @@
-/** Conservative complete-figure checks against axis-aligned furniture boxes. */
+/** Conservative complete-figure checks against furniture: boxes, balls and wedges. */
 import { buildTriangleTree, closestMeshPoints } from "./meshDistance.js";
+import { propContains, propProblem, propShape, propTriangles } from "./propShapes.js";
 
 const boxes = new WeakMap(),
   pairs = new WeakMap();
@@ -14,8 +15,14 @@ function boxSurface(prop) {
     prop.size.some((n) => n <= 0)
   )
     return null;
-  const key = JSON.stringify([prop.center, prop.size]);
+  const key = JSON.stringify([prop.center, prop.size, prop.shape, prop.profile]);
   if (boxes.get(prop)?.key === key) return boxes.get(prop).tree;
+  if (propShape(prop) !== "box") {
+    if (propProblem(prop)) return null;
+    const tree = buildTriangleTree([propTriangles(prop)]);
+    boxes.set(prop, { key, tree });
+    return tree;
+  }
   const positions = [];
   for (let i = 0; i < 8; i++)
     for (let axis = 0; axis < 3; axis++)
@@ -37,11 +44,14 @@ function boxSurface(prop) {
   return tree;
 }
 
-function hasInteriorVertex(tree, box) {
-  const inside = (point) =>
-    point.every(
-      (n, axis) => n > box.min[axis] + 1e-8 && n < box.max[axis] - 1e-8,
-    );
+function hasInteriorVertex(tree, box, prop) {
+  const flat = propShape(prop) === "box";
+  const inside = flat
+    ? (point) =>
+        point.every(
+          (n, axis) => n > box.min[axis] + 1e-8 && n < box.max[axis] - 1e-8,
+        )
+    : (point) => propContains(prop, point);
   const stack = [tree];
   while (stack.length) {
     const node = stack.pop();
@@ -52,7 +62,8 @@ function hasInteriorVertex(tree, box) {
       )
     )
       continue;
-    if (inside(node.min) && inside(node.max)) return true;
+    // Two corners inside settle it only for a box, which contains everything between them.
+    if (flat && inside(node.min) && inside(node.max)) return true;
     if (node.triangles) {
       if (node.triangles.some((triangle) => triangle.points.some(inside)))
         return true;
@@ -69,7 +80,7 @@ export function measurePropSurface(tree, prop) {
   const cache = pairs.get(tree);
   if (cache.has(box)) return cache.get(box);
   let result;
-  if (hasInteriorVertex(tree, box))
+  if (hasInteriorVertex(tree, box, prop))
     result = {
       intersects: true,
       distance: 0,

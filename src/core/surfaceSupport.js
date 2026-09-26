@@ -1,10 +1,22 @@
 /** Distances from a drawn support region to its declared supporting plane. */
 import { buildTriangleTree, closestMeshPoints } from "./meshDistance.js";
 import { supportPlaneFor } from "./poseLibrary.js";
+import {
+  propBox,
+  propProblem,
+  propShape,
+  propTopAt,
+  propTriangles,
+} from "./propShapes.js";
 
 const finite = (point) =>
   Array.isArray(point) && point.length === 3 && point.every(Number.isFinite);
 
+/**
+ * The part of a prop a support rests on. A box's top is one flat quad at the
+ * support plane; a ball's or a wedge's falls away from it, so it carries its
+ * height over each plan position and the whole surface to measure against.
+ */
 function topOf(prop) {
   if (
     !finite(prop.center) ||
@@ -12,6 +24,16 @@ function topOf(prop) {
     prop.size.some((n) => n <= 0)
   )
     return null;
+  if (propShape(prop) !== "box") {
+    if (propProblem(prop)) return null;
+    const { min, max } = propBox(prop);
+    return {
+      min: [min[0], max[1], min[2]],
+      max,
+      heightAt: (x, z) => propTopAt(prop, x, z),
+      tree: buildTriangleTree([propTriangles(prop)]),
+    };
+  }
   const [x, y, z] = prop.center,
     [w, h, d] = prop.size;
   const min = [x - w / 2, y + h / 2, z - d / 2];
@@ -19,6 +41,7 @@ function topOf(prop) {
   return {
     min,
     max,
+    heightAt: null,
     tree: buildTriangleTree([
       {
         positions: [
@@ -57,9 +80,14 @@ function clip(polygon, axis, edge, sign) {
   return out;
 }
 
-/** Lowest triangle point over the actual footprint, including clipped edges. */
-function lowestOver(tree, top) {
-  let point = null;
+/**
+ * Lowest triangle point over the actual footprint, including clipped edges -
+ * lowest against the surface under it, which on a box is the plane.
+ */
+function lowestOver(tree, top, plane) {
+  let point = null,
+    height = plane,
+    best = Infinity;
   const stack = [tree];
   while (stack.length) {
     const node = stack.pop();
@@ -80,11 +108,20 @@ function lowestOver(tree, top) {
         polygon = clip(polygon, axis, top.min[axis], 1);
         polygon = clip(polygon, axis, top.max[axis], -1);
       }
-      for (const candidate of polygon)
-        if (!point || candidate[1] < point[1]) point = candidate;
+      for (const candidate of polygon) {
+        const under = top.heightAt
+          ? top.heightAt(candidate[0], candidate[2])
+          : plane;
+        if (under == null) continue;
+        if (!point || candidate[1] - under < best) {
+          point = candidate;
+          height = under;
+          best = candidate[1] - under;
+        }
+      }
     }
   }
-  return point;
+  return point && { point, height };
 }
 
 /** Null means unavailable, never zero-distance contact. Does not move geometry. */
@@ -113,10 +150,11 @@ export function measureSurfaceSupport(tree, support, surface) {
   }
   let best = null;
   for (const { prop, top } of surfaces) {
-    const point = lowestOver(tree, top);
+    const lowest = lowestOver(tree, top, plane);
+    const point = lowest?.point;
     const nearest = point ? null : closestMeshPoints(tree, top.tree);
     if (!point && !nearest) continue;
-    const delta = point ? point[1] - plane : null;
+    const delta = point ? point[1] - lowest.height : null;
     const measured = {
       gap: point ? Math.abs(delta) : nearest.distance,
       penetration: point ? Math.max(0, -delta) : 0,
@@ -125,7 +163,7 @@ export function measureSurfaceSupport(tree, support, surface) {
       propIndex: (surface.props ?? []).indexOf(prop),
       withinFootprint: Boolean(point),
       point: point ?? nearest.from,
-      target: point ? [point[0], plane, point[2]] : nearest.to,
+      target: point ? [point[0], lowest.height, point[2]] : nearest.to,
     };
     if (
       !best ||
@@ -158,9 +196,22 @@ export function measureSupportContactBounds(tree, support, surface) {
     max = null;
   for (const top of targets) {
     const stack = [tree];
+    const include = (p) => {
+      min ??= [p[0], p[2]];
+      max ??= [p[0], p[2]];
+      [0, 2].forEach((axis, k) => {
+        min[k] = Math.min(min[k], p[axis]);
+        max[k] = Math.max(max[k], p[axis]);
+      });
+    };
     while (stack.length) {
       const node = stack.pop();
-      if (node.min[1] > plane + 0.03 || node.max[1] < plane - 0.03) continue;
+      // A curved or sloped top is lower than the plane away from its crest.
+      if (
+        node.min[1] > plane + 0.03 ||
+        (!top?.heightAt && node.max[1] < plane - 0.03)
+      )
+        continue;
       if (
         top &&
         (node.max[0] < top.min[0] ||
@@ -174,6 +225,15 @@ export function measureSupportContactBounds(tree, support, surface) {
         continue;
       }
       for (const triangle of node.triangles) {
+        if (top?.heightAt) {
+          // Near the surface under each vertex; the mesh is fine enough that
+          // vertices stand in for the clipped band a flat top gets.
+          for (const p of triangle.points) {
+            const under = top.heightAt(p[0], p[2]);
+            if (under != null && Math.abs(p[1] - under) <= 0.03) include(p);
+          }
+          continue;
+        }
         let polygon = triangle.points;
         if (top)
           for (const axis of [0, 2]) {
@@ -182,14 +242,7 @@ export function measureSupportContactBounds(tree, support, surface) {
           }
         polygon = clip(polygon, 1, plane - 0.03, 1);
         polygon = clip(polygon, 1, plane + 0.03, -1);
-        for (const p of polygon) {
-          min ??= [p[0], p[2]];
-          max ??= [p[0], p[2]];
-          [0, 2].forEach((axis, k) => {
-            min[k] = Math.min(min[k], p[axis]);
-            max[k] = Math.max(max[k], p[axis]);
-          });
-        }
+        for (const p of polygon) include(p);
       }
     }
   }

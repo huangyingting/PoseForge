@@ -53,6 +53,31 @@ Collapsing the two into a single `y` is what makes a figure bent over a table
 stand *on the tabletop*. That is why the solve result publishes both and has no
 `y` field at all.
 
+## Shaped props
+
+Most furniture is a box. Three supports are not, and say so with a `shape`:
+
+| Surface | Prop | Shape |
+|---|---|---|
+| `ball` | a 65 cm exercise ball | `sphere` |
+| `wedge` | a 60 × 60 cm wedge cushion, 18 cm high at its tall end (−z) | `prism` |
+| `car_seat` | a car's back seat: a cushion 1.4 m wide and 40 cm high, and a raked backrest | box + `prism` |
+
+A prism is a convex, counter-clockwise `[z, y]` profile about the prop's centre,
+run across its full width. Every prop still carries the box that bounds it, for
+broad phases, previews and framing. Everything that needs the true surface asks
+`src/core/propShapes.js`: collision (`capsulePropContact`), what is underfoot
+(`propTopAt`), the complete-figure and rendered-support checks, the rendered
+mesh and its line-art outline. A box keeps its original contact test exactly,
+so furniture that was a box collides as it did.
+
+A shaped prop's `height` is its crest. Away from the crest the support plane is
+read from the shape under the point, which is why a body can lie along a
+wedge's slope or over a ball's curve rather than on the top of its bounding
+box. `propProblem` rejects a ball that is not as wide as it is tall and a
+profile that is not convex, counter-clockwise or does not fill its bounds; a
+malformed prop is unavailable to the checks rather than treated as a box.
+
 ## Seating
 
 The invariant is **not** "drop until something touches". It is:

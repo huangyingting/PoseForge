@@ -2,24 +2,24 @@
   "format": "poseforge.interaction-manifest",
   "version": 1,
   "file": "catalog/interaction-studies-v1.json",
-  "bytes": 4370490,
-  "sha256": "55167a143c4e9d6fb4957a58ef4b11bb0a8b9b2c31bceb5dd8d657b4b19d6625",
+  "bytes": 4370158,
+  "sha256": "f19e415b0d1d92247533cb18aef593bcbf7c44220291b8207a80c3af090a3b49",
   "records": 1283,
-  "distinctScenes": 851,
+  "distinctScenes": 852,
   "participants": 2544,
   "passedChecks": 1283,
   "templates": {
     "cowgirl": {
-      "records": 60,
-      "passed": 60
+      "records": 59,
+      "passed": 59
     },
     "doggy": {
-      "records": 32,
-      "passed": 32
+      "records": 31,
+      "passed": 31
     },
     "doggy_low": {
-      "records": 48,
-      "passed": 48
+      "records": 47,
+      "passed": 47
     },
     "edge_head_oral": {
       "records": 10,
@@ -66,8 +66,8 @@
       "passed": 67
     },
     "oral_on_a": {
-      "records": 39,
-      "passed": 39
+      "records": 40,
+      "passed": 40
     },
     "oral_on_b_kneeling": {
       "records": 30,
@@ -82,20 +82,20 @@
       "passed": 16
     },
     "prone_rear": {
-      "records": 60,
-      "passed": 60
+      "records": 61,
+      "passed": 61
     },
     "rear_oral": {
-      "records": 17,
-      "passed": 17
+      "records": 16,
+      "passed": 16
     },
     "reclined_facing": {
       "records": 29,
       "passed": 29
     },
     "reverse_cowgirl": {
-      "records": 59,
-      "passed": 59
+      "records": 60,
+      "passed": 60
     },
     "scissors": {
       "records": 32,
@@ -146,8 +146,8 @@
       "passed": 67
     },
     "wheelbarrow": {
-      "records": 29,
-      "passed": 29
+      "records": 30,
+      "passed": 30
     }
   },
   "semantics": "Approximate clothed 3D interactions composed from a visual classification of each source image into an interaction template, with fixed placements, joints and declared contacts. Not measured reconstructions or verified physical poses."

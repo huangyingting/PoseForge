@@ -8,6 +8,9 @@
  * field: two descriptions of the same object drift apart, and then the figure
  * is leaning on thin air an inch above the visible surface.
  *
+ * A ball or a wedge is drawn as the shape the solver collides with, not as its
+ * bounding box, for the same reason.
+ *
  * These are deliberately plain. The subject is the pair of figures, and a bed
  * with a carved headboard competes with them for attention in a render whose
  * entire purpose is to show how two bodies fit together.
@@ -15,13 +18,16 @@
 
 import {
   BoxGeometry,
+  BufferGeometry,
   Color,
+  Float32BufferAttribute,
   Group,
   Mesh,
   MeshStandardMaterial,
   PlaneGeometry,
   ShadowMaterial,
 } from "three";
+import { propOutline, propShape, propTriangles } from "../core/propShapes.js";
 
 const PALETTE = {
   bed: 0xe8e2d9,
@@ -32,20 +38,40 @@ const PALETTE = {
   "chair-back": 0x9a8570,
   table: 0xb4a084,
   bench: 0xa89680,
+  ball: 0xc9d6dc,
+  wedge: 0xb9a48c,
+  "car-seat": 0x5b5f66,
+  "car-seat-back": 0x53575e,
   default: 0x9b9b9b,
 };
 
-/** Rounded-looking box: a plain box plus a slightly inset top to catch the light. */
+/**
+ * A box, or for a ball or a wedge the solver's own surface. That is built in
+ * world space, so the mesh stays at the origin.
+ */
+function propGeometry(prop) {
+  if (propShape(prop) === "box") return new BoxGeometry(...prop.size);
+  const { positions, normals, indices } = propTriangles(prop);
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("normal", new Float32BufferAttribute(normals, 3));
+  geometry.setIndex(indices);
+  return geometry;
+}
+
 function propMesh(prop) {
-  const [w, h, d] = prop.size;
   const colour = PALETTE[prop.kind] ?? PALETTE.default;
   const material = new MeshStandardMaterial({
     color: new Color(colour),
-    roughness: prop.kind.startsWith("bed") ? 0.95 : 0.78,
+    roughness: prop.kind.startsWith("bed") ? 0.95 : prop.kind === "ball" ? 0.45 : 0.78,
     metalness: 0,
   });
-  const mesh = new Mesh(new BoxGeometry(w, h, d), material);
-  mesh.position.set(prop.center[0], prop.center[1], prop.center[2]);
+  const mesh = new Mesh(propGeometry(prop), material);
+  if (propShape(prop) === "box")
+    mesh.position.set(prop.center[0], prop.center[1], prop.center[2]);
+  mesh.userData.shape = propShape(prop);
+  // Line art draws a prism's hard edges, which its geometry alone does not say.
+  if (propShape(prop) === "prism") mesh.userData.edges = propOutline(prop);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   mesh.name = prop.kind;
@@ -73,7 +99,7 @@ function groundMesh() {
 
 /**
  * Build the furniture for a solved scene.
- * @param {Array<{kind:string, size:number[], center:number[]}>} props
+ * @param {Array<{kind:string, size:number[], center:number[], shape?:string, profile?:number[][]}>} props
  * @param {{ground?: boolean}} [options]
  * @returns {Group}
  */

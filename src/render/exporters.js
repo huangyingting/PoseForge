@@ -341,9 +341,9 @@ function silhouetteEdges(mesh, camera) {
 }
 
 /**
- * The twelve edges of a prop.
+ * The twelve edges of a box prop.
  *
- * Furniture is boxes, and a box's drawn lines are its hard edges rather than
+ * Most furniture is boxes, and a box's drawn lines are its hard edges rather than
  * its silhouette - a table read as a silhouette loses the line where the top
  * meets the leg, which is the line that makes it look like a table.
  */
@@ -362,6 +362,15 @@ function boxEdges(mesh) {
     [2, 6], [3, 7], [4, 5], [4, 6], [5, 7], [6, 7],
   ];
   return pairs.map(([a, b]) => [corners[a], corners[b]]);
+}
+
+/**
+ * A prop's drawn lines: a box's twelve edges, a wedge's own hard edges, and a
+ * ball - which has no edges at all - by its silhouette like a body.
+ */
+function propEdges(mesh, camera) {
+  if (mesh.userData.shape === "sphere") return silhouetteEdges(mesh, camera);
+  return mesh.userData.edges ?? boxEdges(mesh);
 }
 
 /**
@@ -466,7 +475,7 @@ export function exportSVG(view, options = {}) {
     if (!node.isMesh || !node.visible || node.name === "ground") return;
     if (node.userData.outline === false) return;
     const isProp = node.parent?.name === "props";
-    const edges = isProp ? boxEdges(node) : silhouetteEdges(node, camera);
+    const edges = isProp ? propEdges(node, camera) : silhouetteEdges(node, camera);
 
     for (const [a, b] of edges) {
       const pa = project(point.set(a[0], a[1], a[2]), camera, depthWidth, depthHeight, scratch);

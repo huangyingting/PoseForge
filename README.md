@@ -280,9 +280,9 @@ Meshing runs off the main thread, so typing never blocks the viewport.
 
 ## Reading the text
 
-`src/nlp/`. A 565-phrase lexicon plus 12 archetypes ("missionary", "cowgirl",
-"spooning") over a catalogue of 18 postures, 10 arrangements and 6 surfaces.
-233 of those phrases are Chinese; `她跪在他身后` parses without spaces.
+`src/nlp/`. A 735-phrase lexicon plus 12 archetypes ("missionary", "cowgirl",
+"spooning") over a catalogue of 21 postures, 11 arrangements and 9 surfaces.
+268 of those phrases are Chinese; `她跪在他身后` parses without spaces.
 
 The rules that do the real work:
 
@@ -316,9 +316,15 @@ rather than driven through the floor.
 
 Surfaces carry **two heights**: `height` is the prop top where a trunk rests,
 `ground` is where feet and knees go. They are equal for things you get on top of
-(floor, bed, sofa) and differ for things you stand beside (chair, table, bench) —
-which is how someone bent over a table has their chest at 750mm and their feet
-at 0.
+(floor, bed, sofa) and differ for things you stand beside (chair, table, bench,
+exercise ball, wedge cushion, car seat) — which is how someone bent over a table
+has their chest at 750mm and their feet at 0.
+
+Most furniture is a box. The exercise ball is a sphere, and the wedge cushion
+and the car seat's raked backrest are prisms; collision, what is underfoot, the
+rendered mesh and its outline all read that shape from one module
+(`src/core/propShapes.js`), so a body lies on the ball's curve rather than its
+bounding cube. See [the solver notes](docs/solver.md#shaped-props).
 
 IK is two-bone analytic with a pole hint, so elbows and knees bend the right
 way instead of wherever the seeding lands them. Out-of-reach targets report

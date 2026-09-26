@@ -27,6 +27,7 @@ import {
   v3sub,
 } from "./math.js";
 import { radiusAt, selfCollisionExempt } from "./body.js";
+import { propDistance, propShape } from "./propShapes.js";
 
 /** Default compression allowance per volume kind, in metres. */
 export const COMPRESSION = {
@@ -160,6 +161,43 @@ export function capsuleBoxContact(volume, box, samples = 7) {
 }
 
 /**
+ * Contact between a round cone and a prop of any shape.
+ *
+ * A box keeps its own test, so furniture that was a box before props had
+ * shapes collides exactly as it did. A ball is one closest point on the axis,
+ * which is exact; a prism is sampled along the axis like the box.
+ */
+export function capsulePropContact(volume, prop, samples = 7) {
+  const shape = propShape(prop);
+  if (shape === "box") return capsuleBoxContact(volume, prop.box, samples);
+  if (shape === "sphere") {
+    const axis = v3sub(volume.b, volume.a);
+    const length = v3lenSq(axis);
+    const t = length > 1e-12 ? clamp(v3dot(v3sub(prop.center, volume.a), axis) / length, 0, 1) : 0.5;
+    const point = v3add(volume.a, v3mul(axis, t));
+    const radius = radiusAt(volume, t);
+    const { distance, normal } = propDistance(prop, point);
+    const depth = radius - distance;
+    return depth > 0 ? { depth, normal, t, point, radius, volume, box: prop.box } : null;
+  }
+  let best = null;
+  for (let i = 0; i < samples; i += 1) {
+    const t = samples === 1 ? 0.5 : i / (samples - 1);
+    const point = [
+      volume.a[0] + (volume.b[0] - volume.a[0]) * t,
+      volume.a[1] + (volume.b[1] - volume.a[1]) * t,
+      volume.a[2] + (volume.b[2] - volume.a[2]) * t,
+    ];
+    const radius = radiusAt(volume, t);
+    const { distance, normal } = propDistance(prop, point);
+    const depth = radius - distance;
+    if (depth > 0 && (!best || depth > best.depth))
+      best = { depth, normal, t, point, radius, volume, box: prop.box };
+  }
+  return best;
+}
+
+/**
  * Broad + narrow phase over a set of posed bodies.
  *
  * @param {Array<{id:string, volumes:Array, mass:number}>} bodies
@@ -244,7 +282,7 @@ export function detectPropContacts(bodies, props, margin = 0) {
       const volumeBox = volumeBounds(volume, margin);
       for (const prop of props) {
         if (!aabbOverlaps(volumeBox, prop.box)) continue;
-        const contact = capsuleBoxContact(volume, prop.box);
+        const contact = capsulePropContact(volume, prop);
         if (!contact) continue;
         const allowance = volumeCompression(volume);
         const depth = contact.depth - allowance;

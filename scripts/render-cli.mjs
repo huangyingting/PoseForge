@@ -40,6 +40,7 @@ import {
   mat4Perspective,
   v3normalize,
 } from "../src/core/math.js";
+import { propShape, propTriangles } from "../src/core/propShapes.js";
 
 /* ------------------------------------------------------------------ */
 /* Arguments                                                           */
@@ -111,6 +112,10 @@ const PROP_COLOUR = {
   chair: [0.6, 0.52, 0.44],
   table: [0.71, 0.63, 0.52],
   bench: [0.66, 0.59, 0.5],
+  ball: [0.79, 0.84, 0.86],
+  wedge: [0.73, 0.64, 0.55],
+  "car-seat": [0.36, 0.37, 0.4],
+  "car-seat-back": [0.33, 0.34, 0.37],
 };
 const GROUND_COLOUR = [0.85, 0.83, 0.8];
 
@@ -421,8 +426,21 @@ function boxObject(center, size, colour) {
   };
 }
 
+/** A ball or a wedge as the surface the solver collided with. */
+function shapeObject(prop, colour) {
+  const { positions, normals, indices } = propTriangles(prop);
+  return {
+    positions: Float32Array.from(positions),
+    normals: Float32Array.from(normals),
+    occlusion: null,
+    indices: Uint32Array.from(indices),
+    colour,
+  };
+}
+
 for (const prop of solved.props) {
-  objects.push(boxObject(prop.center, prop.size, PROP_COLOUR[prop.kind] ?? [0.6, 0.6, 0.6]));
+  const colour = PROP_COLOUR[prop.kind] ?? [0.6, 0.6, 0.6];
+  objects.push(propShape(prop) === "box" ? boxObject(prop.center, prop.size, colour) : shapeObject(prop, colour));
 }
 
 // The ground, as one big quad.
@@ -610,7 +628,7 @@ function rasterise(matrix, width, height, depth, onFragment, awayFrom = null) {
 
       const area = area2(sx[i0], sy[i0], sx[i1], sy[i1], sx[i2], sy[i2]);
       // Both windings are drawn. The isosurface is closed, so backfaces are
-      // invisible anyway, and the props are boxes seen from outside - and the
+      // invisible anyway, and the props are closed and seen from outside - and the
       // shadow pass wants backfaces specifically, so it selects them by normal
       // above rather than by winding here.
       if (Math.abs(area) < 1e-9) continue;

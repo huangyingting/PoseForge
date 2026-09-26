@@ -25,8 +25,8 @@ import {
 } from "./body.js";
 import {
   COMPRESSION,
-  capsuleBoxContact,
   capsuleContact,
+  capsulePropContact,
   detectContacts,
   detectPropContacts,
   lowestPoint,
@@ -64,6 +64,7 @@ import { Skeleton, evaluatePose } from "./skeleton.js";
 import { handShapes } from "./handPose.js";
 import { rootFromPlacement, isFixedPlacement } from "./placement.js";
 import { LIMB_LANDMARKS, limbFirstContact } from "./contactOrientation.js";
+import { propTopAt, withBounds } from "./propShapes.js";
 
 /** Dempster segment mass fractions, used for the centre of mass. */
 const SEGMENT_MASS = {
@@ -1299,21 +1300,7 @@ export function solveScene(scene, options = {}) {
 
   const surface = resolveSurface(scene.support?.surface);
   const surfaceY = surface.height;
-  const props = (surface.props || []).map((prop) => ({
-    ...prop,
-    box: {
-      min: [
-        prop.center[0] - prop.size[0] / 2,
-        prop.center[1] - prop.size[1] / 2,
-        prop.center[2] - prop.size[2] / 2,
-      ],
-      max: [
-        prop.center[0] + prop.size[0] / 2,
-        prop.center[1] + prop.size[1] / 2,
-        prop.center[2] + prop.size[2] / 2,
-      ],
-    },
-  }));
+  const props = (surface.props || []).map(withBounds);
 
   // 1. actors from their postures
   const actors = scene.actors.map((spec, index) => refresh(createActor(spec, index)));
@@ -2095,12 +2082,11 @@ function surfaceUnder(point, surface) {
   let top = surface.ground;
   // Read off the surface's own prop list rather than the solved boxes, so this
   // is answerable anywhere a surface is in hand - including inside seating,
-  // which runs before the scene has been assembled.
+  // which runs before the scene has been assembled. A ball or a wedge is not
+  // flat, so its height is read where the point is.
   for (const prop of surface.props || []) {
-    const half = [prop.size[0] / 2, prop.size[1] / 2, prop.size[2] / 2];
-    if (Math.abs(point[0] - prop.center[0]) > half[0]) continue;
-    if (Math.abs(point[2] - prop.center[2]) > half[2]) continue;
-    top = Math.max(top, prop.center[1] + half[1]);
+    const height = propTopAt(prop, point[0], point[2]);
+    if (height != null) top = Math.max(top, height);
   }
   return top;
 }
@@ -2156,7 +2142,7 @@ function standOffProps(actor, props, surface) {
       // and wants the whole step. Measuring both the same way is what sent her
       // right past the edge and left her hovering beside it.
       if (low > prop.box.max[1] - COMPRESSION.default) continue;
-      const contact = capsuleBoxContact(volume, prop.box);
+      const contact = capsulePropContact(volume, prop);
       if (!contact || contact.depth - COMPRESSION.default <= 0) continue;
       const span = boxSpan(prop.box, axis);
       const a = volume.a[0] * axis[0] + volume.a[2] * axis[2];

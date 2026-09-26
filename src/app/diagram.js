@@ -47,27 +47,20 @@ export function poseDiagram(preview) {
   svg.append(
     node("path", { d: "M13 114 H147", stroke: "#d6dfd7", "stroke-width": 1 }),
   );
-  for (const corners of layout.props) {
-    for (let i = 0; i < 8; i++)
-      for (const bit of [1, 2, 4]) {
-        const j = i ^ bit;
-        if (i >= j) continue;
-        const a = corners[i],
-          b = corners[j];
-        commands.push({
-          depth: Math.min(a[2], b[2]) - 0.04,
-          shape: node("line", {
-            x1: a[0],
-            y1: a[1],
-            x2: b[0],
-            y2: b[1],
-            stroke: "#9aa99b",
-            "stroke-width": 1.2,
-            opacity: 0.7,
-          }),
-        });
-      }
-  }
+  for (const segments of layout.props)
+    for (const [a, b] of segments)
+      commands.push({
+        depth: Math.min(a[2], b[2]) - 0.04,
+        shape: node("line", {
+          x1: a[0],
+          y1: a[1],
+          x2: b[0],
+          y2: b[1],
+          stroke: "#9aa99b",
+          "stroke-width": 1.2,
+          opacity: 0.7,
+        }),
+      });
   const palette = ["#527c70", "#b17b61", "#647b9f", "#937294"];
   layout.actors.forEach((actor, index) => {
     const color = palette[index % palette.length];
