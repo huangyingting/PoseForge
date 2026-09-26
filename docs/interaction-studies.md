@@ -34,7 +34,9 @@ and rebuilt from a small vocabulary of interaction templates. Checks are geometr
 
 1. **Classification** — each source image was viewed and assigned one interaction
    template plus variant fields (surface, bodies, leg shape, lean, hand placement,
-   third-person placement). The pixels were the primary evidence; source titles and
+   third-person placement), notes naming a variant of the template, and pose
+   details for each partner (see [Telling positions apart](#telling-positions-apart)).
+   The pixels were the primary evidence; source titles and
    annotation text were hints only. The result is
    `scripts/data/interaction-classifications.json` (no image data).
 2. **Composition** — `scripts/interaction-templates.mjs` turns a classification into
@@ -47,7 +49,7 @@ and rebuilt from a small vocabulary of interaction templates. Checks are geometr
    and orientation checks, body/prop overlap and floor clearance. Failures are kept
    with the record and shown in the app as a warning; nothing is hidden.
 4. **Baking** — `node scripts/build-interaction-studies.mjs` composes all records
-   (852 distinct scenes after de-duplicating identical classifications,
+   (1,283 distinct scenes: no two records share a classification,
    in 4 worker threads, about 8 minutes) into
    `public/catalog/interaction-studies-v1.json` with a SHA-256/size manifest in
    `src/data/interaction-manifest.json`. `--check` verifies the committed files
@@ -68,41 +70,41 @@ the app notes this.
 
 | Template | Records | Pass all checks |
 |---|---:|---:|
-| `cowgirl` | 59 | 59 |
+| `cowgirl` | 56 | 56 |
 | `doggy` | 31 | 31 |
-| `doggy_low` | 47 | 47 |
+| `doggy_low` | 45 | 45 |
 | `edge_head_oral` | 10 | 10 |
 | `edge_missionary` | 41 | 41 |
 | `edge_seated_facing` | 26 | 26 |
-| `facesitting` | 21 | 21 |
-| `furniture_rear` | 69 | 69 |
+| `facesitting` | 22 | 22 |
+| `furniture_rear` | 65 | 65 |
 | `group_three` | 10 | 10 |
-| `kneeling_missionary` | 105 | 105 |
-| `kneeling_rear_upright` | 13 | 13 |
-| `lap_facing` | 97 | 97 |
-| `lap_reverse` | 79 | 79 |
-| `missionary` | 67 | 67 |
+| `kneeling_missionary` | 111 | 111 |
+| `kneeling_rear_upright` | 15 | 15 |
+| `lap_facing` | 95 | 95 |
+| `lap_reverse` | 78 | 78 |
+| `missionary` | 62 | 62 |
 | `oral_on_a` | 40 | 40 |
-| `oral_on_b_kneeling` | 30 | 30 |
-| `oral_on_b_lying` | 9 | 9 |
-| `prone_on_top` | 16 | 16 |
-| `prone_rear` | 61 | 61 |
+| `oral_on_b_kneeling` | 31 | 31 |
+| `oral_on_b_lying` | 8 | 8 |
+| `prone_on_top` | 13 | 13 |
+| `prone_rear` | 62 | 62 |
 | `rear_oral` | 16 | 16 |
 | `reclined_facing` | 29 | 29 |
-| `reverse_cowgirl` | 60 | 60 |
+| `reverse_cowgirl` | 61 | 61 |
 | `scissors` | 32 | 32 |
-| `side_facing` | 9 | 9 |
+| `side_facing` | 7 | 7 |
 | `sixty_nine` | 42 | 42 |
 | `solo` | 32 | 32 |
 | `spooning` | 31 | 31 |
-| `squat_cowgirl` | 14 | 14 |
-| `standing_bent_over` | 26 | 26 |
+| `squat_cowgirl` | 15 | 15 |
+| `standing_bent_over` | 25 | 25 |
 | `standing_carry` | 18 | 18 |
-| `standing_facing` | 27 | 27 |
-| `standing_rear` | 12 | 12 |
-| `supine_stack` | 7 | 7 |
+| `standing_facing` | 29 | 29 |
+| `standing_rear` | 14 | 14 |
+| `supine_stack` | 12 | 12 |
 | `supported_inversion` | 67 | 67 |
-| `wheelbarrow` | 30 | 30 |
+| `wheelbarrow` | 32 | 32 |
 
 Passing the checks means the declared contacts close, the figures are clear of
 each other and the furniture, and every figure rests on the floor, a surface or
@@ -110,7 +112,72 @@ a partner. It does not mean the scene matches its reference in every detail.
 Each record was also compared with its source image by eye. The remaining
 simplifications are mostly a lean or arch shallower than drawn, a raised or held
 leg shown lower, and props drawn as the nearest one the pack models (a pillow
-stack, bolster or tall ramp as the wedge cushion or dropped).
+stack, bolster or tall ramp as the wedge cushion or dropped). A second piece of
+furniture that only a foot or a hand rests on, such as the chair beside a table,
+is left out.
+
+## Telling positions apart
+
+Many source images share a template and its variant fields, and would compose
+to the same scene from those alone. Each record also carries what its own image
+shows beyond them, and the build rejects none of it silently:
+
+- **Notes** choose a variant of a template where the image shows one, for
+  example `lying at edge` (oral on a sofa: lying back along it, the hips at its
+  edge, rather than sitting), `lying flat` / `feet up` (oral: the partner prone
+  between the legs, the legs long or the feet in the air), `kneel` and
+  `hands on bed|sofa|bench` (wheelbarrow: the partner kneels closer, and A's
+  hands are on the ledge the note names), `reversed` (head to foot, on the side
+  or face down), `squat` (squatting over a partner lying face down),
+  `partner crouched` (piledriver), `squat on` / `kneel upright` (on a low table
+  or seat), `kneel on seat` (astride a seated partner face to face, kneeling
+  up on the seat either side of the thighs), `side saddle` with `feet on the
+  floor` (on a sofa: sitting across the hips of a partner lying along it,
+  facing out with the feet down, and `legs crossed` for one leg over the
+  other) and `lying on top` (a 69 at full length).
+- **Hands**: `b_hands` (`hips`, `legs`, `shoulders`, `embrace`, `behind`,
+  `surface`) becomes hand contacts closed by IK, or for `behind` the arms
+  braced back on the hands, where the template leaves B's hands free. A
+  template that fixes the hands keeps them there: on the floor, or holding a
+  wheelbarrow's legs up. Astride a partner lying down, `hips` leaves the hands
+  as posed.
+- **Pose details**: `a_pose`, `b_pose` and `c_pose` list named details
+  (`DETAILS` in `scripts/interaction-templates.mjs`, 72 in use across 878
+  records). They cover the arms (`arms_overhead`, `arms_behind_head`,
+  `arms_forearms`, `arm_head_l`, …), the head (`head_back`, `head_forward`,
+  `head_turn_l`), the trunk (`arch`, `curl`, `twist_l`) and the legs
+  (`legs_straight`, `legs_wide`, `knees_up`, `knees_to_chest`, `knee_up_l`,
+  `leg_up_r`, `foot_planted_l`, …). `_l`/`_r` name the figure's own side. `turn_l`/`turn_r` turn a partner 30° before it is
+  fitted. An unknown name stops the build.
+
+A detail is a joint target in the body's own terms. Where the same words mean
+another shape for a figure lying, kneeling, sitting or bent forward
+(`IN_POSTURE`), that shape is used. Arms raised by someone on their back lie on
+the floor above the head. A knee brought up from kneeling sets that foot flat in
+front. A leg raised while bent forward goes out behind and to the side, as far
+as the hip allows. The composer lays details on limb by limb, each only as far
+as the floor and furniture allow (`applyDetails` in
+`scripts/interaction-composer.mjs`). A limb that reaches its partner is still
+placed by that reach, so an arm detail on a hand that holds on does nothing.
+Every detail a record lists was checked to change its scene, by composing the
+record without it.
+
+`scripts/scene-distance.mjs` measures how different two scenes look, in the
+bodies' own terms: the major joints of each figure (the spine and the neck each
+counted as one bend), where each partner is and how they are turned relative to
+the first, and how the first lies against gravity. Where the scene stands, which
+way it faces, body type and outfit do not count. A difference of 20° at a joint,
+15 cm between partners, 20° of turn or tilt, or 15 cm of height is the least
+that reads at a glance. A different support or number of people never matches.
+`tests/sceneDistance.test.js` requires every pair of the 1,283 built positions
+to differ by at least that much, and they all do.
+
+That is a guarantee that no two positions look alike, not that every one is
+exact. Some sources are themselves nearly the same picture: the same render on
+two sites, or a series drawn with the same figures. Those records are told
+apart by the slight difference each image does show, such as a knee raised, the head
+turned or an arm placed, which is often smaller in the source than the least
+visible difference drawn here.
 
 ## Props
 
@@ -120,9 +187,9 @@ in their own shape rather than as a box (see
 
 | Surface | Prop | Records |
 |---|---|---:|
-| `ball` | a 65 cm exercise ball | 23 |
-| `car_seat` | a car's back seat, cushion and raked backrest | 12 |
-| `wedge` | a 60 cm wedge cushion, 18 cm at its tall end | 3 |
+| `ball` | a 65 cm exercise ball | 27 |
+| `car_seat` | a car's back seat, cushion and raked backrest | 13 |
+| `wedge` | a 60 cm wedge cushion, 18 cm at its tall end | 10 |
 
 What remains approximate: a figure bridged back over the ball keeps its arms at
 the ball's sides rather than reaching the floor; the car seat stands alone, with

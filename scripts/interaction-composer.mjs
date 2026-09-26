@@ -57,9 +57,68 @@ function applyOverride(fixed, solvedActor, override) {
   return fixed;
 }
 
+const CHAINS = [
+  ["trunk", /^spine/],
+  ["head", /^(neck|head)$/],
+  ["arm.l", /^(clavicle|shoulder|elbow|wrist)_l$/],
+  ["arm.r", /^(clavicle|shoulder|elbow|wrist)_r$/],
+  ["leg.l", /^(hip|knee|ankle|toe)_l$/],
+  ["leg.r", /^(hip|knee|ankle|toe)_r$/],
+];
+
+/**
+ * Pose details (see `withDetails` in interaction-templates.mjs) laid over a
+ * fixed pose chain by chain, each only as far as the support allows: a limb
+ * turns towards its detail until it would go into the floor or the furniture
+ * any deeper than it already was. An arm raised by someone lying on their
+ * back comes to rest on the floor above the head instead of passing through it.
+ */
+function applyDetails(fixed, details, props) {
+  if (!details) return fixed;
+  const depth = (spec) => {
+    const actor = liveActor(spec, 0);
+    const prop = detectPropContacts([{ id: "detail", volumes: actor.volumes }], props).reduce((max, c) => Math.max(max, c.depth), 0);
+    return { low: lowest(actor), prop };
+  };
+  let out = fixed;
+  for (const [, pattern] of CHAINS) {
+    const bones = Object.keys(details).filter((bone) => pattern.test(bone));
+    if (!bones.length) continue;
+    const before = depth(out);
+    // No lower than a hair into the floor, or than the pose already went.
+    const floor = Math.min(before.low, -0.02);
+    const deepest = Math.max(before.prop, 0.02);
+    const at = (t) => {
+      const joints = { ...out.joints };
+      for (const bone of bones) {
+        const from = out.joints[bone] ?? {};
+        joints[bone] = { ...from };
+        for (const [channel, value] of Object.entries(details[bone])) joints[bone][channel] = (from[channel] ?? 0) + t * (value - (from[channel] ?? 0));
+      }
+      return { ...out, joints };
+    };
+    const fits = (spec) => {
+      const d = depth(spec);
+      return d.low >= floor && d.prop <= deepest;
+    };
+    // Backed off a tenth at a time, since the way to a detail may pass through the floor
+    // when the detail itself does not, then narrowed to the last tenth.
+    let good = 1;
+    while (good > 0 && !fits(at(good))) good = Math.round((good - 0.1) * 10) / 10;
+    let bad = Math.min(1, good + 0.1);
+    for (let i = 0; good < 1 && i < 5; i += 1) {
+      const mid = (good + bad) / 2;
+      if (fits(at(mid))) good = mid;
+      else bad = mid;
+    }
+    out = at(good);
+  }
+  return out;
+}
+
 /** Solve one figure on its own and return a fixed spec. */
-function soloFixed(input, surface) {
-  const { override, tilt, ...spec } = input;
+function soloFixed(input, surface, props = propsFor(surface).props) {
+  const { override, tilt, details, ...spec } = input;
   const { scene } = validateScene({
     actors: [spec],
     support: { surface },
@@ -67,7 +126,7 @@ function soloFixed(input, surface) {
     contacts: [],
   });
   const solved = solveScene(scene);
-  const fixed = applyOverride({ ...scene.actors[0], ...captureSolvedPose(solved.actors[0]) }, solved.actors[0], override);
+  const fixed = applyDetails(applyOverride({ ...scene.actors[0], ...captureSolvedPose(solved.actors[0]) }, solved.actors[0], override), details, props);
   if (!tilt) return fixed;
   // Tip the body forward about its pelvis (the override re-aims the thighs), then rest it back down.
   const before = lowest(solved.actors[0]);
@@ -393,13 +452,15 @@ export function compose(input) {
   const withIgnore = (step) => ({ ignore, ...step });
   if (plan.mode === "solver") {
     const { scene } = validateScene({
-      actors: plan.actors.map(({ soloSurface, prefer, override, tilt, ...spec }) => spec),
+      actors: plan.actors.map(({ soloSurface, prefer, override, tilt, details, ...spec }) => spec),
       support: { surface: plan.solveSurface ?? plan.surface },
       relationship: plan.relationship,
       contacts: plan.contacts ?? [],
     });
     const solved = solveScene(scene);
-    specs = scene.actors.map((a, i) => applyOverride({ ...a, ...captureSolvedPose(solved.actors[i]) }, solved.actors[i], plan.actors[i].override));
+    specs = scene.actors.map((a, i) =>
+      applyDetails(applyOverride({ ...a, ...captureSolvedPose(solved.actors[i]) }, solved.actors[i], plan.actors[i].override), plan.actors[i].details, props)
+    );
     for (const move of plan.place ?? []) specs[move.index] = applyPlace(specs[move.index], move.index, move, specs, props);
     // Refine from where the solver put them; snapping would start inside the partner.
     for (const step of plan.fit ?? []) specs[step.moving] = runFit(specs, withIgnore({ snap: false, ...step }), props).spec;

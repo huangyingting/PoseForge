@@ -29,7 +29,7 @@ export function composeStudy(cls) {
   const letters = new Map(Object.entries(plan.roles ?? { a: 0 }).map(([role, index]) => [index, role.toUpperCase()]));
   if (plan.thirdIndex != null) letters.set(plan.thirdIndex, "C");
   const actors = specs.map((spec, i) => {
-    const { prefer, soloSurface, override, tilt, ...clean } = spec;
+    const { prefer, soloSurface, override, tilt, details, ...clean } = spec;
     const joints = Object.fromEntries(
       Object.entries(clean.joints).map(([bone, channels]) => [bone, Object.fromEntries(Object.entries(channels).map(([k, v]) => [k, round(v, 2)]))])
     );

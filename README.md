@@ -4,7 +4,10 @@ PoseForge includes **1,283 ready-to-view 3D interactions**, one for every
 source record: the clothed participants are placed together, in contact, in the
 arrangement each source image shows, composed from 34 interaction templates
 (all 1,283 pass their distance, facing, support and overlap checks, and each
-was compared with its source image). They are approximations, not measured
+was compared with its source image). No two look alike: details read off each
+image, such as a raised knee, the head turned back or the arms overhead, tell
+apart positions that share a template, and a test holds every pair to a visible
+difference. They are approximations, not measured
 reconstructions. See
 [3D interaction studies](docs/interaction-studies.md).
 
