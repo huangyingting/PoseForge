@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>PoseForge — Your pose studio</title>
-    <meta name="theme-color" content="#f7f8f5" />
+    <meta name="theme-color" content="#f1f3ef" />
     <meta
       name="description"
       content="Explore pose studies, shape your figures, and build a library of your own."
@@ -17,28 +17,35 @@
   </head>
   <body>
     <a class="skip-link" href="#viewport">Skip to the studio</a>
-    <div id="app" data-mobile="studio">
+    <div
+      id="app"
+      data-mobile="studio"
+      data-library="open"
+      data-inspector="closed"
+    >
       <header class="topbar">
-        <a class="brand" href="./" aria-label="PoseForge home"
-          ><span class="brand-mark">p<span>f</span></span
-          ><span>PoseForge</span></a
-        >
-        <span class="workspace-label">Pose studio</span>
-        <div class="header-actions">
-          <button
-            id="focus-view"
-            class="action focus-toggle"
-            aria-label="Focus view"
-            aria-pressed="false"
-            title="Focus view · Escape to exit"
+        <div class="topbar-start">
+          <a class="brand" href="./" aria-label="PoseForge home"
+            ><span class="brand-mark">p<span>f</span></span
+            ><span>PoseForge</span></a
           >
-            Focus
+          <button
+            id="toggle-library"
+            class="drawer-toggle"
+            data-drawer="library"
+            aria-controls="library"
+            aria-expanded="true"
+          >
+            <span aria-hidden="true">▦</span> Library
           </button>
+        </div>
+        <div class="header-actions">
           <div class="history-actions">
             <button
               id="undo"
               class="icon-button"
               aria-label="Undo"
+              aria-keyshortcuts="Control+Z Meta+Z"
               title="Undo (Ctrl/⌘ Z)"
               disabled
             >
@@ -47,7 +54,8 @@
               id="redo"
               class="icon-button"
               aria-label="Redo"
-              title="Redo (Ctrl/⌘ Shift Z)"
+              aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y"
+              title="Redo (Ctrl/⌘ Shift Z or Ctrl Y)"
               disabled
             >
               ↷
@@ -57,25 +65,19 @@
           <button id="open-export" class="action primary" disabled>
             Export <span aria-hidden="true">↗</span>
           </button>
+          <button
+            id="toggle-inspector"
+            class="drawer-toggle"
+            data-drawer="inspector"
+            aria-controls="panel"
+            aria-expanded="false"
+          >
+            <span aria-hidden="true">☷</span> Edit
+          </button>
         </div>
       </header>
       <aside id="library" aria-label="Pose library"></aside>
       <main id="stage" aria-label="3D studio">
-        <div class="stage-heading">
-          <div>
-            <h1 id="scene-title">Side by side</h1>
-            <p id="scene-description">
-              A little inspiration. Endless possibilities.
-            </p>
-          </div>
-          <span id="scene-badge" class="badge">Built-in study</span>
-        </div>
-        <div id="position-actions" class="buttons position-actions" hidden>
-          <button id="position-edit" class="action small">Edit posture</button>
-          <button id="position-save" class="action small" disabled>
-            Save position override
-          </button>
-        </div>
         <div class="canvas-wrap">
           <canvas
             id="viewport"
@@ -88,65 +90,85 @@
             role="alert"
             hidden
           ></div>
-          <div class="stage-watermark" aria-hidden="true">POSE / STUDY</div>
-          <div id="loading" class="loading-indicator">
-            Preparing your figures…
+          <div id="loading" class="loading-indicator" aria-hidden="true"></div>
+        </div>
+        <div class="stage-overlay stage-top">
+          <div class="stage-heading">
+            <div class="scene-line">
+              <h1 id="scene-title">Side by side</h1>
+              <span id="scene-badge" class="badge">Built-in study</span>
+            </div>
+            <p id="scene-description">
+              A little inspiration. Endless possibilities.
+            </p>
+          </div>
+          <div class="stage-status">
+            <span id="status" role="status" aria-live="polite"
+              >Loading studio</span
+            ><button id="show-notes" class="text-button" hidden>
+              Pose checks
+            </button>
+          </div>
+          <div id="position-actions" class="buttons position-actions" hidden>
+            <button id="position-edit" class="action small">
+              Edit posture
+            </button>
+            <button id="position-save" class="action small" disabled>
+              Save position override
+            </button>
           </div>
         </div>
-        <div class="stage-toolbar">
-          <div class="view-buttons" role="group" aria-label="Camera views">
-            <button
-              data-view="three_quarter"
-              class="active"
-              aria-pressed="true"
-            >
-              3D</button
-            ><button data-view="front" aria-pressed="false">Front</button
-            ><button data-view="side" aria-pressed="false">Side</button
-            ><button data-view="top" aria-pressed="false">Top</button>
-          </div>
-          <div class="zoom-controls" role="group" aria-label="Zoom controls">
-            <button
-              id="zoom-out"
-              class="icon-button"
-              aria-label="Zoom out"
-              title="Zoom out"
-            >
-              −
-            </button>
-            <button
-              id="fit-view"
-              class="icon-button"
-              aria-label="Fit figures"
-              title="Fit figures (F)"
-            >
-              ⛶
-            </button>
-            <button
-              id="zoom-in"
-              class="icon-button"
-              aria-label="Zoom in"
-              title="Zoom in"
-            >
-              +
-            </button>
-          </div>
-          <div class="material-control">
-            <label for="material" class="sr-only">Material</label
-            ><select id="material">
-              <option value="natural">Natural</option>
-              <option value="clay">Clay study</option>
-            </select>
-          </div>
-        </div>
-        <div class="stage-footer">
+        <div class="stage-overlay stage-bottom">
           <span class="camera-hint"
-            >Drag to orbit <span>·</span> Pinch or scroll to zoom</span
-          ><button id="show-notes" class="text-button" hidden>
-            Pose checks</button
-          ><span id="status" role="status" aria-live="polite"
-            >Loading studio</span
+            >Drag to orbit <span aria-hidden="true">·</span> Pinch or scroll to
+            zoom</span
           >
+          <div class="stage-toolbar">
+            <div class="view-buttons" role="group" aria-label="Camera views">
+              <button
+                data-view="three_quarter"
+                class="active"
+                aria-pressed="true"
+              >
+                3D</button
+              ><button data-view="front" aria-pressed="false">Front</button
+              ><button data-view="side" aria-pressed="false">Side</button
+              ><button data-view="top" aria-pressed="false">Top</button>
+            </div>
+            <div class="zoom-controls" role="group" aria-label="Zoom controls">
+              <button
+                id="zoom-out"
+                class="icon-button"
+                aria-label="Zoom out"
+                title="Zoom out"
+              >
+                −
+              </button>
+              <button
+                id="fit-view"
+                class="icon-button"
+                aria-label="Fit figures"
+                title="Fit figures (F)"
+              >
+                ⛶
+              </button>
+              <button
+                id="zoom-in"
+                class="icon-button"
+                aria-label="Zoom in"
+                title="Zoom in"
+              >
+                +
+              </button>
+            </div>
+            <div class="material-control">
+              <label for="material" class="sr-only">Material</label
+              ><select id="material">
+                <option value="natural">Natural</option>
+                <option value="clay">Clay study</option>
+              </select>
+            </div>
+          </div>
         </div>
       </main>
       <aside id="panel" aria-label="Scene inspector"></aside>

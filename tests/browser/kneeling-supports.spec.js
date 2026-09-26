@@ -75,6 +75,7 @@ for (const [id, count, contacts] of [
       .getByRole("dialog")
       .getByRole("button", { name: "Save preset", exact: true })
       .click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await ready(page);
     await page.reload();
     await ready(page);

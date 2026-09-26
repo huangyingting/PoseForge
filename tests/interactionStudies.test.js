@@ -21,6 +21,7 @@ const entries = JSON.parse(indexBytes).entries;
 const bytes = read("public/catalog/interaction-studies-v1.json");
 const manifest = JSON.parse(read("src/data/interaction-manifest.json"));
 const classifications = JSON.parse(read("scripts/data/interaction-classifications.json"));
+const names = JSON.parse(read("scripts/data/position-names.json"));
 const pack = JSON.parse(bytes);
 const studies = checkInteractionStudies(pack, manifest, entries);
 const hash = (v) => createHash("sha256").update(v).digest("hex");
@@ -124,6 +125,15 @@ test("malformed, stale, unclothed or free-floating interaction records reject th
       p.studies[1].sourceId = p.studies[0].sourceId;
     },
     (p) => {
+      p.studies[1].title = p.studies[0].title.toUpperCase();
+    },
+    (p) => {
+      p.studies[0].title = " ";
+    },
+    (p) => {
+      p.studies[0].aliases = [""];
+    },
+    (p) => {
       const pair = p.studies.find((s) => s.scene.actors.length > 1);
       pair.scene.contacts = [];
     },
@@ -168,13 +178,19 @@ test("every interaction is a named, playable library position that can be listed
   const positions = interactionPositions(studies);
   assert.equal(positions.length, 1283);
   assert.equal(new Set(positions.map((p) => p.title)).size, 1283);
+  // Every reference has a specific template, so the catch-all
+  // "Other interactions" category is left empty.
   assert.equal(
     new Set(positions.map((p) => p.category)).size,
-    10,
+    9,
   );
   for (const p of positions) {
     assert.ok(isBuiltInPosition(p));
-    assert.match(p.title, / · [A-Z][^·]+ · IMG-\d{4}$/);
+    // Positions carry their own names, not source IDs.
+    assert.equal(p.title, names[p.source.recordId].name);
+    assert.doesNotMatch(p.title, /img-?\d/i);
+    assert.equal(p.scene.title, p.title);
+    for (const alias of names[p.source.recordId].aliases ?? []) assert.ok(p.tags.includes(alias));
     assert.ok(p.description.includes(p.position.name));
     assert.equal(p.position.variant, "interaction");
     for (const duplicate of [
@@ -202,6 +218,10 @@ test("every interaction is a named, playable library position that can be listed
     assert.equal(searchCatalog(index, { scope: "named" }).filter((p) => isBuiltInPosition(p)).length, 1283);
     assert.ok(searchCatalog(index, { query: "reverse cowgirl" }).length >= 61);
     assert.equal(searchCatalog(index, { query: "img-0001" }).filter(isBuiltInPosition).length, 1);
+    assert.deepEqual(
+      searchCatalog(index, { query: names["img-0619"].aliases[0] }).filter(isBuiltInPosition).map((p) => p.source.recordId),
+      ["img-0619"],
+    );
     const one = library.get(positions[0].id);
     assert.equal(one.scene.actors.length, positions[0].scene.actors.length);
     one.scene.actors[0].joints.head.rotation = 999;

@@ -3,8 +3,9 @@ import { authoredPreview, poseDiagram } from "./diagram.js";
 import { createPreviewService } from "./previewService.js";
 import { download } from "../render/exporters.js";
 import { newId } from "./ids.js";
+import { showRegion } from "./workspaceLayout.js";
 import { positionCount } from "./libraryStore.js";
-import { catalogPage } from "../core/sourceCatalog.js";
+import { CATALOG_PAGE_SIZE, catalogPage } from "../core/sourceCatalog.js";
 import {
   POSITION_STATUS_LABELS,
   isBuiltInPosition,
@@ -45,14 +46,7 @@ export function toast(message) {
   }, 5500);
 }
 
-export function showRegion(region) {
-  document.getElementById("app").dataset.mobile = region;
-  document.querySelectorAll("[data-region]").forEach((node) => {
-    const active = node.dataset.region === region;
-    node.classList.toggle("active", active);
-    node.setAttribute("aria-pressed", String(active));
-  });
-}
+export { showRegion };
 
 /** Dialogs use native focus containment, Escape, and restoration to the opener. */
 function dialog(title) {
@@ -115,6 +109,7 @@ export function buildStudio(
   let selected = "";
   let scope = "positions";
   let page = 0;
+  let listedIds = [];
   let sourceEntries = null;
   let positionsError = "";
   let loadingPositions = false;
@@ -244,7 +239,7 @@ export function buildStudio(
         }),
         element("p", {
           textContent:
-            "Tip: press / to search the library. Use Focus on desktop for more canvas space; Escape restores the sidebars.",
+            "Tip: press / to search the library, Ctrl/⌘ Z to undo an edit and Ctrl/⌘ Shift Z or Ctrl Y to redo it. On desktop, the Library and Edit buttons in the top bar show or hide their panels so the 3D scene can use the whole window.",
         }),
       );
       modal.showModal();
@@ -297,8 +292,12 @@ export function buildStudio(
     refresh();
     list.scrollTop = 0;
   };
-  const previous = button("Previous", () => turnPage(-1), "text-button");
-  const next = button("Next", () => turnPage(1), "text-button");
+  const previous = button("‹", () => turnPage(-1), "icon-button");
+  previous.setAttribute("aria-label", "Previous");
+  previous.title = "Previous page";
+  const next = button("›", () => turnPage(1), "icon-button");
+  next.setAttribute("aria-label", "Next");
+  next.title = "Next page";
   const pagination = element(
     "nav",
     { className: "catalog-pagination", hidden: true },
@@ -333,9 +332,10 @@ export function buildStudio(
   root.append(
     top,
     list,
-    pagination,
     element("div", { className: "library-bottom" }, [
-      element("div", { className: "buttons" }, [libraryTools, info]),
+      libraryTools,
+      pagination,
+      info,
       element("p", {
         id: "library-storage",
         className: "sr-only",
@@ -396,7 +396,14 @@ export function buildStudio(
       if (chosen.size > MAX_PACK_BYTES)
         throw new Error("Catalog files must be no larger than 32 MB.");
       file.disabled = true;
-      const added = await library.import(await chosen.text());
+      const text = await chosen.text();
+      // Overrides in a library backup are checked against their built-in
+      // positions. A studies-only file does not need them, so a failed
+      // download here is left for the import itself to report if it matters.
+      if (!positionCount() && handlers.loadPositions)
+        await handlers.loadPositions().catch(() => {});
+      const added = await library.import(text);
+      const overrides = added.filter(isPositionOverride).length;
       scope = "saved";
       page = 0;
       supportStatus.value = "all";
@@ -404,7 +411,7 @@ export function buildStudio(
       category.value = "all";
       refresh();
       toast(
-        `Imported ${added.length} preset${added.length === 1 ? "" : "s"}. Existing presets were kept.`,
+        `Imported ${added.length} preset${added.length === 1 ? "" : "s"}${overrides ? `, including ${overrides} position override${overrides === 1 ? "" : "s"}` : ""}. Existing presets were kept.`,
       );
     } catch (e) {
       toast(`Import failed: ${e.message}`);
@@ -480,6 +487,7 @@ export function buildStudio(
     }).filter(
       (p) => supportStatus.value === "all" || p.status === supportStatus.value,
     );
+    listedIds = filtered.map((p) => p.id);
     const itemLabel =
       scope === "positions"
         ? filtered.length === 1
@@ -568,33 +576,35 @@ export function buildStudio(
             className: "preset-name",
             textContent: preset.title,
           }),
-          element("span", {
-            className: "preset-meta",
-            textContent: `${preset.scene.actors.length === 1 ? "Solo" : `${preset.scene.actors.length} figures`} · ${
-              preset.scene.support?.surface
-                ? preset.scene.support.surface
-                    .replace(/_/g, " ")
-                    .replace(/^\w/, (letter) => letter.toUpperCase())
-                : preset.category
-            }`,
-          }),
+          element("span", { className: "preset-line" }, [
+            element("span", {
+              className: "preset-meta",
+              textContent: `${isBuiltInPosition(preset) ? `${preset.position.name} · ` : ""}${preset.scene.actors.length === 1 ? "Solo" : `${preset.scene.actors.length} figures`} · ${
+                preset.scene.support?.surface
+                  ? preset.scene.support.surface
+                      .replace(/_/g, " ")
+                      .replace(/^\w/, (letter) => letter.toUpperCase())
+                  : preset.category
+              }`,
+            }),
+            element("span", {
+              className: `support-badge ${status}`,
+              textContent: POSITION_STATUS_LABELS[status],
+              title:
+                status === "authored-3d"
+                  ? "Your locally authored override for this source. It is unreviewed."
+                  : status === "interaction-3d"
+                  ? "Approximate 3D interaction composed from a template; not a measured reconstruction."
+                  : status === "verified-3d"
+                  ? "Audited stock configuration only; edits need their own checks."
+                  : "This personal preset has not been individually certified. Inspect Pose checks; adjustment may be needed.",
+            }),
+          ]),
           element("span", {
             className: "preset-description",
             textContent: preset.description,
           }),
           previewNote,
-          element("span", {
-            className: `support-badge ${status}`,
-            textContent: POSITION_STATUS_LABELS[status],
-            title:
-              status === "authored-3d"
-                ? "Your locally authored override for this source. It is unreviewed."
-                : status === "interaction-3d"
-                ? "Approximate 3D interaction composed from a template; not a measured reconstruction."
-                : status === "verified-3d"
-                ? "Audited stock configuration only; edits need their own checks."
-                : "This personal preset has not been individually certified. Inspect Pose checks; adjustment may be needed.",
-          }),
         ]),
       );
       const favorite = button(
@@ -786,7 +796,7 @@ export function buildStudio(
   }
 
   function openPositionDetailsSheet(entry, preset = null) {
-    const modal = dialog(preset?.position?.name ?? `Position ${entry.sourceId}`);
+    const modal = dialog(preset?.title ?? `Position ${entry.sourceId}`);
     const peers = sourceEntries.filter((e) => e.variant === entry.variant);
     modal.append(
       element("p", {
@@ -912,7 +922,7 @@ export function buildStudio(
     const error = element("p", { className: "dialog-error", role: "alert" });
     const form = element("form", {}, [
       element("p", {
-        textContent: `${position.source.recordId} · ${position.scene.actors.length} figures. Saves this complete interaction as the active version of the position. This local override is unreviewed.`,
+        textContent: `${position.source.recordId} · ${position.scene.actors.length} ${position.scene.actors.length === 1 ? "figure" : "figures"}. Saves this complete interaction as the active version of the position. This local override is unreviewed.`,
       }),
       title.wrapper,
       ...(existing
@@ -1281,16 +1291,30 @@ export function buildStudio(
     setSelected(id) {
       const changed = selected !== id;
       selected = id;
-      if (isBuiltInPosition({ id }) || isPositionOverride({ id })) {
-        if (scope !== "positions") {
-          scope = "positions";
-          category.value = "all";
-          supportStatus.value = "all";
-        }
-        search.value = id.split(".").at(-1);
-        page = 0;
-      }
       refresh();
+      // A card chosen from the list is already in view, and the reader's search
+      // and page are theirs to keep - an edit re-selects the same card too. Only
+      // a selection made from elsewhere (a link, an undo, the details sheet) is
+      // brought into view: on its page if the current filter lists it, and by
+      // narrowing the search to its ID only if the filter does not.
+      if (
+        changed &&
+        !list.querySelector(".preset-card.selected") &&
+        (isBuiltInPosition({ id }) || isPositionOverride({ id }))
+      ) {
+        const index = listedIds.indexOf(id);
+        if (index >= 0) page = Math.floor(index / CATALOG_PAGE_SIZE);
+        else {
+          if (scope !== "positions") {
+            scope = "positions";
+            category.value = "all";
+            supportStatus.value = "all";
+          }
+          search.value = id.split(".").at(-1);
+          page = 0;
+        }
+        refresh();
+      }
       if (changed)
         list
           .querySelector(".preset-card.selected")

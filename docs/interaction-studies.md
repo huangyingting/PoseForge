@@ -12,10 +12,15 @@ interpretation** / **Open generated approximation**) and through
 Every scene is also registered as a read-only built-in library preset
 (`builtin.position.<img-id>`), listed in the unified **Positions** catalog once
 the pack has loaded (a loading row with **Retry positions** is shown meanwhile).
-Titles are `<position name> · <surface> · <IMG-ID>` and descriptions state the
-actual classified arrangement, participants and surface. Ten broad categories
-expand to their related named positions and counts. Tags include the template,
-category, name, surface and source ID, so search works by name ("reverse
+Each position is titled with its own name from
+`scripts/data/position-names.json` (the source sites' titles for the image,
+normalised; names shared by several images are told apart by an alternative
+title, the support, the leg shape or a numeral, so all 1,283 are unique).
+The build stores it as the record `title` and any other titles as `aliases`.
+Descriptions start with the template type and state the actual classified
+arrangement, participants and surface. Broad categories (nine are in use)
+expand to their template types and counts. Tags include the template, category, type, aliases,
+surface and source ID, so search works by name ("golden arch"), type ("reverse
 cowgirl"), category ("partner on top") or ID ("img-0042"). Positions can be
 favorited and opened with `?preset=builtin.position.img-0042`.
 They cannot be deleted and are never written to local storage.
@@ -42,8 +47,8 @@ and rebuilt from a small vocabulary of interaction templates. Checks are geometr
    and orientation checks, body/prop overlap and floor clearance. Failures are kept
    with the record and shown in the app as a warning; nothing is hidden.
 4. **Baking** — `node scripts/build-interaction-studies.mjs` composes all records
-   (722 distinct scenes after de-duplicating identical classifications,
-   in 4 worker threads, about 4 minutes) into
+   (851 distinct scenes after de-duplicating identical classifications,
+   in 4 worker threads, about 8 minutes) into
    `public/catalog/interaction-studies-v1.json` with a SHA-256/size manifest in
    `src/data/interaction-manifest.json`. `--check` verifies the committed files
    reproduce exactly.
@@ -56,50 +61,56 @@ model without a new subsystem.
 
 ## Coverage
 
-2,549 participants: 1,238 pairs, 14 three-person scenes and 31 solo
-figures. 1,170 of 1,283 records pass all of their checks. 35
+2,544 participants: 1,241 pairs, 10 three-person scenes and 32 solo
+figures. All 1,283 records pass all of their checks. 40
 records were classified with a different participant count than their annotation;
 the app notes this.
 
 | Template | Records | Pass all checks |
 |---|---:|---:|
-| `cowgirl` | 64 | 59 |
-| `doggy` | 35 | 34 |
-| `doggy_low` | 46 | 46 |
-| `edge_missionary` | 55 | 48 |
-| `edge_seated_facing` | 31 | 22 |
-| `facesitting` | 28 | 21 |
-| `furniture_rear` | 82 | 76 |
-| `group_three` | 14 | 10 |
-| `kneeling_missionary` | 74 | 74 |
-| `kneeling_rear_upright` | 9 | 9 |
-| `lap_facing` | 99 | 96 |
-| `lap_reverse` | 65 | 65 |
-| `missionary` | 72 | 62 |
-| `oral_on_a` | 53 | 41 |
-| `oral_on_b_kneeling` | 30 | 18 |
-| `oral_on_b_lying` | 11 | 10 |
-| `other_pair` | 7 | 6 |
-| `prone_on_top` | 21 | 13 |
-| `prone_rear` | 53 | 47 |
-| `reclined_facing` | 27 | 25 |
-| `reverse_cowgirl` | 61 | 61 |
-| `scissors` | 32 | 24 |
-| `side_facing` | 24 | 21 |
-| `sixty_nine` | 34 | 29 |
-| `solo` | 31 | 31 |
-| `spooning` | 28 | 28 |
-| `squat_cowgirl` | 4 | 2 |
-| `standing_bent_over` | 17 | 17 |
-| `standing_carry` | 34 | 34 |
-| `standing_facing` | 20 | 20 |
-| `standing_rear` | 10 | 9 |
-| `supported_inversion` | 79 | 79 |
-| `wheelbarrow` | 33 | 33 |
+| `cowgirl` | 60 | 60 |
+| `doggy` | 32 | 32 |
+| `doggy_low` | 48 | 48 |
+| `edge_head_oral` | 10 | 10 |
+| `edge_missionary` | 41 | 41 |
+| `edge_seated_facing` | 26 | 26 |
+| `facesitting` | 21 | 21 |
+| `furniture_rear` | 69 | 69 |
+| `group_three` | 10 | 10 |
+| `kneeling_missionary` | 105 | 105 |
+| `kneeling_rear_upright` | 13 | 13 |
+| `lap_facing` | 97 | 97 |
+| `lap_reverse` | 79 | 79 |
+| `missionary` | 67 | 67 |
+| `oral_on_a` | 39 | 39 |
+| `oral_on_b_kneeling` | 30 | 30 |
+| `oral_on_b_lying` | 9 | 9 |
+| `prone_on_top` | 16 | 16 |
+| `prone_rear` | 60 | 60 |
+| `rear_oral` | 17 | 17 |
+| `reclined_facing` | 29 | 29 |
+| `reverse_cowgirl` | 59 | 59 |
+| `scissors` | 32 | 32 |
+| `side_facing` | 9 | 9 |
+| `sixty_nine` | 42 | 42 |
+| `solo` | 32 | 32 |
+| `spooning` | 31 | 31 |
+| `squat_cowgirl` | 14 | 14 |
+| `standing_bent_over` | 26 | 26 |
+| `standing_carry` | 18 | 18 |
+| `standing_facing` | 27 | 27 |
+| `standing_rear` | 12 | 12 |
+| `supine_stack` | 7 | 7 |
+| `supported_inversion` | 67 | 67 |
+| `wheelbarrow` | 29 | 29 |
 
-Typical remaining shortfalls are a few centimetres of extra gap in oral and
-seated-edge scenes, hands that could not reach without passing through the floor
-(those reaches are dropped), and small overlaps in interlaced legs.
+Passing the checks means the declared contacts close, the figures are clear of
+each other and the furniture, and every figure rests on the floor, a surface or
+a partner. It does not mean the scene matches its reference in every detail.
+Each record was also compared with its source image by eye. The remaining
+simplifications are mostly props drawn as the nearest supported surface (an
+exercise ball or car seat as a bench or chair, a wedge dropped), a lean or arch
+shallower than drawn, and a raised or held leg shown lower.
 
 ## Templates
 
@@ -144,6 +155,9 @@ Oral / manual (head at pelvis)
 - `oral_on_b_kneeling` — B stands or sits; A kneels (or crouches) in front of B with head at B's pelvis.
 - `oral_on_b_lying` — B lies on back; A lies or kneels between/beside B's legs with head at B's pelvis.
 - `facesitting` — B lies on back; A kneels or squats astride B's HEAD (either facing direction).
+- `rear_oral` — one partner's head at the other's hips from behind.
+- `edge_head_oral` — A lies on back with the head over the edge of a bed/table; B stands at A's head.
+- `supine_stack` — both face up, one lying back on top of the other (grouped with partner on top).
 
 Other
 - `solo` — one person only (set `solo_posture`).

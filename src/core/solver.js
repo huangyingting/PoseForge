@@ -459,9 +459,9 @@ function boneRole(boneName, chain) {
  * Raise any limb hanging below `plane` by articulating it, rather than by
  * lifting the whole body (which would pull the declared supports off).
  *
- * This is the safety net that makes an approximate posture legal: the prone
- * archetype's arms are authored folded forward, which in a face-down frame
- * drives them through the floor, and this swings them back up onto it.
+ * This is the safety net that makes an approximate posture legal: arms
+ * authored folded forward point through the floor in a face-down frame, and
+ * this swings them back up onto it.
  *
  * @returns {boolean} whether anything needed raising
  */

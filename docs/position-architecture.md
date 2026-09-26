@@ -139,13 +139,18 @@ records.
 
 The verified loader checks declared byte length, SHA-256 and schema before
 publishing a pack. A failed request is not cached as success and can be retried.
+A download is abandoned only after 15 seconds without receiving data, so a slow
+connection still completes a large pack.
 
 ## Overrides and persistence
 
 An override is a complete source-linked interaction, not a detached posture
 study. It must preserve the source record ID, annotation fingerprint,
 participant count and connected contact graph. Imports validate the entire
-batch before a transaction begins.
+batch before a transaction begins. A saved-library import binds its override
+entries back to their source positions (an existing override is kept); every
+other entry, like every **Save preset** copy, becomes a personal preset with a
+fresh `user.*` ID and the `studio` variant.
 
 Built-in positions are never written to local storage. Personal presets,
 favorites and overrides are committed through the persistent library. Existing
@@ -154,8 +159,10 @@ unavailable; the saved validated override supplies the compatibility baseline.
 
 `src/app/libraryMigrations.js` is the only compatibility boundary. It converts
 older `user.reference.sexposes.*` records and favorite IDs to
-`user.position.sexposes.*`. No old runtime service, API, route or UI collection
-remains.
+`user.position.sexposes.*`, dropping a legacy record whose current-format
+successor is already stored, and relabels personal presets that were saved with
+a copied `interaction`, `artistic` or `generated` variant as `studio`. No old
+runtime service, API, route or UI collection remains.
 
 ## Extending the system
 

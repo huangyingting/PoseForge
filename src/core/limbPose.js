@@ -54,6 +54,16 @@ function both(joint, angles) {
   return { [`${joint}_l`]: angles, [`${joint}_r`]: angles };
 }
 
+/**
+ * Both shoulders, with the roll squared. An arm shape is authored from a
+ * neutral shoulder, and a posture that rolls its own (prone's forearms folded
+ * up beside the head) would otherwise carry that roll into every shape laid
+ * over it and swing the forearms somewhere the shape never meant.
+ */
+function shoulders(angles) {
+  return both("shoulder", { rotation: 0, ...angles });
+}
+
 /** One side only, for the shapes that name a single limb. */
 function one(joint, angles) {
   return { [`${joint}_l`]: angles };
@@ -80,14 +90,15 @@ const PLANTED_HAND = { elbowRotation: -75, wrist: 75 };
  *
  * Angles are shoulder flexion (toward the face), shoulder abduction (out from
  * the body), elbow flexion. Only the channels a shape actually means are
- * listed; everything else stays as the posture left it.
+ * listed, plus the shoulder roll (see `shoulders`); everything else stays as
+ * the posture left it.
  */
 export const ARM_POSES = {
   arms_sides: {
     label: "arms down at the sides",
     weightSafe: false,
     joints: {
-      ...both("shoulder", { flexion: 4, abduction: 9 }),
+      ...shoulders({ flexion: 4, abduction: 9 }),
       ...both("elbow", { flexion: 12 }),
     },
   },
@@ -100,7 +111,7 @@ export const ARM_POSES = {
     // and the hands near the ears - not the reaching-for-the-ceiling one, which
     // is `arms_straps` below.
     joints: {
-      ...both("shoulder", { flexion: 148, abduction: 22 }),
+      ...shoulders({ flexion: 148, abduction: 22 }),
       ...both("elbow", { flexion: 92 }),
     },
   },
@@ -109,7 +120,7 @@ export const ARM_POSES = {
     label: "arms reaching forward",
     weightSafe: false,
     joints: {
-      ...both("shoulder", { flexion: 78, abduction: 10 }),
+      ...shoulders({ flexion: 78, abduction: 10 }),
       ...both("elbow", { flexion: 22 }),
     },
   },
@@ -118,7 +129,7 @@ export const ARM_POSES = {
     label: "arms out to the sides",
     weightSafe: false,
     joints: {
-      ...both("shoulder", { flexion: 6, abduction: 82 }),
+      ...shoulders({ flexion: 6, abduction: 82 }),
       ...both("elbow", { flexion: 10 }),
     },
   },
@@ -133,7 +144,7 @@ export const ARM_POSES = {
     // the hand swings past both and ends up below the seat; bending the elbow
     // keeps it near hip height, which is the right neighbourhood either way.
     joints: {
-      ...both("shoulder", { flexion: -26, abduction: 26 }),
+      ...shoulders({ flexion: -26, abduction: 26 }),
       ...both("elbow", { flexion: 34, rotation: PLANTED_HAND.elbowRotation }),
       ...both("wrist", { flexion: PLANTED_HAND.wrist }),
     },
@@ -143,7 +154,7 @@ export const ARM_POSES = {
     label: "hands planted on the surface",
     weightSafe: false,
     joints: {
-      ...both("shoulder", { flexion: 74, abduction: 14 }),
+      ...shoulders({ flexion: 74, abduction: 14 }),
       ...both("elbow", { flexion: 8, rotation: PLANTED_HAND.elbowRotation }),
       ...both("wrist", { flexion: PLANTED_HAND.wrist }),
     },
@@ -153,7 +164,7 @@ export const ARM_POSES = {
     label: "weight on the forearms",
     weightSafe: false,
     joints: {
-      ...both("shoulder", { flexion: 88, abduction: 14 }),
+      ...shoulders({ flexion: 88, abduction: 14 }),
       ...both("elbow", { flexion: 84 }),
       ...both("wrist", { flexion: 10 }),
     },
@@ -167,7 +178,7 @@ export const ARM_POSES = {
     // the wrapping, which is why the elbow angle here is larger than the
     // shoulder one.
     joints: {
-      ...both("shoulder", { flexion: 62, abduction: 34 }),
+      ...shoulders({ flexion: 62, abduction: 34 }),
       ...both("elbow", { flexion: 88 }),
     },
   },
@@ -176,7 +187,7 @@ export const ARM_POSES = {
     label: "hands at the hips or waist",
     weightSafe: false,
     joints: {
-      ...both("shoulder", { flexion: 22, abduction: 30 }),
+      ...shoulders({ flexion: 22, abduction: 30 }),
       ...both("elbow", { flexion: 74 }),
     },
   },
@@ -185,7 +196,7 @@ export const ARM_POSES = {
     label: "hands on the thighs or legs",
     weightSafe: false,
     joints: {
-      ...both("shoulder", { flexion: 46, abduction: 16 }),
+      ...shoulders({ flexion: 46, abduction: 16 }),
       ...both("elbow", { flexion: 52 }),
     },
   },
@@ -200,7 +211,7 @@ export const ARM_POSES = {
     // a little down, because her hips are in front of him at about his own hip
     // height. 122 uses in the corpus were reading as the akimbo one.
     joints: {
-      ...both("shoulder", { flexion: 38, abduction: 16 }),
+      ...shoulders({ flexion: 38, abduction: 16 }),
       ...both("elbow", { flexion: 28 }),
     },
   },
@@ -209,7 +220,7 @@ export const ARM_POSES = {
     label: "arms folded across the chest",
     weightSafe: false,
     joints: {
-      ...both("shoulder", { flexion: 32, abduction: 6 }),
+      ...shoulders({ flexion: 32, abduction: 6 }),
       ...both("elbow", { flexion: 122 }),
     },
   },
@@ -218,7 +229,7 @@ export const ARM_POSES = {
     label: "arms up, holding straps or restrained",
     weightSafe: false,
     joints: {
-      ...both("shoulder", { flexion: 158, abduction: 18 }),
+      ...shoulders({ flexion: 158, abduction: 18 }),
       ...both("elbow", { flexion: 24 }),
     },
   },
@@ -229,7 +240,7 @@ export const ARM_POSES = {
     // Lower and straighter than `arms_planted`, because the thing being leaned
     // on is at hip or waist height rather than on the floor.
     joints: {
-      ...both("shoulder", { flexion: 56, abduction: 12 }),
+      ...shoulders({ flexion: 56, abduction: 12 }),
       ...both("elbow", { flexion: 18 }),
     },
   },
@@ -785,9 +796,12 @@ for (const votes of [ARM_VOTES, LEG_VOTES, TRUNK_VOTES]) {
  * posture has it", or null when nothing matched at all. Callers treat the last
  * two the same way; they are distinguished so coverage can be measured.
  */
-function readLimb(name, votes, order) {
+function readLimb(name, votes, order, shapes) {
   const normalised = normaliseName(name);
   if (!normalised) return null;
+  // A shape's own id reads as that shape. Voting on its words would lose the
+  // ones no phrase uses ("prop", "together") and fold "one raised" into both.
+  if (Object.hasOwn(shapes, normalised)) return normalised;
   for (const candidate of alternatives(normalised)) {
     const best = winner(tally(candidate.split("_"), votes).votes, order);
     if (best) return best.target;
@@ -796,13 +810,13 @@ function readLimb(name, votes, order) {
 }
 
 /** @returns {string|null} an ARM_POSES key, "defer", or null. */
-export const readArmsName = (name) => readLimb(name, ARM_VOTES, ARM_ORDER);
+export const readArmsName = (name) => readLimb(name, ARM_VOTES, ARM_ORDER, ARM_POSES);
 
 /** @returns {string|null} a LEG_POSES key, "defer", or null. */
-export const readLegsName = (name) => readLimb(name, LEG_VOTES, LEG_ORDER);
+export const readLegsName = (name) => readLimb(name, LEG_VOTES, LEG_ORDER, LEG_POSES);
 
 /** @returns {string|null} a TRUNK_POSES key, "defer", or null. */
-export const readTrunkName = (name) => readLimb(name, TRUNK_VOTES, TRUNK_ORDER);
+export const readTrunkName = (name) => readLimb(name, TRUNK_VOTES, TRUNK_ORDER, TRUNK_POSES);
 
 /** Bones a posture's supports hang off, so a shape can be told not to move them. */
 const LEG_BEARING = new Set(["foot", "knee", "shin", "thigh"]);

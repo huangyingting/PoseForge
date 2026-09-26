@@ -199,6 +199,52 @@ test("source loader is lazy, shares requests, retries failure and verifies bytes
   }
 });
 
+test("source loader times out a stalled download, not a slow one", async () => {
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const stream = (stallAfter = Infinity) => {
+    let offset = 0;
+    let sent = 0;
+    return new ReadableStream({
+      async pull(controller) {
+        if (offset >= bytes.length) return controller.close();
+        if (sent++ >= stallAfter) return new Promise(() => {});
+        await wait(5);
+        const end = Math.min(bytes.length, offset + Math.ceil(bytes.length / 12));
+        controller.enqueue(new Uint8Array(bytes.subarray(offset, end)));
+        offset = end;
+      },
+    });
+  };
+  // Twelve chunks five milliseconds apart outlast the 40 ms idle limit
+  // overall, but never go quiet for that long.
+  const slow = createSourceCatalogLoader({
+    fetcher: async () => new Response(stream()),
+    digest: hash,
+    idleTimeout: 40,
+  });
+  assert.equal((await slow()).length, 1283);
+
+  let requests = 0;
+  const stalled = createSourceCatalogLoader({
+    fetcher: async () => new Response(stream(requests++ ? Infinity : 3)),
+    digest: hash,
+    idleTimeout: 40,
+  });
+  await assert.rejects(stalled(), /timed out/);
+  assert.equal((await stalled()).length, 1283);
+  assert.equal(requests, 2);
+
+  const silent = createSourceCatalogLoader({
+    fetcher: (url, { signal }) =>
+      new Promise((resolve, reject) =>
+        signal.addEventListener("abort", () => reject(signal.reason)),
+      ),
+    digest: hash,
+    idleTimeout: 20,
+  });
+  await assert.rejects(silent(), /timed out/);
+});
+
 test("source metadata survives preset transfers but verification claims do not", () => {
   const source = {
     dataset: "SexPoses",

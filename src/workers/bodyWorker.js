@@ -42,7 +42,9 @@ const FINAL = 0.012;
  * still a correct, if plainer, picture of the same pose. So a model that will
  * not load resolves to null, the figure falls back to the field, and the
  * reason is carried into the scene's warnings where the user can see it rather
- * than disappearing into a console nobody has open.
+ * than disappearing into a console nobody has open. The failure is forgotten
+ * after a while, so a dropped connection costs the scanned body for the next
+ * few solves rather than for the rest of the session.
  */
 const MODELS = {
   female: new URL("../../assets/models/realistic-female.glb", import.meta.url),
@@ -53,23 +55,29 @@ const MODELS = {
 };
 const templates = new Map();
 const modelWarnings = new Map();
+const MODEL_RETRY_MS = 10_000;
 
 function scanned(bodyType) {
   const url = String(MODELS[bodyType] ?? MODELS.neutral);
   if (!templates.has(url)) {
-    templates.set(
-      url,
-      fetch(url)
-        .then((response) => {
-          if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-          return response.arrayBuffer();
-        })
-        .then((bytes) => buildHumanTemplate(bytes))
-        .catch((error) => {
-          modelWarnings.set(url, `Could not load the ${bodyType} scanned body (${error.message}); drawing the collision field instead.`);
-          return null;
-        })
-    );
+    const attempt = fetch(url)
+      .then((response) => {
+        if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+        return response.arrayBuffer();
+      })
+      .then((bytes) => buildHumanTemplate(bytes))
+      .then((template) => {
+        modelWarnings.delete(url);
+        return template;
+      })
+      .catch((error) => {
+        modelWarnings.set(url, `Could not load the ${bodyType} scanned body (${error.message}); drawing the collision field instead.`);
+        setTimeout(() => {
+          if (templates.get(url) === attempt) templates.delete(url);
+        }, MODEL_RETRY_MS);
+        return null;
+      });
+    templates.set(url, attempt);
   }
   return templates.get(url);
 }

@@ -1,5 +1,9 @@
 # Compact, approachable studio UI
 
+> **Superseded layout note:** the desktop Focus view described here was later
+> replaced by a full-window canvas with remembered **Library** and **Edit**
+> drawers. This plan is kept as historical evidence.
+
 ## Intent
 
 Make browsing and editing feel like a focused workspace. Keep the current calm

@@ -9,6 +9,11 @@ const pack = JSON.parse(
     new URL("../../public/catalog/artistic-studies-v1.json", import.meta.url),
   ),
 );
+const names = JSON.parse(
+  readFileSync(
+    new URL("../../scripts/data/position-names.json", import.meta.url),
+  ),
+);
 const tokens = (p) =>
   new Set([
     `figures:${p.scene.actors.length}`,
@@ -81,14 +86,14 @@ test.afterEach(() => {
 });
 async function check(page, record) {
   await expect(page.locator("#scene-title")).toHaveText(
-    `Artistic interpretation · ${record.sourceId.toUpperCase()}`,
+    `${names[record.sourceId].name} · Artistic interpretation`,
   );
   await ready(page);
   await expect(page.locator("#scene-badge")).toHaveText("Artistic 3D");
   await expect(page.locator("#viewport-error")).toBeHidden();
   const result = await page.evaluate(() => window.__artisticResult);
   expect(result.title).toBe(
-    `Artistic interpretation · ${record.sourceId.toUpperCase()}`,
+    `${names[record.sourceId].name} · Artistic interpretation`,
   );
   expect(result.meshes).toHaveLength(record.scene.actors.length);
   for (const m of result.meshes) {

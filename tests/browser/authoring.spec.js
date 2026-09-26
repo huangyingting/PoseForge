@@ -72,6 +72,7 @@ test("contact targets, figure names and custom behavior survive save, reload, ex
     .getByRole("dialog")
     .getByRole("button", { name: "Save preset", exact: true })
     .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.reload();
   await ready(page);
   await expect(page.getByLabel("Contact behavior")).toHaveValue("custom");
@@ -134,6 +135,7 @@ test("contact types preserve history and saved exports while unresolved edits ke
     .getByRole("dialog")
     .getByRole("button", { name: "Save preset", exact: true })
     .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await ready(page);
   await page.reload();
   await ready(page);
@@ -281,6 +283,7 @@ test("body-first contacts retain their endpoint order through the editor, saved 
     .getByRole("dialog")
     .getByRole("button", { name: "Update preset", exact: true })
     .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await ready(page);
   await page.reload();
   await ready(page);

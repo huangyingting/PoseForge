@@ -178,3 +178,78 @@ test("cache eviction cannot let an in-flight base solve downgrade its final pose
     service.dispose();
   }
 });
+
+test("a hung or crashed preview worker costs one scene, not the library", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const workers = [],
+    service = createPreviewService({
+      workerFactory: () => {
+        workers.push(worker());
+        return workers.at(-1);
+      },
+      timeout: 10,
+    }),
+    hung = scene(),
+    next = scene(),
+    results = { hung: [], next: [] };
+  next.actors[0].stature = 1.9;
+  try {
+    service.subscribe(hung, (result) => results.hung.push(result));
+    service.subscribe(next, (result) => results.next.push(result));
+    assert.equal(workers[0].sent.length, 1);
+    t.mock.timers.tick(10);
+    assert.equal(workers[0].terminated, true);
+    assert.deepEqual(results.hung, [{ error: true }]);
+    assert.deepEqual(results.next, []);
+    // The replacement takes the rest of the queue.
+    assert.equal(workers.length, 2);
+    assert.equal(workers[1].sent.length, 1);
+    workers[1].reply(workers[1].sent[0], { preview: preview() });
+    assert.equal(results.next.at(-1).preview.basis, "base");
+    // A late answer from the terminated worker is ignored.
+    workers[0].reply(workers[0].sent[0], { preview: preview() });
+    assert.deepEqual(results.hung, [{ error: true }]);
+    // The scene that hung is not re-queued every time its card reappears.
+    const again = [];
+    service.subscribe(hung, (result) => again.push(result));
+    assert.deepEqual(again, [{ error: true }]);
+    assert.equal(workers[1].sent.length, 1);
+  } finally {
+    service.dispose();
+  }
+});
+
+test("a preview worker that keeps crashing turns previews off", () => {
+  const workers = [],
+    service = createPreviewService({
+      workerFactory: () => {
+        workers.push(worker());
+        return workers.at(-1);
+      },
+      maxRestarts: 2,
+    }),
+    results = [];
+  try {
+    const scenes = [1.5, 1.6, 1.7, 1.8, 1.9].map((stature) => {
+      const value = scene();
+      value.actors[0].stature = stature;
+      return value;
+    });
+    scenes.forEach((value, index) =>
+      service.subscribe(value, (result) => results.push([index, result])),
+    );
+    for (let i = 0; i < 3; i++) workers.at(-1).onerror({ preventDefault() {} });
+    assert.equal(workers.length, 3);
+    assert.ok(workers.every((w) => w.terminated));
+    // Every scene still waiting is told, once, and nothing else is posted.
+    assert.deepEqual(
+      results.map(([index, result]) => [index, result.error]),
+      [0, 1, 2, 3, 4].map((index) => [index, true]),
+    );
+    const late = [];
+    service.subscribe(scene(), (result) => late.push(result));
+    assert.deepEqual(late, [{ error: true }]);
+  } finally {
+    service.dispose();
+  }
+});

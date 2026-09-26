@@ -1,6 +1,8 @@
 # Compact studio UI verification
 
-This report records the compact-layout milestone. The later
+This report records the compact-layout milestone. Its desktop Focus view has
+since been replaced by a full-window canvas with remembered **Library** and
+**Edit** drawers; the figures below describe the milestone as measured. The later
 [3D reference iteration](reference-3d-verification.md) adds selectable approximate
 posture previews to the reference cards and repeats relevant UI regressions.
 

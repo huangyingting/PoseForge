@@ -81,6 +81,7 @@ test("shared-plane seating clears the sofa for both body types and survives surf
     .getByRole("dialog")
     .getByRole("button", { name: "Save preset", exact: true })
     .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await ready(page);
   await page.reload();
   await ready(page);

@@ -87,11 +87,13 @@ export function checkArtisticStudies(pack, descriptor, entries) {
   return studies;
 }
 
-export function artisticPreset(entry, studies) {
+export function artisticPreset(entry, studies, name = null) {
   const record = studies.get(entry.sourceId);
   if (!record)
     throw new Error("Artistic position unavailable for this source.");
-  const title = `Artistic interpretation · ${entry.sourceId.toUpperCase()}`;
+  const title = name
+    ? `${name} · Artistic interpretation`
+    : `Artistic interpretation · ${entry.sourceId.toUpperCase()}`;
   const preset = checkPreset({
     id: `builtin.artistic.${entry.sourceId}`,
     title,

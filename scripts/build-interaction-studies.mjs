@@ -94,7 +94,7 @@ function runWorkers(jobs) {
   });
 }
 
-export async function buildInteractionStudies(entries, classifications) {
+export async function buildInteractionStudies(entries, classifications, names = {}) {
   const byId = new Map(classifications.map((c) => [c.id, c]));
   const unique = new Map();
   for (const entry of entries) {
@@ -113,13 +113,15 @@ export async function buildInteractionStudies(entries, classifications) {
     const study = scenes.get(planKey(cls));
     const label = templateLabel(cls.template === "group_three" ? cls.base : cls.template);
     const participants = study.scene.actors.length;
-    const title = `Interaction ${entry.sourceId.replace(/^img-/, "")} · ${label}`.slice(0, 80);
+    const named = names[entry.sourceId];
+    const title = (named?.name ?? `Interaction ${entry.sourceId.replace(/^img-/, "")} · ${label}`).slice(0, 80);
     return {
       sourceId: entry.sourceId,
       annotationHash: entry.annotationHash,
       template: cls.template,
       ...(cls.template === "group_three" ? { base: cls.base } : {}),
       title,
+      ...(named?.aliases?.length ? { aliases: named.aliases } : {}),
       classificationConfidence: cls.confidence ?? null,
       surface: study.surface,
       checks: { passed: study.passed, failures: study.failures },
@@ -165,7 +167,8 @@ if (!isMainThread) {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
   const entries = JSON.parse(readFileSync(resolve(root, "public/catalog/sexposes-v1.json"))).entries;
   const classifications = JSON.parse(readFileSync(resolve(root, "scripts/data/interaction-classifications.json")));
-  const { data, manifest } = await buildInteractionStudies(entries, classifications);
+  const names = JSON.parse(readFileSync(resolve(root, "scripts/data/position-names.json")));
+  const { data, manifest } = await buildInteractionStudies(entries, classifications, names);
   for (const [path, text] of [
     [resolve(root, "public", manifest.file), data],
     [resolve(root, "src/data/interaction-manifest.json"), JSON.stringify(manifest, null, 2) + "\n"],

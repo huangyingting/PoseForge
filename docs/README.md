@@ -24,7 +24,9 @@ describe the underlying geometry engine.
 
 The later [compact UI plan](compact-ui-plan.md) and
 [UI verification](compact-ui-verification.md) cover the tighter layout,
-filter disclosure, denser rows, keyboard search and desktop focus mode.
+filter disclosure, denser rows, keyboard search and desktop focus mode. The
+current studio replaces focus mode with a full-window canvas and remembered
+**Library** / **Edit** drawers layered over it; see the root README.
 
 Older plan and audit documents are historical evidence. Their former
 reference-era names and routes are not runtime contracts.

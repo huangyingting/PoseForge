@@ -91,6 +91,8 @@ function encodePNG(pixels, width, height) {
   canvas.width = width;
   canvas.height = height;
   const context = canvas.getContext("2d");
+  if (!context)
+    throw new Error("This browser cannot encode an image this large. Try a smaller scale.");
   const image = context.createImageData(width, height);
   const stride = width * 4;
   for (let row = 0; row < height; row += 1) {
@@ -98,7 +100,17 @@ function encodePNG(pixels, width, height) {
     image.data.set(pixels.subarray(from, from + stride), row * stride);
   }
   context.putImageData(image, 0, 0);
-  return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  // A canvas past the browser's encoder limit hands back null rather than
+  // throwing, and a null blob would download as a file containing "null".
+  return new Promise((resolve, reject) =>
+    canvas.toBlob(
+      (blob) =>
+        blob
+          ? resolve(blob)
+          : reject(new Error("This browser could not encode the image. Try a smaller scale.")),
+      "image/png",
+    ),
+  );
 }
 
 /* ------------------------------------------------------------------ */

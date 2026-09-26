@@ -103,7 +103,7 @@ test("position categories, statuses and mobile controls remain accessible", asyn
   await ready(page);
   await positions(page);
   await page.getByText("Browse position categories", { exact: true }).click();
-  await expect(page.locator(".position-category")).toHaveCount(10);
+  await expect(page.locator(".position-category")).toHaveCount(9);
   await expect(
     page.locator(".position-category").filter({ hasText: "Face-to-face" }),
   ).toHaveCount(1);

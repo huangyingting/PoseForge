@@ -173,7 +173,11 @@ export const POSTURES = {
     supports: [{ landmark: "chest" }, { landmark: "hips" }],
     joints: {
       ...legs({ flexion: -6, abduction: 8 }, { flexion: 6 }, { flexion: 50 }, { flexion: 20 }),
-      ...arms({ flexion: 62, abduction: 26 }, { flexion: 74 }),
+      // Out to the sides along the floor and rolled so the forearms fold up
+      // beside the head, clear of a partner kneeling astride the hips. Folded
+      // forward they would point into the floor, and the settle step swings
+      // them up with the elbows in the air.
+      ...arms({ flexion: 0, abduction: 70, rotation: -85 }, { flexion: 125 }),
       ...spine({ flexion: -4 }, { flexion: 20 }, { flexion: 10 }),
     },
   },

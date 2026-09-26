@@ -53,10 +53,12 @@ export function checkGeneratedStudies(pack, descriptor, entries) {
   return scenes;
 }
 
-export function generatedPosition(entry, scenes) {
+export function generatedPosition(entry, scenes, name = null) {
   const scene = scenes.get(entry.generatedKey);
   if (!scene) throw new Error("This source has no generated study.");
-  const title = `Generated approximation · ${entry.sourceId.toUpperCase()}`;
+  const title = name
+    ? `${name} · Generated approximation`
+    : `Generated approximation · ${entry.sourceId.toUpperCase()}`;
   const description =
     "Approximate clothed posture study. Participants are separate; original relationships and contacts are not reconstructed.";
   const preset = checkPreset({

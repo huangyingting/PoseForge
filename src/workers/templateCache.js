@@ -30,6 +30,14 @@ export function createTemplateCache(
   const remember = (cache, capacity, key, value) => {
     if (cache.size >= capacity) cache.delete(cache.keys().next().value);
     cache.set(key, value);
+    // A missing scan is the loader's answer for now, not for good: forget it so
+    // the next request asks again, and the loader decides when to refetch.
+    value.then(
+      (result) => {
+        if (result === null && cache.get(key) === value) cache.delete(key);
+      },
+      () => {},
+    );
     return value;
   };
   return (spec = {}) => {

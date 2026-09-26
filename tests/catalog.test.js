@@ -319,3 +319,20 @@ test("repeated ID collisions never overwrite an existing saved study", () => {
   assert.throws(() => library.save(example()), /unique preset ID/);
   assert.equal(library.saved().length, 1);
 });
+
+test("search finds a source ID typed without its zero padding", () => {
+  const sourced = (recordId) => ({
+    ...example(),
+    id: `user.${recordId}`,
+    source: { dataset: "SexPoses", recordId, annotationHash: "a".repeat(64) },
+  });
+  const all = ["img-0042", "img-0420", "img-1042", "img-0001", "img-1283"].map(sourced);
+  const ids = (query) => searchCatalog(all, { query }).map((p) => p.source.recordId);
+  assert.deepEqual(ids("img-42"), ["img-0042"]);
+  assert.deepEqual(ids("IMG42"), ["img-0042"]);
+  assert.deepEqual(ids("img-0042"), ["img-0042"]);
+  // A partly typed ID still narrows as it did.
+  assert.deepEqual(ids("img-04"), ["img-0420"]);
+  assert.deepEqual(ids("img-00"), ["img-0042", "img-0001"]);
+  assert.deepEqual(ids("img-1"), ["img-1042", "img-0001", "img-1283"]);
+});

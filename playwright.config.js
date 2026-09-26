@@ -20,6 +20,22 @@ export default defineConfig({
       ],
     },
     screenshot: "only-on-failure",
+    // Functional suites drive the editor directly, so both drawers start open.
+    // compact-ui.spec.js clears this to cover the first-visit layout.
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: "http://127.0.0.1:5174",
+          localStorage: [
+            {
+              name: "poseforge.layout.v1",
+              value: JSON.stringify({ library: true, inspector: true }),
+            },
+          ],
+        },
+      ],
+    },
   },
   webServer: {
     command:

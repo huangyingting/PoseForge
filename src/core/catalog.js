@@ -307,6 +307,11 @@ export function searchCatalog(
   { query = "", category = "all", scope = "all", favorites = [] } = {},
 ) {
   const words = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  // Source IDs are zero-padded ("img-0042") but people type "img-42"; accept
+  // either, alongside the literal text so a partly typed ID still narrows.
+  const padded = words.map((word) =>
+    word.replace(/^img-?0*(\d{1,4})$/, (_, digits) => `img-${digits.padStart(4, "0")}`),
+  );
   return presets.filter((preset) => {
     const haystack = [
       preset.title,
@@ -327,7 +332,10 @@ export function searchCatalog(
         preset.id.startsWith("builtin.position.")) &&
       (scope !== "saved" || preset.id.startsWith("user.")) &&
       (scope !== "favorites" || favorites.includes(preset.id)) &&
-      words.every((word) => haystack.includes(word))
+      words.every(
+        (word, index) =>
+          haystack.includes(word) || haystack.includes(padded[index]),
+      )
     );
   });
 }

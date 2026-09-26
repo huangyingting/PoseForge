@@ -36,16 +36,19 @@ only the search text. **ⓘ About this library** explains catalog counts and loc
 storage. These disclosures save space without hiding entry quality labels.
 
 Press **/** outside an input or dialog to reveal and focus library search.
-Desktop **Focus** hides both sidebars without changing the scene; **Escape**
-restores them. Search also exits focus mode. Small screens use the bottom
+On desktop the top-bar **Library** and **Edit** buttons show or hide the two
+drawers over the full-window canvas without changing the scene, and the layout
+is remembered; search reopens the library drawer. Small screens use the bottom
 **Library / Studio / Edit** navigation, and short landscape views scroll to keep
 controls reachable. Descriptive contact guidance is under **Contact help**;
 contact controls and measured warnings remain visible.
 
-Search positions by actual name, broad category, support surface or source ID
-(for example `img-0001`). Titles use
-`<position name> · <surface> · <IMG-ID>`; descriptions explain the classified
-participant arrangement. All 1,283 source IDs remain directly reachable.
+Search positions by name, alias, broad category, support surface or source ID
+(for example `img-0001`). Each position is titled with its own name (for
+example `Golden Arch` or `Reverse Cowgirl II`), taken from
+`scripts/data/position-names.json`; descriptions start with the template type
+and explain the classified participant arrangement. All 1,283 source IDs remain
+directly reachable.
 
 The group fingerprint includes the ordered participants' structured pose fields
 and the full relationship annotation. Participant `id` and `gender` fields,

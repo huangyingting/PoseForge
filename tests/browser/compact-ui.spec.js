@@ -3,6 +3,8 @@ import AxeBuilder from "@axe-core/playwright";
 import { ready } from "./helpers/ready.js";
 import { openLibraryFilters } from "./helpers/library.js";
 
+// These tests cover the first-visit layout: library open, editor closed.
+test.use({ storageState: { cookies: [], origins: [] } });
 let errors;
 test.beforeEach(async ({ context }) => {
   errors = [];
@@ -39,7 +41,7 @@ async function axe(page) {
   ).toEqual([]);
 }
 
-test("compact desktop and mobile layouts expose more rows and reserve the canvas for the scene", async ({
+test("compact desktop and mobile layouts expose more rows and give the scene the window", async ({
   page,
 }, info) => {
   await start(page);
@@ -90,7 +92,11 @@ test("compact desktop and mobile layouts expose more rows and reserve the canvas
     expect(metrics.fullyVisibleCards).toBeGreaterThanOrEqual(
       width === 320 ? 2 : 3,
     );
-    if (width === 1440) expect(metrics.canvasHeight).toBeGreaterThan(620);
+    if (width > 900) {
+      // The canvas runs under the transparent top bar and beside the drawer.
+      expect(metrics.canvasHeight).toBe(height);
+      expect(metrics.canvasWidth).toBeGreaterThanOrEqual(width - 330);
+    }
     await expect(
       page.getByRole("button", { name: "Next", exact: true }),
     ).toBeInViewport();
@@ -148,7 +154,7 @@ test("categories disclose, filters reset pagination, and search clears without l
   ).toBeFocused();
 });
 
-test("focus view and search shortcuts preserve the scene, honor dialogs and leave typing alone", async ({
+test("drawers give the window back to the scene, persist, and / reopens search without hijacking typing", async ({
   page,
 }, info) => {
   await page.addInitScript(() => {
@@ -161,27 +167,33 @@ test("focus view and search shortcuts preserve the scene, honor dialogs and leav
   });
   await start(page);
   const requests = await page.evaluate(() => window.__bodyRequests);
-  const before = await page.locator("#viewport").boundingBox();
-  const focus = page.getByRole("button", { name: "Focus view", exact: true });
-  await focus.click();
-  await expect(focus).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#library")).toBeHidden();
+  const library = page.getByRole("button", { name: "Library", exact: true });
+  const editor = page.getByRole("button", { name: "Edit", exact: true });
+  await expect(library).toHaveAttribute("aria-expanded", "true");
+  await expect(editor).toHaveAttribute("aria-expanded", "false");
   await expect(page.locator("#panel")).toBeHidden();
-  expect((await page.locator("#viewport").boundingBox()).width).toBeGreaterThan(
-    before.width + 400,
-  );
-  await page.screenshot({ path: info.outputPath("focus-view.png") });
+  await library.click();
+  await expect(library).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator("#library")).toBeHidden();
+  await expect
+    .poll(async () => (await page.locator("#viewport").boundingBox()).width)
+    .toBe(1440);
+  await page.screenshot({ path: info.outputPath("scene-only.png") });
+  await editor.click();
+  await expect(editor).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByLabel("Pose description")).toBeVisible();
+  await expect
+    .poll(async () => (await page.locator("#viewport").boundingBox()).width)
+    .toBeLessThan(1440 - 300);
   await page.locator("#save-preset").click();
   await page.getByLabel("Preset name").fill("A / typed title");
+  await page.keyboard.press("/");
+  await expect(page.getByLabel("Preset name")).toHaveValue("A / typed title/");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(focus).toHaveAttribute("aria-pressed", "true");
-  await page.keyboard.press("Escape");
-  await expect(page.locator("#library")).toBeVisible();
-  await expect(focus).toBeFocused();
-  await focus.click();
+  await expect(page.locator("#library")).toBeHidden();
   await page.keyboard.press("/");
-  await expect(focus).toHaveAttribute("aria-pressed", "false");
+  await expect(library).toHaveAttribute("aria-expanded", "true");
   await expect(page.getByLabel("Search positions")).toBeFocused();
   await page.keyboard.type("/");
   await expect(page.getByLabel("Search positions")).toHaveValue("/");
@@ -191,16 +203,23 @@ test("focus view and search shortcuts preserve the scene, honor dialogs and leav
   await expect(page.getByLabel("Pose description")).toBeFocused();
   await expect(page.locator("#scene-title")).toHaveText("Standing · female");
   expect(await page.evaluate(() => window.__bodyRequests)).toBe(requests);
+  await page.reload();
+  await ready(page);
+  await expect(library).toHaveAttribute("aria-expanded", "true");
+  await expect(editor).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator("#library")).toBeVisible();
+  await expect(page.locator("#panel")).toBeVisible();
 });
 
 test("responsive transitions and short landscape screens keep editing, filters and camera actions reachable", async ({
   page,
 }) => {
   await start(page);
-  await page.getByRole("button", { name: "Focus view", exact: true }).click();
+  await page.getByRole("button", { name: "Library", exact: true }).focus();
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.locator("#app")).toHaveAttribute("data-focus", "false");
-  await expect(page.locator("#focus-view")).toBeHidden();
+  await expect(page.locator("#toggle-library")).toBeHidden();
+  await expect(page.locator("#toggle-inspector")).toBeHidden();
+  await expect(page.locator('[data-region="studio"]')).toBeFocused();
   await expect(page.locator("#stage")).toBeVisible();
   await page.locator('[data-region="edit"]').click();
   await expect(page.getByLabel("Pose description")).toBeVisible();
@@ -228,9 +247,13 @@ test("responsive transitions and short landscape screens keep editing, filters a
   ).toBeInViewport();
   await page.getByRole("button", { name: "Fit figures", exact: true }).click();
   await noOverflow(page);
+  // Visiting the editor on a small screen opens its drawer at desktop width.
   await page.setViewportSize({ width: 1440, height: 844 });
   await expect(page.locator("#library")).toBeVisible();
   await expect(page.locator("#panel")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Edit", exact: true }),
+  ).toHaveAttribute("aria-expanded", "true");
 });
 
 test("compact controls, filters, information dialogs and enlarged text remain accessible", async ({
@@ -285,6 +308,7 @@ test("keyboard-focused fields scroll below the sticky inspector tabs", async ({
   page,
 }) => {
   await start(page);
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByRole("button", { name: "Figures", exact: true }).click();
   await page.getByText("Appearance", { exact: true }).click();
   await page.getByText("Joints", { exact: true }).click();

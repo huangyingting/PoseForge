@@ -179,7 +179,9 @@ function fitPlacement(specs, moving, anchors, props, { free = ["x", "z"], yawRan
     return { cost, spec, pen };
   };
   let best = evaluate(params);
-  const keys = [...free, ...(yawRange ? ["yaw"] : []), ...(pitchRange ? ["pitch"] : [])];
+  // A pitch range is ± degrees, or [min, max] to let the actor tip one way only.
+  const [pitchMin, pitchMax] = Array.isArray(pitchRange) ? pitchRange : [-pitchRange, pitchRange];
+  const keys = [...free, ...(yawRange ? ["yaw"] : []), ...(pitchMin || pitchMax ? ["pitch"] : [])];
   for (const step of [0.16, 0.08, 0.04, 0.02, 0.01, 0.005]) {
     let improved = true;
     let rounds = 0;
@@ -191,7 +193,7 @@ function fitPlacement(specs, moving, anchors, props, { free = ["x", "z"], yawRan
         for (const sign of [1, -1]) {
           const trial = { ...params, [key]: params[key] + sign * delta };
           if (key === "yaw" && Math.abs(trial.yaw) > yawRange) continue;
-          if (key === "pitch" && Math.abs(trial.pitch) > pitchRange) continue;
+          if (key === "pitch" && (trial.pitch < pitchMin || trial.pitch > pitchMax)) continue;
           const result = evaluate(trial);
           if (result.cost < best.cost - 1e-9) {
             best = result;
@@ -273,15 +275,15 @@ function applyPlace(spec, index, move, specs) {
   let out = move.mirror ? mirrorSpec(spec) : spec;
   if (move.around) {
     // Stand off from another actor (at its head, in front, beside or behind),
-    // then turn to face the named landmark on it.
+    // then turn to face the named landmark on it. Beneath lies under its chest.
     const { actor, where, dist = 0.5, face = "pelvis", anchor = "pelvis" } = move.around;
     const other = liveActor(specs[actor], actor);
     const h = bodyHeading(other);
     const otherFront = frontFlat(other);
     const lateral = otherFront && Math.abs(dot(otherFront, h)) < 0.5 ? otherFront : [h[2], 0, -h[0]];
-    const refName = where === "at_head" || where === "in_front" ? "head" : "pelvis";
+    const refName = where === "at_head" || where === "in_front" ? "head" : where === "beneath" ? "chest" : "pelvis";
     const ref = landmarkPoint(other, refName);
-    const dir = where === "at_head" || where === "in_front" ? h : where === "behind" ? h.map((v) => -v) : lateral;
+    const dir = where === "at_head" || where === "in_front" ? h : where === "behind" ? h.map((v) => -v) : where === "beneath" ? [0, 0, 0] : lateral;
     const target = add(ref, dir.map((v) => v * dist));
     const self = liveActor(out, index);
     const front = frontFlat(self) ?? bodyHeading(self);
@@ -345,8 +347,8 @@ function runFit(specs, step, props) {
  *   relationship, contacts,                      // solver mode
  *   soloSurface: [name...],                      // fit mode: where each is posed alone
  *   place: [{ index, yaw, pitch, pelvisTo, rest, alignTo }], // initial rigid moves
- *   fit: [{ moving, anchors, free, yawRange, pitchRange, pivot, floor }],
- *   limbContacts: [...],                         // closed by IK afterwards
+ *   fit: [{ moving, anchors, free, yawRange, pitchRange (± or [min, max]), pivot, floor }],
+ *   limbContacts: [...],                         // closed by IK afterwards; `optional` ones may fall short
  * }
  *
  * An actor given as an array is a list of candidates; the one whose fit costs
@@ -435,9 +437,11 @@ export function compose(input) {
     const before = specs;
     specs = scene.actors.map((a, i) => ({ ...a, ...captureSolvedPose(solved.actors[i]) }));
     // A reach that would have to pass through the floor or furniture is not made: that limb
-    // keeps its posed shape and the contact is dropped from the plan.
+    // keeps its posed shape and the contact is dropped from the plan. So is an `optional`
+    // reach that falls short of its target.
     const kept = [];
-    for (const c of limbContacts) {
+    const reached = measureContactTargets(solved);
+    for (const [k, { optional, ...c }] of limbContacts.entries()) {
       const chain = chainOf(c.from, c.fromSide);
       if (!chain) {
         kept.push(c);
@@ -448,7 +452,8 @@ export function compose(input) {
       const reach = [...bones, `${limb === "arm" ? "hand" : "foot"}_${side}`];
       const low = Math.min(...solved.actors[c.fromActor].volumes.filter((v) => reach.includes(v.bone)).map((v) => Math.min(v.a[1] - v.ra, v.b[1] - v.rb)));
       const intoProp = detectPropContacts([{ id: "reach", volumes: solved.actors[c.fromActor].volumes.filter((v) => reach.includes(v.bone)) }], props).some((p) => p.depth > 0.03);
-      if (low >= -0.02 && !intoProp) {
+      const short = optional && reached[k] != null && reached[k] > 0.08;
+      if (low >= -0.02 && !intoProp && !short) {
         kept.push(c);
         continue;
       }
@@ -464,7 +469,7 @@ export function compose(input) {
       }
       specs[c.fromActor] = reverted;
     }
-    if (kept.length !== limbContacts.length) input.limbContacts = kept;
+    input.limbContacts = kept;
   }
   return specs.map((spec) => {
     const { prefer, soloSurface, ...clean } = spec;

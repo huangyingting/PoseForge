@@ -18,6 +18,12 @@ const interactionCounts = new Map(
     ),
   ).studies.map((s) => [s.sourceId, s.scene.actors.length]),
 );
+const names = JSON.parse(
+  readFileSync(
+    new URL("../../scripts/data/position-names.json", import.meta.url),
+    "utf8",
+  ),
+);
 const representatives = [
   ...new Map(entries.map((e) => [e.generatedKey, e])).values(),
 ];
@@ -71,11 +77,10 @@ test.afterEach(() => {
 
 async function loaded(page, entry, generated = false) {
   const sceneTitle = page.locator("#scene-title");
-  if (generated)
-    await expect(sceneTitle).toHaveText(
-      `Generated approximation · ${entry.sourceId.toUpperCase()}`,
-    );
-  else await expect(sceneTitle).toContainText(entry.sourceId.toUpperCase());
+  const name = names[entry.sourceId].name;
+  await expect(sceneTitle).toHaveText(
+    generated ? `${name} · Generated approximation` : name,
+  );
   await ready(page);
   await expect(page.locator("#scene-badge")).toHaveText(
     generated ? "Approximate 3D" : "Interaction 3D",

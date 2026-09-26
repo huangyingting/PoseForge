@@ -134,6 +134,24 @@ test("missing scans remain unavailable and rejected builds remain explicit", asy
   assert.equal(broken.get({ bodyType: "female" }), result);
 });
 
+test("a scan that was missing is asked for again, and a recovered one is kept", async () => {
+  let available = false,
+    requests = 0;
+  const { get, calls } = mockCache({}, async (bodyType) => {
+    requests++;
+    return available ? { bodyType } : null;
+  });
+  assert.equal(await get({ bodyType: "male" }), null);
+  // Let the cache observe the null before asking again.
+  await new Promise((resolve) => setImmediate(resolve));
+  available = true;
+  const recovered = await get({ bodyType: "male" });
+  assert.equal(recovered.shape.scan.bodyType, "male");
+  assert.equal(await get({ bodyType: "male" }), recovered);
+  assert.equal(requests, 2);
+  assert.equal(calls.bodies.length, 1);
+});
+
 const digest = (template) => {
   const hash = createHash("sha256");
   for (const mesh of template.submeshes) {

@@ -45,8 +45,8 @@ test.afterEach(() => expect(errors).toEqual([]));
 async function start(page, entry = solo) {
   await page.goto(`/?preset=builtin.position.${entry.sourceId}`);
   await ready(page);
-  await expect(page.locator("#scene-title")).toContainText(
-    entry.sourceId.toUpperCase(),
+  await expect(page.locator("#scene-title")).toHaveText(
+    studies.get(entry.sourceId).title,
   );
 }
 async function saveStudy(page, title, replace = false) {
@@ -100,10 +100,12 @@ test("a position has an independently edited, captured and replace-confirmed ove
 }, info) => {
   test.setTimeout(180_000);
   await start(page);
-  await page.getByRole("button", { name: "Focus view", exact: true }).click();
-  await expect(page.locator("#app")).toHaveAttribute("data-focus", "true");
+  const editor = page.getByRole("button", { name: "Edit", exact: true });
+  await editor.click();
+  await expect(editor).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator("#panel")).toBeHidden();
   await page.getByRole("button", { name: "Edit posture", exact: true }).click();
-  await expect(page.locator("#app")).toHaveAttribute("data-focus", "false");
+  await expect(editor).toHaveAttribute("aria-expanded", "true");
   await expect(
     page.getByRole("button", { name: "Figures", exact: true }),
   ).toBeFocused();

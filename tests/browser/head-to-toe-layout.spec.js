@@ -140,6 +140,7 @@ test("the head-to-toe pair retains guided placement and both original contacts o
     .getByRole("dialog")
     .getByRole("button", { name: "Save preset", exact: true })
     .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await ready(page);
   await page.reload();
   await ready(page);
@@ -168,6 +169,7 @@ test("the head-to-toe pair retains guided placement and both original contacts o
     .getByRole("dialog")
     .getByRole("button", { name: "Update preset", exact: true })
     .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await ready(page);
   await page.reload();
   await ready(page);

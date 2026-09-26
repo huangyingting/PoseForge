@@ -150,6 +150,7 @@ test("the kneeling pair retains six supports and three contacts on bed and floor
     .getByRole("dialog")
     .getByRole("button", { name: "Save preset", exact: true })
     .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await ready(page);
   await page.reload();
   await ready(page);
@@ -178,6 +179,7 @@ test("the kneeling pair retains six supports and three contacts on bed and floor
     .getByRole("dialog")
     .getByRole("button", { name: "Update preset", exact: true })
     .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await ready(page);
   await page.reload();
   await ready(page);

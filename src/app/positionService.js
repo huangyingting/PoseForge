@@ -18,6 +18,67 @@ import {
 } from "../core/interactionStudies.js";
 export { artisticManifest, interactionManifest };
 
+/**
+ * Fetch a pack of known size, giving up only when it stops arriving.
+ *
+ * The timeout is an idle one, re-armed by every chunk: the interaction pack is
+ * several megabytes, and a fixed deadline for the whole body fails a slow but
+ * healthy connection part way through while protecting against nothing a
+ * stalled one would not trip anyway.
+ */
+async function download(url, declared, fetcher, idleTimeout) {
+  const controller = new AbortController();
+  let reader = null;
+  let timer = 0;
+  const idle = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      controller.abort();
+      // A pending read on a body the signal does not reach still has to end.
+      reader?.cancel().catch(() => {});
+    }, idleTimeout);
+  };
+  try {
+    idle();
+    const response = await fetcher(url, {
+      signal: controller.signal,
+      cache: "no-cache",
+    });
+    if (!response.ok)
+      throw new Error(`Catalog download failed (${response.status}).`);
+    reader = response.body?.getReader() ?? null;
+    if (!reader) throw new Error("Catalog download is unavailable.");
+    const chunks = [];
+    let size = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (controller.signal.aborted) break;
+      idle();
+      if (done) break;
+      size += value.length;
+      if (size > declared) {
+        await reader.cancel();
+        throw new Error("Catalog download exceeds its declared size.");
+      }
+      chunks.push(value);
+    }
+    if (controller.signal.aborted) throw new Error("Catalog download timed out.");
+    if (size !== declared) throw new Error("Catalog download is incomplete.");
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.length;
+    }
+    return bytes;
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error("Catalog download timed out.");
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Lazy, retryable and shared. A failed fetch never publishes a partial index. */
 function verifiedLoader(
   descriptor,
@@ -25,6 +86,7 @@ function verifiedLoader(
   {
     fetcher = globalThis.fetch,
     base = import.meta.env?.BASE_URL ?? "/",
+    idleTimeout = 15_000,
     digest = async (bytes) =>
       [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))]
         .map((n) => n.toString(16).padStart(2, "0"))
@@ -41,34 +103,12 @@ function verifiedLoader(
         descriptor.bytes > 32_000_000
       )
         throw new Error("Invalid catalog download size.");
-      const response = await fetcher(`${base}${descriptor.file}`, {
-        signal: AbortSignal.timeout(15_000),
-        cache: "no-cache",
-      });
-      if (!response.ok)
-        throw new Error(`Catalog download failed (${response.status}).`);
-      const reader = response.body?.getReader();
-      const chunks = [];
-      let size = 0;
-      if (!reader) throw new Error("Catalog download is unavailable.");
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        size += value.length;
-        if (size > descriptor.bytes) {
-          await reader.cancel();
-          throw new Error("Catalog download exceeds its declared size.");
-        }
-        chunks.push(value);
-      }
-      if (size !== descriptor.bytes)
-        throw new Error("Catalog download is incomplete.");
-      const bytes = new Uint8Array(size);
-      let offset = 0;
-      for (const chunk of chunks) {
-        bytes.set(chunk, offset);
-        offset += chunk.length;
-      }
+      const bytes = await download(
+        `${base}${descriptor.file}`,
+        descriptor.bytes,
+        fetcher,
+        idleTimeout,
+      );
       if ((await digest(bytes)) !== descriptor.dataSha256)
         throw new Error("Catalog download failed its integrity check.");
       return validate(JSON.parse(new TextDecoder().decode(bytes)));
@@ -118,13 +158,17 @@ export function createPositionService(options = {}) {
       if (!entry) throw new Error("Position source not found.");
       return entry;
     },
-    async variant(entry, variant = "interaction") {
+    /**
+     * The alternates carry the position's name, not its source ID. The caller
+     * already holds it from the library, so naming them never costs a download.
+     */
+    async variant(entry, variant = "interaction", name = null) {
       if (variant === "interaction")
         return interactionPreset(entry, await interaction());
       if (variant === "artistic")
-        return artisticPreset(entry, await artistic());
+        return artisticPreset(entry, await artistic(), name);
       if (variant === "generated")
-        return generatedPosition(entry, await scenes());
+        return generatedPosition(entry, await scenes(), name);
       throw new Error(`Unknown position variant: ${variant}.`);
     },
     /** Unified source metadata and 3D scenes as playable library positions. */

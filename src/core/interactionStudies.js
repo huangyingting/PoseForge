@@ -43,6 +43,9 @@ export const TEMPLATE_LABELS = {
   oral_on_b_kneeling: "Kneeling at the standing or seated partner's hips",
   oral_on_b_lying: "Head at the hips of the partner lying down",
   facesitting: "Kneeling astride the partner's head",
+  supine_stack: "Both face up, one lying back on the other",
+  rear_oral: "Head at the partner's hips from behind",
+  edge_head_oral: "Head over the edge, partner standing at the head",
   other_pair: "Close pair",
   solo: "Single figure",
 };
@@ -79,6 +82,9 @@ export const POSITION_NAMES = {
   oral_on_b_kneeling: "Oral, kneeling",
   oral_on_b_lying: "Oral, partner lying",
   facesitting: "Facesitting",
+  supine_stack: "Stacked, both face up",
+  rear_oral: "Oral from behind",
+  edge_head_oral: "Oral, head over the edge",
   other_pair: "Close pair",
   solo: "Solo",
   group_three: "Three people",
@@ -116,6 +122,9 @@ export const POSITION_CATEGORIES = {
   oral_on_b_kneeling: "Oral",
   oral_on_b_lying: "Oral",
   facesitting: "Oral",
+  supine_stack: "Partner on top",
+  rear_oral: "Oral",
+  edge_head_oral: "Oral",
   other_pair: "Other interactions",
   solo: "Solo & group",
   group_three: "Solo & group",
@@ -128,6 +137,18 @@ const SURFACE_LABELS = {
   chair: "Chair",
   table: "Table",
   bench: "Bench",
+};
+// How each support reads inside a sentence; the labels above are headings.
+const SURFACE_PHRASES = {
+  Floor: "on the floor",
+  Bed: "on a bed",
+  Sofa: "on a sofa",
+  Seat: "on a seat",
+  Chair: "on a chair",
+  Table: "on a table",
+  Bench: "on a bench",
+  Wall: "against a wall",
+  Other: "on another support",
 };
 const POSTURE_LABELS = {
   standing: "standing",
@@ -175,7 +196,7 @@ export function interactionPositions(studies, entries = []) {
       : record.scene.actors
           .map((actor) => POSTURE_LABELS[actor.posture] ?? actor.posture)
           .join(" and ");
-    const title = `${name} · ${surface} · ${record.sourceId.toUpperCase()}`;
+    const title = record.title;
     const label = templateLabel(
       record.template === "group_three" ? record.base : record.template,
     );
@@ -185,7 +206,7 @@ export function interactionPositions(studies, entries = []) {
     const preset = checkPreset({
       id: positionId(record.sourceId),
       title,
-      description: `${name}: ${label}. ${figures} clothed ${figures === 1 ? "figure" : "figures"} in ${postureText} positions on ${surface.toLowerCase()}. Approximate template-based 3D interpretation of source ${record.sourceId}.`,
+      description: `${name}: ${label}.${record.aliases?.length ? ` Also known as ${record.aliases.join(", ")}.` : ""} ${figures} clothed ${figures === 1 ? "figure" : "figures"} in ${postureText} positions ${SURFACE_PHRASES[surface] ?? `on ${surface.toLowerCase()}`}. Approximate template-based 3D interpretation of source ${record.sourceId}.`,
       category,
       position: {
         type,
@@ -200,6 +221,7 @@ export function interactionPositions(studies, entries = []) {
         record.sourceId,
         category,
         name,
+        ...(record.aliases ?? []),
       ],
       source: { dataset: "SexPoses", recordId: record.sourceId, annotationHash: record.annotationHash },
       scene: { ...structuredClone(record.scene), title },
@@ -227,6 +249,7 @@ export function checkInteractionStudies(pack, descriptor, entries) {
     throw new Error("Invalid interaction study pack.");
   const sources = new Map(entries.map((entry) => [entry.sourceId, entry]));
   const studies = new Map();
+  const titles = new Set();
   for (const record of pack.studies) {
     const entry = sources.get(record?.sourceId);
     if (
@@ -236,7 +259,13 @@ export function checkInteractionStudies(pack, descriptor, entries) {
       !TEMPLATE_IDS.has(record.template) ||
       (record.template === "group_three" && !TEMPLATE_LABELS[record.base]) ||
       typeof record.title !== "string" ||
+      !record.title.trim() ||
       record.title.length > 80 ||
+      titles.has(record.title.toLocaleLowerCase()) ||
+      (record.aliases !== undefined &&
+        (!Array.isArray(record.aliases) ||
+          record.aliases.length > 4 ||
+          record.aliases.some((alias) => typeof alias !== "string" || !alias.trim() || alias.length > 32))) ||
       typeof record.checks?.passed !== "boolean" ||
       !Array.isArray(record.checks.failures) ||
       record.checks.failures.some((f) => typeof f !== "string" || f.length > 120)
@@ -244,6 +273,7 @@ export function checkInteractionStudies(pack, descriptor, entries) {
       throw new Error("Invalid or duplicate interaction source mapping.");
     const scene = checkScene(record.scene);
     checkFixedPositionScene(scene);
+    titles.add(record.title.toLocaleLowerCase());
     studies.set(record.sourceId, { ...record, scene });
   }
   return studies;

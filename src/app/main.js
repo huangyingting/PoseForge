@@ -32,7 +32,6 @@ import { isInteractionPosition } from "../core/interactionStudies.js";
 const $ = (id) => document.getElementById(id);
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const canvas = $("viewport");
-const workspace = bindWorkspaceLayout($("app"), $("focus-view"));
 let storage;
 try {
   storage = localStorage;
@@ -45,6 +44,7 @@ try {
     removeItem: () => {},
   };
 }
+const workspace = bindWorkspaceLayout($("app"), storage);
 const library = await createPersistentLibrary(storage);
 let view;
 let pendingDraw = false;
@@ -95,7 +95,6 @@ function status(message, busy = false) {
   $("status").textContent = message;
   $("status").classList.toggle("busy", busy);
   $("loading").hidden = !busy;
-  if (busy) $("loading").textContent = message;
 }
 const historyButtons = () => {
   $("undo").disabled = !past.length;
@@ -221,9 +220,15 @@ async function selectPosition(value, options = {}) {
   const token = ++positionRequest;
   const sourceId = typeof value === "string" ? value : value.sourceId;
   const catalogId = positionId(sourceId);
+  // Only the alternates are separate scenes; anything else, including an
+  // unrecognised URL value, is the canonical card and its override.
+  const variant = ["artistic", "generated"].includes(options.variant)
+    ? options.variant
+    : undefined;
+  options = { ...options, variant };
   studio.setPositionLoading(catalogId);
   try {
-    if (!options.variant) {
+    if (!variant) {
       const override = library.get(positionOverrideId(sourceId));
       if (isPositionOverride(override)) {
         if (token !== positionRequest) return false;
@@ -236,12 +241,9 @@ async function selectPosition(value, options = {}) {
     if (token !== positionRequest) return false;
     await loadPositions();
     if (token !== positionRequest) return false;
-    const preset =
-      options.variant === "generated"
-        ? await positions.variant(entry, "generated")
-        : options.variant === "artistic"
-          ? await positions.variant(entry, "artistic")
-          : library.resolve(catalogId);
+    const preset = variant
+      ? await positions.variant(entry, variant, library.get(catalogId)?.title)
+      : library.resolve(catalogId);
     if (!preset) throw new Error("Position is not available.");
     selectPreset(preset, { ...options, catalogId });
     if (matchMedia("(max-width: 900px)").matches) canvas.focus();
@@ -364,6 +366,7 @@ const studio = buildStudio(
       url.search = "";
       history.replaceState(null, "", url);
       showRegion("studio");
+      workspace.open("inspector");
     },
     saved(preset) {
       cancelPositionLoad();
@@ -567,7 +570,6 @@ $("save-preset").onclick = () => {
 };
 $("position-edit").onclick = () => {
   cancelPositionLoad();
-  workspace.setFocus(false);
   showRegion("edit");
   panel.showFigures();
 };
@@ -637,12 +639,14 @@ document.addEventListener("keydown", (event) => {
     return;
   if (event.key === "/" && !event.ctrlKey && !event.metaKey && !event.altKey) {
     event.preventDefault();
-    workspace.setFocus(false);
     studio.focusSearch();
   }
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
-    event.preventDefault();
-    travel(event.shiftKey ? "redo" : "undo");
+  if ((event.ctrlKey || event.metaKey) && !event.altKey) {
+    const key = event.key.toLowerCase();
+    if (key === "z" || (key === "y" && !event.shiftKey)) {
+      event.preventDefault();
+      travel(key === "y" || event.shiftKey ? "redo" : "undo");
+    }
   }
 });
 const removeCameraInput = bindCameraInput(canvas, {
@@ -681,6 +685,8 @@ new ResizeObserver(() => {
 async function exportImage(kind, options = {}) {
   if (!ready || exporting || !current) return;
   exporting = true;
+  const EXPORTING = "Preparing your export…";
+  const previousStatus = $("status").textContent;
   const name =
     current.title
       .toLowerCase()
@@ -703,7 +709,7 @@ async function exportImage(kind, options = {}) {
       await new Promise((resolve) =>
         requestAnimationFrame(() => requestAnimationFrame(resolve)),
       );
-      status("Preparing your export…", true);
+      status(EXPORTING, true);
       if (kind === "png")
         download(await exportPNG(view, options), `${name}.png`);
       else
@@ -718,7 +724,9 @@ async function exportImage(kind, options = {}) {
     toast(`Export failed: ${e.message}`);
   } finally {
     exporting = false;
-    status("Ready");
+    // Put back the solve's own summary - unless a new solve has started while
+    // the image was encoding, in which case its progress is the true status.
+    if ($("status").textContent === EXPORTING) status(previousStatus);
     draw();
   }
 }

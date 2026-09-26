@@ -116,6 +116,13 @@ export function createLibrary(storage, idFactory = () => newId()) {
     }
     throw new Error("Could not create a unique preset ID.");
   }
+  // A personal preset is an independent study whatever it was copied from; only
+  // an override keeps its source's playback role. A copy that still claimed to
+  // be an interaction would be listed, selected and re-imported as one.
+  const personal = (preset) =>
+    isPositionOverride(preset) || isPositionVariant(preset, "studio")
+      ? preset
+      : { ...preset, position: { ...preset.position, variant: "studio" } };
   const materialize = (preset) => {
     if (!isPositionOverride(preset)) return preset;
     const position = positionSourceIndex.get(preset.source.recordId);
@@ -188,7 +195,7 @@ export function createLibrary(storage, idFactory = () => newId()) {
       if (updateId && !saved.some((p) => p.id === updateId))
         throw new Error("Only your own saved presets can be updated.");
       const id = updateId ?? freshId(new Set(saved.map((p) => p.id)));
-      let next = checkPreset({ ...input, id });
+      let next = personal(checkPreset({ ...input, id }));
       if (isPositionOverride(next)) {
         const previous = saved.find((p) => p.id === updateId);
         const sourcePosition = positionSourceIndex.get(next.source?.recordId);
@@ -229,13 +236,35 @@ export function createLibrary(storage, idFactory = () => newId()) {
     import(text) {
       const entries = parseCatalog(text);
       const used = new Set(saved.map((p) => p.id));
-      const added = entries.map((entry) => {
-        const id = freshId(used);
-        used.add(id);
-        return checkPreset({ ...entry, id });
-      });
-      commit([...saved, ...added]);
-      return structuredClone(added);
+      // A saved-library export carries its overrides. Bind them back to their
+      // source positions rather than filing them as studies that only claim to
+      // be overrides; as with every import, an existing override is kept.
+      const overrides = entries.filter((entry) =>
+        isPositionVariant(entry, "override"),
+      );
+      let bound = [];
+      if (overrides.length)
+        try {
+          bound = preparePositionOverrides(overrides, [
+            ...saved.filter(isPositionOverride),
+            ...positions,
+          ]);
+        } catch (error) {
+          if (positions.length) throw error;
+          throw new Error(
+            `${error.message} Position overrides are checked against the built-in positions; retry once they have loaded.`,
+          );
+        }
+      const restored = bound.filter((preset) => !used.has(preset.id));
+      const added = entries
+        .filter((entry) => !isPositionVariant(entry, "override"))
+        .map((entry) => {
+          const id = freshId(used);
+          used.add(id);
+          return personal(checkPreset({ ...entry, id }));
+        });
+      commit([...saved, ...added, ...restored]);
+      return structuredClone([...added, ...restored]);
     },
     savePositionOverrides(inputs, { replace = false } = {}) {
       if (

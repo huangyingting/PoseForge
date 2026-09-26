@@ -259,3 +259,121 @@ test("portable presets need explicit binding before they become overrides", () =
   assert.equal(bound.id, positionOverrideId(positions[0].source.recordId));
   assert.equal(positionOverrideMatches(bound, positions[0]), true);
 });
+
+test("a saved-library backup restores its overrides as overrides, keeping existing ones", () => {
+  registerPositions(positions);
+  try {
+    const source = createLibrary(disk());
+    source.savePositionOverrides([override(positions[0]), override(positions[1])]);
+    const study = source.save({
+      ...structuredClone(positions[2]),
+      id: undefined,
+      title: "Independent study",
+      category: "My studies",
+      position: { ...positions[2].position, variant: "studio" },
+    });
+    const backup = source.export();
+
+    const target = createLibrary(disk());
+    const kept = { ...override(positions[1]), title: "Already here" };
+    target.savePositionOverrides([kept]);
+    const added = target.import(backup);
+    assert.deepEqual(
+      added.filter(isPositionOverride).map((preset) => preset.id),
+      [positionOverrideId(positions[0].source.recordId)],
+    );
+    assert.equal(added.filter((preset) => !isPositionOverride(preset)).length, 1);
+    assert.notEqual(added.find((p) => !isPositionOverride(p)).id, study.id);
+    assert.equal(target.resolve(positions[0].id).id, positionOverrideId(positions[0].source.recordId));
+    assert.equal(target.resolve(positions[1].id).title, "Already here");
+    // Nothing imported is a study that merely claims to be an override.
+    assert.ok(
+      target
+        .saved()
+        .every(
+          (preset) =>
+            isPositionOverride(preset) === (preset.position.variant === "override"),
+        ),
+    );
+
+    const stale = JSON.parse(backup);
+    stale.presets[0].source.annotationHash = "0".repeat(64);
+    const before = target.raw();
+    assert.throws(() => target.import(JSON.stringify(stale)), /fingerprint|source/);
+    assert.equal(target.raw(), before);
+
+    registerPositions([]);
+    assert.throws(() => createLibrary(disk()).import(backup), /retry once they have loaded/);
+  } finally {
+    registerPositions([]);
+  }
+});
+
+test("a legacy override beside its current-format successor migrates to one record", () => {
+  const current = override();
+  const legacy = {
+    ...current,
+    id: `user.reference.sexposes.${current.source.recordId}`,
+    title: "Older copy",
+  };
+  delete legacy.position;
+  const library = createLibrary(
+    disk(
+      JSON.stringify({
+        version: 1,
+        saved: [legacy, current],
+        favorites: [legacy.id, current.id],
+      }),
+    ),
+  );
+  assert.equal(library.error, "");
+  assert.deepEqual(
+    library.saved().map((preset) => [preset.id, preset.title]),
+    [[current.id, current.title]],
+  );
+  assert.deepEqual(library.favorites(), [current.id]);
+});
+
+test("a personal copy of a position is a studio preset, not a second interaction", () => {
+  registerPositions(positions);
+  try {
+    const library = createLibrary(disk());
+    library.savePositionOverrides([override(positions[1])]);
+    const copy = library.save({
+      ...structuredClone(positions[0]),
+      id: undefined,
+      title: "My take",
+    });
+    assert.equal(copy.position.variant, "studio");
+    assert.equal(copy.position.type, positions[0].position.type);
+    assert.equal(copy.source.recordId, positions[0].source.recordId);
+    const overrideCopy = library.save({
+      ...library.get(positionOverrideId(positions[1].source.recordId)),
+      id: undefined,
+      title: "Copy of my override",
+    });
+    assert.equal(overrideCopy.position.variant, "studio");
+    assert.equal(library.resolve(positions[1].id).title, `${positions[1].title} · custom`);
+
+    // An exported built-in scene imports as a study too.
+    const [imported] = library.import(serializeCatalog([positions[2]]));
+    assert.equal(imported.position.variant, "studio");
+    assert.equal(
+      library.index().find((p) => p.id === imported.id).status,
+      "needs-adjustment",
+    );
+
+    // Libraries saved before this rule are normalized once when read.
+    const stored = JSON.parse(library.raw());
+    stored.saved.find((p) => p.id === copy.id).position.variant = "interaction";
+    const reopened = createLibrary(disk(JSON.stringify(stored)));
+    assert.equal(reopened.error, "");
+    assert.equal(reopened.get(copy.id).position.variant, "studio");
+    assert.equal(
+      reopened.get(positionOverrideId(positions[1].source.recordId)).position.variant,
+      "override",
+    );
+  } finally {
+    registerPositions([]);
+  }
+});

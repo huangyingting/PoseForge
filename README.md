@@ -2,17 +2,20 @@
 
 PoseForge includes **1,283 ready-to-view 3D interactions**, one for every
 source record: the clothed participants are placed together, in contact, in the
-arrangement each source image shows, composed from 31 interaction templates
-(1,170 pass all of their distance, facing and overlap checks; unmet checks are
-shown). They are approximations, not measured reconstructions. See
+arrangement each source image shows, composed from 34 interaction templates
+(all 1,283 pass their distance, facing, support and overlap checks, and each
+was compared with its source image). They are approximations, not measured
+reconstructions. See
 [3D interaction studies](docs/interaction-studies.md).
 
-All 1,283 live in one **Positions** catalog with the 23 studio presets. Ten
+All 1,283 live in one **Positions** catalog with the 23 studio presets. Nine
 high-level categories (such as **Face-to-face**, **From behind**, **Seated &
-lap**, and **Oral**) expand to related named positions and counts. Cards use the
-actual position name, surface and source ID, for example
-`Reverse cowgirl · Bed · IMG-0042`; descriptions explain the participant
-arrangement. Search matches names, categories, surfaces and `img-NNNN` IDs.
+lap**, and **Oral**) expand to related position types and counts. Each card
+is titled with the position's own name (for example `Golden Arch` or
+`Reverse Cowgirl II`), with its type, figures and surface below; the artistic
+and generated variants carry the same name. Search matches names, aliases,
+types, categories, surfaces and `img-NNNN` IDs (with or without the zero
+padding, so `img-42` finds `img-0042`).
 Positions can be favorited and deep-linked with
 `?preset=builtin.position.img-0001`.
 
@@ -56,17 +59,25 @@ and extension rules.
 Each source-linked position can have one independently saved, clothed local
 override. Use **Edit posture → Save position override**, or **Library tools**
 for validated bulk import/export. The same position card prefers the override
-over the built-in 3D interaction. The
+over the built-in 3D interaction. Importing an **Export saved presets** backup
+restores its overrides as overrides (existing ones are kept); a personal copy
+saved with **Save preset** is always an independent study. The
 **Interaction 3D / Authored · unreviewed** labels distinguish bundled and personal work;
 they do not certify uniqueness or source accuracy. See the
 [override guide](docs/position-overrides.md).
 
-The compact workspace uses bundled **Manrope** typography, keeps search beside
-**Filters**, and provides a collapsible category browser plus active-filter
-counts and one-click reset. Library entries use short rows with visible quality labels.
-Press **/** to search; use **Focus** on desktop for a larger canvas and **Escape**
-to restore the sidebars. Smaller screens keep **Library / Studio / Edit** one tap
-away. **Library tools** consolidates preset and position-override transfers; the
+The studio is layered around the 3D scene. The canvas fills the window; a
+transparent top bar, the scene title and status, and a single camera toolbar
+float over it. On desktop the **Library** and **Edit** buttons in the top bar
+open or close the two panels as drawers over the canvas edges, and the choice is
+remembered. The library starts open and the editor closed, and **Edit posture**
+or a new study opens the editor. Smaller screens keep **Library / Studio / Edit**
+one tap away. The workspace uses bundled **Manrope** typography, keeps search
+beside **Filters**, and provides a collapsible category browser plus
+active-filter counts and one-click reset. Library entries are short rows with
+visible quality labels; favorite and details actions appear on hover or focus
+(always on touch screens). Press **/** to open and focus search and
+**Ctrl/⌘ Z** / **Ctrl/⌘ Shift Z** (or **Ctrl Y**) to undo and redo. **Library tools** consolidates preset and position-override transfers; the
 library's **ⓘ** button explains source counts, storage and shortcuts.
 See the [compact UI design](docs/compact-ui-plan.md) and
 [verification](docs/compact-ui-verification.md).
