@@ -120,6 +120,9 @@ default contacts. **A helping hand** is a working example you can edit and save.
 [catalog-scale verification](docs/catalog-scale-verification.md) ·
 [importable example](examples/reference-study.json).
 
+The studio is live at <https://huangyingting.github.io/PoseForge/>; every push
+to `main` rebuilds and republishes it (`.github/workflows/pages.yml`).
+
 Use Node 24 (verified here with Node 24.17.0 and npm 11.13.0).
 
 ```sh
