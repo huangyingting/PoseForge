@@ -38,7 +38,9 @@ export function propsFor(surfaceName) {
   const surface = resolveSurface(surfaceName);
   return {
     surface,
-    props: (surface.props || []).map(withBounds),
+    // A car's shell holds nobody up, so the solver ignores it, but a body has
+    // to stay inside it; here it counts like any other prop.
+    props: [...(surface.props || []), ...(surface.shell || [])].map(withBounds),
   };
 }
 
@@ -621,6 +623,7 @@ export function evaluate(plan, m, { maxBody = 0.045, maxProp = 0.035 } = {}) {
     aUpright: () => fr("a").up[1] > 0.55,
     bUpright: () => fr("b").up[1] > 0.55,
     aInverted: () => fr("a").head[1] < fr("a").pelvis[1],
+    bInverted: () => fr("b").head[1] < fr("b").pelvis[1],
     aOffGround: () => fr("a").lowest > 0.12,
     bAbove: () => fr("b").pelvis[1] > fr("a").pelvis[1] + 0.02,
     aAboveOrLevel: () => fr("a").pelvis[1] > fr("b").pelvis[1] - 0.05,

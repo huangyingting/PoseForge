@@ -438,16 +438,16 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
   /**
    * Replace the scene's contents.
    *
-   * @param {{meshes: Array<object>, props?: Array<object>, bounds?: number[][]}} payload
+   * @param {{meshes: Array<object>, props?: Array<object>, shell?: Array<object>, bounds?: number[][]}} payload
    */
-  function setScene({ meshes, props }) {
-    lastPayload = { meshes, props };
+  function setScene({ meshes, props, shell }) {
+    lastPayload = { meshes, props, shell };
     clearBodies();
     if (propGroup) {
       disposeProps(propGroup);
       scene.remove(propGroup);
     }
-    propGroup = buildProps(props);
+    propGroup = buildProps(props, { shell });
     scene.add(propGroup);
 
     meshes.forEach((mesh, index) => {

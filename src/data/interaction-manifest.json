@@ -2,8 +2,8 @@
   "format": "poseforge.interaction-manifest",
   "version": 1,
   "file": "catalog/interaction-studies-v1.json",
-  "bytes": 4362469,
-  "sha256": "850f719ea4e1e1e7b921c342f469ec15b1cc0f6663c4737d298f0a64688092a1",
+  "bytes": 4365132,
+  "sha256": "ab1c5ef5fb9e900f352338d4aa94997029d3a534d46b8a3375bdf2b7c7e0d818",
   "records": 1283,
   "distinctScenes": 1283,
   "participants": 2544,
@@ -74,8 +74,8 @@
       "passed": 31
     },
     "oral_on_b_lying": {
-      "records": 8,
-      "passed": 8
+      "records": 9,
+      "passed": 9
     },
     "prone_on_top": {
       "records": 13,
@@ -86,8 +86,8 @@
       "passed": 62
     },
     "rear_oral": {
-      "records": 16,
-      "passed": 16
+      "records": 17,
+      "passed": 17
     },
     "reclined_facing": {
       "records": 29,
@@ -102,20 +102,20 @@
       "passed": 32
     },
     "side_facing": {
-      "records": 7,
-      "passed": 7
+      "records": 4,
+      "passed": 4
     },
     "sixty_nine": {
-      "records": 42,
-      "passed": 42
+      "records": 41,
+      "passed": 41
     },
     "solo": {
       "records": 32,
       "passed": 32
     },
     "spooning": {
-      "records": 31,
-      "passed": 31
+      "records": 33,
+      "passed": 33
     },
     "squat_cowgirl": {
       "records": 15,

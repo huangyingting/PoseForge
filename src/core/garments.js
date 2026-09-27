@@ -69,7 +69,7 @@ export const GARMENT_COLOURS = {
 };
 
 /** Everything `withGarments` knows how to make. */
-export const GARMENT_NAMES = ["bra", "briefs", "top", "shorts"];
+export const GARMENT_NAMES = ["bra", "briefs", "top", "shorts", "cuffs"];
 
 /** What a request for clothing means if it does not say. */
 export const DEFAULT_WEARING = {
@@ -834,6 +834,49 @@ function studioGarment(template, body, marks, colour, name) {
 }
 
 /**
+ * Cuffs: a strap round each wrist and each ankle, which is what a restrained
+ * figure in the references is wearing and all that tells one from a figure
+ * lying in the same pose of their own accord.
+ *
+ * Each strap is a slice of the limb between two distances back from the joint
+ * it closes on - measured along the bone off this skeleton's own rest pose, so
+ * it lands above the wrist and the ankle bone on either scan - and is thicker
+ * than cloth, because a strap that stands off the skin by what a shirt does
+ * reads as a tan line. The veto is the arm and lower-leg share turned round:
+ * in the bind pose the hands are no further from the thighs than a strap is
+ * wide, and a band cut on distance alone takes a bite out of each hip.
+ */
+function cuffs(template, body, colour) {
+  const bands = [];
+  for (const side of ["l", "r"]) {
+    for (const [upper, lower, near, far] of [
+      ["elbow", "wrist", 0.008, 0.03],
+      ["knee", "ankle", 0.016, 0.042],
+    ]) {
+      const a = template.jointByBone.get(`${upper}_${side}`)?.rest;
+      const b = template.jointByBone.get(`${lower}_${side}`)?.rest;
+      if (!a || !b) continue;
+      const axis = [b[12] - a[12], b[13] - a[13], b[14] - a[14]];
+      const len = Math.hypot(...axis) || 1;
+      bands.push({ end: [b[12], b[13], b[14]], axis: axis.map((v) => v / len), near, far });
+    }
+  }
+  const veto = boneMargin(template, body, /lowerarm|hand_|calf|foot/).map((margin) => -margin);
+  const field = (x, y, z) => {
+    let best = -Infinity;
+    for (const { end, axis, near, far } of bands) {
+      const d = [x - end[0], y - end[1], z - end[2]];
+      const t = d[0] * axis[0] + d[1] * axis[1] + d[2] * axis[2];
+      const r = Math.hypot(d[0] - t * axis[0], d[1] - t * axis[1], d[2] - t * axis[2]);
+      best = Math.max(best, Math.min(t + far, -near - t, 0.045 - r));
+    }
+    return best;
+  };
+  const thickness = 0.0025 / 1.72;
+  return lift(body, field, veto, colour, "cuffs", { bulge: () => thickness });
+}
+
+/**
  * Dress a template.
  *
  * @param {object} template a template from `featureRelief`
@@ -871,6 +914,10 @@ export function withGarments(template, { bodyType = "neutral", wearing, colour =
       const piece = studioGarment(template, body, marks, tone, name);
       if (piece) added.push(piece);
     }
+  }
+  if (wanted.includes("cuffs")) {
+    const piece = cuffs(template, body, tone);
+    if (piece) added.push(piece);
   }
   if (!added.length) return template;
 

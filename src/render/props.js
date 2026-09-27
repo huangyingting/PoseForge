@@ -20,8 +20,12 @@ import {
   BoxGeometry,
   BufferGeometry,
   Color,
+  DoubleSide,
+  EdgesGeometry,
   Float32BufferAttribute,
   Group,
+  LineBasicMaterial,
+  LineSegments,
   Mesh,
   MeshStandardMaterial,
   PlaneGeometry,
@@ -37,13 +41,24 @@ const PALETTE = {
   chair: 0x9a8570,
   "chair-back": 0x9a8570,
   table: 0xb4a084,
+  "table-leg": 0x9c8a70,
   bench: 0xa89680,
   ball: 0xc9d6dc,
   wedge: 0xb9a48c,
+  ottoman: 0x8f8b86,
+  wall: 0xe6e1d8,
   "car-seat": 0x5b5f66,
   "car-seat-back": 0x53575e,
+  "car-roof": 0x9fb4c2,
+  "car-door": 0x9fb4c2,
+  "car-glass": 0x9fb4c2,
+  "car-front-seat": 0x53575e,
   default: 0x9b9b9b,
 };
+
+// How much of a car's shell shows. Glass is barely there; the front seats are
+// solid enough to read as seats without hiding a foot behind them.
+const SHELL_OPACITY = { "car-front-seat": 0.22, default: 0.1 };
 
 /**
  * A box, or for a ball or a wedge the solver's own surface. That is built in
@@ -79,6 +94,38 @@ function propMesh(prop) {
 }
 
 /**
+ * A see-through panel of a car's shell, with its edges drawn so the cabin
+ * reads as a box around the figures rather than a haze.
+ */
+function shellMesh(prop) {
+  const colour = new Color(PALETTE[prop.kind] ?? PALETTE.default);
+  const geometry = new BoxGeometry(...prop.size);
+  const mesh = new Mesh(
+    geometry,
+    new MeshStandardMaterial({
+      color: colour,
+      roughness: 0.3,
+      metalness: 0,
+      transparent: true,
+      opacity: SHELL_OPACITY[prop.kind] ?? SHELL_OPACITY.default,
+      depthWrite: false,
+      side: DoubleSide,
+    })
+  );
+  mesh.position.set(prop.center[0], prop.center[1], prop.center[2]);
+  // Drawn after the figures, so they show through it.
+  mesh.renderOrder = 2;
+  mesh.name = prop.kind;
+  const edges = new LineSegments(
+    new EdgesGeometry(geometry),
+    new LineBasicMaterial({ color: colour.clone().multiplyScalar(0.7), transparent: true, opacity: 0.45, depthWrite: false })
+  );
+  edges.renderOrder = 2;
+  mesh.add(edges);
+  return mesh;
+}
+
+/**
  * The ground.
  *
  * Shadow-receiving only, with no colour of its own beyond a wash, so the
@@ -99,22 +146,32 @@ function groundMesh() {
 
 /**
  * Build the furniture for a solved scene.
+ *
+ * A car's shell goes in a group of its own, named "shell", so the line-art
+ * export can leave it out: it is glass, and outlining it would bury the
+ * figures behind it.
  * @param {Array<{kind:string, size:number[], center:number[], shape?:string, profile?:number[][]}>} props
- * @param {{ground?: boolean}} [options]
+ * @param {{ground?: boolean, shell?: Array<{kind:string, size:number[], center:number[]}>}} [options]
  * @returns {Group}
  */
-export function buildProps(props, { ground = true } = {}) {
+export function buildProps(props, { ground = true, shell = [] } = {}) {
   const group = new Group();
   group.name = "props";
   if (ground) group.add(groundMesh());
   for (const prop of props ?? []) group.add(propMesh(prop));
+  if (shell?.length) {
+    const cabin = new Group();
+    cabin.name = "shell";
+    for (const panel of shell) cabin.add(shellMesh(panel));
+    group.add(cabin);
+  }
   return group;
 }
 
 /** Release the geometry and materials a prop group owns. */
 export function disposeProps(group) {
   group.traverse((node) => {
-    if (!node.isMesh) return;
+    if (!node.isMesh && !node.isLineSegments) return;
     node.geometry.dispose();
     node.material.dispose();
   });

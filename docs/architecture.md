@@ -178,7 +178,8 @@ What the parser produces and the solver consumes. Every field is optional except
   ],
   relationship: { arrangement, yaw, contactMode: "automatic"|"custom" },
   support:      { surface },            // "floor"|"bed"|"sofa"|"chair"|"table"|"bench"
-                                        // |"ball"|"wedge"|"car_seat"
+                                        // |"ball"|"wedge"|"car_seat"|"ottoman"|"wall"
+                                        // |"table_chair"
   contacts: [
     { from: "hand.r", fromActor, to: "forearm.l", toActor, strength, type }
   ],

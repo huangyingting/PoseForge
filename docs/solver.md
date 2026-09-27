@@ -63,6 +63,19 @@ Most furniture is a box. Three supports are not, and say so with a `shape`:
 | `wedge` | a 60 × 60 cm wedge cushion, 18 cm high at its tall end (−z) | `prism` |
 | `car_seat` | a car's back seat: a cushion 1.4 m wide and 40 cm high, and a raked backrest | box + `prism` |
 
+The car seat also carries a `shell`: the roof, both doors, the rear glass and
+the backs of the front seats of an SUV's cabin. The solver rests nothing on it
+and leaves it out of `surface.props`, but the interaction composer
+(`propsFor`) fits and measures bodies against it like any other prop, so no
+one kneels up through the roof or puts a foot through a door. The renderer
+draws it see-through in a group of its own, and the line-art and depth
+exports leave it out.
+
+Three more supports are plain boxes with a second piece of furniture where the
+pictures show one: `ottoman` (a 42 cm footstool), `wall` (its face 35 cm behind
+the origin) and `table_chair` (a 75 cm table on legs with a chair drawn up to
+its +z side, the seat 46 cm up).
+
 A prism is a convex, counter-clockwise `[z, y]` profile about the prop's centre,
 run across its full width. Every prop still carries the box that bounds it, for
 broad phases, previews and framing. Everything that needs the true surface asks

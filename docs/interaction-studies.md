@@ -55,7 +55,8 @@ and rebuilt from a small vocabulary of interaction templates. Checks are geometr
    `src/data/interaction-manifest.json`. `--check` verifies the committed files
    reproduce exactly.
 
-Every figure wears a top and shorts, uses fixed joints and a fixed placement, and
+Every figure wears a top and shorts, plus anything its record adds (`a_wear` /
+`b_wear`, below), uses fixed joints and a fixed placement, and
 every multi-person scene has a connected contact graph across all participants;
 the loader rejects the whole pack otherwise. The shared contract supports one
 to four participants, so four-person positions can use the same actor/contact
@@ -86,17 +87,17 @@ the app notes this.
 | `missionary` | 62 | 62 |
 | `oral_on_a` | 40 | 40 |
 | `oral_on_b_kneeling` | 31 | 31 |
-| `oral_on_b_lying` | 8 | 8 |
+| `oral_on_b_lying` | 9 | 9 |
 | `prone_on_top` | 13 | 13 |
 | `prone_rear` | 62 | 62 |
-| `rear_oral` | 16 | 16 |
+| `rear_oral` | 17 | 17 |
 | `reclined_facing` | 29 | 29 |
 | `reverse_cowgirl` | 61 | 61 |
 | `scissors` | 32 | 32 |
-| `side_facing` | 7 | 7 |
-| `sixty_nine` | 42 | 42 |
+| `side_facing` | 4 | 4 |
+| `sixty_nine` | 41 | 41 |
 | `solo` | 32 | 32 |
-| `spooning` | 31 | 31 |
+| `spooning` | 33 | 33 |
 | `squat_cowgirl` | 15 | 15 |
 | `standing_bent_over` | 25 | 25 |
 | `standing_carry` | 18 | 18 |
@@ -113,8 +114,25 @@ Each record was also compared with its source image by eye. The remaining
 simplifications are mostly a lean or arch shallower than drawn, a raised or held
 leg shown lower, and props drawn as the nearest one the pack models (a pillow
 stack, bolster or tall ramp as the wedge cushion or dropped). A second piece of
-furniture that only a foot or a hand rests on, such as the chair beside a table,
-is left out.
+furniture in the picture is in the scene where something rests on it: the
+chair drawn up to a table (`table_chair`), the wall a partner braces against
+(`wall`) and the footstool a wheelbarrow's hands rest on (`ottoman`).
+
+### Records read without a usable picture
+
+Two sources give nothing to read the pose from, so their records were composed
+from what the position is called and carry a low `confidence` to say so:
+
+- `img-1006` "Lie Back Oral" (confidence 0.2): the image is blank. Read from the
+  name as oral on a partner lying flat on the back (`lying flat`), the knees
+  bent and open and the hands behind the head, the other partner lying face
+  down between the legs. The arms are what tell it from `img-0025`, which it
+  otherwise matches.
+- `img-1277` (confidence 0.3): the picture does not match its annotation, and
+  had been classified as a 69. Read from the picture's own title, "Reverse
+  Oral Sex Position", as `rear_oral`: A low on the forearms and knees, the
+  chest down and one leg stretched back, and B low behind with the face at A's
+  buttocks.
 
 ## Telling positions apart
 
@@ -134,7 +152,26 @@ shows beyond them, and the build rejects none of it silently:
   up on the seat either side of the thighs), `side saddle` with `feet on the
   floor` (on a sofa: sitting across the hips of a partner lying along it,
   facing out with the feet down, and `legs crossed` for one leg over the
-  other) and `lying on top` (a 69 at full length).
+  other) and `lying on top` (a 69 at full length). Notes also place a second
+  piece of furniture: `hands on wall`, `hands on ottoman`, and `kneel on table,
+  partner seated on chair` with the `table_chair` surface; and on a sofa,
+  `head on floor` (lying back off its edge) and `kneeling beside` (kneeling on
+  the floor alongside a partner lying on it).
+- **Clothes**: `a_wear` and `b_wear` add garments to a role's studio top and
+  shorts. The only one used is `cuffs`, a strap above each wrist and ankle, on
+  the six figures the pictures show restrained (`img-0100`, `0389`, `0681`,
+  `0730`, `0822` for A and `img-1058` for B). A name `garments.js` does not
+  know stops the build.
+- **Leg shape**: `a_legs` shapes A's legs where the template leaves them open.
+  Where the template's own shape already is the recorded one (a partner lying
+  flat under a rider is `straight`, a piledriver's legs are `raised`, a carry
+  holds them `wrapped`) or a prop fixes them (car, sling, the table and chair),
+  changing `a_legs` changes nothing, by design. Where it differed from the
+  picture it is honoured: on a kneeling partner's lap facing away the knees go
+  wide or together, carried facing away they are held wide or drawn together,
+  a wheelbarrow's legs on a chair are straight to the ankles or bent over its
+  edge, under a partner in a plank the knees come up, and a partner giving
+  oral with the knees drawn up together curls on the side.
 - **Hands**: `b_hands` (`hips`, `legs`, `shoulders`, `embrace`, `behind`,
   `surface`) becomes hand contacts closed by IK, or for `behind` the arms
   braced back on the hands, where the template leaves B's hands free. A
@@ -142,7 +179,7 @@ shows beyond them, and the build rejects none of it silently:
   wheelbarrow's legs up. Astride a partner lying down, `hips` leaves the hands
   as posed.
 - **Pose details**: `a_pose`, `b_pose` and `c_pose` list named details
-  (`DETAILS` in `scripts/interaction-templates.mjs`, 72 in use across 878
+  (`DETAILS` in `scripts/interaction-templates.mjs`, 72 in use across 880
   records). They cover the arms (`arms_overhead`, `arms_behind_head`,
   `arms_forearms`, `arm_head_l`, …), the head (`head_back`, `head_forward`,
   `head_turn_l`), the trunk (`arch`, `curl`, `twist_l`) and the legs
@@ -188,15 +225,33 @@ in their own shape rather than as a box (see
 | Surface | Prop | Records |
 |---|---|---:|
 | `ball` | a 65 cm exercise ball | 27 |
-| `car_seat` | a car's back seat, cushion and raked backrest | 13 |
+| `car_seat` | a car's back seat, cushion and raked backrest, inside its cabin | 14 |
 | `wedge` | a 60 cm wedge cushion, 18 cm at its tall end | 10 |
 
+Three more are plain boxes, for a second piece of furniture the pictures show:
+
+| Surface | Prop | Records |
+|---|---|---:|
+| `ottoman` | a 42 cm footstool | 1 |
+| `wall` | a wall, its face 35 cm behind the scene's origin | 1 |
+| `table_chair` | a 75 cm table with a chair drawn up to it | 2 |
+
+The car seat sits inside a `shell`: the roof, both doors, the rear glass and
+the backs of the front seats. Nothing rests on it, but every body is fitted and
+checked against it like any other prop, so no head comes up through the roof
+and no knee or foot goes through a door. The app draws it see-through, and the
+line-art and depth exports leave it out. Inside it the car poses are the ones
+the roof allows: kneeling up on the seat, B's back is rounded and the head
+bowed; on a lap, B slides down the seat against its rake and A bows over; a
+partner lying across the seat has the head against the door; and a partner
+receiving oral sits on the seat (`img-0229`) with the other kneeling in the
+footwell in front.
+
 What remains approximate: a figure bridged back over the ball keeps its arms at
-the ball's sides rather than reaching the floor; the car seat stands alone, with
-no door or roof, so a figure lying along it can have its head past the end of
-the seat, and a partner the source shows kneeling in the footwell kneels on the
-floor beside it; the wedge is lower than some of the ramps drawn, so a figure
-lying back up it rests only the head and shoulders on it.
+the ball's sides rather than reaching the floor; the car cabin is a large SUV's
+with the front seats slid all the way forward, roomier than a small car's; the
+wedge is lower than some of the ramps drawn, so a figure lying back up it rests
+only the head and shoulders on it.
 
 ## Templates
 

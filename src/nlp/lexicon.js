@@ -208,7 +208,10 @@ add("surface", "bed", ["on the bed", "in bed", "on a bed", "bed", "mattress", "�
 add("surface", "sofa", ["on the sofa", "on the couch", "sofa", "couch", "沙发"]);
 add("surface", "chair", ["on the chair", "chair", "stool", "armchair", "椅子", "凳子"]);
 add("surface", "table", ["on the table", "table", "desk", "counter", "桌子", "桌上", "书桌"]);
-add("surface", "bench", ["bench", "ottoman", "long chair", "长凳", "长椅"]);
+add("surface", "bench", ["bench", "long chair", "长凳", "长椅"]);
+add("surface", "ottoman", ["ottoman", "footstool", "pouf", "pouffe", "脚凳", "软凳"]);
+add("surface", "wall", ["against the wall", "against a wall", "on the wall", "wall", "墙", "墙上", "靠墙"]);
+add("surface", "table_chair", ["table and chair", "chair at the table", "desk and chair", "桌椅", "桌子和椅子"]);
 add("surface", "ball", [
   "exercise ball", "gym ball", "yoga ball", "swiss ball", "stability ball", "fitness ball",
   "on the ball", "on a ball", "over the ball", "over a ball", "健身球", "瑜伽球", "抗力球",

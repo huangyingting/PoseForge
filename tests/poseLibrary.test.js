@@ -257,19 +257,21 @@ test("a surface carries both of the heights a posture can need", () => {
       surface.ground === surface.height || surface.ground === 0,
       `${name}: ground ${surface.ground} is neither the top nor the floor`
     );
-    if (surface.props.length) {
+    if (surface.props.length && surface.height > 0) {
+      // A surface at floor level (a wall) has props only to brace against,
+      // and nothing rests on their tops.
       const tops = surface.props.map((prop) => prop.center[1] + prop.size[1] / 2);
       assert.ok(
         tops.some((top) => Math.abs(top - surface.height) < 1e-9),
         `${name}: no prop's top is at the declared height of ${surface.height}`
       );
-      for (const prop of surface.props) {
-        for (const size of prop.size) assert.ok(size > 0, `${name}: a prop has size ${size}`);
-        assert.ok(
-          prop.center[1] - prop.size[1] / 2 >= -1e-9,
-          `${name}: the ${prop.kind} starts below the floor`
-        );
-      }
+    }
+    for (const prop of surface.props) {
+      for (const size of prop.size) assert.ok(size > 0, `${name}: a prop has size ${size}`);
+      assert.ok(
+        prop.center[1] - prop.size[1] / 2 >= -1e-9,
+        `${name}: the ${prop.kind} starts below the floor`
+      );
     }
   }
 });

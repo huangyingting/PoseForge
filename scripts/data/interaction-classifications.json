@@ -307,11 +307,11 @@
 {
 "id": "img-0026",
 "template": "wheelbarrow",
-"surface": "floor",
+"surface": "ottoman",
 "a_body": "female",
 "b_body": "male",
 "confidence": 0.9,
-"notes": "kneel, hands on bed, drawn as an ottoman"
+"notes": "kneel, hands on ottoman"
 },
 {
 "id": "img-0027",
@@ -1265,6 +1265,9 @@
 "a_body": "male",
 "b_body": "female",
 "lean": "upright",
+"a_wear": [
+"cuffs"
+],
 "confidence": 0.6,
 "notes": "front partner restrained"
 },
@@ -2653,16 +2656,16 @@
 {
 "id": "img-0201",
 "template": "standing_bent_over",
-"surface": "floor",
+"surface": "wall",
 "a_body": "female",
 "b_body": "male",
 "a_legs": "one_raised",
 "lean": "forward",
 "b_hands": "hips",
+"notes": "hands on wall",
 "confidence": 0.78,
 "a_pose": [
-"leg_up_l",
-"arms_forward"
+"leg_up_l"
 ]
 },
 {
@@ -3323,9 +3326,9 @@
 "surface": "sofa",
 "a_body": "female",
 "b_body": "male",
+"notes": "head on floor",
 "confidence": 0.85,
 "b_pose": [
-"knees_up",
 "arms_out"
 ]
 },
@@ -3385,6 +3388,7 @@
 "surface": "sofa",
 "a_body": "female",
 "b_body": "male",
+"notes": "kneeling beside",
 "confidence": 0.85
 },
 {
@@ -4594,7 +4598,7 @@
 "surface": "floor",
 "a_body": "male",
 "b_body": "female",
-"a_legs": "open_bent",
+"a_legs": "straight",
 "lean": "upright",
 "confidence": 0.78,
 "a_pose": [
@@ -4616,7 +4620,8 @@
 "b_hands": "behind",
 "b_pose": [
 "arms_out"
-]
+],
+"notes": "one knee on seat"
 },
 {
 "id": "img-0350",
@@ -4669,7 +4674,7 @@
 "confidence": 0.78,
 "lean": "forward",
 "a_pose": [
-"legs_bent"
+"knee_out_l"
 ]
 },
 {
@@ -4971,7 +4976,7 @@
 "a_body": "female",
 "b_body": "male",
 "confidence": 0.86,
-"notes": "lying on seat",
+"notes": "seated beside",
 "a_pose": [
 "legs_straight"
 ],
@@ -5159,6 +5164,9 @@
 "a_body": "female",
 "b_body": "neutral",
 "solo_posture": "supine",
+"a_wear": [
+"cuffs"
+],
 "confidence": 0.94,
 "notes": "restrained spread"
 },
@@ -5769,11 +5777,12 @@
 },
 {
 "id": "img-0437",
-"template": "side_facing",
+"template": "oral_on_b_lying",
 "surface": "floor",
 "a_body": "female",
 "b_body": "male",
-"a_legs": "open_bent",
+"a_legs": "together_bent",
+"notes": "on side",
 "confidence": 0.78,
 "b_pose": [
 "arm_head_r"
@@ -5873,7 +5882,10 @@
 "lean": "upright",
 "b_hands": "surface",
 "confidence": 0.92,
-"notes": "side saddle"
+"notes": "side saddle",
+"b_pose": [
+"turn_l"
+]
 },
 {
 "id": "img-0446",
@@ -6376,12 +6388,13 @@
 },
 {
 "id": "img-0483",
-"template": "side_facing",
+"template": "spooning",
 "surface": "floor",
 "a_body": "female",
 "b_body": "male",
 "a_legs": "open_bent",
 "b_hands": "embrace",
+"notes": "reversed",
 "confidence": 0.78,
 "b_pose": [
 "arm_head_r"
@@ -7454,7 +7467,7 @@
 "a_legs": "on_shoulders",
 "b_hands": "hips",
 "confidence": 0.88,
-"notes": "backbend",
+"notes": "backbend, partner kneeling, face at the hips",
 "b_pose": [
 "head_forward"
 ]
@@ -7752,7 +7765,7 @@
 "b_hands": "hips",
 "confidence": 0.76,
 "a_pose": [
-"knees_up"
+"knee_up_r"
 ]
 },
 {
@@ -8026,14 +8039,14 @@
 {
 "id": "img-0605",
 "template": "oral_on_b_kneeling",
-"surface": "floor",
+"surface": "chair",
 "a_body": "female",
 "b_body": "male",
 "a_legs": "open_bent",
 "lean": "forward",
 "b_hands": "surface",
 "confidence": 0.58,
-"notes": "seated giver, knees drawn up"
+"notes": "seated giver, knees drawn up, foot on chair"
 },
 {
 "id": "img-0606",
@@ -9084,6 +9097,9 @@
 "a_body": "neutral",
 "b_body": "neutral",
 "solo_posture": "supine_legs_raised",
+"a_wear": [
+"cuffs"
+],
 "confidence": 0.8,
 "notes": "bound figure only",
 "a_pose": [
@@ -9109,7 +9125,7 @@
 "surface": "floor",
 "a_body": "female",
 "b_body": "male",
-"a_legs": "raised",
+"a_legs": "straight",
 "lean": "upright",
 "b_hands": "legs",
 "confidence": 0.9,
@@ -9327,7 +9343,7 @@
 "lean": "upright",
 "b_hands": "legs",
 "confidence": 0.9,
-"notes": "backbend",
+"notes": "backbend, partner kneeling, face at the hips",
 "a_pose": [
 "leg_bent_l"
 ]
@@ -9679,11 +9695,11 @@
 "surface": "floor",
 "a_body": "female",
 "b_body": "male",
-"a_legs": "raised",
+"a_legs": "one_raised",
 "lean": "upright",
 "b_hands": "legs",
 "confidence": 0.85,
-"notes": "backbend",
+"notes": "backbend, partner kneeling, face at the hips",
 "a_pose": [
 "legs_bent"
 ]
@@ -9767,6 +9783,9 @@
 "a_body": "female",
 "b_body": "neutral",
 "solo_posture": "all_fours",
+"a_wear": [
+"cuffs"
+],
 "confidence": 0.9,
 "notes": "bound solo figure"
 },
@@ -10220,7 +10239,8 @@
 "a_legs": "one_raised",
 "lean": "upright",
 "b_hands": "hips",
-"confidence": 0.85
+"confidence": 0.85,
+"notes": "leg along bench"
 },
 {
 "id": "img-0764",
@@ -10997,6 +11017,9 @@
 "a_legs": "straight",
 "lean": "upright",
 "b_hands": "hips",
+"a_wear": [
+"cuffs"
+],
 "confidence": 0.55,
 "notes": "massage-like",
 "b_pose": [
@@ -11152,9 +11175,9 @@
 "surface": "sofa",
 "a_body": "female",
 "b_body": "male",
-"a_legs": "raised",
+"a_legs": "on_shoulders",
 "confidence": 0.6,
-"notes": "shoulder stand, partner seated",
+"notes": "backbend, partner seated, face at the hips",
 "b_pose": [
 "head_forward"
 ]
@@ -11831,7 +11854,8 @@
 "surface": "floor",
 "a_body": "female",
 "b_body": "male",
-"b_hands": "hips",
+"b_hands": "surface",
+"notes": "partner inverted",
 "confidence": 0.92,
 "a_pose": [
 "arms_forearms"
@@ -12902,11 +12926,11 @@
 {
 "id": "img-0965",
 "template": "rear_oral",
-"surface": "table",
+"surface": "table_chair",
 "a_body": "female",
 "b_body": "male",
 "confidence": 0.82,
-"notes": "kneel on seat, partner seated",
+"notes": "kneel on table, partner seated on chair",
 "b_hands": "hips",
 "b_pose": [
 "legs_bent"
@@ -12958,7 +12982,7 @@
 {
 "id": "img-0969",
 "template": "oral_on_b_kneeling",
-"surface": "sofa",
+"surface": "car_seat",
 "a_body": "female",
 "b_body": "male",
 "lean": "forward",
@@ -13458,9 +13482,13 @@
 "id": "img-1006",
 "template": "oral_on_a",
 "surface": "floor",
-"a_body": "neutral",
-"b_body": "neutral",
-"confidence": 0,
+"a_body": "female",
+"b_body": "male",
+"notes": "lying flat",
+"a_pose": [
+"arms_behind_head"
+],
+"confidence": 0.2,
 "a_legs": "open_bent"
 },
 {
@@ -13546,18 +13574,19 @@
 },
 {
 "id": "img-1013",
-"template": "side_facing",
+"template": "spooning",
 "surface": "floor",
-"a_body": "female",
-"b_body": "male",
-"a_legs": "open_bent",
+"a_body": "male",
+"b_body": "female",
+"a_legs": "together_bent",
 "lean": "forward",
+"b_hands": "embrace",
 "confidence": 0.82,
 "a_pose": [
-"arms_overhead"
+"arm_head_l"
 ],
 "b_pose": [
-"leg_bent_l"
+"legs_straight"
 ]
 },
 {
@@ -13596,7 +13625,7 @@
 {
 "id": "img-1017",
 "template": "lap_reverse",
-"surface": "table",
+"surface": "table_chair",
 "a_body": "female",
 "b_body": "male",
 "a_legs": "open_bent",
@@ -14124,6 +14153,9 @@
 "surface": "floor",
 "a_body": "male",
 "b_body": "female",
+"b_wear": [
+"cuffs"
+],
 "confidence": 0.96,
 "notes": "arms tied overhead"
 },
@@ -15482,7 +15514,7 @@
 "b_hands": "embrace",
 "confidence": 0.85,
 "a_pose": [
-"legs_straight"
+"leg_up_l"
 ]
 },
 {
@@ -17062,13 +17094,14 @@
 },
 {
 "id": "img-1277",
-"template": "sixty_nine",
+"template": "rear_oral",
 "surface": "floor",
 "a_body": "female",
 "b_body": "male",
-"confidence": 0.8,
+"lean": "forward",
+"confidence": 0.3,
 "a_pose": [
-"leg_up_l"
+"leg_back_l"
 ]
 },
 {

@@ -1056,6 +1056,31 @@ export const SURFACES = {
     ground: 0,
     props: [{ kind: "bench", size: [1.4, 0.45, 0.42], center: [0, 0.225, 0] }],
   },
+  // A padded footstool, low enough to kneel at and lean on.
+  ottoman: {
+    height: 0.42,
+    ground: 0,
+    props: [{ kind: "ottoman", size: [0.7, 0.42, 0.6], center: [0, 0.21, 0] }],
+  },
+  // A wall to lean on or brace against, its face 35 cm behind the origin so a
+  // figure standing there has it at the back.
+  wall: {
+    height: 0,
+    ground: 0,
+    props: [{ kind: "wall", size: [3.0, 2.4, 0.12], center: [0, 1.2, -0.41] }],
+  },
+  // A table on legs, with room under the top, and a chair drawn up to its +z
+  // side facing it. The table is the surface; the chair's seat is 46 cm up.
+  table_chair: {
+    height: 0.75,
+    ground: 0,
+    props: [
+      { kind: "table", size: [1.3, 0.05, 0.8], center: [0, 0.725, 0] },
+      ...[-1, 1].flatMap((x) => [-1, 1].map((z) => ({ kind: "table-leg", size: [0.06, 0.7, 0.06], center: [x * 0.6, 0.35, z * 0.35] }))),
+      { kind: "chair", size: [0.52, 0.46, 0.5], center: [0, 0.23, 0.75] },
+      { kind: "chair-back", size: [0.52, 0.5, 0.08], center: [0, 0.68, 1.04] },
+    ],
+  },
   // A 65 cm exercise ball, the commonest size.
   ball: {
     height: 0.65,
@@ -1080,9 +1105,21 @@ export const SURFACES = {
       },
     ],
   },
+  // The back seat of a large SUV, inside its cabin. The `shell` - roof, doors,
+  // rear glass and the backs of the front seats, slid all the way forward - is
+  // drawn see-through, the way the source pictures show people through a car's
+  // glass, and the solver rests nothing on it. It is still a wall: the composer
+  // fits and measures every body against it, so no one kneels up through the
+  // roof or puts a foot through a door.
   car_seat: {
     height: 0.4,
     ground: 0,
+    shell: [
+      { kind: "car-roof", size: [1.62, 0.05, 2.25], center: [0, 1.445, 0.43] },
+      ...[-1, 1].map((x) => ({ kind: "car-door", size: [0.05, 1.37, 2.25], center: [x * 0.785, 0.735, 0.43] })),
+      { kind: "car-glass", size: [1.52, 0.45, 0.05], center: [0, 1.195, -0.67] },
+      ...[-1, 1].map((x) => ({ kind: "car-front-seat", size: [0.56, 0.9, 0.14], center: [x * 0.37, 0.75, 1.48] })),
+    ],
     props: [
       { kind: "car-seat", size: [1.4, 0.4, 0.5], center: [0, 0.2, 0] },
       {

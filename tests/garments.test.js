@@ -241,6 +241,23 @@ test("the briefs hide the anatomy they cover", () => {
   );
 });
 
+test("cuffs are four straps, one above each wrist and each ankle, and nothing else", () => {
+  const { positions } = submesh("cuffs");
+  const joints = ["wrist_l", "wrist_r", "ankle_l", "ankle_r"].map((bone) => {
+    const rest = dressed.jointByBone.get(bone).rest;
+    return [rest[12], rest[13], rest[14]];
+  });
+  const counts = joints.map(() => 0);
+  for (let v = 0; v < positions.length / 3; v += 1) {
+    const p = [positions[v * 3], positions[v * 3 + 1], positions[v * 3 + 2]];
+    const distances = joints.map((j) => Math.hypot(p[0] - j[0], p[1] - j[1], p[2] - j[2]));
+    const nearest = distances.indexOf(Math.min(...distances));
+    assert.ok(distances[nearest] < 0.06, `cuff vertex ${v} is ${distances[nearest].toFixed(3)} from any wrist or ankle`);
+    counts[nearest] += 1;
+  }
+  for (const [i, count] of counts.entries()) assert.ok(count > 20, `no strap at ${["wrist_l", "wrist_r", "ankle_l", "ankle_r"][i]}`);
+});
+
 test("every garment vertex is bound to bones that sum to one", () => {
   for (const name of GARMENT_NAMES) {
     const { weights } = submesh(name);

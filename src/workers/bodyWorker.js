@@ -207,6 +207,7 @@ function summarise(solved) {
     preview: solvedPreview(solved, 'refined'),
     surface: solved.surface,
     props: solved.props.map(propData),
+    shell: (solved.surface.shell ?? []).map(propData),
     quality: {
       maxDepth: solved.quality.maxDepth,
       proxyMaxDepth: solved.quality.proxyMaxDepth,

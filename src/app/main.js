@@ -477,7 +477,7 @@ worker.onmessage = ({ data }) => {
     ...data.scene,
     camera: current.scene.camera ?? data.scene.camera,
   });
-  view?.setScene({ meshes: data.meshes, props: data.props });
+  view?.setScene({ meshes: data.meshes, props: data.props, shell: data.shell });
   if (shouldFrame) {
     view?.frame();
     setView(current.scene.camera?.view ?? "three_quarter");

@@ -109,14 +109,25 @@ const PROP_COLOUR = {
   bed: [0.91, 0.89, 0.85],
   "bed-frame": [0.43, 0.36, 0.29],
   sofa: [0.55, 0.6, 0.65],
+  "sofa-back": [0.49, 0.54, 0.59],
   chair: [0.6, 0.52, 0.44],
+  "chair-back": [0.6, 0.52, 0.44],
   table: [0.71, 0.63, 0.52],
+  "table-leg": [0.61, 0.54, 0.44],
   bench: [0.66, 0.59, 0.5],
   ball: [0.79, 0.84, 0.86],
   wedge: [0.73, 0.64, 0.55],
+  ottoman: [0.56, 0.55, 0.53],
+  wall: [0.9, 0.88, 0.85],
   "car-seat": [0.36, 0.37, 0.4],
   "car-seat-back": [0.33, 0.34, 0.37],
+  "car-roof": [0.62, 0.71, 0.76],
+  "car-door": [0.62, 0.71, 0.76],
+  "car-glass": [0.62, 0.71, 0.76],
+  "car-front-seat": [0.33, 0.34, 0.37],
 };
+// A car's shell is drawn see-through, over everything else; see the pass below.
+const SHELL_OPACITY = { "car-front-seat": 0.22, default: 0.12 };
 const GROUND_COLOUR = [0.85, 0.83, 0.8];
 
 /* ------------------------------------------------------------------ */
@@ -582,10 +593,10 @@ function clipSpace(m, x, y, z) {
  * the camera - the camera is framed from the scene's own bounds and never ends
  * up inside anybody.
  */
-function rasterise(matrix, width, height, depth, onFragment, awayFrom = null) {
+function rasterise(matrix, width, height, depth, onFragment, awayFrom = null, list = objects) {
   const area2 = (ax, ay, bx, by, cx, cy) => (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
 
-  for (const object of objects) {
+  for (const object of list) {
     const { positions, normals, occlusion, indices } = object;
     const count = positions.length / 3;
     const sx = new Float32Array(count);
@@ -1012,6 +1023,26 @@ rasterise(viewProjection, W, H, depth, (offset, object, i0, i1, i2, b0, b1, b2) 
   colour[offset * 3 + 1] = g;
   colour[offset * 3 + 2] = b;
 });
+
+/**
+ * A car's shell, laid over the finished picture.
+ *
+ * It is glass, so it neither casts a shadow nor hides anything: each panel is
+ * tested against the depth of what is already drawn, never writes depth of its
+ * own, and tints each pixel once - its two faces a few centimetres apart would
+ * otherwise tint the same pixel twice.
+ */
+for (const panel of solved.surface.shell ?? []) {
+  const object = boxObject(panel.center, panel.size, (PROP_COLOUR[panel.kind] ?? [0.6, 0.6, 0.6]).map(toLinear));
+  const alpha = SHELL_OPACITY[panel.kind] ?? SHELL_OPACITY.default;
+  const touched = new Uint8Array(W * H);
+  rasterise(viewProjection, W, H, Float32Array.from(depth), (offset, { normals, colour: tint }, i0) => {
+    if (touched[offset]) return;
+    touched[offset] = 1;
+    const light = 0.8 + 0.4 * Math.abs(normals[i0 * 3] * KEY[0] + normals[i0 * 3 + 1] * KEY[1] + normals[i0 * 3 + 2] * KEY[2]);
+    for (let c = 0; c < 3; c += 1) colour[offset * 3 + c] = colour[offset * 3 + c] * (1 - alpha) + tint[c] * light * alpha;
+  }, null, [object]);
+}
 
 /* ------------------------------------------------------------------ */
 /* Output                                                              */

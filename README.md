@@ -320,14 +320,15 @@ rather than driven through the floor.
 Surfaces carry **two heights**: `height` is the prop top where a trunk rests,
 `ground` is where feet and knees go. They are equal for things you get on top of
 (floor, bed, sofa) and differ for things you stand beside (chair, table, bench,
-exercise ball, wedge cushion, car seat) — which is how someone bent over a table
-has their chest at 750mm and their feet at 0.
+exercise ball, wedge cushion, car seat, ottoman, a table with its chair) — which
+is how someone bent over a table has their chest at 750mm and their feet at 0.
 
 Most furniture is a box. The exercise ball is a sphere, and the wedge cushion
 and the car seat's raked backrest are prisms; collision, what is underfoot, the
 rendered mesh and its outline all read that shape from one module
 (`src/core/propShapes.js`), so a body lies on the ball's curve rather than its
-bounding cube. See [the solver notes](docs/solver.md#shaped-props).
+bounding cube. The car seat sits inside a see-through cabin whose roof and
+doors bodies are kept clear of. See [the solver notes](docs/solver.md#shaped-props).
 
 IK is two-bone analytic with a pole hint, so elbows and knees bend the right
 way instead of wherever the seeding lands them. Out-of-reach targets report

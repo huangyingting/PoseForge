@@ -169,6 +169,12 @@ function renderDepth(view, width, height) {
   depthMaterial.uniforms.far.value = camera.far;
   scene.overrideMaterial = depthMaterial;
   scene.background = null;
+  // A car's glass would hide every line behind it.
+  const shells = [];
+  scene.traverse((node) => {
+    if (node.name === "shell" && node.visible) shells.push(node);
+  });
+  for (const node of shells) node.visible = false;
 
   // White, not the usual black. Packed distance runs from black at the lens to
   // white at the far plane, so clearing to black would declare every empty
@@ -187,6 +193,7 @@ function renderDepth(view, width, height) {
   renderer.setClearColor(clearColour, clearAlpha);
   scene.overrideMaterial = override;
   scene.background = background;
+  for (const node of shells) node.visible = true;
   target.dispose();
 
   // Back to metres, in the same units the projected points are measured in.
@@ -473,7 +480,7 @@ export function exportSVG(view, options = {}) {
 
   scene.traverse((node) => {
     if (!node.isMesh || !node.visible || node.name === "ground") return;
-    if (node.userData.outline === false) return;
+    if (node.userData.outline === false || node.parent?.name === "shell") return;
     const isProp = node.parent?.name === "props";
     const edges = isProp ? propEdges(node, camera) : silhouetteEdges(node, camera);
 

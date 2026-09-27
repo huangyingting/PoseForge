@@ -35,6 +35,8 @@ const KNEES_APART = { override: { ...both("hip", { abduction: 30 }) } };
 const ORAL_LEGS = { straight: "straight_apart", together_bent: "open_bent" };
 const SEATED_OPEN = { ...both("hip", { flexion: 80, abduction: 60, rotation: 0 }), ...both("knee", { flexion: 80 }) };
 const SEATED_WRAP = { ...both("hip", { flexion: 108, abduction: 52, rotation: 0 }), ...both("knee", { flexion: 95 }) };
+// Seated at an edge with the legs open either side of a partner, not round them.
+const SEATED_APART = { ...both("hip", { flexion: 95, abduction: 55, rotation: 0 }), ...both("knee", { flexion: 55 }) };
 // Leaning back in the seat with the legs lifted high and wide, the knees soft.
 const SEATED_LEGS_UP = { ...both("hip", { flexion: 125, abduction: 40, rotation: 0 }), ...both("knee", { flexion: 25 }) };
 // Sitting on the floor with the knees drawn up and apart. Below ~110° of hip
@@ -95,6 +97,10 @@ const refine = (moving, from, fromActor, to, toActor, { free = ["x", "z"], keep 
 const near = (r1, l1, r2, l2, max) => ["near", r1, l1, r2, l2, max];
 /** Whether the classification notes name a variant. */
 const has = (cls, pattern) => pattern.test(cls.notes ?? "");
+/** Whether a record's pose details place the arm on side `s` ("l" or "r"). */
+const armPosed = (names, s) => (names ?? []).some((name) => DETAILS[name] && (`shoulder_${s}` in DETAILS[name] || `elbow_${s}` in DETAILS[name]));
+/** Whether a record's pose details already shape the legs. */
+const legPosed = (names) => (names ?? []).some((name) => DETAILS[name] && Object.keys(DETAILS[name]).some((bone) => /^(hip|knee)_/.test(bone)));
 
 const pickSurface = (cls, allowed, fallback) => (allowed.includes(cls.surface) ? cls.surface : fallback);
 const lying = (cls, fallback = "bed") => pickSurface(cls, ["floor", "bed"], cls.surface === "sofa" || cls.surface === "bench" ? "bed" : fallback);
@@ -110,9 +116,27 @@ export const SEATS = {
   car_seat: { z: 0.25, top: 0.4 },
   // An exercise ball's crest, over its centre.
   ball: { z: 0, top: 0.65 },
+  ottoman: { z: 0.3, top: 0.42 },
+  // The table; the chair drawn up to it faces it, its front edge at z 0.5.
+  table_chair: { z: 0.4, top: 0.75 },
 };
+// The chair at a table: its seat's front edge (it faces -z, towards the table) and height.
+const TABLE_CHAIR = { z: 0.5, top: 0.46, back: 1.0 };
+// A wall's face, behind the origin.
+const WALL_Z = -0.35;
 const surfaceTop = (surface) => SEATS[surface]?.top ?? 0;
 
+// Propped on the forearms over a low ledge, the trunk tipped up, the back
+// arched and the legs raised behind as far as the hips allow.
+const OTTOMAN_FOREARMS = {
+  ...both("hip", { flexion: -25, abduction: 28, rotation: 0 }),
+  ...both("knee", { flexion: 70 }),
+  ...both("shoulder", { flexion: 60, abduction: 12, rotation: 0 }),
+  ...both("elbow", { flexion: 90 }),
+  spine01: { flexion: 20 },
+  spine02: { flexion: 20 },
+  spine03: { flexion: 20 },
+};
 // Seated on a ball's crest, higher than a chair, the thighs slope down to feet on the floor.
 const BALL_SEAT = { ...both("hip", { flexion: 50, abduction: 30, rotation: 0 }), ...both("knee", { flexion: 50 }) };
 
@@ -263,12 +287,17 @@ function faceToFaceLying(cls, bPosture, { legs = "open_bent" } = {}) {
   };
 }
 
+// Lying under a rider facing them, the knees a little up behind the rider's back.
+const KNEES_BEHIND = { ...both("hip", { flexion: 20, abduction: 8, rotation: 0 }), ...both("knee", { flexion: 45 }) };
+
 function straddlePlan(cls, posture, yaw) {
-  // Side saddle on a sofa: A lies along it, the hips near its front edge, and
-  // B sits across them facing out, the legs down over the edge to the floor.
-  // Perched on A's hips, higher than the seat, B's thighs slope down as on a
-  // ball, together or the right crossed over the left.
-  if (cls.surface === "sofa" && has(cls, /side saddle/) && has(cls, /feet on the floor/)) {
+  // Side saddle on a sofa: A lies along it, the hips near its front edge and
+  // the head to B's right, and B sits across them facing out, the legs down
+  // over the edge. Perched on A's hips, higher than the seat, B's thighs slope
+  // down as on a ball to the feet on the floor, together or the right crossed
+  // over the left, or one knee drawn up (a pose detail). A's near hand holds
+  // B's hip, and B's hand on the surface rests on A's thigh.
+  if (cls.surface === "sofa" && has(cls, /side saddle/)) {
     const perch = { ...both("hip", { flexion: 40, abduction: 6, rotation: 0 }), ...both("knee", { flexion: 30 }) };
     const crossed = has(cls, /legs crossed/) ? { hip_r: { flexion: 55, abduction: -22, rotation: 0 }, knee_r: { flexion: 55 } } : {};
     return {
@@ -276,18 +305,20 @@ function straddlePlan(cls, posture, yaw) {
       mode: "fit",
       roles: { a: 0, b: 1 },
       actors: [
-        figure(cls.a_body, "supine", { soloSurface: "floor", arms: "arms_overhead", joints: { ...both("hip", { flexion: 0, abduction: 3, rotation: 0 }), ...both("knee", { flexion: 5 }) } }),
+        figure(cls.a_body, "supine", { soloSurface: "floor", joints: { ...both("hip", { flexion: 0, abduction: 3, rotation: 0 }), ...both("knee", { flexion: 5 }) } }),
         figure(cls.b_body, "seated", { soloSurface: "chair", override: { ...perch, ...crossed } }),
       ],
-      place: [{ index: 0, yaw: 90, rest: SEATS.sofa.top, pelvisTo: [0, null, SEATS.sofa.z - 0.1] }],
+      place: [{ index: 0, yaw: -90, rest: SEATS.sofa.top, pelvisTo: [0, null, SEATS.sofa.z - 0.1] }],
       fit: [refine(1, "buttocks", 1, "groin", 0, { free: ["y", "z"], keep: false, floor: 0, start: [0, 0.3, 0.1] })],
+      limbContacts: [grip("hand.r", "hip.r", 0, 1), ...(cls.b_hands === "surface" ? [grip("hand.l", "thigh.r", 1, 0)] : [])].map((c) => ({ ...c, optional: true })),
       contacts: [grip("buttocks", "groin", 1, 0, "surface")],
       checks: ["aFaceUp", "bAbove", "bUpright", "crossed", near("b", "buttocks", "a", "groin", 0.25)],
     };
   }
   const surface = lying(cls);
   // Side saddle: sitting across the partner's hips at right angles, the knees
-  // drawn up together to one side and the feet down beside the partner.
+  // drawn up together to one side and the feet down beside the partner;
+  // reversed, turned a little further round towards A's feet.
   if (has(cls, /side saddle/))
     return {
       surface,
@@ -297,7 +328,7 @@ function straddlePlan(cls, posture, yaw) {
         figure(cls.a_body, "supine", { joints: structuredClone(LEG_SHAPES.straight) }),
         figure(cls.b_body, "seated_floor", { override: { ...both("hip", { flexion: 115, abduction: 8, rotation: 0 }), ...both("knee", { flexion: 115 }) } }),
       ],
-      place: [{ index: 1, yaw: 90 }],
+      place: [{ index: 1, yaw: yaw ? 120 : 90 }],
       fit: [refine(1, "groin", 1, "groin", 0, { free: ["x", "y", "z"], keep: false, start: [0, 0.25, 0] })],
       contacts: [grip("groin", "groin", 1, 0, "surface")],
       checks: ["aFaceUp", "bAbove", "bUpright", "crossed", near("b", "groin", "a", "groin", 0.2)],
@@ -361,7 +392,7 @@ function straddlePlan(cls, posture, yaw) {
         // Lifted onto the partner, so the legs can rise from the upright seat.
         figure(cls.b_body, "seated_floor", {
           ...(cls.b_hands === "behind" ? { arms: "arms_braced_behind" } : {}),
-          ...(oneLeg ? { trunk: "backward_leaning" } : {}),
+          ...(oneLeg || cls.lean === "back" ? { trunk: "backward_leaning" } : {}),
           override: oneLeg
             ? { hip_r: raised, knee_r: { flexion: 10 }, hip_l: { flexion: 55, abduction: 45, rotation: 0 }, knee_l: { flexion: 135 } }
             : { ...both("hip", raised), ...both("knee", { flexion: knees ? 75 : 20 }) },
@@ -482,14 +513,29 @@ function straddlePlan(cls, posture, yaw) {
   const spine = (flexion) => ({ joints: { spine01: { flexion }, spine02: { flexion }, spine03: { flexion } } });
   const trunk = cls.lean === "forward" ? (posture === "squatting" ? spine(-20) : { trunk: "forward_lowered" }) : cls.lean === "back" ? { trunk: "backward_leaning" } : yaw && cls.b_hands === "legs" ? { trunk: "forward_leaning" } : cls.b_hands === "legs" ? spine(-15) : {};
   const lean = cls.b_hands === "behind" ? { ...trunk, arms: "arms_braced_behind" } : trunk;
+  // `hips` here is the hands at the rider's hips, as those images show: A
+  // lying below holds them, as far as A reaches, unless a detail poses A's
+  // arms or raises a leg between them. A squatting rider's knees are in the way.
+  const holdHips =
+    cls.b_hands === "hips" && posture !== "squatting" && !armPosed(cls.a_pose, "l") && !armPosed(cls.a_pose, "r") && !(cls.a_pose ?? []).some((name) => name.startsWith("leg_up_"))
+      ? handsTo(0, 1, "hip", !yaw).map((c) => ({ ...c, optional: true }))
+      : [];
   return {
     surface,
     mode: "solver",
     roles: { a: 0, b: 1 },
-    // Bent knees in front of the rider would hold them off the hips, so they lie flat.
-    actors: [figure(cls.a_body, "supine", yaw ? legsOf({ a_legs: ["open_bent", "together_bent", "wrapped"].includes(cls.a_legs) ? "straight" : cls.a_legs }, "straight") : { joints: structuredClone(LEG_SHAPES.straight) }), figure(cls.b_body, posture, lean)],
+    // Bent knees in front of a rider facing A's feet would hold them off the
+    // hips, so they lie flat. Behind a rider facing A they rise a little, as far
+    // as the rider's heels allow.
+    actors: [
+      figure(cls.a_body, "supine", yaw ? legsOf({ a_legs: ["open_bent", "together_bent", "wrapped"].includes(cls.a_legs) ? "straight" : cls.a_legs }, "straight") : { joints: structuredClone(cls.a_legs === "open_bent" || cls.a_legs === "together_bent" ? KNEES_BEHIND : LEG_SHAPES.straight) }),
+      figure(cls.b_body, posture, lean),
+    ],
     relationship: yaw ? { arrangement: "straddle_supine", yaw } : { arrangement: "straddle_supine" },
-    limbContacts: cls.b_hands === "surface" || cls.b_hands === "behind" ? [] : cls.b_hands === "legs" ? handsTo(1, 0, yaw ? "knee" : "thigh", !yaw) : cls.lean === "forward" ? handsTo(1, 0, "shoulder", !yaw) : [],
+    limbContacts: [
+      ...(cls.b_hands === "surface" || cls.b_hands === "behind" ? [] : cls.b_hands === "legs" ? handsTo(1, 0, yaw ? "knee" : "thigh", !yaw) : cls.lean === "forward" ? handsTo(1, 0, "shoulder", !yaw) : []),
+      ...holdHips,
+    ],
     fit: [refine(1, "groin", 1, "groin", 0)],
     contacts: [grip("groin", "groin", 1, 0, "surface")],
     checks: ["aFaceUp", "bAbove", yaw ? "reversed" : "straddleFacing", near("b", "groin", "a", "groin", 0.2)],
@@ -536,8 +582,10 @@ function standingOver(cls, surface) {
  * hands go behind.
  */
 const draped = (cls) => cls.lean === "forward" && cls.b_hands === "surface";
-const kneelingBehind = (cls, lean) =>
-  figure(cls.b_body, "kneeling", draped(cls) ? { trunk: "forward_fold" } : { ...trunkOf(lean), ...(cls.b_hands === "behind" ? { arms: "arms_braced_behind" } : {}) });
+const kneelingBehind = (cls, lean, override = null) =>
+  figure(cls.b_body, "kneeling", { ...(draped(cls) ? { trunk: "forward_fold" } : { ...trunkOf(lean), ...(cls.b_hands === "behind" ? { arms: "arms_braced_behind" } : {}) }), ...(override ? { override } : {}) });
+// Kneeling astride the shins of a partner whose knees are together.
+const KNEES_ASTRIDE = both("hip", { abduction: 25 });
 
 function rearPlan(cls, surface, aSpec, bSpec, arrangement, { upright = false, drape = false } = {}) {
   // Kneeling and standing rear-entry positions are placed directly: both face
@@ -563,6 +611,39 @@ function rearPlan(cls, surface, aSpec, bSpec, arrangement, { upright = false, dr
     contacts: [grip("groin", "buttocks", 1, 0, "surface")],
     // From above, B's groin meets A's buttocks higher over A's pelvis.
     checks: ["sameFacing", "bBehind", ...(upright ? ["aUpright"] : []), "bUpright", near("b", "groin", "a", "pelvis", over ? 0.27 : 0.24)],
+  };
+}
+
+/**
+ * Bent forward to a wall: A faces it (-z), the trunk tipped towards level and
+ * the arms out along it to the hands flat on the wall, and is walked back
+ * until they meet it. B stands behind, facing the same way.
+ */
+function wallBentPlan(cls, legs = {}) {
+  const a = figure(cls.a_body, "standing_bent_forward", {
+    soloSurface: "floor",
+    // The arms up past level, the wrists bent back to put the palms flat on it.
+    override: {
+      ...legs,
+      ...both("shoulder", { flexion: 150, abduction: 12, rotation: 0 }),
+      ...both("elbow", { flexion: 15 }),
+      ...both("wrist", { flexion: 60 }),
+    },
+  });
+  return {
+    surface: "wall",
+    mode: "fit",
+    roles: { a: 0, b: 1 },
+    actors: [a, [{}, { joints: both("ankle", { flexion: 30 }), prefer: 0.001 }, { ...stance(12, 10, 24), prefer: 0.002 }].map((extra) => figure(cls.b_body, "standing", { soloSurface: "floor", ...extra }))],
+    // B starts well back, out of A's way while A is walked to the wall.
+    place: [{ index: 0, yaw: 180, rest: 0 }, { index: 1, yaw: 180, pelvisTo: [0, null, 2] }],
+    fit: [
+      { moving: 0, free: ["z"], anchors: ["l", "r"].map((s) => ({ from: `hand.${s}`, fromActor: 0, point: [0, 0, WALL_Z + 0.03], weight: 1, axes: [2] })) },
+      refine(1, "groin", 1, "pelvis", 0, { start: [0, 0, 0.3] }),
+    ],
+    limbContacts: bHands(cls, 1, 0, { face: false }),
+    contacts: [grip("groin", "buttocks", 1, 0, "surface")],
+    checks: ["sameFacing", "bBehind", "bUpright", near("b", "groin", "a", "pelvis", 0.24)],
   };
 }
 
@@ -601,7 +682,7 @@ function edgePlan(cls, surface, aPosture, { legs, lean = null, oral = false }) {
       // A solid seat base (sofa, bed, bench) leaves no room under it: the feet go forward.
       oral
         ? { override: { ...structuredClone(SEATED_OPEN), ...(surface === "chair" ? {} : both("knee", { flexion: 55 })), ...(legs === "raised" ? SEATED_LEGS_UP : {}), spine01: { flexion: 15 }, spine02: { flexion: 12 } }, trunk: "backward_leaning" }
-        : { override: { ...structuredClone(SEATED_WRAP), ...(legs === "raised" ? { ...both("hip", { flexion: 135, abduction: 28, rotation: 0 }), ...both("knee", { flexion: 5 }) } : {}), spine01: { flexion: 15 }, spine02: { flexion: 12 } }, trunk: "backward_leaning", arms: "arms_braced_behind" }
+        : { override: { ...structuredClone(legs === "open_bent" ? SEATED_APART : SEATED_WRAP), ...(legs === "raised" ? { ...both("hip", { flexion: 135, abduction: 28, rotation: 0 }), ...both("knee", { flexion: 5 }) } : {}), spine01: { flexion: 15 }, spine02: { flexion: 12 } }, trunk: "backward_leaning", arms: "arms_braced_behind" }
     );
     a = seat.spec;
     aPlace = seat.place;
@@ -660,8 +741,8 @@ function edgeRearPlan(cls, surface) {
     surface,
     mode: "fit",
     roles: { a: 0, b: 1 },
-    // Knees apart at the front edge, head towards the back; B stands between A's feet facing the same way.
-    actors: [figure(cls.a_body, cls.lean === "upright" ? "all_fours" : "forearms_and_knees", { soloSurface: surface, override: both("hip", { abduction: 34, rotation: 25 }) }), frontCandidates(cls.b_body, { lean: cls.lean })],
+    // Knees apart at the front edge (or together), head towards the back; B stands between A's feet facing the same way.
+    actors: [figure(cls.a_body, cls.lean === "upright" ? "all_fours" : "forearms_and_knees", { soloSurface: surface, override: both("hip", { abduction: cls.a_legs === "together_bent" ? 10 : 34, rotation: 25 }) }), frontCandidates(cls.b_body, { lean: cls.lean })],
     place: [{ index: 0, yaw: 180, alignTo: null, pelvisTo: [0, null, seat.z - (surface === "bed" ? 0.09 : 0.16)] }, { index: 1, yaw: 180 }],
     fit: [refine(1, "groin", 1, "pelvis", 0, { start: [0, 0, 0.3] })],
     limbContacts: cls.b_hands === "surface" ? [] : bHands(cls, 1, 0, { face: false }),
@@ -681,8 +762,9 @@ function furnitureKneelPlan(cls, surface) {
   let aPlace;
   let bYaw;
   let start;
-  // The shins reach back past the edge: turned out, the feet pass either side of the partner.
-  const splay = { override: both("hip", { abduction: 14, rotation: 30 }) };
+  // The shins reach back past the edge: turned out, the feet pass either side of
+  // the partner. The knees stay together if the record says so.
+  const splay = { override: both("hip", { abduction: cls.a_legs === "together_bent" ? 3 : 14, rotation: 30 }) };
   if (surface === "chair") {
     // Knees on the seat, facing the backrest, the chest forward over it.
     const trunk = cls.b_hands === "embrace" ? {} : { trunk: cls.lean === "forward" ? "forward_lowered" : "forward_leaning" };
@@ -970,9 +1052,13 @@ function perchedRearPlan(cls) {
   };
 }
 
+// Hunched under a car's roof, the back rounded and the head bowed.
+const HUNCH = { spine01: { flexion: -20 }, spine02: { flexion: -20 }, spine03: { flexion: -20 }, neck: { flexion: -25 } };
+
 /**
  * Both kneeling across a car's back seat, A bent forward towards the far
- * door, B kneeling up behind: the seat is too shallow to kneel along.
+ * door, B kneeling up behind, hunched under the roof: the seat is too shallow
+ * to kneel along.
  */
 function backSeatRearPlan(cls) {
   const top = SEATS.car_seat.top;
@@ -982,7 +1068,7 @@ function backSeatRearPlan(cls) {
     roles: { a: 0, b: 1 },
     actors: [
       figure(cls.a_body, "kneeling", { soloSurface: "floor", trunk: "forward_lowered", ...KNEES_APART }),
-      [figure(cls.b_body, "kneeling", { soloSurface: "floor" }), figure(cls.b_body, "kneeling", { soloSurface: "floor", trunk: "forward_leaning", prefer: 0.002 })],
+      figure(cls.b_body, "kneeling", { soloSurface: "floor", override: HUNCH }),
     ],
     // Facing +x, a little forward of the middle so the parted knees clear the backrest.
     place: [{ index: 0, yaw: 90, rest: top, pelvisTo: [0.2, null, 0.06] }, { index: 1, yaw: 90, rest: top }],
@@ -994,33 +1080,30 @@ function backSeatRearPlan(cls) {
 }
 
 /**
- * Lying back along a car's back seat, the head towards +x, the partner
- * kneeling up on the seat between the raised legs or, for oral, down on the
- * forearms at the hips, the feet up and the bent legs over the back. The seat
- * is too shallow for legs parted flat across it, and too short to lie flat along.
+ * Lying back across a car's back seat, the head propped against the door at
+ * +x and the legs raised in a V; B kneels up on the seat between them, sitting
+ * half back on the heels and hunched under the roof, with A's hips lifted onto
+ * B's thighs. Kneeling upright would put B's head through the roof, and the
+ * seat is too shallow for legs parted flat across it.
  */
-function carSeatLyingPlan(cls, { oral = false } = {}) {
+function carSeatLyingPlan(cls) {
   const top = SEATS.car_seat.top;
-  const legs = oral ? legPair(70, 20, 90) : structuredClone(LEG_SHAPES[cls.a_legs === "on_shoulders" ? "on_shoulders" : "raised"]);
-  const b = oral
-    ? [
-        figure(cls.b_body, "kneeling_low", { soloSurface: "floor", trunk: "forward_leaning" }),
-        figure(cls.b_body, "kneeling", { soloSurface: "floor", trunk: "forward_lowered", prefer: 0.002 }),
-        figure(cls.b_body, "kneeling_low", { soloSurface: "floor", trunk: "forward_fold", prefer: 0.004 }),
-        figure(cls.b_body, "forearms_and_knees", { soloSurface: "floor", override: both("knee", { flexion: 150 }), prefer: 0.004 }),
-      ]
-    : ["kneeling", "kneeling_low"].map((posture, i) => figure(cls.b_body, posture, { soloSurface: "floor", override: both("hip", { abduction: 6 }), prefer: i * 0.004 }));
+  const legs = { ...legPair(100, 30, 20), neck: { flexion: -30 } };
   return {
     surface: "car_seat",
     mode: "fit",
     roles: { a: 0, b: 1 },
-    actors: [figure(cls.a_body, "supine", { soloSurface: "floor", joints: legs }), b],
-    // Along the seat, the hips past its middle so that B's knees stay on it; the head reaches its end.
-    place: [{ index: 0, yaw: 90, rest: top, pelvisTo: [oral ? 0.25 : 0.15, null, 0] }, { index: 1, yaw: 90, rest: top }],
-    fit: [oral ? { ...refine(1, "mouth", 1, "groin", 0, { start: [-0.3, 0, 0] }), pitchRange: 25, pivot: "knee" } : refine(1, "groin", 1, "groin", 0, { start: [-0.35, 0, 0] })],
-    limbContacts: oral ? (cls.b_hands === "surface" ? [] : handsTo(1, 0, "hip", true)) : bHands(cls, 1, 0, { fallback: "legs" }),
-    contacts: [oral ? grip("mouth", "groin", 1, 0, "surface") : grip("groin", "groin", 1, 0, "surface")],
-    checks: ["aFaceUp", "facingInward", oral ? near("b", "mouth", "a", "groin", 0.22) : near("b", "groin", "a", "groin", 0.25)],
+    actors: [
+      figure(cls.a_body, "supine", { soloSurface: "floor", joints: legs }),
+      figure(cls.b_body, "kneeling_low", { soloSurface: "floor", override: { ...both("hip", { flexion: 30, abduction: 25 }), ...both("knee", { flexion: 120 }), ...HUNCH } }),
+    ],
+    // B first, facing +x a little forward of the seat's middle so the parted
+    // knees clear the backrest; then A, tipped hips-up, is let down onto B.
+    place: [{ index: 1, yaw: 90, rest: top, pelvisTo: [-0.22, null, 0.1] }, { index: 0, yaw: 90, pitch: 10, rest: top, pelvisTo: [0, null, 0] }],
+    fit: [{ moving: 0, free: ["x", "y"], keep: false, floor: 0, pitchRange: 25, pivot: "upperBack", anchors: [{ from: "groin", fromActor: 0, to: "groin", toActor: 1, offset: [0.05, 0.05, 0], weight: 1 }] }],
+    limbContacts: bHands(cls, 1, 0, { fallback: "legs" }),
+    contacts: [grip("groin", "groin", 1, 0, "surface")],
+    checks: ["aFaceUp", "facingInward", near("b", "groin", "a", "groin", 0.25)],
   };
 }
 
@@ -1102,6 +1185,10 @@ const LAP_WRAP = {
   knee_r: { flexion: 95 },
 };
 
+// Face to face on a seat with the legs open and bent, A's feet go down to the
+// floor either side of the seat instead of round B (not in a car, which has no room).
+const LAP_FEET_DOWN = { ...both("hip", { flexion: -5, abduction: 35, rotation: 0 }), ...both("knee", { flexion: 20 }) };
+
 const FLAT_LEGS = {
   hip_l: { flexion: 35, abduction: 12 },
   hip_r: { flexion: 35, abduction: 12 },
@@ -1113,6 +1200,9 @@ const FLAT_LEGS = {
 // Astride a partner sitting back on the heels, A kneels too, the knees down
 // either side of B's thighs and the shins back along the floor.
 const LAP_KNEEL = { ...both("hip", { flexion: 45, abduction: 40, rotation: 0 }), ...both("knee", { flexion: 140 }) };
+// Kneeling up astride a partner sitting on a seat, the thighs spread and the
+// shins turned out to lie along the cushion outside the partner's thighs.
+const LAP_KNEEL_UP = { ...both("hip", { flexion: 28, abduction: 40, rotation: 12 }), ...both("knee", { flexion: 120 }) };
 // Or wraps the legs round B's waist, the feet crossing behind the back.
 const LAP_WRAP_KNEEL = { ...both("hip", { flexion: 80, abduction: 65, rotation: -40 }), ...both("knee", { flexion: 105 }) };
 const LAP_WRAP_FLOOR = {
@@ -1142,7 +1232,95 @@ const FLOOR_OPEN = { ...LEAN_BACK, ...both("hip", { abduction: 32 }), ...both("k
 // Squatting, the knees go wide and the trunk comes up so the partner can sit close in between.
 const SQUAT_OPEN = { ...LEAN_BACK, ...both("hip", { abduction: 40 }) };
 
+/**
+ * Facing away on the lap of a partner sitting on a table's edge, towards the
+ * chair drawn up to it: B leans back on the hands, the feet down on the
+ * chair's seat; A sits up on B's thighs, the feet on the seat too and the
+ * hands on the top of the chair's back.
+ */
+function tableChairLapPlan(cls) {
+  // Tipped back, the thighs rise a little and the knees fold down over the
+  // edge, bringing the feet in onto the front of the seat; spread, they let
+  // A sit down between them.
+  const b = figure(cls.b_body, "seated", { soloSurface: "chair", arms: "arms_braced_behind", override: { ...LEAN_BACK, ...both("hip", { flexion: 80, abduction: 24, rotation: 0 }), ...both("knee", { flexion: 115 }) } });
+  // Sitting up, the feet down on the seat's back half and the arms reaching down to the chair's back.
+  const a = figure(cls.a_body, "seated", {
+    soloSurface: "chair",
+    override: { ...both("hip", { flexion: 85, abduction: 15, rotation: 0 }), ...both("knee", { flexion: 90 }), ...both("shoulder", { flexion: 40, abduction: 10, rotation: 0 }), ...both("elbow", { flexion: 10 }) },
+  });
+  const back = [0, TABLE_CHAIR.top + 0.47, TABLE_CHAIR.back];
+  return {
+    surface: "table_chair",
+    mode: "fit",
+    roles: { a: 1, b: 0 },
+    actors: [b, a],
+    // B sits a little back from the table's edge, leaning back on the hands.
+    place: [{ index: 0, pitch: -25, seatOn: { top: SEATS.table.top, z: SEATS.table.z - 0.08 } }, { index: 1, pelvisTo: [0, 3, 0] }],
+    fit: [
+      refine(1, "buttocks", 1, "groin", 0, {
+        free: ["x", "y", "z"],
+        keep: false,
+        floor: 0,
+        start: [0, 0.15, 0.05],
+        extra: [
+          ...["l", "r"].map((s) => ({ from: `foot.${s}`, fromActor: 1, point: [0, TABLE_CHAIR.top + 0.04, 0], weight: 0.3, axes: [1] })),
+          ...["l", "r"].map((s) => ({ from: `hand.${s}`, fromActor: 1, point: back, weight: 0.1, axes: [1, 2] })),
+        ],
+      }),
+    ],
+    contacts: [grip("buttocks", "groin", 1, 0, "surface")],
+    checks: ["sameFacing", "aAboveOrLevel", near("a", "buttocks", "b", "groin", 0.25)],
+  };
+}
+
+/**
+ * On a lap in a car's back seat. Sitting up, the partner on top would put the
+ * head through the roof, so B slides down the seat, tipped back against its
+ * rake with the feet forward in the footwell, and A, on B's lap, bows over B -
+ * right down onto B's chest when leaning forward - or, facing away and leaning
+ * back, lies back on it.
+ */
+function carLapPlan(cls, reverse, { legsUp, liesBack, aLegsOut, hands }) {
+  const seat = SEATS.car_seat;
+  const bow = (spine, neck) => ({ spine01: { flexion: spine }, spine02: { flexion: spine }, spine03: { flexion: spine }, neck: { flexion: neck } });
+  const b = figure(cls.b_body, "seated", {
+    soloSurface: "chair",
+    ...(cls.b_hands === "surface" ? { arms: "arms_braced_behind" } : {}),
+    override: { ...both("hip", { flexion: 60, abduction: 20, rotation: 0 }), ...both("knee", { flexion: 70 }) },
+  });
+  const leansBack = cls.lean === "back" || (!reverse && legsUp && cls.lean !== "forward");
+  const a = reverse
+    ? figure(cls.a_body, "seated_straddle", { trunk: leansBack ? "backward_leaning" : "forward_leaning", override: { ...LAP_ASTRIDE, ...aLegsOut, ...(leansBack ? {} : bow(-10, -25)) } })
+    : figure(cls.a_body, "seated_straddle", {
+        ...trunkOf(leansBack ? "back" : null),
+        override: { ...(legsUp ? LAP_LEGS_UP_SEAT : LAP_WRAP), ...(leansBack ? {} : cls.lean === "forward" ? bow(-15, -15) : bow(-10, -25)) },
+      });
+  return {
+    surface: "car_seat",
+    mode: "fit",
+    roles: { a: 1, b: 0 },
+    actors: [b, a],
+    place: [{ index: 0, pitch: -35, seatOn: { top: seat.top, z: seat.z + 0.12 } }, { index: 1, ...(reverse ? {} : { yaw: 180 }), pelvisTo: [0, 3, 0] }],
+    fit: [
+      {
+        moving: 0,
+        free: ["y", "z"],
+        floor: 0,
+        anchors: [
+          { from: "buttocks", fromActor: 0, point: [0, seat.top + 0.02, 0], weight: 1, axes: [1] },
+          { from: "pelvis", fromActor: 0, point: [0, 0, 0.12], weight: 0.2, axes: [2] },
+        ],
+      },
+      refine(1, reverse ? "buttocks" : "groin", 1, "groin", 0, { free: ["x", "y", "z"], keep: false, floor: 0, start: [0, 0.15, 0.05] }),
+    ],
+    limbContacts: [...hands, ...(reverse || liesBack || leansBack ? [] : handsTo(1, 0, "shoulder", true))],
+    contacts: [grip(reverse ? "buttocks" : "groin", "groin", 1, 0, "surface")],
+    checks: [reverse ? "sameFacing" : "faceToFace", "aAboveOrLevel", near("a", reverse ? "buttocks" : "groin", "b", "groin", reverse ? 0.25 : 0.27)],
+  };
+}
+
 function lapPlan(cls, reverse) {
+  if (reverse && cls.surface === "table_chair") return tableChairLapPlan(cls);
   const surface = pickSurface(cls, ["floor", "chair", "sofa", "bed", "bench", "car_seat", "ball", "table"], reverse ? "chair" : "floor");
   const onFloor = surface === "floor";
   // On the floor the lower partner may sit back on the heels, squat or sit cross-legged instead of sitting flat.
@@ -1164,6 +1342,7 @@ function lapPlan(cls, reverse) {
   const aTrunk = reverse ? trunkOf(onFloor && cls.lean !== "forward" ? "back" : null) : trunkOf(cls.lean === "back" || (legsUp && cls.lean !== "forward") ? "back" : null);
   // Facing away on the floor, straight legs lie out along B's, together or wide,
   // or rise up in front; on a seat, straight apart, they open out level in the splits.
+  // On a kneeling partner's lap the knees come up in front, wide apart or drawn together.
   const aLegsOut =
     reverse && onFloor && (cls.a_legs === "straight" || cls.a_legs === "straight_apart") && !low
       ? legPair(60, has(cls, /splits|wide/) || cls.a_legs === "straight_apart" ? 45 : 12, 5)
@@ -1171,8 +1350,12 @@ function lapPlan(cls, reverse) {
         ? legPair(80, 65, 5)
         : reverse && onFloor && cls.a_legs === "raised" && !low
           ? legPair(125, 12, 5)
-          : {};
-  const hands = cls.b_hands === "behind" || cls.b_hands === "surface" ? [] : cls.b_hands === "embrace" ? handsToCentre(0, 1, reverse ? "abdomen" : "upperBack") : handsTo(0, 1, "hip", !reverse);
+          : reverse && low === "kneeling_low" && cls.a_legs === "open_bent"
+            ? legPair(100, 52, 100)
+            : reverse && low === "kneeling_low" && cls.a_legs === "together_bent"
+              ? legPair(85, 6, 115)
+              : {};
+  const hands = bHands(cls, 0, 1, { face: !reverse });
   const target = SEATS[surface];
   if (!reverse && has(cls, /side saddle/)) {
     // Sitting sideways across the seated partner's thighs, the legs together
@@ -1237,21 +1420,40 @@ function lapPlan(cls, reverse) {
       checks: ["aUpright", "bFaceUp", "reversed", near("a", "buttocks", "b", "groin", 0.25)],
     };
   }
+  if (reverse && !onFloor && surface !== "ball" && has(cls, /one knee on seat/)) {
+    // Facing away on the lap of a partner sitting back in the seat, the right
+    // knee folded up over the seat beside B's thigh and the left foot on the
+    // floor. B sits well back, the shins sloping out to the feet, to leave the
+    // seat beside the thighs for A's knee.
+    const b = seatedAt(surface, cls.b_body, { override: { ...LEAN_BACK, ...both("knee", { flexion: 45 }) } });
+    const knee = { hip_r: { flexion: 30, abduction: 60, rotation: 0 }, knee_r: { flexion: 110 }, hip_l: { flexion: 70, abduction: 30, rotation: 0 }, knee_l: { flexion: 60 } };
+    return {
+      surface,
+      mode: "fit",
+      roles: { a: 1, b: 0 },
+      actors: [b.spec, figure(cls.a_body, "seated", { soloSurface: "chair", trunk: "forward_leaning", override: { ...LAP_ASTRIDE, ...knee } })],
+      place: [{ ...b.place, seatOn: { ...b.place.seatOn, z: target.z - 0.35 } }, { index: 1, pelvisTo: [0, 3, 0] }],
+      fit: [refine(1, "buttocks", 1, "groin", 0, { free: ["x", "y", "z"], keep: false, floor: 0, start: [0, 0.15, 0.1] })],
+      limbContacts: hands,
+      contacts: [grip("buttocks", "groin", 1, 0, "surface")],
+      checks: ["sameFacing", "aAboveOrLevel", near("a", "buttocks", "b", "groin", 0.25)],
+    };
+  }
   if (kneelsOnSeat && surface !== "ball") {
-    // Kneeling up on the seat astride B, face to face: the knees either side of
-    // B's thighs and the shins angled in past B's knees to the seat's front edge.
-    // A's thighs rest on B's, which holds the knees a little above the cushion.
-    // B sits back from the edge, the knees just over it and the shins down in
-    // front of it, to leave the seat under A's knees.
-    const b = seatedAt(surface, cls.b_body, { override: { ...LEAN_BACK, ...both("knee", { flexion: 80 }) } });
-    const back = { ...b.place, seatOn: { ...b.place.seatOn, z: target.z - 0.25 } };
+    // Kneeling up on the seat astride B, face to face: the thighs spread wide
+    // over B's so the knees come down on the cushion either side of B's hips,
+    // and the shins lie back along the seat outside B's thighs, the feet just
+    // over its front edge. B sits back with the knees together at the edge,
+    // the shins sloping forward to the feet set flat on the floor.
+    const b = seatedAt(surface, cls.b_body, { override: { ...LEAN_BACK, ...both("hip", { abduction: 0, rotation: 0 }), ...both("knee", { flexion: 45 }), ...both("ankle", { flexion: 30 }) } });
+    const back = { ...b.place, seatOn: { ...b.place.seatOn, z: target.z - 0.35 } };
     return {
       surface,
       mode: "fit",
       roles: { a: 1, b: 0 },
       actors: [
         b.spec,
-        ["kneeling_low", "kneeling"].map((posture, i) => figure(cls.a_body, posture, { soloSurface: "floor", ...aTrunk, override: { ...LAP_KNEEL, ...lieBack }, prefer: i * 0.002 })),
+        ["kneeling_low", "kneeling"].map((posture, i) => figure(cls.a_body, posture, { soloSurface: "floor", ...aTrunk, override: { ...LAP_KNEEL_UP, ...lieBack }, prefer: i * 0.002 })),
       ],
       place: [back, { index: 1, yaw: 180, rest: target.top }],
       fit: [refine(1, "groin", 1, "groin", 0, { free: ["x", "y", "z"], keep: false, floor: target.top, start: [0, 0.1, 0.15] })],
@@ -1260,6 +1462,7 @@ function lapPlan(cls, reverse) {
       checks: ["faceToFace", "aAboveOrLevel", near("a", "groin", "b", "groin", 0.27)],
     };
   }
+  if (surface === "car_seat") return carLapPlan(cls, reverse, { legsUp, liesBack, aLegsOut, hands });
   return {
     surface,
     // Solved on the car seat itself; anything else is solved on a chair and carried to the seat.
@@ -1274,7 +1477,7 @@ function lapPlan(cls, reverse) {
         // Hands on the seat go behind, clear of the partner sitting in front.
         ...(!onFloor && cls.b_hands === "surface" ? { arms: "arms_braced_behind" } : {}),
       }),
-      figure(cls.a_body, "seated_straddle", { ...(reverse && !aTrunk.trunk ? { trunk: "forward_leaning" } : aTrunk), ...(reverse ? { override: onFloor ? { ...foldOver, ...(aTrunk.trunk ? HANDS_ON_THIGHS : {}), ...aLegsOut } : { ...LAP_ASTRIDE, ...foldOver, ...aLegsOut } } : { override: { ...(legsUp ? (onFloor ? LAP_LEGS_UP : LAP_LEGS_UP_SEAT) : low === "kneeling_low" && cls.a_legs !== "straight_apart" ? (cls.a_legs === "wrapped" ? LAP_WRAP_KNEEL : LAP_KNEEL) : onFloor ? LAP_WRAP_FLOOR : LAP_WRAP), ...lieBack } }) }),
+      figure(cls.a_body, "seated_straddle", { ...(reverse && !aTrunk.trunk ? { trunk: "forward_leaning" } : aTrunk), ...(reverse ? { override: onFloor ? { ...foldOver, ...(aTrunk.trunk ? HANDS_ON_THIGHS : {}), ...aLegsOut } : { ...LAP_ASTRIDE, ...foldOver, ...aLegsOut } } : { override: { ...(legsUp ? (onFloor ? LAP_LEGS_UP : LAP_LEGS_UP_SEAT) : low === "kneeling_low" && cls.a_legs !== "straight_apart" ? (cls.a_legs === "wrapped" ? LAP_WRAP_KNEEL : LAP_KNEEL) : onFloor ? LAP_WRAP_FLOOR : cls.a_legs === "open_bent" && surface !== "car_seat" ? LAP_FEET_DOWN : LAP_WRAP), ...lieBack } }) }),
     ],
     relationship: reverse ? { arrangement: "straddle_lap", yaw: 0 } : { arrangement: "straddle_lap" },
     place: onFloor ? [{ index: 0, rest: 0 }] : surface === "car_seat" ? [] : surface === "ball" ? [seatedAt("ball", null).place, { index: 1, seatOn: seatedAt("ball", null).place.seatOn }] : [0, 1].map((index) => ({ index, seatOn: { top: target.top, z: target.z } })),
@@ -1310,6 +1513,8 @@ function rearOralPlan(cls) {
   // Which way "behind" A lies once A is placed.
   let back = [0, 0, -1];
   let bYaw = 0;
+  if (has(cls, /partner inverted/)) return rearOralInvertedPlan(cls);
+  if (cls.surface === "table_chair") return tableChairOralPlan(cls);
   if (has(cls, /kneel on seat/) && cls.surface !== "floor") {
     // A kneels up on the furniture, facing away from its front edge; B is on the floor behind.
     surface = pickSurface(cls, ["chair", "bench", "table", "sofa", "bed"], "chair");
@@ -1381,6 +1586,74 @@ function rearOralPlan(cls) {
   };
 }
 
+/**
+ * On all fours up on a table, the knees at its edge and the rear out over it,
+ * facing away from a partner sitting on the chair drawn up to it, the head
+ * at A's hips. B, seated, is slid in on the chair until the mouth meets them.
+ */
+function tableChairOralPlan(cls) {
+  const a = figure(cls.a_body, "all_fours", { soloSurface: "floor", ...KNEES_APART });
+  const b = ["forward_leaning", "forward_lowered", null].map((trunk, i) => figure(cls.b_body, "seated", { soloSurface: "chair", ...(trunk ? { trunk } : {}), prefer: i * 0.002 }));
+  return {
+    surface: "table_chair",
+    mode: "fit",
+    roles: { a: 0, b: 1 },
+    actors: [a, b],
+    place: [
+      { index: 0, yaw: 180, pelvisTo: [0, null, SEATS.table_chair.z - 0.1], rest: SEATS.table_chair.top },
+      { index: 1, yaw: 180, pelvisTo: [0, null, TABLE_CHAIR.z + 0.25] },
+    ],
+    fit: [refine(1, "mouth", 1, "buttocks", 0, { free: ["z"], start: [0, 0, 0.08] })],
+    limbContacts: cls.b_hands === "hips" ? handsTo(1, 0, "hip") : [],
+    contacts: [grip("mouth", "buttocks", 1, 0, "surface")],
+    checks: ["sameFacing", "bBehind", near("b", "mouth", "a", "buttocks", 0.2)],
+  };
+}
+
+/**
+ * B upside down over A's raised rear: A on the forearms and knees, B's chest
+ * draped over A's buttocks with the head hanging down behind them to A's groin,
+ * the hands on the floor and the legs up in the air over A's back.
+ */
+function rearOralInvertedPlan(cls) {
+  const a = figure(cls.a_body, "forearms_and_knees", { soloSurface: "floor", ...KNEES_APART });
+  const curl = { flexion: -25 };
+  const b = figure(cls.b_body, "standing", {
+    soloSurface: "floor",
+    jointMode: "fixed",
+    joints: {
+      // The arms reach down past the head to the floor, the head raised to A.
+      ...both("shoulder", { flexion: 150, abduction: 25, rotation: 0 }),
+      ...both("elbow", { flexion: 10 }),
+      spine01: curl,
+      spine02: curl,
+      spine03: curl,
+      neck: { flexion: 40 },
+      ...legPair(30, 15, 90),
+    },
+  });
+  return {
+    surface: "floor",
+    mode: "fit",
+    roles: { a: 0, b: 1 },
+    actors: [a, b],
+    // Tipped forward past level while facing away from A, B ends chest down towards A's rear.
+    place: [{ index: 1, yaw: 180, pitch: 115, pelvisTo: [0, 0.85, -0.1] }],
+    fit: [
+      {
+        moving: 1,
+        free: ["x", "y", "z"],
+        pitchRange: 25,
+        pivot: "pelvis",
+        floor: 0,
+        anchors: [{ from: "mouth", fromActor: 1, to: "groin", toActor: 0, weight: 2 }, ...floorAnchors(1, "hand", 0.6)],
+      },
+    ],
+    contacts: [grip("mouth", "groin", 1, 0, "surface")],
+    checks: ["bInverted", near("b", "mouth", "a", "groin", 0.22)],
+  };
+}
+
 /** Lying face up with the head over an edge, the partner standing at the head. */
 /**
  * Arched back over an exercise ball, the back across its crest and the head
@@ -1422,6 +1695,8 @@ function edgeHeadOralPlan(cls) {
   const b = [
     figure(cls.b_body, "standing", { soloSurface: "floor" }),
     figure(cls.b_body, "standing", { soloSurface: "floor", ...stance(45, 30, 70), prefer: 0.002 }),
+    // Astride the head in a wide split, one knee bent forward and the other leg back.
+    figure(cls.b_body, "standing", { soloSurface: "floor", joints: { hip_l: { flexion: 55, abduction: 35, rotation: 0 }, knee_l: { flexion: 70 }, hip_r: { flexion: -20, abduction: 40, rotation: 0 }, knee_r: { flexion: 25 } }, prefer: 0.003 }),
     figure(cls.b_body, "standing", { soloSurface: "floor", ...stance(65, 35, 100), prefer: 0.004 }),
     figure(cls.b_body, "kneeling", { soloSurface: "floor", prefer: 0.006 }),
   ];
@@ -1447,7 +1722,7 @@ function edgeHeadOralPlan(cls) {
  * A sits and B stands over.
  */
 function oralOnBPlan(cls) {
-  const seatName = ["chair", "sofa", "bench", "bed"].includes(cls.surface) ? cls.surface : null;
+  const seatName = ["chair", "sofa", "bench", "bed", "car_seat"].includes(cls.surface) ? cls.surface : null;
   const seat = SEATS[seatName];
   // With a toy A's hand is at B's hips, the head kept a forearm's length back.
   const toy = has(cls, /toy/);
@@ -1498,27 +1773,59 @@ function oralOnBPlan(cls) {
       checks: ["aInverted", near("a", "mouth", "b", "groin", 0.22)],
     };
   }
-  if (seat && seatName !== "chair" && has(cls, /lying on seat|kneel on seat/)) {
-    // B sits back at one end of the seat; A lies or kneels along it, the head
-    // resting on B's thigh by the hips, from the side.
-    const onSeat = (posture, extra = {}) => figure(cls.a_body, posture, { soloSurface: "floor", ...extra });
+  if (seat && seatName !== "chair" && seatName !== "bed" && has(cls, /seated beside/)) {
+    // B sits back with the knees together; A sits beside with the legs
+    // alongside B's, twisted towards B and folded down over B's lap.
+    const b = seatedAt(seatName, cls.b_body, { override: { ...LEAN_BACK, ...both("hip", { abduction: 0 }) } });
+    const bend = { flexion: -30, abduction: 15, rotation: -20 };
     return {
       ...common,
       surface: seatName,
       actors: [
-        figure(cls.b_body, "seated", { soloSurface: "chair", override: { ...LEAN_BACK, ...both("hip", { abduction: 22 }) } }),
+        b.spec,
+        figure(cls.a_body, "seated", {
+          soloSurface: "chair",
+          jointMode: "fixed",
+          joints: { spine01: bend, spine02: bend, spine03: bend, neck: { flexion: -10, abduction: 0, rotation: 0 }, ...both("hip", { flexion: 90, abduction: 8, rotation: 0 }), ...both("knee", { flexion: 85 }) },
+        }),
+      ],
+      place: [{ ...b.place, seatOn: { ...b.place.seatOn, x: -0.2 } }, { index: 1, seatOn: { top: seat.top, z: seat.z, x: 0.2 } }],
+      fit: [{ ...refine(1, "mouth", 1, "groin", 0, { free: ["x"], offset: [0, 0.1, 0.08] }), yawRange: 25 }],
+      limbContacts: [grip("hand.r", "thigh.l", 1, 0, "rest")],
+      // The head lies on B's near thigh, the mouth by the groin.
+      checks: ["facingInward", near("a", "mouth", "b", "groin", 0.28)],
+    };
+  }
+  if (seat && seatName !== "chair" && has(cls, /lying on seat|kneel on seat/)) {
+    // B sits back at one end of the seat; A lies or kneels along it, the head
+    // resting on B's thigh by the hips, from the side.
+    const onSeat = (posture, extra = {}) => figure(cls.a_body, posture, { soloSurface: "floor", ...extra });
+    const car = seatName === "car_seat";
+    return {
+      ...common,
+      surface: seatName,
+      actors: [
+        // On a car's low seat the legs stretch out into the footwell, close
+        // enough together to clear the door, and A kneels folded up, the hips
+        // back over the heels, to keep the feet off the other one.
+        figure(cls.b_body, "seated", { soloSurface: "chair", override: { ...LEAN_BACK, ...both("hip", { abduction: car ? 10 : 22 }), ...(car ? both("knee", { flexion: 28 }) : {}) } }),
         has(cls, /kneel on seat/)
-          ? [onSeat("all_fours", { joints: both("elbow", { flexion: 120 }) })]
+          ? [onSeat("all_fours", { joints: { ...both("elbow", { flexion: 120 }), ...(car ? { ...both("hip", { flexion: 120 }), ...both("knee", { flexion: 130 }) } : {}) } })]
           : [
               // The head raised, the lower legs up.
               onSeat("prone", { arms: "arms_sides", joints: { ...both("knee", { flexion: 70 }), spine01: { flexion: 8 }, spine02: { flexion: 8 }, spine03: { flexion: 8 }, neck: { flexion: 30 } } }),
             ],
       ],
       // A comes in at an angle from the back of the seat, the body clear of B's thigh.
-      place: [{ index: 0, seatOn: { top: seat.top, z: seat.z, x: -0.7 } }, { index: 1, yaw: -70, rest: seat.top }],
+      // A car's back seat is shorter, B sits nearer its middle.
+      place: [{ index: 0, seatOn: { top: seat.top, z: seat.z, x: car ? -0.45 : -0.7 } }, { index: 1, yaw: -70, rest: seat.top }],
       fit: [{ ...refine(1, "mouth", 1, "groin", 0, { offset: [0.08, 0.14, 0.12], start: [0.25, 0, 0.1] }), yawRange: 20 }],
-      // B's near hand rests on A's back; A's hands on B's thighs.
-      limbContacts: [grip("hand.l", "upperBack", 0, 1, "rest"), ...(has(cls, /kneel on seat/) ? [grip("hand.l", "thigh.l", 1, 0, "rest"), grip("hand.r", "thigh.r", 1, 0, "rest")] : [])],
+      // B's near hand rests on A's back; A's hands on B's thighs (in a car's
+      // narrow space, on the near thigh and hip).
+      limbContacts: [
+        grip("hand.l", "upperBack", 0, 1, "rest"),
+        ...(has(cls, /kneel on seat/) ? [grip("hand.l", "thigh.l", 1, 0, "rest"), grip("hand.r", car ? "hip.l" : "thigh.r", 1, 0, "rest")] : []),
+      ],
       // Lying at seat height the head meets B's hip and thigh, just off the groin.
       checks: ["facingInward", near("a", "mouth", "b", "groin", 0.3)],
     };
@@ -1531,6 +1838,55 @@ function oralOnBPlan(cls) {
       actors: [figure(cls.b_body, "standing", { soloSurface: "floor", ...stance(45, 45, 70) }), [...kneelHeadCandidates(cls.a_body), ...stanceCandidates(cls.a_body)]],
       place: [{ index: 0, rest: seat.top, pelvisTo: [0, null, seat.z - 0.06] }, { index: 1, yaw: 180 }],
       fit: fitA([0, 0, 1]),
+    };
+  }
+  if (has(cls, /seated giver/) && has(cls, /foot on chair/)) {
+    // B stands facing a chair, one foot up on its seat and bowed over it, the
+    // hands hooked over the top of its back; A sits on the floor between B and
+    // the chair, the back to its seat and the knees drawn up, the head tipped
+    // back up under B's raised thigh.
+    const bow = { flexion: -15 };
+    // Tipped 30 degrees toward the chair, the hips flex as much again to keep
+    // the standing leg upright and the raised thigh level.
+    const b = figure(cls.b_body, "standing", {
+      soloSurface: "floor",
+      override: {
+        hip_l: { flexion: 125, abduction: 20, rotation: 0 },
+        knee_l: { flexion: 95 },
+        hip_r: { flexion: 45, abduction: 8, rotation: 0 },
+        knee_r: { flexion: 5 },
+        spine01: bow,
+        spine02: bow,
+        spine03: bow,
+        neck: { flexion: -35 },
+        ...both("shoulder", { flexion: 100, abduction: 15, rotation: 0 }),
+        ...both("elbow", { flexion: 70 }),
+        ...both("wrist", { flexion: -50 }),
+      },
+    });
+    const a = figure(cls.a_body, "seated_floor", { soloSurface: "floor", joints: { ...KNEES_UP(38), neck: { flexion: 45 }, head: { flexion: 30 } } });
+    // Just in front of the top of the chair's back, the hands draped over it.
+    const top = [0, 0.97, -0.2];
+    return {
+      ...common,
+      surface: "chair",
+      actors: [b, a],
+      place: [{ index: 0, yaw: 180, pitch: 30, rest: 0, pelvisTo: [0, null, 0.45] }, { index: 1, pelvisTo: [0, null, 1.5] }],
+      fit: [
+        {
+          moving: 0,
+          free: ["x", "y", "z"],
+          floor: 0,
+          anchors: [
+            { from: "foot.l", fromActor: 0, point: [0, SEATS.chair.top + 0.05, 0], weight: 1, axes: [1, 2] },
+            { from: "foot.r", fromActor: 0, point: [0, 0.05, 0], weight: 1, axes: [1] },
+            ...["l", "r"].map((s) => ({ from: `hand.${s}`, fromActor: 0, point: top, weight: 0.3, axes: [1, 2] })),
+          ],
+        },
+        refine(1, "mouth", 1, "groin", 0, { offset: [0, -0.05, 0], start: [0, 0, -0.1] }),
+      ],
+      // A faces away from B, the head tipped back under B's hips.
+      checks: [near("a", reach, "b", "groin", 0.18)],
     };
   }
   if (has(cls, /seated giver/)) {
@@ -1794,6 +2150,7 @@ function headstandPlan(cls) {
  * pelvis tips up towards them; a full bridge or bent knees plant the feet too.
  */
 function backbendPlan(cls) {
+  if (has(cls, /face at/)) return backbendOralPlan(cls);
   const standing = has(cls, /partner standing/);
   const shape = standing ? "arch" : "archLow";
   const legs = has(cls, /bridge/) ? "wrapped" : cls.a_legs;
@@ -1822,6 +2179,66 @@ function backbendPlan(cls) {
     limbContacts: bHands(cls, 1, 0),
     contacts: [grip("groin", "groin", 1, 0, "surface")],
     checks: ["aInverted", near("b", "groin", "a", "groin", 0.22)],
+  };
+}
+
+/**
+ * The backbend lifted to B's mouth: A upside down on the hands with the hips
+ * at the face of a partner kneeling back on the heels, or sitting on the
+ * sofa's edge. B's hands hold A's thighs, or where the record puts them.
+ */
+function backbendOralPlan(cls) {
+  const seated = has(cls, /partner seated/);
+  const legs = cls.a_legs === "on_shoulders" ? "hooked" : cls.a_legs === "one_raised" ? "one" : "up";
+  // Tipped over, a thigh straight at the hip points at B: the knees bend
+  // down behind B's shoulders, or the legs kick up past B's head, or one
+  // leg goes over a shoulder with A standing on the other.
+  const LEGS = {
+    hooked: legPair(20, 30, 90),
+    up: legPair(60, 20, 70),
+    one: { hip_l: { flexion: 100, abduction: 15, rotation: 0 }, knee_l: { flexion: 60 }, hip_r: { flexion: -20, abduction: 10, rotation: 0 }, knee_r: { flexion: 10 } },
+  };
+  const a = figure(cls.a_body, "standing", {
+    soloSurface: "floor",
+    jointMode: "fixed",
+    joints: { ...structuredClone(ARCH), ...LEGS[legs] },
+  });
+  const b = seated
+    ? seatedAt("sofa", cls.b_body, { override: { ...both("hip", { abduction: 30 }), ...both("knee", { flexion: 80 }) } }, 1)
+    : {
+        spec: [
+          // Leaning in over the knees spread wider, lower to meet a partner on the feet.
+          figure(cls.b_body, "kneeling_low", { soloSurface: "floor", ...(legs === "one" ? { trunk: "forward_leaning" } : {}), override: both("hip", { abduction: legs === "one" ? 40 : 30 }) }),
+          figure(cls.b_body, "kneeling", { soloSurface: "floor", trunk: "forward_leaning", prefer: 0.002 }),
+        ],
+        place: { index: 1, yaw: 180, pelvisTo: [0, null, 0.6] },
+      };
+  return {
+    surface: seated ? "sofa" : "floor",
+    mode: "fit",
+    roles: { a: 0, b: 1 },
+    actors: [a, b.spec],
+    // Kneeling, B faces -z with A's head beyond; seated, B faces +z off the seat's front.
+    place: [{ index: 0, ...(seated ? { yaw: 180 } : {}), pitch: legs === "one" ? -70 : -100, rest: 0, pelvisTo: [0, null, seated ? 0.9 : 0] }, b.place],
+    fit: [
+      {
+        moving: 0,
+        free: ["y", "z"],
+        pitchRange: 40,
+        pivot: "pelvis",
+        floor: 0,
+        start: [0, 0, seated ? 0.1 : -0.1],
+        anchors: [
+          { from: "groin", fromActor: 0, to: "mouth", toActor: 1, weight: 2 },
+          ...["l", "r"].map((s) => ({ from: `hand.${s}`, fromActor: 0, point: [0, 0.03, 0], weight: legs === "one" ? 0.3 : 0.6, axes: [1] })),
+          ...(legs === "one" ? [{ from: "foot.r", fromActor: 0, point: [0, 0.03, 0], weight: 0.6, axes: [1] }] : []),
+        ],
+      },
+    ],
+    // Legs kicked up put the thighs over B's head: the hands hold the waist.
+    limbContacts: (legs === "up" ? handsToCentre(1, 0, "abdomen") : bHands(cls, 1, 0, { fallback: "legs" })).map((c) => ({ ...c, optional: true })),
+    contacts: [grip("mouth", "groin", 1, 0, "surface")],
+    checks: ["aInverted", near("b", "mouth", "a", "groin", 0.22)],
   };
 }
 
@@ -1868,14 +2285,18 @@ export const TEMPLATES = {
         const kneel = (lean, abduction) =>
           ["kneeling", "kneeling_low"].map((posture, i) =>
             figure(cls.b_body, posture, { ...trunkOf(lean), soloSurface: surface, override: both("hip", { abduction }), prefer: i * 0.004 }));
-        // Knees drawn up together to the front: B kneels behind the thighs, facing them.
-        if (cls.a_legs === "together_bent")
+        // Knees drawn up together to the front: B kneels behind the thighs,
+        // facing them. Legs out straight, B kneels behind the buttocks the same way.
+        if (cls.a_legs === "together_bent" || cls.a_legs === "straight")
           return {
             surface,
             mode: "fit",
             roles: { a: 0, b: 1 },
             actors: [
-              figure(cls.a_body, "side_lying", { soloSurface: surface, joints: { ...both("hip", { flexion: 88, abduction: 0, rotation: 0 }), ...both("knee", { flexion: 95 }) } }),
+              figure(cls.a_body, "side_lying", {
+                soloSurface: surface,
+                joints: cls.a_legs === "straight" ? { ...both("hip", { flexion: 15, abduction: 0, rotation: 0 }), ...both("knee", { flexion: 8 }) } : { ...both("hip", { flexion: 88, abduction: 0, rotation: 0 }), ...both("knee", { flexion: 95 }) },
+              }),
               kneel(cls.lean === "forward" ? "forward" : null, 30),
             ],
             place: [{ index: 1, yaw: 90 }],
@@ -1885,20 +2306,21 @@ export const TEMPLATES = {
             checks: ["bUpright", near("b", "groin", "a", "buttocks", 0.25)],
           };
         // On one side, the lower leg straight and the upper one raised against
-        // B's chest; B kneels astride the lower leg, facing A's head.
+        // B's chest; B kneels astride the lower leg, facing A's head. With both
+        // legs raised the lower one lifts too. B's hands go to the raised thigh
+        // and the hip, or both to the hips.
+        const upper = { hip_l: { flexion: 115, abduction: 45, rotation: 0 }, knee_l: { flexion: 12 } };
+        const lower = cls.a_legs === "raised" ? { hip_r: { flexion: 90, abduction: 0, rotation: 0 }, knee_r: { flexion: 10 } } : { hip_r: { flexion: 8, abduction: 0, rotation: 0 }, knee_r: { flexion: 8 } };
         return {
           surface,
           mode: "fit",
           roles: { a: 0, b: 1 },
           actors: [
-            figure(cls.a_body, "side_lying", {
-              soloSurface: surface,
-              joints: { hip_l: { flexion: 115, abduction: 45, rotation: 0 }, knee_l: { flexion: 12 }, hip_r: { flexion: 8, abduction: 0, rotation: 0 }, knee_r: { flexion: 8 } },
-            }),
+            figure(cls.a_body, "side_lying", { soloSurface: surface, joints: { ...upper, ...lower } }),
             kneel(null, 18),
           ],
           fit: [refine(1, "groin", 1, "groin", 0, { start: [0, 0, -0.35] })],
-          limbContacts: [grip("hand.l", "thigh.l", 1, 0), grip("hand.r", "hip.l", 1, 0)].map((c) => ({ ...c, optional: true })),
+          limbContacts: (cls.b_hands === "hips" ? [grip("hand.l", "hip.l", 1, 0), grip("hand.r", "waist", 1, 0)] : [grip("hand.l", "thigh.l", 1, 0), grip("hand.r", "hip.l", 1, 0)]).map((c) => ({ ...c, optional: true })),
           contacts: [grip("groin", "groin", 1, 0, "surface")],
           checks: ["bUpright", near("b", "groin", "a", "groin", 0.25)],
         };
@@ -2104,10 +2526,18 @@ export const TEMPLATES = {
         surface: lying(cls),
         mode: "fit",
         roles: { a: 0, b: 1 },
-        // A's upper leg drapes over B's hip; B's legs slide between A's.
+        // A's upper leg drapes over B's hip, or with no leg shape given both
+        // lie straight along B's; B's legs slide between A's.
         // B is the mirror image, lying on the other side facing A.
         actors: [
-          figure(cls.a_body, "side_lying", { soloSurface: lying(cls), override: { hip_top: { flexion: 80, abduction: 42, rotation: 0 }, knee_top: { flexion: 70 }, hip_bottom: { flexion: 0, abduction: 0 }, knee_bottom: { flexion: 5 } } }),
+          figure(cls.a_body, "side_lying", {
+            soloSurface: lying(cls),
+            override: {
+              ...(cls.a_legs == null || cls.a_legs === "straight" ? { hip_top: { flexion: 20, abduction: 12, rotation: 0 }, knee_top: { flexion: 10 } } : { hip_top: { flexion: 80, abduction: 42, rotation: 0 }, knee_top: { flexion: 70 } }),
+              hip_bottom: { flexion: 0, abduction: 0 },
+              knee_bottom: { flexion: 5 },
+            },
+          }),
           figure(cls.b_body, "side_lying", { soloSurface: lying(cls), override: { hip_top: { flexion: 20, abduction: 0 }, knee_top: { flexion: 20 }, hip_bottom: { flexion: 0, abduction: 0 }, knee_bottom: { flexion: 5 } } }),
         ],
         place: [{ index: 0, rest: surfaceTop(lying(cls)) }, { index: 1, mirror: true, rest: surfaceTop(lying(cls)), alignTo: { from: "groin", to: "groin", actor: 0, axes: [0, 2], offset: [0.3, 0, 0] } }],
@@ -2125,8 +2555,17 @@ export const TEMPLATES = {
   spooning: {
     label: "Side by side, one behind the other",
     plan(cls) {
-      // The top leg lifted high and forward, near straight, clear of B's.
-      const a = figure(cls.a_body, "side_lying", cls.a_legs === "one_raised" || cls.a_legs === "raised" ? { joints: { hip_l: { flexion: 60, abduction: 50, rotation: 0 }, knee_l: { flexion: 15 } } } : {});
+      // The top leg lifted high and forward, near straight, clear of B's. Or
+      // both knees drawn up together in front.
+      const a = figure(
+        cls.a_body,
+        "side_lying",
+        cls.a_legs === "one_raised" || cls.a_legs === "raised"
+          ? { joints: { hip_l: { flexion: 60, abduction: 50, rotation: 0 }, knee_l: { flexion: 15 } } }
+          : cls.a_legs === "together_bent" && !legPosed(cls.a_pose)
+            ? { joints: { ...both("hip", { flexion: 65, abduction: 0, rotation: 0 }), ...both("knee", { flexion: 90 }) } }
+            : {}
+      );
       // Head to foot: B is the mirror image turned round, on the other side and
       // still facing A's back, free to lie at an angle across A. The thighs
       // come down in line with the body instead of forward into A, and the arm
@@ -2150,6 +2589,7 @@ export const TEMPLATES = {
         actors: [a, figure(cls.b_body, "side_lying")],
         relationship: { arrangement: "spooning" },
         fit: [refine(1, "groin", 1, "buttocks", 0)],
+        // The arrangement already rests B's top hand on A's waist, by the hip.
         limbContacts: cls.b_hands === "embrace" ? [grip("hand.l", "abdomen", 1, 0, "rest")] : [],
         contacts: [grip("groin", "buttocks", 1, 0, "surface")],
         checks: ["sameHeading", "bAtBack", near("b", "groin", "a", "buttocks", 0.18)],
@@ -2196,7 +2636,9 @@ export const TEMPLATES = {
       const surface = lying(cls, "floor");
       // One leg lifted out behind and to the side, past the partner's hip.
       const raised = cls.a_legs === "one_raised" ? { hip_l: { flexion: -25, abduction: 50, rotation: 0 }, knee_l: { flexion: 5 } } : {};
-      return rearPlan(cls, surface, figure(cls.a_body, "all_fours", { override: { ...KNEES_APART.override, ...raised } }), standingOver(cls, surface) ?? kneelingBehind(cls, cls.lean), "rear_alignment", { drape: draped(cls) });
+      // Knees together, the partner kneels astride A's shins.
+      const together = cls.a_legs === "together_bent";
+      return rearPlan(cls, surface, figure(cls.a_body, "all_fours", { override: { ...(together ? both("hip", { abduction: 6 }) : KNEES_APART.override), ...raised } }), standingOver(cls, surface) ?? kneelingBehind(cls, cls.lean, together ? KNEES_ASTRIDE : null), "rear_alignment", { drape: draped(cls) });
     },
   },
   doggy_low: {
@@ -2219,16 +2661,23 @@ export const TEMPLATES = {
           // Back to back, B's groin sits under the far side of B's own pelvis from A.
           checks: ["aFaceDown", "bFaceDown", "reversed", near("b", "groin", "a", "buttocks", 0.3)],
         };
-      return rearPlan(cls, surface, figure(cls.a_body, "forearms_and_knees", { joints: both("hip", { abduction: 42 }) }), standingOver(cls, surface) ?? kneelingBehind(cls, cls.lean === "upright" ? null : cls.lean === "back" ? "back" : "forward"), "rear_alignment", { drape: draped(cls) });
+      // Unless the knees are together, and the partner kneels astride the shins.
+      const together = cls.a_legs === "together_bent";
+      return rearPlan(cls, surface, figure(cls.a_body, "forearms_and_knees", { joints: both("hip", { abduction: together ? 8 : 42 }) }), standingOver(cls, surface) ?? kneelingBehind(cls, cls.lean === "upright" ? null : cls.lean === "back" ? "back" : "forward", together ? KNEES_ASTRIDE : null), "rear_alignment", { drape: draped(cls) });
     },
   },
   kneeling_rear_upright: {
     label: "Both kneeling upright, chest to back",
-    // Leaning forward, the chest comes down partway with B bent over it.
-    plan: (cls) =>
-      cls.lean === "forward"
-        ? rearPlan(cls, lying(cls, "floor"), figure(cls.a_body, "kneeling", { ...KNEES_APART, trunk: "forward_fold" }), figure(cls.b_body, "kneeling", { trunk: "forward_leaning" }), "rear_alignment")
-        : rearPlan(cls, lying(cls, "floor"), figure(cls.a_body, "kneeling", KNEES_APART), figure(cls.b_body, "kneeling"), "rear_alignment", { upright: true }),
+    // Leaning forward, the chest comes down partway with B bent over it. Knees
+    // together, B kneels astride A's shins.
+    plan(cls) {
+      const together = cls.a_legs === "together_bent";
+      const knees = together ? { override: both("hip", { abduction: 4 }) } : KNEES_APART;
+      const b = (extra) => figure(cls.b_body, "kneeling", { ...extra, ...(together ? { override: KNEES_ASTRIDE } : {}) });
+      return cls.lean === "forward"
+        ? rearPlan(cls, lying(cls, "floor"), figure(cls.a_body, "kneeling", { ...knees, trunk: "forward_fold" }), b({ trunk: "forward_leaning" }), "rear_alignment")
+        : rearPlan(cls, lying(cls, "floor"), figure(cls.a_body, "kneeling", knees), b({}), "rear_alignment", { upright: true });
+    },
   },
   standing_rear: {
     label: "Both standing, one behind",
@@ -2268,6 +2717,7 @@ export const TEMPLATES = {
       // One leg lifted out behind and to the side, up past the partner's hip.
       // Or the feet planted wide apart, the partner between them.
       const raised = cls.a_legs === "one_raised" ? { override: { hip_l: { flexion: -25, abduction: 45, rotation: 0 }, knee_l: { flexion: 0 } } } : cls.a_legs === "straight_apart" ? { override: both("hip", { abduction: 26 }) } : {};
+      if (has(cls, /hands on wall/)) return wallBentPlan(cls, raised.override);
       const plan = rearPlan(cls, "floor", figure(cls.a_body, "standing_bent_forward", raised), figure(cls.b_body, "standing"), "behind_bent_over");
       return { ...plan, checks: ["bBehind", "bUpright", near("b", "groin", "a", "pelvis", 0.24)] };
     },
@@ -2355,18 +2805,27 @@ export const TEMPLATES = {
       // Or B sits on a bench or chair edge, or an exercise ball, A's hips held at the lap.
       const seatName = has(cls, /partner seated/) ? pickSurface(cls, ["bench", "chair", "sofa", "bed", "ball"], "bench") : null;
       const seat = seatName ? seatedAt(seatName, cls.b_body, { override: both("hip", { abduction: 30 }) }) : null;
-      // Or A's hands are up on the edge of a bed, sofa or bench in front, both facing it,
+      // Or A's hands are up on the edge of a bed, sofa, bench or ottoman in front, both facing it,
       // or A is held off the ground altogether, level, the hands on nothing. The
       // note names the ledge, whatever B stands or kneels on.
-      const ledge = seat ? null : ((cls.notes ?? "").match(/hands on (bed|sofa|bench)/)?.[1] ?? null);
-      // Or A's shins rest on a chair seat behind B instead of in B's hands.
+      const ledge = seat ? null : ((cls.notes ?? "").match(/hands on (bed|sofa|bench|ottoman)/)?.[1] ?? null);
+      // Over a footstool, too low to reach down to straight-armed, A props up on
+      // the forearms, the back arched and the legs up behind B, the knees bent.
+      const forearms = ledge === "ottoman";
+      // Or A's shins rest on a chair seat behind B instead of in B's hands: the
+      // legs out straight to the ankles on the seat, or raised, bent at the
+      // knees over its front edge with the feet up behind.
       const footrest = !seat && !ledge && has(cls, /legs on chair/);
+      const kneesOver = footrest && cls.a_legs !== "straight";
       const flying = has(cls, /in the air/);
       const hand = (side) =>
         ledge
           ? { from: `hand.${side}`, fromActor: 1, point: [0, SEATS[ledge].top + 0.03, SEATS[ledge].z - 0.12], weight: 0.6, axes: [1, 2] }
           : { from: `hand.${side}`, fromActor: 1, point: [0, 0.03, 0], weight: 0.6, axes: [1] };
-      const shin = (side) => ({ from: `ankle.${side}`, fromActor: 1, point: [0, SEATS.chair.top + 0.07, SEATS.chair.z - 0.1], weight: 0.6, axes: [1, 2] });
+      const shin = (side) =>
+        kneesOver
+          ? { from: `knee.${side}`, fromActor: 1, point: [0, SEATS.chair.top + 0.06, SEATS.chair.z + 0.12], weight: 0.6, axes: [1, 2] }
+          : { from: `ankle.${side}`, fromActor: 1, point: [0, SEATS.chair.top + 0.07, SEATS.chair.z - 0.1], weight: 0.6, axes: [1, 2] };
       return {
         surface: seatName ?? ledge ?? (footrest ? "chair" : "floor"),
         mode: "fit",
@@ -2378,17 +2837,18 @@ export const TEMPLATES = {
             // Straight arms reach down and forward to the floor from the tipped trunk;
             // on the chair the legs slope down to it, bent at the hips.
             override: {
-              ...both("hip", { flexion: footrest ? 45 : -8, abduction: 28, rotation: 0 }),
-              ...both("knee", { flexion: 10 }),
+              ...both("hip", { flexion: footrest ? (kneesOver ? 45 : 30) : -8, abduction: 28, rotation: 0 }),
+              ...both("knee", { flexion: kneesOver ? 95 : footrest ? 0 : 10 }),
               ...both("shoulder", { flexion: 115, abduction: 12, rotation: 0 }),
               ...both("elbow", { flexion: 5 }),
+              ...(forearms ? OTTOMAN_FOREARMS : {}),
             },
           }),
         ],
         ...(seat ? { place: [seat.place] } : {}),
         // B stands back from the edge by A's reach from the hands to the hips,
         // or kneels closer, A's hips lower and the body sloping up to the edge.
-        ...(ledge ? { place: [{ index: 0, yaw: 180, pelvisTo: [0, null, SEATS[ledge].z + (/kneel/.test(cls.notes ?? "") ? 0.7 : 1.05)] }, { index: 1, yaw: 180 }] } : {}),
+        ...(ledge ? { place: [{ index: 0, yaw: 180, pelvisTo: [0, null, SEATS[ledge].z + (/kneel/.test(cls.notes ?? "") ? 0.7 : 1.05)] }, { index: 1, yaw: 180, ...(forearms ? { pitch: -20 } : {}) }] } : {}),
         ...(footrest ? { place: [{ index: 0, pelvisTo: [0, null, SEATS.chair.z + 0.32] }] } : {}),
         fit: [
           {
@@ -2462,14 +2922,19 @@ export const TEMPLATES = {
       // Leaning back, A arches in B's arms with the head let go.
       const DIP = { spine01: { flexion: 12 }, spine02: { flexion: 12 }, spine03: { flexion: 12 }, neck: { flexion: 30 } };
       const hands = cls.b_hands === "embrace" || !cls.b_hands ? handsToCentre(1, 0, "back") : cls.b_hands === "surface" ? [] : handsTo(1, 0, cls.b_hands === "legs" ? "thigh" : cls.b_hands === "shoulders" ? "shoulder" : "hip", true);
-      // The raised foot rests up on a bench or chair beside them, A side-on to it.
+      // The raised foot rests up on a bench or chair beside them, A side-on to
+      // it: the knee bent up onto a step, or the leg out almost straight along
+      // a bench to the foot.
       if (cls.a_legs === "one_raised" && posture === "standing" && (cls.surface === "bench" || cls.surface === "chair"))
         return {
           surface: cls.surface,
           mode: "fit",
           roles: { a: 0, b: 1 },
           actors: [
-            figure(cls.a_body, "standing", { soloSurface: "floor", override: { hip_l: { flexion: 95, abduction: 60, rotation: 0 }, knee_l: { flexion: 95 } } }),
+            figure(cls.a_body, "standing", {
+              soloSurface: "floor",
+              override: has(cls, /leg along/) ? { hip_l: { flexion: 35, abduction: 55, rotation: 0 }, knee_l: { flexion: 10 } } : { hip_l: { flexion: 95, abduction: 60, rotation: 0 }, knee_l: { flexion: 95 } },
+            }),
             figure(cls.b_body, "standing", { soloSurface: "floor" }),
           ],
           place: [{ index: 0, yaw: -90, pelvisTo: [0.3, null, SEATS[cls.surface].z - 0.72] }, { index: 1, yaw: 90, pelvisTo: [0, null, SEATS[cls.surface].z - 0.72] }],
@@ -2478,11 +2943,22 @@ export const TEMPLATES = {
           contacts: [grip("groin", "groin", 1, 0, "surface")],
           checks: ["faceToFace", "aUpright", "bUpright", near("b", "groin", "a", "groin", 0.18)],
         };
+      // Kneeling up, one knee raised sets that foot flat on the floor beside the
+      // partner (on the other side from a knee the partner raises), or the knees
+      // open either side of the partner's thigh.
+      const kneel =
+        posture !== "kneeling" || legPosed(cls.a_pose)
+          ? {}
+          : cls.a_legs === "one_raised"
+            ? detailFor((cls.b_pose ?? []).includes("knee_up_l") ? "knee_up_l" : "knee_up_r", "kneeling_straddle")
+            : cls.a_legs === "open_bent"
+              ? both("hip", { abduction: 28 })
+              : {};
       return {
         surface: "floor",
         mode: "solver",
         roles: { a: 0, b: 1 },
-        actors: [figure(cls.a_body, posture, { override: { ...(lifted && posture === "standing" ? raised : {}), ...(cls.lean === "back" ? DIP : {}) } }), figure(cls.b_body, posture)],
+        actors: [figure(cls.a_body, posture, { override: { ...(lifted && posture === "standing" ? raised : {}), ...kneel, ...(cls.lean === "back" ? DIP : {}) } }), figure(cls.b_body, posture)],
         relationship: { arrangement: "face_to_face" },
         fit: [refine(1, "groin", 1, "groin", 0)],
         limbContacts: hands,
@@ -2494,28 +2970,37 @@ export const TEMPLATES = {
   standing_carry: {
     label: "Lifted and carried, face to face",
     plan(cls) {
-      // Or held up facing away, the back to B's chest and the thighs cradled from beneath.
-      if (has(cls, /facing away/))
+      // Carried by a partner leaning forward over them, A lies back in B's arms.
+      const CARRIED_BACK = { spine01: { flexion: 12 }, spine02: { flexion: 12 }, spine03: { flexion: 12 } };
+      // Or held up facing away, the back to B's chest and the thighs cradled from
+      // beneath; or the knees drawn up together in front, held at the hips.
+      if (has(cls, /facing away/)) {
+        const together = cls.a_legs === "together_bent";
         return {
           surface: "floor",
           mode: "fit",
           roles: { a: 1, b: 0 },
           actors: [
             figure(cls.b_body, "standing"),
-            figure(cls.a_body, "lifted", { override: { ...both("hip", { flexion: 80, abduction: 45, rotation: 0 }), ...both("shoulder", { flexion: 150, abduction: 30, rotation: 0 }), ...both("elbow", { flexion: 110 }) } }),
+            figure(cls.a_body, "lifted", { override: { ...both("hip", { flexion: 80, abduction: together ? 6 : 45, rotation: 0 }), ...both("shoulder", { flexion: 150, abduction: 30, rotation: 0 }), ...both("elbow", { flexion: 110 }) } }),
           ],
           fit: [{ moving: 1, free: ["x", "y", "z"], pitchRange: 20, pivot: "pelvis", anchors: [{ from: "buttocks", fromActor: 1, to: "groin", toActor: 0, weight: 2 }] }],
-          limbContacts: handsTo(0, 1, "knee", false),
+          limbContacts: handsTo(0, 1, together ? "hip" : "knee", false),
           contacts: [grip("groin", "buttocks", 0, 1, "surface")],
           checks: ["sameHeading", "bUpright", "aOffGround", near("b", "groin", "a", "pelvis", 0.25)],
         };
+      }
+      // B carries A's weight on the hands under the buttocks, unless the hands
+      // are on A's hips or round A's back; leaning forward over A, or back
+      // under A's weight.
       return {
         surface: "floor",
         mode: "solver",
         roles: { a: 1, b: 0 },
-        actors: [figure(cls.b_body, "standing"), figure(cls.a_body, "lifted")],
+        actors: [figure(cls.b_body, "standing", trunkOf(cls.lean)), figure(cls.a_body, "lifted", cls.lean === "forward" ? { override: CARRIED_BACK } : {})],
         relationship: { arrangement: "supported_lift" },
         fit: [refine(1, "groin", 1, "groin", 0, { free: ["x", "y", "z"], keep: false })],
+        ...(cls.b_hands === "hips" || cls.b_hands === "embrace" ? { limbContacts: bHands(cls, 0, 1) } : {}),
         contacts: [grip("groin", "groin", 1, 0, "surface"), grip("chest", "chest", 1, 0, "surface")],
         checks: ["faceToFace", "bUpright", "aOffGround", near("a", "groin", "b", "groin", 0.2)],
       };
@@ -2547,14 +3032,16 @@ export const TEMPLATES = {
     label: "Head at the reclining partner's hips",
     plan(cls) {
       if (cls.surface === "ball") return ballBridgePlan(cls, { oral: true });
-      if (cls.surface === "car_seat") return carSeatLyingPlan(cls, { oral: true });
-      const surface = pickSurface(cls, ["floor", "bed", "sofa", "table", "chair", "bench"], "bed");
+      const surface = pickSurface(cls, ["floor", "bed", "sofa", "table", "chair", "bench", "car_seat"], "bed");
       // Or sitting up on the bed's edge, the partner kneeling on the floor.
       const bedEdge = surface === "bed" && has(cls, /seated on edge/);
-      if (surface === "table" || surface === "chair" || surface === "bench" || surface === "sofa" || bedEdge)
+      if (surface === "table" || surface === "chair" || surface === "bench" || surface === "sofa" || surface === "car_seat" || bedEdge)
         // A bench is sat on too when A leans back on the hands rather than lying along it,
-        // and a sofa lain back along unless noted, the hips at its edge.
-        return edgePlan(cls, surface, surface === "chair" || (surface === "sofa" && !has(cls, /lying at edge/)) || bedEdge || (surface === "bench" && cls.lean === "back") ? "seated" : "supine", { legs: cls.a_legs ?? "open_bent", oral: true });
+        // and a sofa lain back along unless noted, the hips at its edge. A car's
+        // back seat is too short to lie along with a partner kneeling at the hips
+        // (a head and a pair of shins cannot both clear its doors), so A sits on
+        // its edge and B kneels in the footwell.
+        return edgePlan(cls, surface, surface === "chair" || surface === "car_seat" || (surface === "sofa" && !has(cls, /lying at edge/)) || bedEdge || (surface === "bench" && cls.lean === "back") ? "seated" : "supine", { legs: cls.a_legs ?? "open_bent", oral: true });
       // Held upside down against a standing partner, the hips at the face.
       if (has(cls, /inverted/) && has(cls, /standing/))
         return {
@@ -2683,14 +3170,19 @@ export const TEMPLATES = {
                 ...both("elbow", { flexion: 5 }),
               },
             }),
-            // Legs flat and together, the toes planted either side of them.
-            figure(cls.a_body, "supine", { joints: { ...both("hip", { flexion: 3, abduction: 3, rotation: 0 }), ...both("knee", { flexion: 4 }) }, soloSurface: "floor" }),
+            // Legs flat and together, the toes planted either side of them; or
+            // the knees drawn up and apart, B's legs running out between them.
+            figure(cls.a_body, "supine", {
+              joints: cls.a_legs === "open_bent" ? structuredClone(LEG_SHAPES.open_bent) : { ...both("hip", { flexion: 3, abduction: 3, rotation: 0 }), ...both("knee", { flexion: 4 }) },
+              soloSurface: "floor",
+            }),
           ],
           fit: [
             {
               moving: 0,
               free: ["x", "y", "z"],
               pitchRange: 40,
+              floor: 0,
               pivot: "pelvis",
               anchors: [
                 { from: "groin", fromActor: 0, to: "mouth", toActor: 1, offset: [0, 0.08, 0], weight: 2 },
@@ -2726,13 +3218,91 @@ export const TEMPLATES = {
           contacts: [grip("mouth", "groin", 1, 0, "surface")],
           checks: ["aInverted", near("a", "mouth", "b", "groin", 0.22)],
         };
+      // B lies along a sofa, the hips near its front edge; A kneels up on the
+      // floor in front of it, bent at the hips over B's from the side.
+      if (cls.surface === "sofa" && has(cls, /kneeling beside/))
+        return {
+          surface: "sofa",
+          mode: "fit",
+          roles: { a: 1, b: 0 },
+          actors: [
+            figure(cls.b_body, "supine", { soloSurface: "floor", joints: { ...both("hip", { flexion: 3, abduction: 4, rotation: 0 }), ...both("knee", { flexion: 4 }) } }),
+            figure(cls.a_body, "kneeling", { soloSurface: "floor", trunk: "forward_leaning", override: both("hip", { flexion: 35, abduction: 10 }) }),
+          ],
+          // Bent at the hips and tipped forward as far, the thighs stay upright.
+          place: [
+            { index: 0, yaw: -90, rest: SEATS.sofa.top, pelvisTo: [0, null, 0.36] },
+            { index: 1, yaw: 180, pitch: 35, pelvisTo: [0, null, 0.9], rest: 0 },
+          ],
+          fit: [refine(1, "mouth", 1, "groin", 0, { offset: [0, 0.06, 0], start: [0, 0, 0.1] })],
+          limbContacts: handsTo(1, 0, "hip", true).map((c) => ({ ...c, optional: true })),
+          contacts: [grip("mouth", "groin", 1, 0, "surface")],
+          checks: [near("a", "mouth", "b", "groin", 0.22)],
+        };
+      // B lies back off a sofa's front edge, the feet up on the seat and the
+      // shoulders and head down on the floor; A sits on the edge beside B's
+      // knees, twisted round and folded down over B's hips.
+      if (cls.surface === "sofa" && has(cls, /head on floor/)) {
+        const bend = { flexion: -30, abduction: 15, rotation: -20 };
+        return {
+          surface: "sofa",
+          mode: "fit",
+          roles: { a: 1, b: 0 },
+          actors: [
+            figure(cls.b_body, "supine", { soloSurface: "floor", jointMode: "fixed", joints: legPair(20, 15, 100) }),
+            figure(cls.a_body, "seated", {
+              soloSurface: "chair",
+              jointMode: "fixed",
+              joints: { spine01: bend, spine02: bend, spine03: bend, neck: { flexion: -10, abduction: 0, rotation: 0 }, ...both("hip", { flexion: 90, abduction: 8, rotation: 0 }), ...both("knee", { flexion: 85 }) },
+            }),
+          ],
+          // Tipped head down with the buttocks on the edge.
+          place: [
+            { index: 0, pitch: 25, pelvisTo: [0, 0.52, SEATS.sofa.z + 0.145] },
+            { index: 1, seatOn: { top: SEATS.sofa.top, z: SEATS.sofa.z, x: 0.3 } },
+          ],
+          fit: [{ ...refine(1, "mouth", 1, "groin", 0, { free: ["x"], offset: [0, 0.1, 0.05] }), yawRange: 25 }],
+          contacts: [grip("mouth", "groin", 1, 0, "surface")],
+          checks: [near("a", "mouth", "b", "groin", 0.25)],
+        };
+      }
+      // Both on their sides, face to face and the same way up: A lies lower
+      // down with the head resting at B's hips under B's raised top knee, the
+      // knees bent back and the lower arm folded in to the chest. B's lower leg
+      // folds back out of A's way. A is the mirror image, on the other side,
+      // its top hand on B's hip.
+      if (has(cls, /on side/)) {
+        const surface = lying(cls);
+        return {
+          surface,
+          mode: "fit",
+          roles: { a: 1, b: 0 },
+          actors: [
+            figure(cls.b_body, "side_lying", { soloSurface: surface, override: { hip_top: { flexion: 70, abduction: 45, rotation: 0 }, knee_top: { flexion: 95 }, hip_bottom: { flexion: -20, abduction: 0 }, knee_bottom: { flexion: 100 } } }),
+            figure(cls.a_body, "side_lying", { soloSurface: surface, override: { ...both("hip", { flexion: 10, abduction: 0, rotation: 0 }), ...both("knee", { flexion: 100 }), shoulder_r: { flexion: 20, abduction: 0, rotation: 0 }, elbow_r: { flexion: 140 } } }),
+          ],
+          place: [{ index: 0, rest: surfaceTop(surface) }, { index: 1, mirror: true, rest: surfaceTop(surface), alignTo: { from: "mouth", to: "groin", actor: 0, axes: [0, 2], offset: [0.2, 0, 0] } }],
+          fit: [refine(1, "mouth", 1, "groin", 0, { snap: false })],
+          limbContacts: cls.b_hands === "surface" ? [] : [grip("hand.r", "hip.l", 1, 0, "rest")],
+          contacts: [grip("mouth", "groin", 1, 0, "surface")],
+          checks: ["sameHeading", near("a", "mouth", "b", "groin", 0.22)],
+        };
+      }
       return {
         surface: lying(cls),
         mode: "fit",
         roles: { a: 1, b: 0 },
         // Knees up and apart leave room for the partner's head and shoulders between them.
-        // Or A lies flat between them, the feet up in the air behind.
-        actors: [figure(cls.b_body, "supine", legsOf({}, "open_bent")), has(cls, /feet up/) ? figure(cls.a_body, "prone", { arms: "arms_forearms", joints: both("knee", { flexion: 85 }) }) : lowHeadCandidates(cls.a_body)],
+        // Or A lies flat between them, the feet up in the air behind; or, the
+        // knees drawn up together, curled on one side with the head in B's lap.
+        actors: [
+          figure(cls.b_body, "supine", legsOf({}, "open_bent")),
+          has(cls, /feet up/)
+            ? figure(cls.a_body, "prone", { arms: "arms_forearms", joints: both("knee", { flexion: 85 }) })
+            : cls.a_legs === "together_bent"
+              ? figure(cls.a_body, "side_lying", { soloSurface: lying(cls), override: { ...both("hip", { flexion: 75, abduction: 0, rotation: 0 }), ...both("knee", { flexion: 115 }) } })
+              : lowHeadCandidates(cls.a_body),
+        ],
         fit: [refine(1, "mouth", 1, "groin", 0)],
         limbContacts: cls.b_hands === "surface" ? [] : handsTo(1, 0, "thigh", true),
         contacts: [grip("mouth", "groin", 1, 0, "surface")],

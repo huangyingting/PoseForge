@@ -14,6 +14,7 @@ import { planFor, TEMPLATES } from "./interaction-templates.mjs";
 import { compose, measure, sceneFor, evaluate } from "./interaction-composer.mjs";
 import { checkScene } from "../src/core/catalog.js";
 import { checkInteractionStudies, INTERACTION_SEMANTICS, templateLabel } from "../src/core/interactionStudies.js";
+import { GARMENT_NAMES } from "../src/core/garments.js";
 
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const OUTFITS = ["sage", "navy", "clay"];
@@ -33,12 +34,16 @@ export function composeStudy(cls) {
     const joints = Object.fromEntries(
       Object.entries(clean.joints).map(([bone, channels]) => [bone, Object.fromEntries(Object.entries(channels).map(([k, v]) => [k, round(v, 2)]))])
     );
+    // Anything a record says a role is wearing over the studio clothes, such as the cuffs on a restrained figure.
+    const letter = letters.get(i) ?? String.fromCharCode(65 + i);
+    const extra = cls[`${letter.toLowerCase()}_wear`] ?? [];
+    for (const name of extra) if (!GARMENT_NAMES.includes(name)) throw new Error(`${cls.id}: unknown ${letter.toLowerCase()}_wear garment ${name}`);
     return {
       ...clean,
       id: `partner-${i + 1}`,
-      label: `Partner ${letters.get(i) ?? String.fromCharCode(65 + i)}`,
+      label: `Partner ${letter}`,
       outfit: OUTFITS[i % OUTFITS.length],
-      wearing: ["top", "shorts"],
+      wearing: ["top", "shorts", ...extra],
       joints,
       placement: {
         ...clean.placement,

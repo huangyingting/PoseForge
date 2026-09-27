@@ -96,6 +96,7 @@ for (const bodyType of ["female", "male", "neutral"])
         ["briefs", ["bra", "briefs"]],
         ["top", ["briefs", "top"]],
         ["shorts", ["shorts", "top"]],
+        ["cuffs", ["cuffs", "shorts", "top"]],
       ]) {
         await page.getByRole("checkbox", { name, exact: true }).check();
         await ready(page);

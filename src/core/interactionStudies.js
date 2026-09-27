@@ -140,9 +140,12 @@ const SURFACE_LABELS = {
   ball: "Exercise ball",
   wedge: "Wedge cushion",
   car_seat: "Car seat",
+  ottoman: "Ottoman",
+  wall: "Wall",
+  table_chair: "Table and chair",
 };
 // Props the source annotations have no word for: the scene's own name is more specific.
-const SPECIFIC_SURFACES = new Set(["ball", "wedge", "car_seat"]);
+const SPECIFIC_SURFACES = new Set(["ball", "wedge", "car_seat", "ottoman", "wall", "table_chair"]);
 // How each support reads inside a sentence; the labels above are headings.
 const SURFACE_PHRASES = {
   Floor: "on the floor",
@@ -155,6 +158,8 @@ const SURFACE_PHRASES = {
   "Exercise ball": "on an exercise ball",
   "Wedge cushion": "on a wedge cushion",
   "Car seat": "on a car's back seat",
+  Ottoman: "at an ottoman",
+  "Table and chair": "at a table and chair",
   Wall: "against a wall",
   Other: "on another support",
 };

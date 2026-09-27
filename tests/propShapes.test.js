@@ -20,12 +20,13 @@ import {
   measureSurfaceSupport,
 } from "../src/core/surfaceSupport.js";
 import { buildProps } from "../src/render/props.js";
+import { propsFor } from "../scripts/interaction-composer.mjs";
 
 const [ball] = SURFACES.ball.props.map(withBounds);
 const [wedge] = SURFACES.wedge.props.map(withBounds);
 const [, backrest] = SURFACES.car_seat.props.map(withBounds);
 const close = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) < eps, `${a} != ${b}`);
-const allProps = () => Object.values(SURFACES).flatMap((surface) => surface.props);
+const allProps = () => Object.values(SURFACES).flatMap((surface) => [...surface.props, ...(surface.shell ?? [])]);
 // The wedge's slope rises 0.18 over 0.6 towards -z.
 const slope = Math.hypot(0.6, 0.18);
 const wedgeTop = (z) => 0.18 * (0.3 - z) / 0.6;
@@ -62,6 +63,10 @@ test("every built-in prop is well formed and the new supports resolve by name", 
   assert.equal(resolveSurface("exercise ball").id, "ball");
   assert.equal(resolveSurface("wedge cushion").id, "wedge");
   assert.equal(resolveSurface("car seat").id, "car_seat");
+  assert.equal(resolveSurface("ottoman").id, "ottoman");
+  assert.equal(resolveSurface("footstool").id, "ottoman");
+  assert.equal(resolveSurface("wall").id, "wall");
+  assert.equal(resolveSurface("table_chair").id, "table_chair");
   assert.equal(SURFACES.ball.height, propTopAt(ball, 0, 0));
   assert.equal(SURFACES.wedge.height, propTopAt(wedge, 0, -0.3));
 });
@@ -240,4 +245,27 @@ test("rendered balls and wedges are the solver's shapes, drawn in place", () => 
     mesh.geometry.boundingBox.min.toArray().forEach((n, k) => close(n, min[k], 1e-6));
     mesh.geometry.boundingBox.max.toArray().forEach((n, k) => close(n, max[k], 1e-6));
   }
+});
+
+test("a car's back seat sits inside a see-through shell that bodies are fitted against but never rest on", () => {
+  const { shell, props } = SURFACES.car_seat;
+  const box = (kind) => propBox(withBounds(shell.find((p) => p.kind === kind)));
+  const seat = propBox(withBounds(props[0]));
+  // The roof is over the seat, a door either side of it, the front seats ahead.
+  assert.ok(box("car-roof").min[1] > seat.max[1] + 0.9);
+  const doors = shell.filter((p) => p.kind === "car-door").map((p) => propBox(withBounds(p)));
+  assert.ok(doors.some((d) => d.max[0] < seat.min[0]) && doors.some((d) => d.min[0] > seat.max[0]));
+  assert.ok(box("car-front-seat").min[2] > seat.max[2]);
+  // The solver's surface is only the seat; the composer measures against the shell too.
+  assert.deepEqual(resolveSurface("car_seat").props.map((p) => p.kind), ["car-seat", "car-seat-back"]);
+  assert.deepEqual(propsFor("car_seat").props.map((p) => p.kind), [...props, ...shell].map((p) => p.kind));
+  // Drawn in its own group, see-through and outlined.
+  const group = buildProps(props, { ground: false, shell });
+  const cabin = group.children.find((node) => node.name === "shell");
+  assert.equal(cabin.children.length, shell.length);
+  for (const panel of cabin.children) {
+    assert.ok(panel.material.transparent && panel.material.opacity < 0.3, panel.name);
+    assert.equal(panel.children[0].isLineSegments, true);
+  }
+  assert.equal(buildProps(props, { ground: false }).children.some((node) => node.name === "shell"), false);
 });

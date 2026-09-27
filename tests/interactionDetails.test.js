@@ -60,7 +60,7 @@ test("a wheelbarrow's hands rest on the ledge the note names, and a kneeling par
   // Drawn with an ottoman on the floor: the note, not the floor, names the ledge.
   const kneeling = compose("img-0026");
   const standing = compose("img-0471");
-  assert.equal(kneeling.surface, "bed");
+  assert.equal(kneeling.surface, "ottoman");
   assert.equal(compose("img-0278").surface, "bench");
   assert.equal(kneeling.scene.actors[0].posture, "kneeling");
   assert.equal(standing.scene.actors[0].posture, "standing");
@@ -158,4 +158,89 @@ test("standing with a foot up on a bench, B's hands go where the record puts the
   assert.deepEqual(targets({}), ["hip.r", "hip.l"]);
   assert.deepEqual(targets({ b_hands: "shoulders" }), ["shoulder.r", "shoulder.l"]);
   assert.deepEqual(targets({ b_hands: "embrace" }), ["back", "back"]);
+});
+
+test("what a record says a role wears goes on that role's figure, and only a known garment", () => {
+  const wearing = (id, patch) => compose(id, patch).scene.actors.map((a) => [a.label, a.wearing]);
+  // Face down and restrained: A (the first figure) in cuffs.
+  assert.deepEqual(wearing("img-0822"), [
+    ["Partner A", ["top", "shorts", "cuffs"]],
+    ["Partner B", ["top", "shorts"]],
+  ]);
+  // Standing with the arms tied overhead: B, the partner receiving, drawn first.
+  assert.deepEqual(wearing("img-1058"), [
+    ["Partner B", ["top", "shorts", "cuffs"]],
+    ["Partner A", ["top", "shorts"]],
+  ]);
+  assert.deepEqual(wearing("img-0822", { a_wear: null }).map(([, w]) => w), [
+    ["top", "shorts"],
+    ["top", "shorts"],
+  ]);
+  assert.throws(() => composeStudy({ ...byId.get("img-0822"), a_wear: ["blindfold"] }), /unknown a_wear garment blindfold/);
+});
+
+test("records the source leaves open are composed from what they are called, and say so", () => {
+  // Blank image: "Lie Back Oral" - flat on the back, knees bent open, the
+  // hands behind the head, the partner lying between the legs.
+  const lieBack = compose("img-1006");
+  assert.ok(byId.get("img-1006").confidence <= 0.3);
+  assert.deepEqual(lieBack.scene.actors.map((a) => a.posture), ["supine", "prone"]);
+  for (const side of ["l", "r"]) assert.ok(Math.hypot(...lieBack.at(0, `hand.${side}`).map((n, k) => n - lieBack.at(0, "head")[k])) < 0.3);
+  assert.ok(lieBack.scene.actors[0].joints.knee_l.flexion > 60);
+  // The picture does not match its labels: read as reverse oral, A low on the
+  // forearms and knees with a leg stretched back, B behind at the hips.
+  const reverse = compose("img-1277");
+  assert.ok(byId.get("img-1277").confidence <= 0.3);
+  assert.equal(reverse.scene.actors[0].posture, "forearms_and_knees");
+  assert.ok(reverse.at(0, "ankle.l")[1] > reverse.at(0, "ankle.r")[1] + 0.1);
+  assert.ok(Math.hypot(...reverse.at(1, "mouth").map((n, k) => n - reverse.at(0, "buttocks")[k])) < 0.25);
+});
+
+test("a second piece of furniture in the picture is in the scene: a wall, a table with its chair", () => {
+  // Braced against a wall: the hands on its face, 35 cm behind the origin.
+  const wall = compose("img-0201");
+  assert.equal(wall.surface, "wall");
+  for (const side of ["l", "r"]) assert.ok(Math.abs(wall.at(0, `hand.${side}`)[2] + 0.35) < 0.06);
+  // Kneeling up on the table, the partner in the chair drawn up to it.
+  const table = compose("img-0965");
+  assert.equal(table.surface, "table_chair");
+  for (const side of ["l", "r"]) assert.ok(table.at(0, `knee.${side}`)[1] > SEATS.table.top);
+  assert.equal(table.scene.actors[1].posture, "seated");
+  assert.ok(table.at(1, "pelvis")[1] < SEATS.table.top);
+  // On a lap on the table's edge, the feet down on the chair's seat.
+  const lap = compose("img-1017");
+  assert.equal(lap.surface, "table_chair");
+  for (const side of ["l", "r"]) assert.ok(Math.abs(lap.at(1, `ankle.${side}`)[1] - 0.5) < 0.1);
+});
+
+test("in a car the figures stay inside the cabin", () => {
+  // Sitting on the back seat with the partner kneeling in the footwell: the
+  // head clear of the roof, the knees inside the doors.
+  const car = compose("img-0229");
+  assert.equal(car.surface, "car_seat");
+  assert.equal(car.scene.actors[0].posture, "seated");
+  for (const index of [0, 1]) {
+    assert.ok(car.at(index, "head")[1] < 1.42);
+    for (const name of ["knee.l", "knee.r", "ankle.l", "ankle.r"]) assert.ok(Math.abs(car.at(index, name)[0]) < 0.76, `${index} ${name}`);
+  }
+});
+
+test("where the template's shape is not the recorded one, the legs follow the record", () => {
+  const spread = (study, name) => Math.abs(study.at(1, `${name}.l`)[0] - study.at(1, `${name}.r`)[0]);
+  // On a kneeling partner's lap facing away: knees wide apart, or drawn together.
+  assert.ok(spread(compose("img-1141"), "knee") > spread(compose("img-1075"), "knee") + 0.4);
+  // Carried facing away: legs held wide, or knees together in front.
+  assert.ok(spread(compose("img-0258"), "knee") > spread(compose("img-0764"), "knee") + 0.3);
+  // A wheelbarrow with the legs on a chair: straight out to the ankles on the
+  // seat, or bent over its edge with the feet up.
+  const straight = compose("img-0896");
+  const raised = compose("img-0252");
+  assert.ok(straight.scene.actors[1].joints.knee_l.flexion < 20);
+  assert.ok(raised.at(1, "ankle.l")[1] > straight.at(1, "ankle.l")[1] + 0.3);
+  // Under a partner in a plank, the knees drawn up.
+  assert.ok(compose("img-1201").at(1, "knee.l")[1] > 0.35);
+  // Head in the lap, knees drawn up together: curled on the side.
+  const curled = compose("img-0015").scene.actors[1];
+  assert.equal(curled.posture, "side_lying");
+  assert.ok(curled.joints.hip_l.flexion > 60 && curled.joints.knee_l.flexion > 100);
 });
