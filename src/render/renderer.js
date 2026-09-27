@@ -558,6 +558,28 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
     camera.lookAt(focus);
   }
 
+  /** Where the camera is about the focus: its turn, height above the horizon and distance. */
+  function getOrbit() {
+    const offset = camera.position.clone().sub(focus);
+    const radius = offset.length();
+    return {
+      theta: Math.atan2(offset.x, offset.z),
+      elevation: Math.asin(Math.min(1, Math.max(-1, offset.y / radius))),
+      radius,
+    };
+  }
+
+  /** Put the camera at a turn, elevation and distance about the focus. */
+  function setOrbit({ theta, elevation, radius }) {
+    const flat = radius * Math.cos(elevation);
+    camera.position.set(
+      focus.x + flat * Math.sin(theta),
+      focus.y + radius * Math.sin(elevation),
+      focus.z + flat * Math.cos(theta)
+    );
+    camera.lookAt(focus);
+  }
+
   /** Move the camera towards or away from the focus. */
   function dolly(factor) {
     const offset = camera.position.clone().sub(focus);
@@ -620,6 +642,8 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
     frame,
     setView,
     orbit,
+    getOrbit,
+    setOrbit,
     dolly,
     resize,
     render,

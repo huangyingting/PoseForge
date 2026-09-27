@@ -926,11 +926,22 @@ p {
   font-size: 12px;
   color: var(--muted);
 }
-.view-buttons button.active {
+.view-buttons button.active,
+.tour-control button[aria-pressed="true"] {
   background: var(--soft);
   color: var(--accent-strong);
   font-weight: 650;
 }
+.tour-control button {
+  border: 0;
+  background: none;
+  border-radius: 10px;
+  padding: 7px 10px;
+  min-height: 34px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.tour-control,
 .zoom-controls,
 .material-control {
   display: flex;
@@ -996,7 +1007,7 @@ p {
 @container stage (max-width: 480px) {
   .stage-toolbar {
     display: grid;
-    grid-template-columns: auto auto;
+    grid-template-columns: auto auto auto;
     justify-content: center;
     row-gap: 2px;
   }
@@ -1004,11 +1015,10 @@ p {
     grid-column: 1 / -1;
     justify-content: center;
   }
-  .zoom-controls {
+  .tour-control {
     margin-left: 0;
     padding-left: 0;
     border-left: 0;
-    justify-self: end;
   }
   .stage-top {
     max-width: calc(100% - 40px);
@@ -1708,6 +1718,7 @@ dialog .buttons {
   .library-bottom .text-button,
   .inspector-tabs button,
   .view-buttons button,
+  .tour-control button,
   .material-control select {
     min-height: 40px;
   }

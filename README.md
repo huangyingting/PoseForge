@@ -43,6 +43,11 @@ support props; pose notes identify unresolved geometry.
 Figure/contact editing, favorites, saved presets, undo/redo and JSON import/export
 let you build a personal library. The viewport supports drag/keyboard orbit,
 pinch/wheel/button zoom, natural and clay materials, and PNG/SVG export.
+A position that loads is toured once round: over 16 seconds the camera circles
+the figures, rising over them, dipping low behind and coming in closer, and
+ends on the view it was framed in. Dragging, scrolling or a key stops it where
+it is. **Tour** in the camera toolbar turns this off (remembered) or back on,
+which tours the current position; with reduced motion requested it starts off.
 Saved libraries use IndexedDB, migrate legacy data without deleting the backup,
 and accept up to **5,000 presets / 32 MB** (whichever limit is reached first).
 The unified catalog uses bounded 24-card pages. Position metadata and interaction

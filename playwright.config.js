@@ -20,6 +20,10 @@ export default defineConfig({
       ],
     },
     screenshot: "only-on-failure",
+    // Asking for less motion turns off the camera tour a loaded position
+    // gets, so suites that compare the canvas see a still camera.
+    // camera-tour.spec.js clears this to cover the tour.
+    reducedMotion: "reduce",
     // Functional suites drive the editor directly, so both drawers start open.
     // compact-ui.spec.js clears this to cover the first-visit layout.
     storageState: {

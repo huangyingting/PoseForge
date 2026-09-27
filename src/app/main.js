@@ -13,6 +13,7 @@ import { DRAFT_KEY, registerPositions } from "./libraryStore.js";
 import { createPersistentLibrary } from "./persistentLibrary.js";
 import { buildStudio, toast, showRegion, openExport } from "./studioUI.js";
 import { bindCameraInput } from "./cameraInput.js";
+import { createCameraTour } from "./cameraTour.js";
 import { bindWorkspaceLayout } from "./workspaceLayout.js";
 import { createPositionService } from "./positionService.js";
 import {
@@ -89,7 +90,48 @@ let future = [];
 let storageWarned = false;
 let exporting = false;
 let positionRequest = 0;
+let shouldTour = false;
 const positions = createPositionService();
+
+// A position that loads is toured once round, unless the reader has asked
+// for less motion or turned tours off; either way the choice is theirs.
+const TOUR_KEY = "poseforge.tour.v1";
+let tourOnLoad = (() => {
+  try {
+    const saved = storage.getItem(TOUR_KEY);
+    if (saved === "on" || saved === "off") return saved === "on";
+  } catch {
+    // An unavailable store falls back to the default.
+  }
+  return !matchMedia("(prefers-reduced-motion: reduce)").matches;
+})();
+const tour = createCameraTour({
+  read: () => view.getOrbit(),
+  write: (orbit) => view.setOrbit(orbit),
+  draw: () => view?.render(),
+  done: () => delete canvas.dataset.touring,
+});
+function playTour() {
+  if (!view) return;
+  tour.play();
+  canvas.dataset.touring = "true";
+}
+const stopTour = () => tour.stop();
+function showTourSetting() {
+  $("camera-tour").setAttribute("aria-pressed", String(tourOnLoad));
+}
+showTourSetting();
+$("camera-tour").onclick = () => {
+  tourOnLoad = !tourOnLoad;
+  showTourSetting();
+  try {
+    storage.setItem(TOUR_KEY, tourOnLoad ? "on" : "off");
+  } catch {
+    // A preference; an unavailable store keeps it for this visit.
+  }
+  if (!tourOnLoad) stopTour();
+  else if (current) playTour();
+};
 
 function status(message, busy = false) {
   $("status").textContent = message;
@@ -156,11 +198,13 @@ function heading() {
     : "";
   $("position-actions").hidden = !current.source;
 }
-function solve(scene, { frame = false } = {}) {
+function solve(scene, { frame = false, tour: tourAfter = false } = {}) {
   request += 1;
   ready = false;
   completedActors = null;
   shouldFrame = frame;
+  shouldTour = frame && tourAfter;
+  stopTour();
   $("save-preset").disabled = true;
   $("open-export").disabled = true;
   $("position-save").disabled = true;
@@ -172,7 +216,10 @@ function cancelPositionLoad() {
   positionRequest += 1;
   studio.setPositionLoading(null);
 }
-function apply(next, { history = true, frame = false, selectedId } = {}) {
+function apply(
+  next,
+  { history = true, frame = false, tour = false, selectedId } = {},
+) {
   cancelPositionLoad();
   if ($("viewport-error").dataset.positionMissing) {
     delete $("viewport-error").dataset.positionMissing;
@@ -196,13 +243,14 @@ function apply(next, { history = true, frame = false, selectedId } = {}) {
         : current.id),
   );
   persist();
-  solve(current.scene, { frame });
+  solve(current.scene, { frame, tour });
 }
 function selectPreset(preset, options = {}) {
   apply(
     { ...preset, dirty: false },
     {
       frame: true,
+      tour: true,
       ...options,
       selectedId: options.catalogId ?? preset.id,
     },
@@ -482,6 +530,8 @@ worker.onmessage = ({ data }) => {
     view?.frame();
     setView(current.scene.camera?.view ?? "three_quarter");
     shouldFrame = false;
+    if (shouldTour && tourOnLoad) playTour();
+    shouldTour = false;
   }
   draw();
   panel.setScene(
@@ -521,6 +571,7 @@ function setView(name) {
 document.querySelectorAll("[data-view]").forEach(
   (node) =>
     (node.onclick = () => {
+      stopTour();
       setView(node.dataset.view);
       if (current) {
         cancelPositionLoad();
@@ -536,6 +587,7 @@ document.querySelectorAll("[data-view]").forEach(
     }),
 );
 $("fit-view").onclick = () => {
+  stopTour();
   view?.frame();
   draw();
 };
@@ -551,6 +603,7 @@ for (const [id, factor] of [
   ["zoom-out", 1 / 0.85],
 ])
   $(id).onclick = () => {
+    stopTour();
     view?.dolly(factor);
     draw();
   };
@@ -608,6 +661,7 @@ $("position-save").onclick = async () => {
 };
 $("open-export").onclick = () => {
   if (ready) {
+    stopTour();
     cancelPositionLoad();
     openExport(exportImage);
   }
@@ -649,6 +703,12 @@ document.addEventListener("keydown", (event) => {
     }
   }
 });
+// Taking hold of the camera takes it over from a tour.
+for (const type of ["pointerdown", "wheel", "keydown"])
+  canvas.addEventListener(type, stopTour, { passive: true });
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) stopTour();
+});
 const removeCameraInput = bindCameraInput(canvas, {
   orbit: (x, y) => view?.orbit(x, y),
   zoom: (factor) => view?.dolly(factor),
@@ -663,6 +723,7 @@ document.querySelector(".skip-link").onclick = (event) => {
 };
 window.addEventListener("pagehide", (event) => {
   if (!event.persisted) {
+    stopTour();
     removeCameraInput();
     workspace.dispose();
     studio.dispose();
@@ -677,7 +738,10 @@ new ResizeObserver(() => {
   if (rect.width < 1 || rect.height < 1) return;
   view?.resize(Math.round(rect.width), Math.round(rect.height));
   const aspect = rect.width / rect.height;
-  if (Math.abs(lastAspect - aspect) > 0.15) view?.frame();
+  if (Math.abs(lastAspect - aspect) > 0.15) {
+    stopTour();
+    view?.frame();
+  }
   lastAspect = aspect;
   draw();
 }).observe(canvas);
@@ -761,5 +825,6 @@ else if (params.has("preset")) {
       toast("That preset is not in this browser. Opening a starter study.");
     selectPreset(preset ?? BUILTIN_PRESETS[0], { history: false });
   }
-} else if (restored) apply(restored, { history: false, frame: true });
+} else if (restored)
+  apply(restored, { history: false, frame: true, tour: true });
 else selectPreset(BUILTIN_PRESETS[0], { history: false });

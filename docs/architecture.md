@@ -97,6 +97,7 @@ src/app/
   diagram.js       schematic joint previews
   previewService.js queued preview work, bounded cache and stale-result protection
   cameraInput.js   pointer/pinch, wheel and keyboard camera input
+  cameraTour.js    the camera's circuit of a position as it loads
 
 scripts/           no dependencies
   render-cli.mjs   software rasteriser: z-buffer, shadow map, zlib PNG
