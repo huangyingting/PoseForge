@@ -1,14 +1,15 @@
 /**
  * Clothes.
  *
- * A bra and a pair of briefs, built the same way as each other and not at all
- * the way the hair is built. Hair sits *near* a head and the shape it makes is
- * its own; a garment sits *on* a body and the shape it makes is the body's. So
- * where `hair.js` generates a shell from a support field and never looks at a
- * triangle, this lifts a region of the drawn surface a couple of millimetres
- * off itself and hems it. Nothing is approximated: the cup is the breast, the
- * seat of the briefs is the buttock, and they fit because they are the same
- * vertices.
+ * Everything a figure can wear - underwear, swimwear, lingerie, the studio top
+ * and shorts, stockings, a harness and cuffs - built the same way as each
+ * other and not at all the way the hair is built. Hair sits *near* a head and
+ * the shape it makes is its own; a garment sits *on* a body and the shape it
+ * makes is the body's. So where `hair.js` generates a shell from a support
+ * field and never looks at a triangle, this lifts a region of the drawn
+ * surface a couple of millimetres off itself and hems it. Nothing is
+ * approximated: the cup is the breast, the seat of the briefs is the buttock,
+ * and they fit because they are the same vertices.
  *
  * Three consequences follow from that and they are all good.
  *
@@ -26,7 +27,10 @@
  * surface in this whole renderer that is guaranteed never to be seen.
  *
  * What the garments are *shaped* like is a handful of region functions over
- * measured landmarks, and those are where the work is. See `measure`.
+ * measured landmarks, and those are where the work is. See `measure`. A strap
+ * is a line laid along the skin (`surfacePath`) and the region round it
+ * (`straps`); what a garment is made of is its finish, which is for the
+ * renderers to draw (`GARMENT_FINISHES`).
  */
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -55,6 +59,11 @@ const LIFT = 0.0025 / 1.72;
 // pattern that excludes no joints from one that was meant to.
 const ARM_BONES = /upperarm|lowerarm|hand|index|middle|pinky|ring|thumb/;
 const LOWER_LEG_BONES = /calf|foot|ball/;
+// What a strap laid over the shoulder has to keep off. Not the upper arm: the
+// line of vertices where it takes over from the clavicle runs ragged across the
+// back of the shoulder, and a strap made to find the skin only on one side of
+// it follows it, in a zigzag a centimetre and a half wide.
+const FOREARM_BONES = /lowerarm|hand|index|middle|pinky|ring|thumb/;
 
 /** Colours to wear. Fabric, so none of them are fully saturated or fully dark. */
 export const GARMENT_COLOURS = {
@@ -68,8 +77,98 @@ export const GARMENT_COLOURS = {
   nude: [0.62, 0.48, 0.42],
 };
 
-/** Everything `withGarments` knows how to make. */
-export const GARMENT_NAMES = ["bra", "briefs", "top", "shorts", "cuffs"];
+/**
+ * Everything `withGarments` knows how to make, and what each is called on a
+ * control. Ordered by where on the body it goes, then from plain to not.
+ */
+export const GARMENT_LABELS = {
+  bra: "Bra",
+  "lace-bra": "Lace bra",
+  "bikini-top": "Bikini top",
+  top: "Top",
+  briefs: "Briefs",
+  "lace-thong": "Lace thong",
+  "bikini-bottom": "Bikini bottom",
+  "swim-briefs": "Swim briefs",
+  "boxer-briefs": "Boxer briefs",
+  jockstrap: "Jockstrap",
+  shorts: "Shorts",
+  stockings: "Stockings",
+  "garter-belt": "Garter belt",
+  harness: "Harness",
+  cuffs: "Cuffs",
+};
+export const GARMENT_NAMES = Object.keys(GARMENT_LABELS);
+
+/**
+ * Pieces that go in the same place, of which a figure wears one.
+ *
+ * Two of them at once would be two surfaces lifted off the same skin by the
+ * same distance, and they would fight over every pixel - so the scene keeps
+ * the first it is given and says what it dropped (see `resolveWearing`).
+ * Anything not in a slot is worn over or under whatever else is on, at its own
+ * `layer`.
+ */
+export const GARMENT_SLOTS = {
+  chest: ["bra", "lace-bra", "bikini-top", "top"],
+  hips: ["briefs", "lace-thong", "bikini-bottom", "swim-briefs", "boxer-briefs", "jockstrap", "shorts"],
+};
+
+/**
+ * What each garment is made of, which is what the renderers draw it as.
+ *
+ * cotton - knitted, matte, with a sheen off the nap.
+ * lycra - swimwear: smoother, with a soft highlight.
+ * lace - net and flowers cut out of the surface, so the skin shows through.
+ * sheer - nylon, which the skin shows through everywhere, more face-on than
+ *         edge-on, because edge-on the eye looks through more of it.
+ * leather - dark and glossy.
+ */
+export const GARMENT_FINISHES = ["cotton", "lycra", "lace", "sheer", "leather"];
+const OPAQUE = new Set(["cotton", "lycra", "leather"]);
+
+/** The scale `trim` distances are stored at; see `lift`. */
+export const TRIM = 0.01;
+
+/**
+ * Sets of pieces worth one click, for the control that offers them. Not a
+ * scene field: choosing one writes its pieces into `wearing`.
+ */
+export const OUTFITS = {
+  studio: ["top", "shorts"],
+  underwear: ["bra", "briefs"],
+  bikini: ["bikini-top", "bikini-bottom"],
+  lingerie: ["lace-bra", "lace-thong", "stockings", "garter-belt"],
+  swim: ["swim-briefs"],
+  boxers: ["boxer-briefs"],
+  leather: ["jockstrap", "harness"],
+};
+
+/**
+ * One piece per slot: the first of each that the list names, in its order.
+ *
+ * @param {string[]} wearing
+ * @returns {{wearing: string[], dropped: string[]}}
+ */
+export function resolveWearing(wearing) {
+  const taken = new Set();
+  const kept = [];
+  const dropped = [];
+  for (const name of wearing) {
+    const slot = Object.keys(GARMENT_SLOTS).find((key) => GARMENT_SLOTS[key].includes(name));
+    if (kept.includes(name)) continue;
+    if (slot && taken.has(slot)) {
+      dropped.push(name);
+      continue;
+    }
+    if (slot) taken.add(slot);
+    kept.push(name);
+  }
+  return { wearing: kept, dropped };
+}
+
+/** Pieces with cups, which need a breast to hold: made for female bodies only. */
+export const CUPPED = new Set(["bra", "lace-bra", "bikini-top"]);
 
 /** What a request for clothing means if it does not say. */
 export const DEFAULT_WEARING = {
@@ -165,6 +264,7 @@ function measure(template, body) {
   // "torso" at the knuckles.
   const STEPS = 200;
   const front = new Float64Array(STEPS).fill(-Infinity);
+  const back = new Float64Array(STEPS).fill(Infinity);
   const wide = new Float64Array(STEPS).fill(0);
   for (let v = 0; v < count; v += 1) {
     const joint = dominant(body, v);
@@ -175,6 +275,7 @@ function measure(template, body) {
     const x = Math.abs(body.positions[v * 3]);
     const z = body.positions[v * 3 + 2];
     if (z > front[slot]) front[slot] = z;
+    if (z < back[slot]) back[slot] = z;
     if (x > wide[slot]) wide[slot] = x;
   }
 
@@ -275,6 +376,13 @@ function measure(template, body) {
       }
       return best > -Infinity ? best : 0;
     },
+    // The same for the back and the sides, which is all a guide for a strap
+    // needs: a point near enough the surface for `surfaceProbe` to find it.
+    backAt: (y) => {
+      const slot = Math.max(0, Math.min(STEPS - 1, Math.round(y * STEPS)));
+      return back[slot] < Infinity ? back[slot] : 0;
+    },
+    wideAt: (y) => wide[Math.max(0, Math.min(STEPS - 1, Math.round(y * STEPS)))],
     // How big the breast is, as the straight-line distance from the apex to the
     // fold under it. This is the one number the cup's size comes from, so a bust
     // slider moves the cup with the breast and no separate knob is needed.
@@ -284,6 +392,18 @@ function measure(template, body) {
     hipWidth: wide[hipSlot],
     crotchY: crotch,
     shoulder: template.jointByBone.get("shoulder_l")?.rest ?? null,
+    // Where the front of the trunk ends and the back begins, which is not z = 0:
+    // the scans stand with the pelvis a centimetre or two either side of it.
+    pelvisZ: template.jointByBone.get("pelvis")?.rest?.[14] ?? 0,
+    // The thigh's axis, hip to knee, for the pieces that end on it.
+    legAt: (y, side) => {
+      const hip = template.jointByBone.get(`hip_${side > 0 ? "l" : "r"}`)?.rest;
+      const knee = template.jointByBone.get(`knee_${side > 0 ? "l" : "r"}`)?.rest;
+      if (!hip || !knee) return [side * 0.07, y, 0.02];
+      const t = (y - hip[13]) / (knee[13] - hip[13] || 1);
+      return [hip[12] + (knee[12] - hip[12]) * t, y, hip[14] + (knee[14] - hip[14]) * t];
+    },
+    kneeY: template.jointByBone.get("knee_l")?.rest?.[13] ?? 0.29,
   };
 }
 
@@ -299,6 +419,407 @@ function toSegment(p, a, b) {
   const dy = p[1] - (a[1] + ey * t);
   const dz = p[2] - (a[2] + ez * t);
   return Math.hypot(dx, dy, dz);
+}
+
+/** The point of triangle `abc` nearest `p`, with its barycentric weights. */
+function nearestOnTriangle(p, a, b, c) {
+  // Ericson's region test, from Real-Time Collision Detection 5.1.5.
+  const sub = (u, v) => [u[0] - v[0], u[1] - v[1], u[2] - v[2]];
+  const dot = (u, v) => u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
+  const ab = sub(b, a);
+  const ac = sub(c, a);
+  const ap = sub(p, a);
+  const d1 = dot(ab, ap);
+  const d2 = dot(ac, ap);
+  if (d1 <= 0 && d2 <= 0) return [1, 0, 0];
+  const bp = sub(p, b);
+  const d3 = dot(ab, bp);
+  const d4 = dot(ac, bp);
+  if (d3 >= 0 && d4 <= d3) return [0, 1, 0];
+  const vc = d1 * d4 - d3 * d2;
+  if (vc <= 0 && d1 >= 0 && d3 <= 0) {
+    const v = d1 / (d1 - d3);
+    return [1 - v, v, 0];
+  }
+  const cp = sub(p, c);
+  const d5 = dot(ab, cp);
+  const d6 = dot(ac, cp);
+  if (d6 >= 0 && d5 <= d6) return [0, 0, 1];
+  const vb = d5 * d2 - d1 * d6;
+  if (vb <= 0 && d2 >= 0 && d6 <= 0) {
+    const w = d2 / (d2 - d6);
+    return [1 - w, 0, w];
+  }
+  const va = d3 * d6 - d5 * d4;
+  if (va <= 0 && d4 - d3 >= 0 && d5 - d6 >= 0) {
+    const w = (d4 - d3) / (d4 - d3 + (d5 - d6));
+    return [0, 1 - w, w];
+  }
+  const denom = 1 / (va + vb + vc);
+  const v = vb * denom;
+  const w = vc * denom;
+  return [1 - v - w, v, w];
+}
+
+/**
+ * A way to find the body's surface near a point: the point of the skin the
+ * mask allows that is nearest it, and the skin's normal there.
+ *
+ * This is `frontNear` in the bra generalised to any side of the body, and for
+ * the same reason - a strap is cut where a tube meets the skin, and a tube laid
+ * even a centimetre off the surface meets it at a graze, which is a strap that
+ * pinches and breaks. The guides it is given are landmarks a few millimetres to
+ * a few centimetres from the skin; what comes back is on it.
+ *
+ * On the triangles, not the vertices. The back is tessellated in rows a
+ * centimetre and a half apart, and a probe that answered with the nearest
+ * vertex - or a mean of the few near it - moved in steps that size as its guide
+ * slid along, so a strap laid through a run of them zigzagged down the back.
+ * The nearest point of the surface moves as smoothly as the guide does. It is
+ * found among the triangles round the vertices no further from the guide than
+ * the nearest one is plus the longest edge, which is every triangle the answer
+ * can be on.
+ */
+function surfaceProbe(body, allowed) {
+  const count = body.positions.length / 3;
+  const p = body.positions;
+  const n = body.normals;
+  const around = Array.from({ length: count }, () => []);
+  let longest = 0;
+  for (let t = 0; t < body.indices.length; t += 3) {
+    const tri = [body.indices[t], body.indices[t + 1], body.indices[t + 2]];
+    if (!tri.every((v) => allowed[v])) continue;
+    for (const v of tri) around[v].push(t);
+    for (let e = 0; e < 3; e += 1) {
+      const a = tri[e];
+      const b = tri[(e + 1) % 3];
+      longest = Math.max(longest, Math.hypot(p[a * 3] - p[b * 3], p[a * 3 + 1] - p[b * 3 + 1], p[a * 3 + 2] - p[b * 3 + 2]));
+    }
+  }
+  const at = (v) => [p[v * 3], p[v * 3 + 1], p[v * 3 + 2]];
+  return (guide) => {
+    let nearest = Infinity;
+    for (let v = 0; v < count; v += 1) {
+      if (!around[v].length) continue;
+      const d = Math.hypot(p[v * 3] - guide[0], p[v * 3 + 1] - guide[1], p[v * 3 + 2] - guide[2]);
+      if (d < nearest) nearest = d;
+    }
+    if (nearest === Infinity) return { point: guide, normal: [0, 0, 1] };
+    const reach = nearest + longest;
+    const seen = new Set();
+    let best = null;
+    let bestD = Infinity;
+    for (let v = 0; v < count; v += 1) {
+      if (!around[v].length) continue;
+      if (Math.abs(p[v * 3] - guide[0]) > reach || Math.abs(p[v * 3 + 1] - guide[1]) > reach) continue;
+      if (Math.hypot(p[v * 3] - guide[0], p[v * 3 + 1] - guide[1], p[v * 3 + 2] - guide[2]) > reach) continue;
+      for (const t of around[v]) {
+        if (seen.has(t)) continue;
+        seen.add(t);
+        const tri = [body.indices[t], body.indices[t + 1], body.indices[t + 2]];
+        const w = nearestOnTriangle(guide, at(tri[0]), at(tri[1]), at(tri[2]));
+        const point = [0, 1, 2].map((k) => w[0] * p[tri[0] * 3 + k] + w[1] * p[tri[1] * 3 + k] + w[2] * p[tri[2] * 3 + k]);
+        const d = Math.hypot(point[0] - guide[0], point[1] - guide[1], point[2] - guide[2]);
+        if (d < bestD) {
+          bestD = d;
+          best = { tri, w, point };
+        }
+      }
+    }
+    const normal = [0, 1, 2].map((k) => best.w[0] * n[best.tri[0] * 3 + k] + best.w[1] * n[best.tri[1] * 3 + k] + best.w[2] * n[best.tri[2] * 3 + k]);
+    const len = Math.hypot(...normal) || 1;
+    return { point: best.point, normal: normal.map((value) => value / len) };
+  };
+}
+
+/** A mask of the vertices less than half bound to the bones `pattern` names. */
+function awayFrom(template, body, pattern) {
+  const margin = boneMargin(template, body, pattern);
+  return Uint8Array.from(margin, (value) => (value > 0 ? 1 : 0));
+}
+
+/**
+ * A line laid along the skin through a list of guides, `depth` under it.
+ *
+ * Each span between two guides is walked in `steps` and every point of the walk
+ * is put back on the surface, so the line bends with the body between the
+ * guides rather than cutting the chord across a hollow - the one between the
+ * buttock and the thigh is deep enough to lose a strap in.
+ *
+ * Then any two neighbours still joined by a chord that leaves the skin are
+ * split, and split again, until none is. The walk does not guarantee that on
+ * its own. A walk between guides that lie inside the body - round the side of
+ * the neck, where a guide a few centimetres off the midline is under the skin -
+ * has points whose nearest skin is on one side of it and then, the next step
+ * on, on the other, and the chord between those two runs through the neck. A
+ * strap a few millimetres round that chord meets no skin over the whole span:
+ * the halter came out with the piece behind the neck hanging on its own, seven
+ * centimetres from the rest. So the point a chord is split at is sought from
+ * outside, off its midpoint along the normal its two ends share, where the
+ * nearest skin is the arc between them rather than either end again.
+ *
+ * "Leaves the skin" is by a sixth of `depth`, which is tight for a reason: a
+ * strap's width on the skin is the chord of a tube cut by it, and that falls
+ * off steeply with how deep the line runs - under two millimetres deeper than
+ * `depth` takes more than half the width off a halter string. A chord across a
+ * curve always runs deeper in the middle, so the curve is followed closely
+ * enough that it cannot run much deeper.
+ */
+function surfacePath(probe, guides, { depth = 0.003, steps = 5 } = {}) {
+  const tolerance = depth / 6;
+  const longest = 0.012;
+  const distance = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+  const on = [];
+  const bridge = (a, b, level) => {
+    if (level >= 6) return;
+    const mid = [0, 1, 2].map((k) => (a.point[k] + b.point[k]) / 2);
+    const length = distance(a.point, b.point);
+    if (length <= longest && distance(probe(mid).point, mid) <= tolerance) return;
+    const normal = [0, 1, 2].map((k) => a.normal[k] + b.normal[k]);
+    const len = Math.hypot(...normal);
+    const m = probe(len > 1e-6 ? mid.map((value, k) => value + (normal[k] / len) * (length / 2)) : mid);
+    bridge(a, m, level + 1);
+    on.push(m);
+    bridge(m, b, level + 1);
+  };
+  for (let g = 0; g + 1 < guides.length; g += 1) {
+    const a = guides[g];
+    const b = guides[g + 1];
+    for (let k = g ? 1 : 0; k <= steps; k += 1) {
+      const t = k / steps;
+      const next = probe([0, 1, 2].map((axis) => a[axis] + (b[axis] - a[axis]) * t));
+      if (on.length) bridge(on[on.length - 1], next, 0);
+      on.push(next);
+    }
+  }
+  return on.map(({ point, normal }) => point.map((value, axis) => value - normal[axis] * depth));
+}
+
+/**
+ * Straps along lines: the field is how far inside the nearest one a point is.
+ *
+ * A strap `width` wide on a line `depth` under the skin is the tube of radius
+ * `sqrt((width/2)^2 + depth^2)` round it, cut by the surface; see the note on
+ * the bra's straps for why the depth has to be held steady along the line.
+ *
+ * Each line's bounding box is checked first, because the field is evaluated at
+ * every vertex of the scan and almost all of them are nowhere near a strap. A
+ * point well clear of the box is given its distance to the box, which is no
+ * more than its distance to the line, and not left out. Leaving it out made it
+ * minus infinity, or whatever the rest of a garment's field said there - the
+ * garter belt's is its band, a quarter of a metre up - and `refine` splits an
+ * edge only where the field says a crossing could be hiding on it: a vertex a
+ * couple of centimetres off a suspender, just outside the box, said there
+ * could be none, and the suspender ran between two rows of the thigh's
+ * vertices and was lost for four centimetres of its length. A bound is all the
+ * test needs. The margin keeps every point near enough to a hem for the
+ * number to place it measured exactly.
+ */
+function straps(lines, { width, depth = 0.003 }) {
+  const radius = Math.hypot(width / 2, depth);
+  const reach = radius + 0.02;
+  const boxes = lines.map((line) => {
+    const min = [Infinity, Infinity, Infinity];
+    const max = [-Infinity, -Infinity, -Infinity];
+    for (const point of line)
+      for (let k = 0; k < 3; k += 1) {
+        min[k] = Math.min(min[k], point[k]);
+        max[k] = Math.max(max[k], point[k]);
+      }
+    return { min, max };
+  });
+  return (x, y, z) => {
+    let near = Infinity;
+    for (let l = 0; l < lines.length; l += 1) {
+      const { min, max } = boxes[l];
+      const clear = Math.hypot(
+        Math.max(min[0] - x, 0, x - max[0]),
+        Math.max(min[1] - y, 0, y - max[1]),
+        Math.max(min[2] - z, 0, z - max[2])
+      );
+      if (clear > reach) {
+        near = Math.min(near, clear);
+        continue;
+      }
+      const line = lines[l];
+      for (let k = 0; k + 1 < line.length; k += 1) near = Math.min(near, toSegment([x, y, z], line[k], line[k + 1]));
+    }
+    return radius - near;
+  };
+}
+
+/**
+ * What stands in for the genitals under a garment on a man; see `briefs`.
+ * Centred off the plain briefs' waist whatever the garment's own is, because
+ * the anatomy it covers does not move up and down with the cut.
+ */
+function bulgeShape(marks, amount) {
+  if (!amount) return undefined;
+  const waist = marks.waistY - (marks.waistY - marks.hipY) * 0.35;
+  const centre = [0, marks.crotchY + (waist - marks.crotchY) * 0.26, 0.052];
+  return (x, y, z) => {
+    const d = Math.hypot(x * 0.85, (y - centre[1]) * 1.05, (z - centre[2]) * 0.6);
+    return amount * (1 - smoothstep(0.012, 0.062, d));
+  };
+}
+
+/** An elastic in a colour that stands out from the garment's own. */
+function contrast(colour) {
+  const luminance = 0.2126 * colour[0] + 0.7152 * colour[1] + 0.0722 * colour[2];
+  return luminance < 0.3 ? [0.8, 0.79, 0.77] : [0.05, 0.05, 0.055];
+}
+
+/**
+ * Where a stocking ends: two fifths of the way from the crotch to the knee,
+ * which is where the thigh is widest and where a welt stays up. Shared with the
+ * garter belt, whose straps have to end on it.
+ */
+const stockingTop = (marks) => marks.crotchY - (marks.crotchY - marks.kneeY) * 0.4;
+
+/** A trim value for the band within `width` of a garment's edge. */
+const hem = (width) => (x, y, z, f) => width - f;
+
+/**
+ * The longest edge `refine` leaves anywhere a garment's edge could be: about
+ * four millimetres, a third of the narrowest strap here.
+ */
+const FINE_EDGE = 0.0025;
+
+/**
+ * The body, split finer wherever the garment's field says an edge of it could
+ * be, with the field evaluated at every vertex.
+ *
+ * The cut in `lift` finds a hem where the field changes sign along an edge,
+ * which is all it can do and is exact for a hem wider than the triangles it
+ * crosses. A strap is not. The scan is tessellated for the body, not for the
+ * clothes - its rows across the small of the back are fourteen millimetres
+ * apart, and a thong's string there is eleven wide - so a strap can run
+ * between two rows of vertices with every one of them outside it, and it
+ * comes out as dashes where it happens to catch one. That is what the first
+ * lace thong did, across both buttocks.
+ *
+ * So each edge that could hide a crossing is split at its midpoint, and the
+ * triangles either side of it into two, three or four, the same way on both
+ * sides because the decision is the edge's - no T-junctions, so no pinholes in
+ * the cloth. "Could hide a crossing" is the Lipschitz test: the fields here are
+ * distances, and a distance cannot get from `f(a)` at one end of an edge to the
+ * other sign and back to `f(b)` in less than `|f(a)| + |f(b)|`. Edges that do
+ * change sign are split too, so a hem that curves - a ring, a cup - lies on the
+ * curve rather than on its chords. A few rounds takes the worst of the scan's
+ * edges down to `FINE_EDGE` and leaves everything well away from a garment's
+ * edge as it was.
+ *
+ * The midpoints stay on the chord: the skin is drawn as those flat triangles,
+ * and a garment lifted off the curve they approximate would stand off the skin
+ * by more in the middle of each than at its corners. Weights are blended by
+ * joint as `cut` does and for the reasons given there. `source` is which of
+ * the scan's own triangles each new one came from, for deciding what skin an
+ * opaque garment hides.
+ */
+function refine(body, field, veto, rounds = 4) {
+  const positions = Array.from(body.positions);
+  const normals = Array.from(body.normals);
+  const uvs = body.uvs ? Array.from(body.uvs) : null;
+  const joints = Array.from(body.joints);
+  const weights = Array.from(body.weights);
+  const vetoes = veto ? Array.from(veto) : null;
+  const f = [];
+  const value = (v) => {
+    const inside = field(positions[v * 3], positions[v * 3 + 1], positions[v * 3 + 2]);
+    return vetoes ? Math.min(inside, vetoes[v]) : inside;
+  };
+  for (let v = 0; v < body.positions.length / 3; v += 1) f.push(value(v));
+
+  let triangles = Array.from(body.indices);
+  let source = Array.from({ length: triangles.length / 3 }, (_, t) => t);
+
+  const midpoint = (a, b) => {
+    for (let k = 0; k < 3; k += 1) positions.push((positions[a * 3 + k] + positions[b * 3 + k]) / 2);
+    const n = [0, 1, 2].map((k) => normals[a * 3 + k] + normals[b * 3 + k]);
+    const len = Math.hypot(...n) || 1;
+    normals.push(n[0] / len, n[1] / len, n[2] / len);
+    if (uvs) uvs.push((uvs[a * 2] + uvs[b * 2]) / 2, (uvs[a * 2 + 1] + uvs[b * 2 + 1]) / 2);
+    const blend = new Map();
+    for (const v of [a, b]) {
+      for (let k = 0; k < 4; k += 1) {
+        const weight = weights[v * 4 + k] / 2;
+        if (weight > 0) blend.set(joints[v * 4 + k], (blend.get(joints[v * 4 + k]) ?? 0) + weight);
+      }
+    }
+    const best = [...blend].sort((p, q) => q[1] - p[1]).slice(0, 4);
+    const total = best.reduce((sum, [, weight]) => sum + weight, 0) || 1;
+    for (let k = 0; k < 4; k += 1) {
+      joints.push(best[k] ? best[k][0] : 0);
+      weights.push(best[k] ? best[k][1] / total : 0);
+    }
+    const v = positions.length / 3 - 1;
+    if (vetoes) vetoes.push((vetoes[a] + vetoes[b]) / 2);
+    f.push(value(v));
+    return v;
+  };
+
+  for (let round = 0; round < rounds; round += 1) {
+    const split = new Map();
+    const splitAt = (a, b) => {
+      const key = a < b ? a * 4194304 + b : b * 4194304 + a;
+      let m = split.get(key);
+      if (m !== undefined) return m;
+      const length = Math.hypot(
+        positions[a * 3] - positions[b * 3],
+        positions[a * 3 + 1] - positions[b * 3 + 1],
+        positions[a * 3 + 2] - positions[b * 3 + 2]
+      );
+      const crosses = f[a] > 0 !== f[b] > 0;
+      m = length > FINE_EDGE && (crosses || Math.abs(f[a]) + Math.abs(f[b]) < length) ? midpoint(a, b) : -1;
+      split.set(key, m);
+      return m;
+    };
+    const next = [];
+    const nextSource = [];
+    let changed = false;
+    for (let t = 0; t < triangles.length; t += 3) {
+      const tri = [triangles[t], triangles[t + 1], triangles[t + 2]];
+      const mids = [splitAt(tri[0], tri[1]), splitAt(tri[1], tri[2]), splitAt(tri[2], tri[0])];
+      const count = mids.filter((m) => m >= 0).length;
+      const out = [];
+      if (count === 0) out.push(tri);
+      else if (count === 3) {
+        const [ab, bc, ca] = mids;
+        out.push([tri[0], ab, ca], [ab, tri[1], bc], [ca, bc, tri[2]], [ab, bc, ca]);
+      } else if (count === 1) {
+        // Rotated so the split edge is the first; the winding comes with it.
+        const e = mids.findIndex((m) => m >= 0);
+        const [a, b, c] = [tri[e], tri[(e + 1) % 3], tri[(e + 2) % 3]];
+        out.push([a, mids[e], c], [mids[e], b, c]);
+      } else {
+        // Two split: rotated so the one left whole is the last, `c` to `a`.
+        const e = mids.findIndex((m) => m < 0);
+        const [a, b, c] = [tri[(e + 1) % 3], tri[(e + 2) % 3], tri[e]];
+        const ab = mids[(e + 1) % 3];
+        const bc = mids[(e + 2) % 3];
+        out.push([ab, b, bc], [a, ab, bc], [a, bc, c]);
+      }
+      if (count) changed = true;
+      for (const piece of out) {
+        next.push(...piece);
+        nextSource.push(source[t / 3]);
+      }
+    }
+    triangles = next;
+    source = nextSource;
+    if (!changed) break;
+  }
+
+  return {
+    positions,
+    normals,
+    uvs,
+    joints,
+    weights,
+    f,
+    indices: triangles,
+    source,
+  };
 }
 
 /**
@@ -329,15 +850,38 @@ function toSegment(p, a, b) {
  * piece of cloth with an edge. The wall is `LIFT` tall, which is a pixel at
  * figure scale and exactly the read wanted - not a visible band, but not a
  * surface that merges into the body either.
+ *
+ * Options, for the garments that are not all one piece of opaque cotton:
+ *
+ * - `layer` scales the lift, so pieces worn over one another stand off the skin
+ *   by different amounts and do not fight over the same depth. A stocking is
+ *   under everything, a garter strap over the stocking and the knickers, a
+ *   harness over whatever the chest is wearing.
+ * - `finish` says what the cloth is (see `GARMENT_FINISHES`). Only an opaque
+ *   one hides the skin under it: lace has holes in it and a stocking is sheer,
+ *   and the skin has to be there to be seen through them.
+ * - `trim(x, y, z, f)` marks the parts of a garment made of something other
+ *   than its body - a lace bra's straps and band, the elastic of a waistband, a
+ *   stocking's welt - given the point and how far inside the garment it is.
+ *   It is a signed distance into the trim, stored per vertex as `0.5 + d / TRIM`
+ *   and read by the renderers as trim wherever it interpolates above a half.
+ *   Stored as a distance rather than a yes or no because the renderers
+ *   interpolate it across triangles five to twenty millimetres wide, and a flag
+ *   interpolated over those draws its boundary wherever the tessellation puts
+ *   it, while a distance interpolated over them puts it where the distance is
+ *   zero - the same reason the hem is cut rather than taken from whole
+ *   triangles.
+ * - `trimColour` is what the trim is drawn in, where that is not the garment's
+ *   own colour.
+ *
+ * The body's UVs come across with everything else, interpolated at the cuts,
+ * so a pattern laid on the atlas - the lace - lies on the garment the way the
+ * skin's own texture lies on the skin.
  */
-function lift(body, field, veto, colour, name, { bulge } = {}) {
+function lift(scan, field, veto, colour, name, { bulge, layer = 1, finish = "cotton", trim, trimColour = null } = {}) {
+  const body = refine(scan, field, veto);
+  const { f } = body;
   const count = body.positions.length / 3;
-  const coveredTriangles = [];
-  const f = new Float64Array(count);
-  for (let v = 0; v < count; v += 1) {
-    const inside = field(body.positions[v * 3], body.positions[v * 3 + 1], body.positions[v * 3 + 2]);
-    f[v] = veto ? Math.min(inside, veto[v]) : inside;
-  }
 
   // Vertices of the cut region, still on the skin. The lift is applied at the
   // end, so the field, the interpolation and the hem all work in one space.
@@ -345,6 +889,9 @@ function lift(body, field, veto, colour, name, { bulge } = {}) {
   const nx = [];
   const jx = [];
   const wx = [];
+  const ux = [];
+  const fx = [];
+  const uvs = body.uvs ?? null;
   const fromVertex = new Int32Array(count).fill(-1);
   const fromCut = new Map();
 
@@ -352,6 +899,8 @@ function lift(body, field, veto, colour, name, { bulge } = {}) {
     if (fromVertex[v] >= 0) return fromVertex[v];
     px.push(body.positions[v * 3], body.positions[v * 3 + 1], body.positions[v * 3 + 2]);
     nx.push(body.normals[v * 3], body.normals[v * 3 + 1], body.normals[v * 3 + 2]);
+    if (uvs) ux.push(uvs[v * 2], uvs[v * 2 + 1]);
+    fx.push(f[v]);
     for (let k = 0; k < 4; k += 1) {
       jx.push(body.joints[v * 4 + k]);
       wx.push(body.weights[v * 4 + k]);
@@ -406,6 +955,10 @@ function lift(body, field, veto, colour, name, { bulge } = {}) {
     }
     const len = Math.hypot(n[0], n[1], n[2]) || 1;
     nx.push(n[0] / len, n[1] / len, n[2] / len);
+    if (uvs) {
+      for (let k = 0; k < 2; k += 1) ux.push(uvs[a * 2 + k] + (uvs[b * 2 + k] - uvs[a * 2 + k]) * t);
+    }
+    fx.push(0);
     const blend = new Map();
     for (const [v, share] of [[a, 1 - t], [b, t]]) {
       for (let k = 0; k < 4; k += 1) {
@@ -426,17 +979,19 @@ function lift(body, field, veto, colour, name, { bulge } = {}) {
     return index;
   };
 
+  // Skin well inside an opaque garment is never visible. Retain a narrow
+  // border at cuffs and hems, where a cut fabric triangle only partly covers
+  // its source skin triangle - which, since `refine`, means any of the scan's
+  // triangles that some piece of it is not well inside.
+  const hides = new Uint8Array(scan.indices.length / 3).fill(OPAQUE.has(finish) ? 1 : 0);
   const tris = [];
   for (let i = 0; i < body.indices.length; i += 3) {
     const tri = [body.indices[i], body.indices[i + 1], body.indices[i + 2]];
     const inside = tri.filter((v) => f[v] > 0);
+    if (!tri.every((v) => f[v] > LIFT * 0.5)) hides[body.source[i / 3]] = 0;
     if (!inside.length) continue;
     if (inside.length === 3) {
       tris.push(keepVertex(tri[0]), keepVertex(tri[1]), keepVertex(tri[2]));
-      // Skin well inside an opaque garment is never visible. Retain a narrow
-      // border at cuffs and hems, where a cut fabric triangle only partly
-      // covers its source skin triangle.
-      if (tri.every(v => f[v] > LIFT * 0.5)) coveredTriangles.push(i / 3);
       continue;
     }
     // Rotate the triangle so the odd vertex out comes first. The winding has to
@@ -467,6 +1022,8 @@ function lift(body, field, veto, colour, name, { bulge } = {}) {
     }
   }
   if (!tris.length) return null;
+  const coveredTriangles = [];
+  for (let t = 0; t < hides.length; t += 1) if (hides[t]) coveredTriangles.push(t);
 
   // The scan is split along its UV seams: half of its edges are used by exactly
   // one triangle, because the two sides hold coincident copies of a vertex
@@ -523,15 +1080,19 @@ function lift(body, field, veto, colour, name, { bulge } = {}) {
   /* ---- lift it off the skin and hem it ---- */
 
   const height = (i) =>
-    LIFT + (bulge ? bulge(px[i * 3], px[i * 3 + 1], px[i * 3 + 2]) : 0);
+    LIFT * layer + (bulge ? bulge(px[i * 3], px[i * 3 + 1], px[i * 3 + 2]) : 0);
 
   const positions = [];
   const normals = [];
   const joints = [];
   const weights = [];
+  const texcoords = [];
+  const trims = [];
   const emit = (i, h) => {
     positions.push(px[i * 3] + nx[i * 3] * h, px[i * 3 + 1] + nx[i * 3 + 1] * h, px[i * 3 + 2] + nx[i * 3 + 2] * h);
     normals.push(nx[i * 3], nx[i * 3 + 1], nx[i * 3 + 2]);
+    if (uvs) texcoords.push(ux[i * 2], ux[i * 2 + 1]);
+    trims.push(trim ? 0.5 + trim(px[i * 3], px[i * 3 + 1], px[i * 3 + 2], fx[i]) / TRIM : 0);
     for (let k = 0; k < 4; k += 1) {
       joints.push(jx[i * 4 + k]);
       weights.push(wx[i * 4 + k]);
@@ -565,7 +1126,7 @@ function lift(body, field, veto, colour, name, { bulge } = {}) {
   const at = (i, top) => {
     const w = weld[i];
     const key = `${w}|${top ? 1 : 0}`;
-    if (!wall.has(key)) wall.set(key, emit(w, top ? height(w) : LIFT * 0.12));
+    if (!wall.has(key)) wall.set(key, emit(w, top ? height(w) : LIFT * Math.min(0.12, layer * 0.3)));
     return wall.get(key);
   };
   for (let i = 0; i < tris.length; i += 3) {
@@ -617,11 +1178,14 @@ function lift(body, field, veto, colour, name, { bulge } = {}) {
     name,
     primary: false,
     garment: true,
+    finish,
     coveredTriangles,
     colour,
+    trimColour: trim ? trimColour : null,
+    trim: trim ? Float32Array.from(trims) : null,
     positions: Float32Array.from(positions),
     normals: Float32Array.from(normals),
-    uvs: null,
+    uvs: uvs ? Float32Array.from(texcoords) : null,
     indices: Uint32Array.from(indices),
     joints: Uint16Array.from(joints),
     weights: Float32Array.from(weights),
@@ -638,7 +1202,7 @@ function lift(body, field, veto, colour, name, { bulge } = {}) {
  * particular body, so every dimension below moves with a bust slider and no
  * separate knob is needed.
  */
-function bra(template, body, marks, colour) {
+function bra(template, body, marks, colour, { lace = false } = {}) {
   const count = body.positions.length / 3;
 
   // The ball's centre is not the nipple. It sits back and down from it, about
@@ -657,6 +1221,13 @@ function bra(template, body, marks, colour) {
   ];
   const cupR = marks.reach * 1.22;
   const cupTop = marks.apex[1] + marks.reach * 0.55;
+  // The lace one plunges: the top edge falls from the strap towards the
+  // centre, to a little above the fold, which is the cut lace is usually made
+  // in and the one that shows the most of it.
+  const plunge = marks.underY + marks.reach * 0.9;
+  const topAt = lace
+    ? (ax) => cupTop - (cupTop - plunge) * (1 - smoothstep(0.012, marks.apex[0] * 1.05, ax))
+    : () => cupTop;
   const shoulderX = marks.shoulder ? marks.shoulder[12] : 0.095;
 
   // In the bind pose the arms hang at forty-five degrees with the hands beside
@@ -667,6 +1238,7 @@ function bra(template, body, marks, colour) {
   // trapezius, which belongs to the clavicle and the spine, and a strap wide
   // enough to reach the deltoid is a sleeve.
   const veto = boneMargin(template, body, ARM_BONES);
+  const probe = surfaceProbe(body, awayFrom(template, body, FOREARM_BONES));
 
   // How far forward the trunk reaches at a point on its front, arms left out so
   // a sample near the shoulder measures the trapezius and not the deltoid
@@ -735,9 +1307,17 @@ function bra(template, body, marks, colour) {
       const surface = frontNear(x, y, 0.018);
       points.push([x, y, (surface > -Infinity ? surface : marks.frontAt(y)) - 0.004]);
     }
-    points.push([side * shoulderX * 0.82, shoulderY - 0.012, -0.03]);
-    points.push([side * marks.hipWidth * 0.62, marks.underY + 0.052, -0.052]);
-    return points;
+    // Over the trapezius and down the back to the band, laid on the skin the
+    // way the other straps here are: two guesses at where the back was, which
+    // is what this used to be, left the strap in the air behind the shoulder
+    // blade and it stopped halfway down it.
+    const back = surfacePath(probe, [
+      points[points.length - 1],
+      [side * shoulderX * 0.8, shoulderY + 0.03, -0.012],
+      [side * shoulderX * 0.78, shoulderY - 0.04, marks.backAt(shoulderY - 0.04) - 0.01],
+      [side * marks.hipWidth * 0.62, marks.underY + 0.002, marks.backAt(marks.underY) - 0.01],
+    ], { depth: 0.004, steps: 6 });
+    return [...points, ...back.slice(1)];
   };
 
   // Once, not once per vertex. `field` below is called for every vertex of the
@@ -747,7 +1327,7 @@ function bra(template, body, marks, colour) {
   // turned a two-second build into one that does not finish.
   const lines = [strap(-1), strap(1)];
 
-  const field = (x, y, z) => {
+  const parts = (x, y, z) => {
     const side = x >= 0 ? 1 : -1;
 
     // The cup: the ball, cut off level above so the top edge of the bra is a
@@ -756,7 +1336,7 @@ function bra(template, body, marks, colour) {
     // wrap round the ribs into the armpit.
     const d = Math.hypot(x - side * centre[0], y - centre[1], z - centre[2]);
     const cup =
-      z > marks.apex[2] - marks.reach * 1.5 ? Math.min(cupR - d, cupTop - y) : -1;
+      z > marks.apex[2] - marks.reach * 1.5 ? Math.min(cupR - d, topAt(Math.abs(x)) - y) : -1;
 
     // The band, all the way round at the fold.
     const band = Math.min(marks.underY + 0.006 - y, y - (marks.underY - 0.026));
@@ -769,10 +1349,22 @@ function bra(template, body, marks, colour) {
       if (dist < near) near = dist;
     }
 
-    return Math.max(cup, band, 0.0092 - near);
+    // A lace bra hangs from something finer than a plain one's strap.
+    return [cup, band, (lace ? 0.0068 : 0.0092) - near];
   };
+  const field = (x, y, z) => Math.max(...parts(x, y, z));
 
-  return lift(body, field, veto, colour, "bra");
+  if (!lace) return lift(body, field, veto, colour, "bra");
+  // Lace in the cups; the band, the straps and a narrow edge round the cups
+  // are satin, because that is what holds a lace bra up and its shape together.
+  const edge = hem(0.0025);
+  return lift(body, field, veto, colour, "lace-bra", {
+    finish: "lace",
+    trim: (x, y, z, f) => {
+      const [, band, strap] = parts(x, y, z);
+      return Math.max(band, strap, edge(x, y, z, f));
+    },
+  });
 }
 
 /**
@@ -796,11 +1388,13 @@ function bra(template, body, marks, colour) {
  * when briefs are worn - they are under the cloth, and cloth is opaque - and
  * the bulge is what stands in for them.
  */
-function briefs(template, body, marks, colour, { bulge = 0 } = {}) {
-  const count = body.positions.length / 3;
+function briefs(template, body, marks, colour, { bulge = 0, swim = false } = {}) {
   const veto = boneMargin(template, body, new RegExp(`${LOWER_LEG_BONES.source}|${ARM_BONES.source}`));
 
-  const waist = marks.waistY - (marks.waistY - marks.hipY) * 0.35;
+  // Swim briefs are the same cut sitting lower on the hip, which is all that
+  // tells them apart on a body - and in lycra rather than cotton.
+  const plain = marks.waistY - (marks.waistY - marks.hipY) * 0.35;
+  const waist = swim ? marks.crotchY + (plain - marks.crotchY) * 0.85 : plain;
   const rise = (waist - marks.crotchY) * 0.72;
 
   const field = (x, y, z) => {
@@ -810,15 +1404,355 @@ function briefs(template, body, marks, colour, { bulge = 0 } = {}) {
 
   // The bulge tapers in every direction from the front of the crotch, so the
   // panel swells and the waistband does not.
-  const centre = [0, marks.crotchY + (waist - marks.crotchY) * 0.26, 0.052];
-  const shape = bulge
-    ? (x, y, z) => {
-        const d = Math.hypot(x * 0.85, (y - centre[1]) * 1.05, (z - centre[2]) * 0.6);
-        return bulge * (1 - smoothstep(0.012, 0.062, d));
-      }
-    : undefined;
+  const shape = bulgeShape(marks, bulge);
+  return swim
+    ? lift(body, field, veto, colour, "swim-briefs", { bulge: shape, finish: "lycra" })
+    : lift(body, field, veto, colour, "briefs", { bulge: shape });
+}
 
-  return lift(body, field, veto, colour, "briefs", { bulge: shape });
+/**
+ * Low-rise bottoms cut from a front panel, a back panel and a string over each
+ * hip: the bikini, and the lace thong, which is the same with the back panel
+ * narrowed to a strip.
+ *
+ * The panels are widths in x as a function of height - wide at the top,
+ * narrowing to a gusset at the crotch - rather than curves in azimuth like the
+ * briefs' leg openings, because that is how these are cut: the leg opening of
+ * a bikini runs up over the hip bone, nearly to the string, which no curve in
+ * azimuth that also closes at the crotch can do. Front and back are told apart
+ * by which side of the pelvis a point is on, so the gusset under the body is
+ * where the two widths meet, and they are close enough there to meet without a
+ * step.
+ */
+function lowRise(template, body, marks, colour, { thong = false, bulge = 0 } = {}) {
+  const veto = boneMargin(template, body, new RegExp(`${LOWER_LEG_BONES.source}|${ARM_BONES.source}`));
+  const rise = marks.waistY - marks.crotchY;
+  const frontTop = marks.crotchY + rise * 0.42;
+  const backTop = marks.crotchY + rise * 0.5;
+  const hipTop = marks.crotchY + rise * 0.56;
+  const band = thong ? 0.0065 : 0.005;
+  const zc = marks.pelvisZ;
+
+  const parts = (x, y, z) => {
+    const ax = Math.abs(x);
+    const forward = z > zc;
+    const side = Math.sin(Math.atan2(x, z - zc)) ** 2;
+    const middle = forward ? frontTop : backTop;
+    const top = middle + (hipTop - middle) * side;
+    const string = Math.min(top - y, y - (top - band));
+    const t = clamp01((y - marks.crotchY) / (middle - marks.crotchY));
+    const half = forward
+      ? (thong ? 0.014 + 0.05 * t ** 0.9 : 0.015 + 0.045 * t ** 0.85)
+      : thong
+        ? 0.004 + 0.028 * smoothstep(0.72, 1, t)
+        : 0.02 + 0.07 * t ** 0.7;
+    const panel = Math.min(top - y, half - ax, y - (marks.crotchY - 0.02));
+    return [string, panel];
+  };
+  const field = (x, y, z) => Math.max(...parts(x, y, z));
+  const shape = bulgeShape(marks, bulge);
+
+  if (!thong) return lift(body, field, veto, colour, "bikini-bottom", { bulge: shape, finish: "lycra" });
+  // On a man the front panel stands off the skin by the bulge, and lace with
+  // holes in it over a hollow two centimetres deep is a view into the figure,
+  // not through a garment. So there it is made solid.
+  const edge = hem(0.0022);
+  return lift(body, field, veto, colour, "lace-thong", {
+    bulge: shape,
+    finish: bulge ? "lycra" : "lace",
+    trim: bulge ? undefined : (x, y, z, f) => Math.max(parts(x, y, z)[0], edge(x, y, z, f)),
+  });
+}
+
+/**
+ * A triangle bikini top: a triangle over each breast, a string under both and
+ * round the back, and a halter string from the top of each cup round the neck.
+ *
+ * The triangles are drawn on the front of the body as it is seen from ahead,
+ * which is how a triangle top is cut - flat panels, gathered on the string -
+ * and they are sized off the same apex-to-fold reach as the bra's cup, so they
+ * grow with the bust.
+ */
+function bikiniTop(template, body, marks, colour) {
+  const veto = boneMargin(template, body, ARM_BONES);
+  const probe = surfaceProbe(body, awayFrom(template, body, FOREARM_BONES));
+  const { apex, reach, underY } = marks;
+  const back = apex[2] - reach * 1.8;
+  const arms = jointSet(template, ARM_BONES);
+  const p = body.positions;
+
+  // A triangle top is hung from above the nipple, which is not the apex: the
+  // apex is the middle of the most forward ring of the chest, and the breast
+  // points outwards, so on every scan here the nipple is a centimetre and a
+  // half further out. It is the point that stands furthest forward along a
+  // line turned twenty degrees outwards, where it stands proud of the breast.
+  const [sin, cos] = [Math.sin(0.35), Math.cos(0.35)];
+  const tips = [null, null];
+  for (let v = 0; v < p.length / 3; v += 1) {
+    if (Math.abs(p[v * 3 + 1] - apex[1]) > reach || arms.has(dominant(body, v))) continue;
+    const s = p[v * 3] > 0 ? 1 : 0;
+    const forward = Math.abs(p[v * 3]) * sin + p[v * 3 + 2] * cos;
+    if (!tips[s] || forward > tips[s][0]) tips[s] = [forward, Math.abs(p[v * 3]), p[v * 3 + 1]];
+  }
+  const nipple = tips[0] && tips[1] ? [(tips[0][1] + tips[1][1]) / 2, (tips[0][2] + tips[1][2]) / 2] : [apex[0], apex[1]];
+
+  // The outer corner comes down to the band where the trunk still faces
+  // forward. Out as far as the bust is big, as the bra's cup is, it is three to
+  // five centimetres past the side of the trunk; nearer, but where the skin
+  // already faces sideways, a cut along x meets it almost edge-on and comes out
+  // ragged, and the cut at `back` takes the rest off in a hook. So it is walked
+  // out along the band, on the skin as it is seen from ahead, until the trunk
+  // turns more than fifty degrees away, on whichever side turns first.
+  const belt = [];
+  const I = body.indices;
+  for (let k = 0; k < I.length; k += 3) {
+    const tri = [I[k], I[k + 1], I[k + 2]];
+    if (arms.has(dominant(body, tri[0]))) continue;
+    const ys = tri.map((v) => p[v * 3 + 1]);
+    if (Math.min(...ys) <= underY && Math.max(...ys) >= underY) belt.push(tri);
+  }
+  const ahead = (x) => {
+    let z = -Infinity;
+    for (const [a, b, c] of belt) {
+      const den = (p[b * 3 + 1] - p[c * 3 + 1]) * (p[a * 3] - p[c * 3]) + (p[c * 3] - p[b * 3]) * (p[a * 3 + 1] - p[c * 3 + 1]);
+      if (Math.abs(den) < 1e-14) continue;
+      const u = ((p[b * 3 + 1] - p[c * 3 + 1]) * (x - p[c * 3]) + (p[c * 3] - p[b * 3]) * (underY - p[c * 3 + 1])) / den;
+      const w = ((p[c * 3 + 1] - p[a * 3 + 1]) * (x - p[c * 3]) + (p[a * 3] - p[c * 3]) * (underY - p[c * 3 + 1])) / den;
+      if (u < 0 || w < 0 || u + w > 1) continue;
+      z = Math.max(z, u * p[a * 3 + 2] + w * p[b * 3 + 2] + (1 - u - w) * p[c * 3 + 2]);
+    }
+    return z;
+  };
+  const STEP = 0.003;
+  let flank = apex[0] - reach * 0.4;
+  while (flank < apex[0] + reach * 1.1) {
+    const drop = Math.max(ahead(flank) - ahead(flank + STEP), ahead(-flank) - ahead(-flank - STEP));
+    if (!(drop < STEP * 1.2)) break;
+    flank += STEP;
+  }
+
+  // Counter-clockwise seen from the front, on the +x side; the other side is
+  // the mirror image. With the corner where the trunk still faces forward, a
+  // straight outer edge passes inside the nipple, so the outer edge goes out
+  // round it instead: straight up from the corner to a centimetre outside the
+  // nipple, and from there back in to the top on the arc through all three,
+  // the way the gathered edge of a triangle sits round the breast rather than
+  // across it. The arc all the way down bows out over the fold, and the cup
+  // followed the fold round the side in a claw.
+  const [top, corner, beside] = [
+    [nipple[0] - 0.004, apex[1] + reach * 1.2],
+    [flank, underY - 0.001],
+    [nipple[0] + 0.01, nipple[1]],
+  ];
+  const edges = [
+    [top, [0.011, underY - 0.004]],
+    [[0.011, underY - 0.004], corner],
+    [corner, beside],
+  ].map(([a, b]) => {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    return [a, [(b[0] - a[0]) / len, (b[1] - a[1]) / len]];
+  });
+  const circle = (() => {
+    const [[ax, ay], [bx, by], [cx, cy]] = [top, corner, beside];
+    const d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
+    const a2 = ax * ax + ay * ay, b2 = bx * bx + by * by, c2 = cx * cx + cy * cy;
+    const centre = [(a2 * (by - cy) + b2 * (cy - ay) + c2 * (ay - by)) / d, (a2 * (cx - bx) + b2 * (ax - cx) + c2 * (bx - ax)) / d];
+    return { centre, radius: Math.hypot(ax - centre[0], ay - centre[1]) };
+  })();
+
+  const neckY = (template.jointByBone.get("neck")?.rest?.[13] ?? 0.85) - 0.008;
+  const halter = [-1, 1].map((side) =>
+    surfacePath(probe, [
+      [side * top[0], top[1], marks.frontAt(top[1]) - 0.01],
+      [side * 0.04, top[1] + 0.03, marks.frontAt(top[1] + 0.03) - 0.01],
+      [side * 0.03, neckY - 0.008, 0.0],
+      [side * 0.014, neckY, -0.028],
+      [0, neckY + 0.002, -0.034],
+    ])
+  );
+  const strings = straps(halter, { width: 0.006 });
+
+  const field = (x, y, z) => {
+    const ax = Math.abs(x);
+    let cup = -1;
+    if (z > back) {
+      cup = circle.radius - Math.hypot(ax - circle.centre[0], y - circle.centre[1]);
+      for (const [a, e] of edges) cup = Math.min(cup, e[0] * (y - a[1]) - e[1] * (ax - a[0]));
+    }
+    const band = Math.min(y - (underY - 0.0045), underY + 0.0005 - y);
+    return Math.max(cup, band, strings(x, y, z));
+  };
+  return lift(body, field, veto, colour, "bikini-top", { finish: "lycra" });
+}
+
+/**
+ * Stockings: each leg from the toes to the top of the thigh, sheer, with a
+ * denser welt at the top.
+ *
+ * Under everything else - the lowest layer there is, so shorts, straps and
+ * knickers all go over it - and the skin stays under it, since the skin is what
+ * a stocking is seen by.
+ */
+function stockings(template, body, marks, colour) {
+  const veto = boneMargin(template, body, ARM_BONES);
+  const top = stockingTop(marks);
+  const welt = 0.028;
+  return lift(body, (x, y) => top - y, veto, colour, "stockings", {
+    finish: "sheer",
+    layer: 0.5,
+    // Measured from the top edge itself rather than from `f`, which the arm
+    // veto caps at two centimetres and so cannot tell a welt from a calf.
+    trim: (x, y) => welt - (top - y),
+  });
+}
+
+/**
+ * A garter belt: a band of lace round the waist and four suspenders from it to
+ * the stocking tops, one down the front of each thigh and one down the side.
+ *
+ * The suspenders are laid on the skin through guides on the belly, over the
+ * hip and on the thigh, and end halfway down the welt, where a clip would
+ * hold them. Over the stockings and the knickers, so both sit under the
+ * straps as they would.
+ */
+function garterBelt(template, body, marks, colour) {
+  const veto = boneMargin(template, body, ARM_BONES);
+  const probe = surfaceProbe(body, awayFrom(template, body, ARM_BONES));
+  const beltTop = marks.waistY + 0.004;
+  const beltBottom = marks.waistY - 0.04;
+  const end = stockingTop(marks) - 0.014;
+  const zc = marks.pelvisZ;
+  const lines = [];
+  for (const side of [-1, 1]) {
+    const thigh = marks.legAt(end, side);
+    const mid = marks.crotchY + 0.015;
+    lines.push(
+      surfacePath(probe, [
+        [side * 0.052, beltBottom + 0.004, marks.frontAt(beltBottom)],
+        [thigh[0] - side * 0.004, end, thigh[2] + 0.06],
+      ], { steps: 10 }),
+      surfacePath(probe, [
+        [side * marks.wideAt(beltBottom), beltBottom + 0.004, zc],
+        [side * (marks.wideAt(mid) + 0.01), mid + 0.02, zc - 0.005],
+        [thigh[0] + side * 0.06, end, thigh[2]],
+      ])
+    );
+  }
+  const suspenders = straps(lines, { width: 0.0075 });
+  const belt = (y) => Math.min(beltTop - y, y - beltBottom);
+  const edge = hem(0.0025);
+  return lift(body, (x, y, z) => Math.max(belt(y), suspenders(x, y, z)), veto, colour, "garter-belt", {
+    finish: "lace",
+    layer: 1.6,
+    trim: (x, y, z, f) => Math.max(suspenders(x, y, z), edge(x, y, z, f)),
+  });
+}
+
+/**
+ * Boxer briefs: waist to mid-thigh, close fitting, with a waistband in a
+ * contrasting elastic. The shorts' region, cut tighter and higher, with the
+ * bulge a man's briefs carry.
+ */
+function boxerBriefs(template, body, marks, colour, { bulge = 0 } = {}) {
+  const veto = boneMargin(template, body, ARM_BONES);
+  const waist = marks.waistY - 0.006;
+  const band = 0.024;
+  return lift(body, (x, y) => Math.min(waist - y, y - (marks.crotchY - 0.075)), veto, colour, "boxer-briefs", {
+    bulge: bulgeShape(marks, bulge),
+    trim: (x, y) => y - (waist - band),
+    trimColour: contrast(colour),
+  });
+}
+
+/**
+ * A jockstrap: a wide elastic waistband low on the hips, a pouch, and a strap
+ * from the bottom of the pouch under each buttock to the band at the side -
+ * which leaves the buttocks bare, and is the point of it.
+ */
+function jockstrap(template, body, marks, colour, { bulge = 0 } = {}) {
+  const veto = boneMargin(template, body, new RegExp(`${LOWER_LEG_BONES.source}|${ARM_BONES.source}`));
+  const probe = surfaceProbe(body, awayFrom(template, body, new RegExp(`${LOWER_LEG_BONES.source}|${ARM_BONES.source}`)));
+  const crotch = marks.crotchY;
+  const bandTop = crotch + (marks.waistY - crotch) * 0.78;
+  const bandBottom = bandTop - 0.026;
+  const zc = marks.pelvisZ;
+  const lines = [-1, 1].map((side) =>
+    surfacePath(probe, [
+      [side * 0.014, crotch - 0.004, zc - 0.008],
+      [side * 0.045, crotch + 0.006, marks.backAt(crotch + 0.006) * 0.6],
+      [side * 0.08, crotch + 0.024, marks.backAt(crotch + 0.024) * 0.8],
+      [side * (marks.wideAt(bandBottom) - 0.012), bandBottom + 0.004, zc - 0.045],
+    ], { steps: 6 })
+  );
+  const legStraps = straps(lines, { width: 0.012 });
+  const parts = (x, y, z) => {
+    const band = Math.min(bandTop - y, y - bandBottom);
+    let pouch = -1;
+    if (z > zc) {
+      const t = clamp01((y - crotch) / (bandBottom - crotch));
+      pouch = Math.min(bandBottom + 0.002 - y, 0.017 + 0.038 * t ** 0.8 - Math.abs(x), y - (crotch - 0.02));
+    }
+    return [band, pouch, legStraps(x, y, z)];
+  };
+  return lift(body, (x, y, z) => Math.max(...parts(x, y, z)), veto, colour, "jockstrap", {
+    bulge: bulgeShape(marks, bulge),
+    trim: (x, y, z) => {
+      const [band, , strap] = parts(x, y, z);
+      return Math.max(band, strap);
+    },
+    trimColour: contrast(colour),
+  });
+}
+
+/**
+ * A chest harness in leather: a ring on the sternum, a strap from it over each
+ * shoulder and down the back to a second ring between the shoulder blades, and
+ * a strap from it round each side under the arm to the same ring behind.
+ *
+ * On a woman the front ring sits between the breasts and the side straps run
+ * under them, which is where a harness is worn over a bust. Worn over whatever
+ * else is on the chest.
+ */
+function harness(template, body, marks, colour, bodyType) {
+  const veto = boneMargin(template, body, ARM_BONES);
+  const probe = surfaceProbe(body, awayFrom(template, body, FOREARM_BONES));
+  const female = bodyType === "female";
+  const ringY = female ? (marks.apex[1] + marks.underY) / 2 + 0.004 : marks.apex[1] - 0.012;
+  const sideY = female ? marks.underY - 0.009 : ringY - 0.022;
+  const backY = ringY + 0.035;
+  const front = probe([0, ringY, marks.frontAt(ringY)]);
+  const back = probe([0, backY, marks.backAt(backY)]);
+  const shoulderY = (template.jointByBone.get("neck")?.rest?.[13] ?? 0.85) - 0.014;
+  const lines = [];
+  for (const side of [-1, 1]) {
+    lines.push(
+      surfacePath(probe, [
+        [side * 0.009, ringY + 0.01, front.point[2]],
+        [side * 0.036, ringY + 0.05, marks.frontAt(ringY + 0.05) - 0.01],
+        [side * 0.062, shoulderY, 0],
+        [side * 0.05, shoulderY - 0.04, marks.backAt(shoulderY - 0.04)],
+        [side * 0.009, backY + 0.012, back.point[2]],
+      ], { steps: 6 }),
+      surfacePath(probe, [
+        [side * 0.012, ringY - 0.002, front.point[2]],
+        [side * 0.06, sideY, marks.frontAt(sideY) - 0.015],
+        [side * marks.wideAt(sideY), sideY - 0.004, marks.pelvisZ],
+        [side * 0.06, backY - 0.012, marks.backAt(backY - 0.012)],
+        [side * 0.012, backY, back.point[2]],
+      ], { steps: 6 })
+    );
+  }
+  const belts = straps(lines, { width: 0.011 });
+  const ring = (centre, x, y, z) =>
+    0.003 - Math.abs(Math.hypot(x - centre.point[0], y - centre.point[1], z - centre.point[2]) - 0.012);
+  const rings = (x, y, z) => Math.max(z > front.point[2] - 0.03 ? ring(front, x, y, z) : -1, z < back.point[2] + 0.03 ? ring(back, x, y, z) : -1);
+  return lift(body, (x, y, z) => Math.max(belts(x, y, z), rings(x, y, z)), veto, colour, "harness", {
+    finish: "leather",
+    layer: 2.2,
+    // The rings are steel.
+    trim: rings,
+    trimColour: [0.62, 0.62, 0.64],
+  });
 }
 
 /** Simple studio clothing follows the same skin weights as the scanned body. */
@@ -873,7 +1807,7 @@ function cuffs(template, body, colour) {
     return best;
   };
   const thickness = 0.0025 / 1.72;
-  return lift(body, field, veto, colour, "cuffs", { bulge: () => thickness });
+  return lift(body, field, veto, colour, "cuffs", { bulge: () => thickness, finish: "leather" });
 }
 
 /**
@@ -887,41 +1821,48 @@ function cuffs(template, body, colour) {
  * @returns {object} a new template; the original is not touched
  */
 export function withGarments(template, { bodyType = "neutral", wearing, colour = "black" } = {}) {
-  const wanted = wearing ?? [];
+  // The scene has already done this and said what it dropped; this is for
+  // callers that have not, since the result of skipping it is two pieces
+  // fighting over the same skin.
+  const wanted = resolveWearing(wearing ?? []).wearing;
   if (!wanted.length) return template;
   const body = template.submeshes.find((submesh) => submesh.primary);
   if (!body) return template;
 
   const tone = GARMENT_COLOURS[colour] ?? GARMENT_COLOURS.black;
   const marks = measure(template, body);
+  const bulge = bodyType === "male" ? 0.021 : 0;
+  const makers = {
+    bra: () => bra(template, body, marks, tone),
+    "lace-bra": () => bra(template, body, marks, tone, { lace: true }),
+    "bikini-top": () => bikiniTop(template, body, marks, tone),
+    top: () => studioGarment(template, body, marks, tone, "top"),
+    briefs: () => briefs(template, body, marks, tone, { bulge }),
+    "lace-thong": () => lowRise(template, body, marks, tone, { thong: true, bulge }),
+    "bikini-bottom": () => lowRise(template, body, marks, tone, { bulge }),
+    "swim-briefs": () => briefs(template, body, marks, tone, { bulge, swim: true }),
+    "boxer-briefs": () => boxerBriefs(template, body, marks, tone, { bulge }),
+    jockstrap: () => jockstrap(template, body, marks, tone, { bulge }),
+    shorts: () => studioGarment(template, body, marks, tone, "shorts"),
+    stockings: () => stockings(template, body, marks, tone),
+    "garter-belt": () => garterBelt(template, body, marks, tone),
+    harness: () => harness(template, body, marks, tone, bodyType),
+    cuffs: () => cuffs(template, body, tone),
+  };
   const added = [];
-
-  // A bra needs something to hold. On the male scan the apex search returns the
-  // pectoral, which is real enough as a landmark but is not a breast, and a cup
-  // built on it is a costume rather than an oversight - so it is refused.
-  if (wanted.includes("bra") && bodyType === "female") {
-    const piece = bra(template, body, marks, tone);
-    if (piece) added.push(piece);
-  }
-  if (wanted.includes("briefs")) {
-    const piece = briefs(template, body, marks, tone, {
-      bulge: bodyType === "male" ? 0.021 : 0,
-    });
-    if (piece) added.push(piece);
-  }
-  for (const name of ['top', 'shorts']) {
-    if (wanted.includes(name)) {
-      const piece = studioGarment(template, body, marks, tone, name);
-      if (piece) added.push(piece);
-    }
-  }
-  if (wanted.includes("cuffs")) {
-    const piece = cuffs(template, body, tone);
+  for (const name of GARMENT_NAMES) {
+    if (!wanted.includes(name)) continue;
+    // A cup needs something to hold. On the male scan the apex search returns
+    // the pectoral, which is real enough as a landmark but is not a breast, and
+    // a cup built on it is a costume rather than an oversight - so it is
+    // refused.
+    if (CUPPED.has(name) && bodyType !== "female") continue;
+    const piece = makers[name]();
     if (piece) added.push(piece);
   }
   if (!added.length) return template;
 
-  const covered = wanted.includes("briefs") || wanted.includes('shorts');
+  const covered = wanted.some((name) => GARMENT_SLOTS.hips.includes(name));
   // Opaque fabric hides the interior skin faces. Keeping both layers lets
   // retargeted seams and interpolated cut weights expose skin through a shirt.
   // Only fully covered faces are removed; the clipped boundary keeps its skin.

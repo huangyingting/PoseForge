@@ -433,7 +433,7 @@ working starter. All dimensions are in meters and joint angles are degrees.
 | `model` | Optional scanned-body model: `asian` (the default), `european`, `african` or `mature`; appearance only, never the pose or contacts |
 | `stature`, `build` | 1.4–2.1 meters; 0.8–1.3 build multiplier |
 | `skinTone` | Six-digit hex color, independent of body type |
-| `wearing`, `outfit` | Known garment names and a named fabric color from `garments.js` |
+| `wearing`, `outfit` | Known garment names and a named fabric color from `garments.js`; one piece each for the chest and the hips (the first named is kept), and the cupped pieces (`bra`, `lace-bra`, `bikini-top`) on female bodies only, each with a warning when left off |
 | `joints` | Bone names → `flexion`, `abduction`, `rotation`; angles must fit the rig's joint limits |
 | `jointMode` | `guided` (default) allows solver adjustments; `fixed` preserves the channels specified in `joints`, not the entire figure |
 | `hands`, `feet` | A named shape for both sides, or `{ "l": "…", "r": "…" }` |

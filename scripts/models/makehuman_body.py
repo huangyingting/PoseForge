@@ -7,6 +7,13 @@ MakeHuman once per body with two variables set:
   POSEFORGE_BODY    the body's entry from bodies.json, as JSON
   POSEFORGE_OUTPUT  where to write the FBX
 
+and `make-hair.mjs` starts it the same way with a third, and usually without
+POSEFORGE_OUTPUT, since what it wants is the fit and not the body:
+
+  POSEFORGE_TRIM    {"proxies": [[name, kind, path], ...], "output": ...},
+                    the hair, eyebrow and eyelash proxies to fit to the body
+                    and the JSON file to write them to (see `trim`)
+
 Without them the plugin does nothing, so an ordinary MakeHuman session that
 finds it installed is unaffected.
 
@@ -59,17 +66,63 @@ def build(human, body):
     human.setSkeleton(rig)
 
 
+def trim(human, proxies, output):
+    """
+    Fit each named proxy - a hairstyle, eyebrows, eyelashes - to this body and
+    write what the app needs to draw it, without exporting it.
+
+    A proxy is a mesh whose every vertex is a weighted sum of three base-mesh
+    vertices plus an offset, and most of the ones a hairstyle leans on are the
+    base mesh's hidden helper geometry, which no exported body carries. So the
+    fitting has to happen here, where the helpers exist, and it is done in the
+    rest pose on the body just built. The body's own visible vertices go out
+    beside the proxies so `make-hair.mjs` can find the transform from these
+    coordinates to the GLB's by matching them, rather than by trusting a chain
+    of export scales and axis swaps.
+    """
+    import numpy as np
+    import proxy
+
+    mesh = human.meshData
+    coords = human.getRestposeCoordinates()
+    visible = mesh.getVertexMaskForFaceMask(mesh.getFaceMask())
+    skel = human.getSkeleton()
+    raw = human.getVertexWeights(skel)
+    result = {"body": np.asarray(coords[visible], dtype=float).round(6).tolist(), "proxies": {}}
+    for name, kind, path in proxies:
+        pxy = proxy.loadProxy(human, getpath.getSysDataPath(path), type=kind)
+        pmesh, _ = pxy.loadMeshAndObject(human)
+        weights = pxy.getVertexWeights(raw, skel)
+        result["proxies"][name] = {
+            "coords": np.asarray(pxy.getCoords(), dtype=float).round(6).tolist(),
+            "faces": np.asarray(pmesh.fvert).tolist(),
+            "faceUVs": np.asarray(pmesh.fuvs).tolist(),
+            "uvs": np.asarray(pmesh.texco, dtype=float).round(6).tolist(),
+            "weights": {
+                bone: [np.asarray(verts).tolist(), np.asarray(values, dtype=float).round(6).tolist()]
+                for bone, (verts, values) in weights.data.items()
+            },
+        }
+    with open(output, "w") as handle:
+        json.dump(result, handle)
+
+
 def load(app):
     spec = os.environ.get("POSEFORGE_BODY")
     if not spec:
         return
     body = json.loads(spec)
-    output = os.environ["POSEFORGE_OUTPUT"]
+    output = os.environ.get("POSEFORGE_OUTPUT")
+    trimmed = os.environ.get("POSEFORGE_TRIM")
 
     def generate():
         try:
             build(app.selectedHuman, body)
-            app.mhapi.exports.exportAsFBX(output, useExportsDir=False)
+            if trimmed:
+                request = json.loads(trimmed)
+                trim(app.selectedHuman, request["proxies"], request["output"])
+            if output:
+                app.mhapi.exports.exportAsFBX(output, useExportsDir=False)
         finally:
             app.stop()
         return False

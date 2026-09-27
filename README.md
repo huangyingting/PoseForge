@@ -53,6 +53,12 @@ scanned bodies for its body type: East Asian about 22 (the default), European
 about 22, African about 22, or East Asian about 50. They change the face, the
 body's shape and the skin photograph, never the pose: the skeleton and the
 collision field are the body type's, so every contact measures the same.
+**Hair** is drawn as MakeHuman's own textured hair cards, with brows and
+lashes, fitted to each body. **Outfit** dresses a figure in the
+studio top and shorts, underwear, a bikini, lingerie (lace bra and thong,
+stockings and garter belt), swim briefs, boxer briefs or a leather jockstrap
+and harness; **Top**, **Bottom** and **Extras** change one piece at a time.
+Clothes are cut from the body's own surface, so they fit and move with it.
 Saved libraries use IndexedDB, migrate legacy data without deleting the backup,
 and accept up to **5,000 presets / 32 MB** (whichever limit is reached first).
 The unified catalog uses bounded 24-card pages. Position metadata and interaction

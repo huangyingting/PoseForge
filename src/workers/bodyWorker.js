@@ -22,6 +22,7 @@ import { propData } from "../core/propShapes.js";
 import { surfaceContactSteps } from '../core/surfaceContacts.js';
 import { solvedPreview } from '../core/posePreview.js';
 import { buildHumanTemplate, skinHumanMesh } from "../core/humanMesh.js";
+import { readCards, withCards } from "../core/hairCards.js";
 import { createTemplateCache } from "./templateCache.js";
 import { modelFiles } from "../core/bodyModels.js";
 import { buildBodyMesh, fieldOcclusion } from "../render/meshBuilder.js";
@@ -59,18 +60,50 @@ const templates = new Map();
 const modelWarnings = new Map();
 const MODEL_RETRY_MS = 10_000;
 
+const fetchBytes = (url) =>
+  fetch(url).then((response) => {
+    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+    return response.arrayBuffer();
+  });
+
+/**
+ * The hair cards for one body (see `core/hairCards.js`): the file every body
+ * shares, fetched once, and the one fitted to this body.
+ *
+ * Losing them costs the hair its strands and nothing else - `withHair` grows
+ * the shell on a template without them - so a failure is a warning and not
+ * the collision field. The body is kept either way: the templates built on it
+ * are cached, and a scan that succeeded is not worth refetching for its hair.
+ */
+let sharedCards = null;
+function bodyCards(mesh) {
+  sharedCards ??= fetchBytes(String(new URL("../../assets/models/hair/cards.bin", import.meta.url))).then(readCards);
+  const shared = sharedCards;
+  return Promise.all([shared, fetchBytes(String(new URL(`../../assets/models/hair/cards-${mesh}.bin`, import.meta.url))).then(readCards)])
+    .then(([shared, fitted]) => ({ shared, fitted }))
+    .catch((error) => {
+      if (sharedCards === shared) sharedCards = null;
+      throw error;
+    });
+}
+
 function scanned(bodyType, model) {
   const url = modelUrl(bodyType, model);
   if (!templates.has(url)) {
-    const attempt = fetch(url)
-      .then((response) => {
-        if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-        return response.arrayBuffer();
-      })
+    const { mesh } = modelFiles(bodyType, model);
+    const cards = bodyCards(mesh).catch((error) => error);
+    const attempt = fetchBytes(url)
       .then((bytes) => buildHumanTemplate(bytes))
-      .then((template) => {
+      .then(async (template) => {
         modelWarnings.delete(url);
-        return template;
+        const loaded = await cards;
+        try {
+          if (loaded instanceof Error) throw loaded;
+          return withCards(template, loaded.shared, loaded.fitted);
+        } catch (error) {
+          modelWarnings.set(url, `Could not load the hair for the ${mesh} scanned body (${error.message}); drawing a plainer shell instead.`);
+          return template;
+        }
       })
       .catch((error) => {
         modelWarnings.set(url, `Could not load the ${modelFiles(bodyType, model).mesh} scanned body (${error.message}); drawing the collision field instead.`);
@@ -137,7 +170,11 @@ function bodyParts(actor, template, scene, occlusion, resolution) {
     primary: part.primary,
     colour: part.colour ?? null,
     hair: part.hair ?? false,
+    cards: part.cards ?? null,
     garment: part.garment ?? false,
+    finish: part.finish ?? null,
+    trim: part.trim ?? null,
+    trimColour: part.trimColour ?? null,
     positions: part.positions,
     normals: part.normals,
     uvs: part.uvs ?? null,
@@ -182,6 +219,8 @@ async function meshActors(actors, { occlusion, resolution }, transfers, loaded) 
       // actor on that body type and by every frame. Neutering it would leave
       // the next render with an empty buffer and an untextured figure.
       if (part.uvs) part.uvs = part.uvs.slice();
+      // Nor the trim, which is the garment's own array in the same way.
+      if (part.trim) part.trim = part.trim.slice();
     }
     return {
       id: actor.id ?? `actor${index}`,

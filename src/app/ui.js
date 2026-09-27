@@ -33,7 +33,14 @@ import {
   bodyModel,
 } from "../core/bodyModels.js";
 import { HAIR_STYLES } from "../core/hair.js";
-import { GARMENT_COLOURS, GARMENT_NAMES } from "../core/garments.js";
+import {
+  CUPPED,
+  GARMENT_COLOURS,
+  GARMENT_LABELS,
+  GARMENT_NAMES,
+  GARMENT_SLOTS,
+  OUTFITS,
+} from "../core/garments.js";
 import { HAND_SHAPE_NAMES } from "../core/handPose.js";
 import { FOOT_SHAPE_NAMES } from "../core/footPose.js";
 import { newId } from "./ids.js";
@@ -117,16 +124,16 @@ function slider(label, { min, max, step, format }) {
  * choice - a bra and briefs are not alternatives - and a multiple <select> hides
  * that behind a scroll box nobody discovers.
  */
-function toggles(label, options) {
+function toggles(label, options, { labels = {} } = {}) {
   const boxes = new Map();
   const row = el("div", { className: "toggles" });
   for (const option of options) {
-    const input = el("input", { type: "checkbox" });
+    const input = el("input", { type: "checkbox", value: option });
     boxes.set(option, input);
     row.append(
       el("label", { className: "toggle" }, [
         input,
-        el("span", { textContent: option }),
+        el("span", { textContent: labels[option] ?? option }),
       ]),
     );
   }
@@ -173,6 +180,31 @@ function bothSides(left, right) {
   if (left === right) return left;
   return { ...(left ? { l: left } : {}), ...(right ? { r: right } : {}) };
 }
+
+/** What each of `OUTFITS` is called on the control. */
+const OUTFIT_LABELS = {
+  studio: "Top & shorts",
+  underwear: "Underwear",
+  bikini: "Bikini",
+  lingerie: "Lingerie",
+  swim: "Swim briefs",
+  boxers: "Boxer briefs",
+  leather: "Leather",
+  custom: "Mixed",
+};
+
+/** The pieces worn over or under whatever is on top and below. */
+const EXTRAS = GARMENT_NAMES.filter(
+  (name) => !Object.values(GARMENT_SLOTS).flat().includes(name),
+);
+
+/** A set's pieces, less the cups for a body without the bust to hold them. */
+const outfitFor = (name, bodyType) =>
+  OUTFITS[name].filter((piece) => bodyType === "female" || !CUPPED.has(piece));
+
+/** Whether two lists name the same things, in any order. */
+const sameItems = (a, b) =>
+  a.length === b.length && a.every((item) => b.includes(item));
 
 /**
  * Build the panel.
@@ -637,7 +669,25 @@ export function buildPanel(root, handlers) {
       const hair = picker("Hair", Object.keys(HAIR_STYLES), {
         blank: "— for the body —",
       });
-      const wearing = toggles("Wearing", GARMENT_NAMES);
+      // Clothes as one choice, with the pieces under it for anyone who wants
+      // to mix: a set, then what is on top and what is below - each of which
+      // takes one piece, so a picker rather than a row of boxes that could
+      // ask for two bras - then what goes over or under either.
+      const dress = picker("Outfit", [...Object.keys(OUTFITS), "custom"], {
+        blank: "— nothing —",
+        labels: OUTFIT_LABELS,
+      });
+      // Shown when the pieces match no set; not something to choose.
+      dress.select.querySelector('option[value="custom"]').disabled = true;
+      const top = picker("Top", GARMENT_SLOTS.chest, {
+        blank: "— none —",
+        labels: GARMENT_LABELS,
+      });
+      const bottom = picker("Bottom", GARMENT_SLOTS.hips, {
+        blank: "— none —",
+        labels: GARMENT_LABELS,
+      });
+      const extras = toggles("Extras", EXTRAS, { labels: GARMENT_LABELS });
       const outfit = picker("Colour", Object.keys(GARMENT_COLOURS), {
         blank: "— black —",
       });
@@ -646,7 +696,10 @@ export function buildPanel(root, handlers) {
         model.field,
         skinField,
         hair.field,
-        wearing.field,
+        dress.field,
+        top.field,
+        bottom.field,
+        extras.field,
         outfit.field,
       );
 
@@ -777,20 +830,25 @@ export function buildPanel(root, handlers) {
           emit();
         });
       }
-      for (const [name, box] of wearing.boxes) {
-        box.addEventListener("change", () => {
-          const alternative = {
-            top: "bra",
-            bra: "top",
-            shorts: "briefs",
-            briefs: "shorts",
-          }[name];
-          if (box.checked && alternative)
-            wearing.boxes.get(alternative).checked = false;
-          scene.actors[index].wearing = wearing.value();
-          emit();
-        });
-      }
+      dress.select.addEventListener("change", () => {
+        const actor = scene.actors[index];
+        actor.wearing = dress.select.value
+          ? outfitFor(dress.select.value, actor.bodyType)
+          : [];
+        emit();
+      });
+      const pieces = () => {
+        scene.actors[index].wearing = [
+          top.select.value,
+          bottom.select.value,
+          ...extras.value(),
+        ].filter(Boolean);
+        emit();
+      };
+      top.select.addEventListener("change", pieces);
+      bottom.select.addEventListener("change", pieces);
+      for (const box of extras.boxes.values())
+        box.addEventListener("change", pieces);
       for (const [left, right, key] of [
         [handL, handR, "hands"],
         [footL, footR, "feet"],
@@ -815,7 +873,10 @@ export function buildPanel(root, handlers) {
         stature,
         build,
         hair,
-        wearing,
+        dress,
+        top,
+        bottom,
+        extras,
         outfit,
         handL,
         handR,
@@ -973,8 +1034,22 @@ export function buildPanel(root, handlers) {
         control.hair.select.value = actor.hair ?? "";
         control.outfit.select.value = actor.outfit ?? "";
         const worn = actor.wearing ?? [];
-        for (const [name, box] of control.wearing.boxes)
+        control.top.select.value =
+          worn.find((name) => GARMENT_SLOTS.chest.includes(name)) ?? "";
+        control.bottom.select.value =
+          worn.find((name) => GARMENT_SLOTS.hips.includes(name)) ?? "";
+        for (const [name, box] of control.extras.boxes)
           box.checked = worn.includes(name);
+        // A cup needs a bust to hold, and the scene leaves one off anyone
+        // without: offering it would be offering nothing.
+        for (const option of control.top.select.options)
+          option.disabled =
+            actor.bodyType !== "female" && CUPPED.has(option.value);
+        control.dress.select.value = worn.length
+          ? (Object.keys(OUTFITS).find((name) =>
+              sameItems(outfitFor(name, actor.bodyType), worn),
+            ) ?? "custom")
+          : "";
         control.handL.select.value = sideOf(actor.hands, "l");
         control.handR.select.value = sideOf(actor.hands, "r");
         control.footL.select.value = sideOf(actor.feet, "l");

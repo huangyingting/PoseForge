@@ -36,7 +36,7 @@ test("the body model picker draws each model's own scan and skin, and only once 
   // The context sees the worker's fetches as well as the page's.
   let urls = [];
   page.context().on("request", (request) => {
-    if (/\.(glb|png)(\?|$)/.test(request.url())) urls.push(request.url());
+    if (/\.(glb|png|bin)(\?|$)/.test(request.url())) urls.push(request.url());
   });
   await page.addInitScript(() => {
     const NativeWorker = window.Worker;
@@ -81,6 +81,9 @@ test("the body model picker draws each model's own scan and skin, and only once 
   await page.goto("/?preset=builtin.standing-female");
   await ready(page);
   expect(fetched(urls, "realistic-female", "glb")).toBe(1);
+  // Each body's hair cards come with it, and the topology they share once.
+  expect(fetched(urls, "cards-female", "bin")).toBe(1);
+  expect(fetched(urls, "cards", "bin")).toBe(1);
   await expect.poll(() => fetched(urls, "skin-female", "png")).toBe(1);
   await page.getByRole("button", { name: "Figures", exact: true }).click();
   await page.getByText("Appearance", { exact: true }).click();
@@ -98,6 +101,8 @@ test("the body model picker draws each model's own scan and skin, and only once 
     await choose("Body model", model);
     expect(await report()).toMatchObject({ bodyType: "female", model, specModel: model });
     expect(fetched(urls, `realistic-female-${model}`, "glb"), model).toBe(1);
+    expect(fetched(urls, `cards-female-${model}`, "bin"), model).toBe(1);
+    expect(fetched(urls, "cards", "bin"), model).toBe(0);
     await expect.poll(() => fetched(urls, `skin-female-${model}`, "png"), { message: model }).toBe(1);
     expect(await pixels(page), model).not.toBe(standard);
   }
@@ -109,15 +114,18 @@ test("the body model picker draws each model's own scan and skin, and only once 
   expect(urls).toEqual([]);
   expect(await pixels(page)).toBe(standard);
 
-  // The neutral body has its own scan but wears the female skin.
+  // The neutral body has its own scan but wears the female skin. (Its hair
+  // and lashes are other trims, so other card textures may come with it.)
+  const skins = () => urls.filter((url) => /\/skin-[^/]*\.png$/.test(url));
   await choose("Body type", "neutral");
   expect(await report()).toMatchObject({ bodyType: "neutral", model: null });
   expect(fetched(urls, "realistic-neutral", "glb")).toBe(1);
-  expect(urls.filter((url) => url.endsWith(".png"))).toEqual([]);
+  expect(fetched(urls, "cards-neutral", "bin")).toBe(1);
+  expect(skins()).toEqual([]);
   await choose("Body model", "mature");
   expect(await report()).toMatchObject({ bodyType: "neutral", model: "mature" });
   expect(fetched(urls, "realistic-neutral-mature", "glb")).toBe(1);
-  expect(urls.filter((url) => url.endsWith(".png"))).toEqual([]);
+  expect(skins()).toEqual([]);
 
   // A model carries across a change of body type.
   await choose("Body type", "male");

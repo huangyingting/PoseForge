@@ -22,25 +22,37 @@
 
 import {
   ACESFilmicToneMapping,
+  AddEquation,
   AmbientLight,
   BufferAttribute,
   BufferGeometry,
   Color,
+  CustomBlending,
+  DataTexture,
   DirectionalLight,
+  DoubleSide,
   Group,
   HemisphereLight,
+  LinearFilter,
+  LinearMipmapLinearFilter,
   Mesh,
   MeshPhysicalMaterial,
+  OneFactor,
   PCFSoftShadowMap,
   PerspectiveCamera,
+  RepeatWrapping,
   Scene,
+  ShaderChunk,
   SRGBColorSpace,
   TextureLoader,
+  Vector2,
   Vector3,
   WebGLRenderer,
+  ZeroFactor,
 } from "three";
 import { buildProps, disposeProps } from "./props.js";
 import { modelFiles } from "../core/bodyModels.js";
+import { LACE_REPEAT, LACE_SIZE, lacePattern } from "../core/lace.js";
 
 /**
  * Skin tones, by actor index.
@@ -129,34 +141,242 @@ function tinted(colour) {
 }
 
 /**
- * Wrapped diffuse plus a thickness glow, patched into the standard shader.
+ * The skin's fine relief - pores, and the crosshatch of creases they sit in -
+ * as a tiling normal map, made here rather than shipped.
+ *
+ * The atlas is a photograph of skin colour, and colour is the half of skin
+ * texture that survives flat lighting. The other half is the relief: the
+ * surface is not smooth, so a highlight on it is not a smooth gradient but a
+ * field of glints broken up by the pits and furrows, and that breaking up is
+ * most of what a close look at a shoulder or a cheek reads as "skin" rather
+ * than "wax". Without it the specular below is a clean sheen and the figure
+ * looks lacquered, which is worse than no specular at all.
+ *
+ * Generated, because it is noise: a pit per cell of a jittered grid for the
+ * pores, the edges of a coarser Voronoi pattern for the creases, all tiling
+ * exactly so the repeat has no seam. Seeded, so every run draws the same skin.
+ */
+const DETAIL_SIZE = 256;
+
+/**
+ * Tiles of detail across the atlas. The scans' charts spread roughly a metre
+ * and three quarters of body across the unit square, so 48 puts a tile at
+ * about 36mm, a pore every millimetre and a crease cell every two and a half -
+ * coarser than life, and deliberately, since true scale would never outlast
+ * the first mip.
+ */
+const DETAIL_REPEAT = 48;
+
+let detail = null;
+function skinDetail() {
+  if (detail) return detail;
+  const n = DETAIL_SIZE;
+  let seed = 0x5eed5;
+  const random = () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const wrap = (i) => ((i % n) + n) % n;
+  const height = new Float32Array(n * n);
+
+  // Creases: low along the edges of a Voronoi pattern, where the nearest two
+  // seeds are nearly as near as each other.
+  const cells = 15;
+  const pitch = n / cells;
+  const seeds = Array.from({ length: cells * cells }, (_, i) => [((i % cells) + random()) * pitch, (Math.floor(i / cells) + random()) * pitch]);
+  for (let y = 0; y < n; y += 1) {
+    for (let x = 0; x < n; x += 1) {
+      const cx = Math.floor(x / pitch);
+      const cy = Math.floor(y / pitch);
+      let f1 = Infinity;
+      let f2 = Infinity;
+      for (let dy = -1; dy <= 1; dy += 1) {
+        for (let dx = -1; dx <= 1; dx += 1) {
+          const gx = cx + dx;
+          const gy = cy + dy;
+          const [sx, sy] = seeds[(((gy % cells) + cells) % cells) * cells + (((gx % cells) + cells) % cells)];
+          // The seed's own copy nearest this pixel, so the pattern wraps.
+          const ox = sx + (Math.floor(gx / cells) * cells * pitch) - x;
+          const oy = sy + (Math.floor(gy / cells) * cells * pitch) - y;
+          const d = Math.hypot(ox, oy);
+          if (d < f1) [f1, f2] = [d, f1];
+          else if (d < f2) f2 = d;
+        }
+      }
+      height[y * n + x] = -0.45 * Math.exp(-((f2 - f1) ** 2) / 3);
+    }
+  }
+
+  // Pores: a soft pit a texel or two across in each cell of a finer grid.
+  const pores = 36;
+  const step = n / pores;
+  for (let py = 0; py < pores; py += 1) {
+    for (let px = 0; px < pores; px += 1) {
+      const x0 = (px + 0.15 + 0.7 * random()) * step;
+      const y0 = (py + 0.15 + 0.7 * random()) * step;
+      const radius = 0.7 + 0.7 * random();
+      const depth = 0.5 + 0.5 * random();
+      const reach = Math.ceil(radius * 3);
+      for (let dy = -reach; dy <= reach; dy += 1) {
+        for (let dx = -reach; dx <= reach; dx += 1) {
+          const x = Math.round(x0) + dx;
+          const y = Math.round(y0) + dy;
+          const d2 = (x - x0) ** 2 + (y - y0) ** 2;
+          height[wrap(y) * n + wrap(x)] -= depth * Math.exp(-d2 / (2 * radius * radius));
+        }
+      }
+    }
+  }
+
+  const data = new Uint8Array(n * n * 4);
+  for (let y = 0; y < n; y += 1) {
+    for (let x = 0; x < n; x += 1) {
+      const sx = height[y * n + wrap(x + 1)] - height[y * n + wrap(x - 1)];
+      const sy = height[wrap(y + 1) * n + x] - height[wrap(y - 1) * n + x];
+      const length = Math.hypot(sx, sy, 1);
+      const o = (y * n + x) * 4;
+      data[o] = Math.round((-sx / length * 0.5 + 0.5) * 255);
+      data[o + 1] = Math.round((-sy / length * 0.5 + 0.5) * 255);
+      data[o + 2] = Math.round((1 / length * 0.5 + 0.5) * 255);
+      data[o + 3] = 255;
+    }
+  }
+  detail = new DataTexture(data, n, n);
+  detail.wrapS = RepeatWrapping;
+  detail.wrapT = RepeatWrapping;
+  detail.repeat.set(DETAIL_REPEAT, DETAIL_REPEAT);
+  detail.magFilter = LinearFilter;
+  detail.minFilter = LinearMipmapLinearFilter;
+  detail.generateMipmaps = true;
+  detail.anisotropy = 8;
+  detail.needsUpdate = true;
+  return detail;
+}
+
+/**
+ * How far past the terminator each channel's light wraps: red furthest, since
+ * red is what travels furthest under the surface before it comes back out.
+ */
+const SKIN_WRAP = [0.5, 0.4, 0.34];
+
+/**
+ * What the key is worth on skin where its shadow map says it is blocked, and
+ * the exponents that warm the penumbra on its way there. The CLI's reasons for
+ * the floor (`scripts/render-cli.mjs`, `umbra`) are this renderer's too: the
+ * key stands for a window, and nothing on a body is large enough to cast a
+ * true umbra from one. The warm edge is the scatter again - light entering on
+ * the lit side of a shadow's edge comes out on the dark side, and red is the
+ * part of it that gets there.
+ */
+const SKIN_UMBRA = 0.18;
+const SKIN_PENUMBRA = [0.8, 1.05, 1.2];
+
+/**
+ * The two lighting chunks the skin patches, patched.
+ *
+ * Exported for the test that pins them to this version of three: the patch is
+ * a text substitution into three's own shader source, and a substitution that
+ * finds nothing fails silently - the skin would simply go back to plastic.
+ *
+ * `RE_Direct_Physical` gets its diffuse term wrapped, per channel. The
+ * directional-light loop gets its shadow lookup gated the way the CLI's is:
+ * three's shadow map, like the CLI's, holds the faces turned away from the
+ * light, so the lookup on skin turned away is the surface compared with
+ * itself, and the wrapped light there would be cut off in a ragged line
+ * exactly where the wrap is meant to carry it. Faded out over the first
+ * seventeen degrees of the lit side, it is the lookup unchanged anywhere a
+ * cast shadow is legible and 1 wherever the wrap alone should be taking the
+ * light out. What the floor adds is held apart and given to the diffuse term
+ * only, since a highlight in a shadow is a glint that could not be there.
+ */
+export function skinShaderChunks() {
+  const patch = (source, from, to) => {
+    if (!source.includes(from)) throw new Error(`three's shader source no longer contains ${from.trim()}`);
+    return source.replace(from, to);
+  };
+  const vec3 = (v) => `vec3(${v.map((x) => x.toFixed(3)).join(", ")})`;
+  const direct = patch(
+    ShaderChunk.lights_physical_pars_fragment,
+    "reflectedLight.directDiffuse += irradiance * BRDF_Lambert( material.diffuseColor );",
+    `vec3 wrapped = saturate( ( vec3( dot( geometryNormal, directLight.direction ) ) + skinWrap * skinKey ) / ( 1.0 + skinWrap * skinKey ) );
+     reflectedLight.directDiffuse += wrapped * ( directLight.color + skinLeak ) * BRDF_Lambert( material.diffuseColor );
+     skinLeak = vec3( 0.0 );
+     skinKey = 0.0;`
+  );
+  const shadow = "directLight.color *= ( directLight.visible && receiveShadow ) ? getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowIntensity, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0;";
+  const lights = patch(
+    ShaderChunk.lights_fragment_begin,
+    shadow,
+    `{
+       float visible = ( directLight.visible && receiveShadow ) ? getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowIntensity, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0;
+       float gate = pow2( saturate( dot( geometryNormal, directLight.direction ) / 0.3 ) );
+       visible = 1.0 - gate * ( 1.0 - visible );
+       skinLeak = directLight.color * ( ${SKIN_UMBRA.toFixed(3)} * ( 1.0 - visible ) );
+       skinKey = 1.0;
+       directLight.color *= pow( vec3( visible ), ${vec3(SKIN_PENUMBRA)} );
+     }`
+  );
+  return {
+    pars: `uniform vec3 skinWrap;
+           vec3 skinLeak = vec3( 0.0 );
+           float skinKey = 0.0;
+           ${direct}`,
+    lights,
+  };
+}
+
+/**
+ * Wrapped diffuse, a warm shadow edge, fine relief and a thickness glow,
+ * patched into the standard shader.
  *
  * Patching rather than writing a material from scratch keeps every other thing
  * `MeshPhysicalMaterial` does - shadows, tone mapping, the environment - and
- * changes only the one term that is wrong for skin.
+ * changes only the terms that are wrong for skin.
+ *
+ * The specular is two lobes, as measured skin's is: the base layer's, broad,
+ * which is the skin itself, and the clearcoat's, tighter and weaker, which is
+ * the film of oil over it and what puts the small bright highlight on a
+ * shoulder or the bridge of a nose. The base was at 0.68 and a coat of 0.02,
+ * which is a surface with no highlight at all - chalk, or the painted
+ * mannequin this is meant not to be. Both lobes take the relief, so both
+ * break up the way skin's highlights do. An ior of 1.4 is skin's, and gives
+ * it the 2.8% reflectance at normal incidence that is measured, not the
+ * default 4%, which is glass.
  */
 function skinMaterial(colour, atlas = null) {
+  const relief = atlas ? skinDetail() : null;
   const material = new MeshPhysicalMaterial({
     color: new Color(colour),
     map: atlas,
-    roughness: 0.68,
+    roughness: 0.52,
     metalness: 0,
+    ior: 1.4,
+    // The relief needs the atlas's UVs to sit on; a figure drawn from the field
+    // has none, and is smooth.
+    normalMap: relief,
+    normalScale: new Vector2(0.3, 0.3),
     // A very slight sheen stands in for the fine hair that catches grazing
     // light along a silhouette. Without it edges read as cut out.
     sheen: 0.16,
     sheenRoughness: 0.85,
     sheenColor: new Color(0xffd9c9),
-    clearcoat: 0.02,
-    clearcoatRoughness: 0.75,
+    clearcoat: 0.14,
+    clearcoatRoughness: 0.34,
+    clearcoatNormalMap: relief,
+    clearcoatNormalScale: new Vector2(0.5, 0.5),
     vertexColors: false,
   });
 
   material.onBeforeCompile = (shader) => {
     shader.uniforms.subsurface = { value: new Color(0x9e3b28) };
     shader.uniforms.wrap = { value: 0.45 };
+    shader.uniforms.skinWrap = { value: new Vector3(...SKIN_WRAP) };
 
     carryOcclusion(shader);
 
+    const chunks = skinShaderChunks();
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
@@ -168,6 +388,8 @@ function skinMaterial(colour, atlas = null) {
       // Wrap the direct lighting around the terminator. Skin lit from the side
       // stays lit a good way past 90 degrees, and reddens as it goes because
       // the light that makes it through has been filtered by blood.
+      .replace("#include <lights_physical_pars_fragment>", chunks.pars)
+      .replace("#include <lights_fragment_begin>", chunks.lights)
       .replace(
         "#include <lights_physical_fragment>",
         `#include <lights_physical_fragment>
@@ -296,6 +518,111 @@ function hairMaterial(colour) {
 }
 
 /**
+ * The hair cards' textures, by name, loaded once and shared - every figure
+ * wearing the same trim wears the same picture of it, and only the colour the
+ * material multiplies it by is theirs. Grey and alpha: the grey is the strands'
+ * shading, stretched so its brightest is white (the `gain` the card carries
+ * undoes that), and the alpha is where there are strands at all.
+ */
+const cardTextures = new Map();
+function cardTexture(name) {
+  if (!cardTextures.has(name)) {
+    const url = String(new URL(`../../assets/models/hair/${name}.png`, import.meta.url));
+    const texture = loader.load(url, () => textureListeners.forEach(notify => notify()), undefined,
+      () => textureListeners.forEach(notify => notify()));
+    texture.colorSpace = SRGBColorSpace;
+    texture.flipY = false;
+    texture.anisotropy = 8;
+    cardTextures.set(name, texture);
+  }
+  return cardTextures.get(name);
+}
+
+/**
+ * Hair drawn as cards: the hair material above, over a texture of strands,
+ * with the gaps between them cut out.
+ *
+ * Cut rather than blended. A few thousand overlapping transparent sheets would
+ * have to be sorted back to front, per pixel, every frame, to blend right, and
+ * unsorted they flicker as the camera turns. A cut needs no sorting, and alpha
+ * to coverage turns its edge into as many steps as the canvas has samples,
+ * which at a strand's width is enough to read as soft.
+ *
+ * The one thing a plain cut gets wrong is distance. The mipmaps average the
+ * alpha down with everything else, so a strand a texel wide is at a quarter of
+ * its alpha two levels down and under the cut at three: the hair thins as the
+ * camera backs off, and a head across the room is bald. Scaling the alpha up
+ * by the level it is read at puts back what the averaging took out, and it is
+ * the standard repair for exactly this.
+ *
+ * Both sides, because a card is a sheet and hair is seen from behind as often
+ * as in front; the cards are wound to face out of the head (see `cardSubmesh`),
+ * so the side three turns the normal round for is the inside.
+ */
+function cardMaterial(colour, cards) {
+  const material = hairMaterial(colour);
+  // The cards know which way the strands run - down the texture, every trim
+  // MakeHuman ships - so the highlight can do what a fibre's does and stretch
+  // across them into a band, rather than sit on the crown as a round gloss.
+  material.anisotropy = 0.8;
+  material.anisotropyRotation = 0;
+  // And most of the sheen goes. On the shell it stood in for the fibres the
+  // surface did not have; the cards have them, painted, and the sheen's
+  // grazing lobe - untouched by the texture's dark - frosted every strip seen
+  // edge-on, which on short hair is most of the sides of the head.
+  material.sheen = 0.2;
+  return cutOut(material, cards, "poseforge-hair-cards");
+}
+
+/**
+ * Draw colour and leave the canvas's alpha as it was.
+ *
+ * For anything cut with alpha to coverage. The alpha a fragment writes is what
+ * sets how many of a pixel's samples it covers, so it has to be the fraction
+ * and not one - and it then lands in the canvas as well, where on some
+ * implementations (SwiftShader among them) the page composites through it even
+ * though the context was asked for no alpha at all: every thread of a lace and
+ * every strand's edge came out pale with the page behind it. Blending the
+ * colour as a straight replacement and the alpha as "keep what is there" gives
+ * the coverage and changes nothing else.
+ */
+function keepAlpha(material) {
+  material.blending = CustomBlending;
+  material.blendEquation = AddEquation;
+  material.blendSrc = OneFactor;
+  material.blendDst = ZeroFactor;
+  material.blendSrcAlpha = ZeroFactor;
+  material.blendDstAlpha = OneFactor;
+  return material;
+}
+
+/** `material` over a card texture, cut out: shared with the clay view, where
+ *  the cards are still strips of strands and not solid sheets. */
+function cutOut(material, cards, key) {
+  material.color.multiplyScalar(cards.gain);
+  material.map = cardTexture(cards.texture);
+  material.alphaTest = 0.5;
+  material.alphaToCoverage = true;
+  keepAlpha(material);
+  material.side = DoubleSide;
+  const compile = material.onBeforeCompile;
+  material.onBeforeCompile = (shader, renderer) => {
+    compile.call(material, shader, renderer);
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <alphatest_fragment>",
+      `{
+         vec2 texel = vMapUv * vec2(textureSize(map, 0));
+         float footprint = max(dot(dFdx(texel), dFdx(texel)), dot(dFdy(texel), dFdy(texel)));
+         diffuseColor.a *= 1.0 + 0.25 * max(0.0, 0.5 * log2(footprint));
+       }
+       #include <alphatest_fragment>`
+    );
+  };
+  material.customProgramCacheKey = () => key;
+  return material;
+}
+
+/**
  * Fabric.
  *
  * Knitted cotton, which is the honest answer for a bra and a pair of briefs and
@@ -311,28 +638,153 @@ function hairMaterial(colour) {
  * diffusely is a silhouette. The retro-reflective lobe off the nap of the
  * knit is most of what actually tells an eye that a dark garment is curved,
  * and it survives at an albedo where nothing else does.
+ *
+ * That is cotton. The other finishes (see `GARMENT_FINISHES`) change the
+ * surface and, for two of them, what shows through it:
+ *
+ * - lycra is smoother, so its sheen narrows into a soft highlight;
+ * - leather is dark and glossy, a clearcoat over a mid roughness, which is the
+ *   one place here a clearcoat on cloth is right;
+ * - lace is cut, per fragment, by the tile in `lace.js` laid on the body's own
+ *   UVs - the same tile the command-line renderer cuts with, so the two draw
+ *   the same flowers in the same places;
+ * - sheer is blended, and how much of the skin comes through depends on the
+ *   angle it is seen at (see `DENIER`).
+ *
+ * A garment's `trim` - a lace bra's band and straps, a waistband, a stocking's
+ * welt - arrives as a distance per vertex and is resolved per fragment at the
+ * half, so its edge lies where the garment put it and not on whichever
+ * triangle edge is nearest. Trim is never cut and never sheer, and it takes
+ * `trimColour` where the garment names one.
  */
-function fabricMaterial(colour) {
+function garmentMaterial(part) {
+  const finish = FINISHES[part.finish] ? part.finish : "cotton";
+  const { roughness, sheen, sheenRoughness, clearcoat = 0, clearcoatRoughness = 0 } = FINISHES[finish];
+  const colour = new Color().setRGB(part.colour[0], part.colour[1], part.colour[2], SRGBColorSpace);
+  const trim = part.trimColour
+    ? new Color().setRGB(part.trimColour[0], part.trimColour[1], part.trimColour[2], SRGBColorSpace)
+    : colour.clone();
   const material = new MeshPhysicalMaterial({
-    color: new Color().setRGB(colour[0], colour[1], colour[2], SRGBColorSpace),
-    roughness: 0.86,
+    color: colour,
+    roughness,
     metalness: 0,
-    sheen: 0.55,
-    sheenRoughness: 0.75,
+    sheen,
+    sheenRoughness,
     sheenColor: new Color(0x8e8a86),
+    clearcoat,
+    clearcoatRoughness,
   });
+  const lace = finish === "lace" && !!part.uvs;
+  if (lace) {
+    material.alphaMap = laceTexture();
+    // Kept above zero only so three compiles the test in; the real test is
+    // the replacement below.
+    material.alphaTest = 0.02;
+    material.alphaToCoverage = true;
+    keepAlpha(material);
+  }
+  if (finish === "sheer") {
+    material.transparent = true;
+    material.depthWrite = false;
+  }
   material.onBeforeCompile = (shader) => {
     carryOcclusion(shader);
-    shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", "#include <common>\n varying float vOcclusion;")
+    shader.uniforms.trimColour = { value: trim };
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\n attribute float trim;\n varying float vTrim;")
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\n vTrim = trim;");
+    let fragment = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        `#include <common>
+         varying float vOcclusion;
+         varying float vTrim;
+         uniform vec3 trimColour;`
+      )
+      .replace(
+        "#include <color_fragment>",
+        `#include <color_fragment>
+         float trimmed = smoothstep(0.5 - max(fwidth(vTrim), 1e-4), 0.5 + max(fwidth(vTrim), 1e-4), vTrim);
+         diffuseColor.rgb = mix(diffuseColor.rgb, trimColour, trimmed);`
+      )
       .replace(
         "#include <lights_physical_fragment>",
         `#include <lights_physical_fragment>
          material.diffuseColor.rgb *= mix(1.0, vOcclusion, 0.7);`
       );
+    if (lace) {
+      // Close up, the tile is magnified and its linear filter would smear each
+      // thread's edge over several pixels, so the edge is sharpened to one.
+      // Far off, a pixel covers many threads and the mip level's average is
+      // the fraction of it that is thread, which alpha to coverage turns into
+      // that fraction of the pixel's samples - a veil, as lace is at a
+      // distance, rather than the solid sheet or bare skin a cut at a half
+      // would make of it.
+      fragment = fragment
+        .replace(
+          "#include <alphamap_fragment>",
+          `{
+             float thread = texture2D(alphaMap, vAlphaMapUv).g;
+             vec2 texel = vAlphaMapUv * vec2(textureSize(alphaMap, 0));
+             float footprint = max(dot(dFdx(texel), dFdx(texel)), dot(dFdy(texel), dFdy(texel)));
+             float sharp = clamp((thread - 0.5) / max(fwidth(thread), 1e-3) + 0.5, 0.0, 1.0);
+             diffuseColor.a *= max(mix(sharp, thread, smoothstep(0.5, 2.0, footprint)), trimmed);
+           }`
+        )
+        .replace("#include <alphatest_fragment>", "if (diffuseColor.a < alphaTest) discard;");
+    }
+    if (finish === "sheer") {
+      fragment = fragment.replace(
+        "#include <lights_physical_fragment>",
+        `diffuseColor.a = max(1.0 - pow(1.0 - ${DENIER.toFixed(3)}, 1.0 / max(abs(dot(normal, normalize(vViewPosition))), 0.08)), trimmed * 0.92);
+         #include <lights_physical_fragment>`
+      );
+    }
+    shader.fragmentShader = fragment;
   };
-  material.customProgramCacheKey = () => "poseforge-fabric";
+  material.customProgramCacheKey = () => `poseforge-garment-${finish}${lace ? "-cut" : ""}`;
   return material;
+}
+
+/**
+ * What each finish is, as a surface. Cotton is the numbers the fabric has
+ * always had; the rest are measured against it by eye, in both renderers.
+ */
+const FINISHES = {
+  cotton: { roughness: 0.86, sheen: 0.55, sheenRoughness: 0.75 },
+  lycra: { roughness: 0.5, sheen: 0.7, sheenRoughness: 0.35 },
+  lace: { roughness: 0.8, sheen: 0.12, sheenRoughness: 0.6 },
+  sheer: { roughness: 0.45, sheen: 0.9, sheenRoughness: 0.3 },
+  leather: { roughness: 0.38, sheen: 0.2, sheenRoughness: 0.5, clearcoat: 0.5, clearcoatRoughness: 0.25 },
+};
+
+/**
+ * How much of what is behind a stocking it covers, seen square on. A sheer knit
+ * is mostly holes face-on and mostly thread at a slant, because the slant looks
+ * through more of it, so the cover rises towards the silhouette as
+ * `1 - (1 - DENIER)^(1 / facing)`; the welt is knitted close and covers nearly
+ * all of it. The command-line renderer blends with the same numbers.
+ */
+const DENIER = 0.45;
+
+let laceTile = null;
+
+/** The lace tile, the same in every channel since three reads alpha maps from green. */
+function laceTexture() {
+  if (laceTile) return laceTile;
+  const pattern = lacePattern();
+  const data = new Uint8Array(LACE_SIZE * LACE_SIZE * 4);
+  for (let i = 0; i < pattern.length; i += 1) data.fill(pattern[i], i * 4, i * 4 + 4);
+  laceTile = new DataTexture(data, LACE_SIZE, LACE_SIZE);
+  laceTile.wrapS = RepeatWrapping;
+  laceTile.wrapT = RepeatWrapping;
+  laceTile.repeat.set(LACE_REPEAT, LACE_REPEAT);
+  laceTile.magFilter = LinearFilter;
+  laceTile.minFilter = LinearMipmapLinearFilter;
+  laceTile.generateMipmaps = true;
+  laceTile.anisotropy = 8;
+  laceTile.needsUpdate = true;
+  return laceTile;
 }
 
 /** Turn a mesher result into a three.js geometry. */
@@ -345,6 +797,12 @@ function toGeometry(mesh) {
     "occlusion",
     new BufferAttribute(mesh.occlusion ?? new Float32Array(mesh.positions.length / 3).fill(1), 1)
   );
+  // Every garment's shader reads a trim, so one without any is given nothing
+  // but zeros: an attribute the shader declares and the geometry lacks reads
+  // whatever was last left in that slot.
+  if (mesh.garment) {
+    geometry.setAttribute("trim", new BufferAttribute(mesh.trim ?? new Float32Array(mesh.positions.length / 3), 1));
+  }
   // The scan brings its own; the field does not, and a body drawn from the
   // field is drawn untextured rather than drawn with somebody else's chart.
   if (mesh.uvs) geometry.setAttribute("uv", new BufferAttribute(mesh.uvs, 2));
@@ -467,14 +925,17 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
         // is what marks the anatomy `featureRelief` adds as a separate part.
         const flesh = part.primary || !part.colour;
         const atlas = flesh && part.uvs && displayMode === 'natural' ? skinAtlas(mesh.bodyType, mesh.model) : null;
+        const clay = () => new MeshPhysicalMaterial({ color: index % 2 ? 0x9bafa5 : 0xd2bca6, roughness: 0.78 });
         const material = displayMode === 'clay'
-          ? new MeshPhysicalMaterial({ color: index % 2 ? 0x9bafa5 : 0xd2bca6, roughness: 0.78 })
+          ? part.cards && part.uvs ? cutOut(clay(), part.cards, "poseforge-clay-cards") : clay()
           : flesh
           ? skinMaterial(atlas ? tinted(tone) : tone, atlas)
           : part.hair
-            ? hairMaterial(part.colour)
+            ? part.cards && part.uvs
+              ? cardMaterial(part.colour, part.cards)
+              : hairMaterial(part.colour)
             : part.garment
-              ? fabricMaterial(part.colour)
+              ? garmentMaterial(part)
               : eyeMaterial(part.colour);
         const body = new Mesh(toGeometry(part), material);
         // Eyes sit inside a socket that is already baked into their own
@@ -486,14 +947,26 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
         // in front of the head rather than painted on it, and the same holds
         // for the shadow a band throws on the ribs under it.
         const solid = flesh || !!part.hair || !!part.garment;
-        body.castShadow = solid;
+        // Except cloth the skin shows through. The shadow map is a millimetre
+        // and a half to the texel, so it cannot resolve a lace or a knit two and
+        // a half millimetres off the skin, and would cast either as a solid
+        // sheet - in shade, the skin under every hole of it.
+        body.castShadow = solid && !(part.garment && (part.finish === "lace" || part.finish === "sheer"));
         body.receiveShadow = solid;
-        body.renderOrder = solid ? 0 : 1;
+        // Anything cut with alpha to coverage goes after everything it is cut
+        // over, because it keeps the alpha it finds (see `keepAlpha`): drawn
+        // first, over a transparent export's empty clear, it would keep the
+        // empty, and the skin behind would never get to fill it in.
+        const cut = !!part.cards || (part.garment && part.finish === "lace");
+        body.renderOrder = solid && !cut ? 0 : 1;
         // Line art traces silhouettes, and an eyeball's silhouette is its
         // equator - a circle buried inside the skull. The depth test would
         // probably hide it, but "probably hidden" is not a reason to hand the
-        // tracer a contour that should never be drawn.
-        body.userData.outline = solid;
+        // tracer a contour that should never be drawn. Hair cards are out for
+        // the opposite reason: every one of a few thousand strips has an edge
+        // all the way round it, and traced they are a scribble over the head.
+        body.userData.outline = solid && !part.cards;
+        body.userData.cards = !!part.cards;
         body.name = part.primary
           ? (mesh.id ?? `actor${index}`)
           : `${mesh.id ?? `actor${index}`}.${part.name}`;

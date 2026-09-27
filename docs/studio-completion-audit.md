@@ -23,9 +23,14 @@ checked separately in the final delivery handoff.
 The enumerated browser inventory contains 62 scenarios in 26 files, including
 new direct rendering checks for all three body choices, six hair styles, eight
 garment colors, eleven hand shapes and six foot shapes. The catalog contains
-23 stable IDs (11 reference studies and 12 named definitions). The five garment
-definitions (bra, briefs, top, shorts and the wrist and ankle cuffs) are checked on the female model and by the real-geometry suite;
-the shared studio top/shorts outfit is checked on all three body choices. These
+23 stable IDs (11 reference studies and 12 named definitions). The fifteen garment
+definitions (bra, lace bra, bikini top, top, briefs, lace thong, bikini bottom,
+swim briefs, boxer briefs, jockstrap, shorts, stockings, garter belt, harness
+and the wrist and ankle cuffs) are each built alone on the female model, and
+all but the three cupped ones on the male, by the real-geometry suite, which
+checks their finish, weights and that each comes in one piece (two stockings,
+four cuffs); the outfit, top, bottom and extras pickers are checked in the
+browser, and the shared studio top/shorts outfit on all three body choices. These
 are enumerated registries, not counts inferred from screenshots.
 
 | Contract | Authoritative implementation and verification | Final evidence |

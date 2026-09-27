@@ -1001,7 +1001,7 @@ export function skinHumanMesh(template, skeleton, evaluated, align = bindCorrect
         normals.set(n, v * 3);
       }
     }
-    return { name: submesh.name, primary: submesh.primary, colour: submesh.colour, hair: submesh.hair ?? false, garment: submesh.garment ?? false, positions, normals, uvs: submesh.uvs, occlusion: submesh.occlusion ?? null, indices: submesh.indices };
+    return { name: submesh.name, primary: submesh.primary, colour: submesh.colour, hair: submesh.hair ?? false, garment: submesh.garment ?? false, finish: submesh.finish ?? null, trim: submesh.trim ?? null, trimColour: submesh.trimColour ?? null, cards: submesh.cards ?? null, positions, normals, uvs: submesh.uvs, occlusion: submesh.occlusion ?? null, indices: submesh.indices };
   });
 }
 

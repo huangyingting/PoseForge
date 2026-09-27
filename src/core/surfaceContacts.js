@@ -163,6 +163,28 @@ function topology(template, definition) {
   return result;
 }
 
+/**
+ * A template as the queries measure it. Hair cards are strands, not a surface:
+ * where a card a centimetre off the scalp met a pillow or a partner, real hair
+ * would part or flatten, and measured as solid the cards hold a supine head
+ * off the bed and call a cheek on a hip a crossing. So a template drawn with
+ * cards is measured with the shell that `withHair` fits under them instead,
+ * which is a surface - the one a template without cards is drawn with.
+ */
+const measuredTemplates = new WeakMap();
+function measured(template) {
+  if (!template?.hairShell) return template;
+  if (!measuredTemplates.has(template))
+    measuredTemplates.set(template, {
+      ...template,
+      submeshes: [
+        ...template.submeshes.filter((part) => !part.cards),
+        template.hairShell,
+      ],
+    });
+  return measuredTemplates.get(template);
+}
+
 /** Queries reuse posed geometry until the actor's evaluated rig changes. */
 export function createSurfaceContactQuery(actors, templates) {
   const cache = new Map();
@@ -179,7 +201,7 @@ export function createSurfaceContactQuery(actors, templates) {
   };
   function tree(index, name, side, whole = null) {
     const actor = actors[index],
-      template = templates[index];
+      template = measured(templates[index]);
     if (!actor || !template) return null;
     let entry = cache.get(index);
     if (!entry || entry.evaluated !== actor.evaluated) {
@@ -526,6 +548,25 @@ const score = (measurements, contacts) =>
         : 0),
     0,
   );
+/** How many contacts are still open: crossing, or further off than tolerance. */
+const unmet = (measurements, contacts) =>
+  measurements.filter(
+    (value, i) =>
+      value &&
+      (contacts[i].strength ?? 1) > 0 &&
+      (value.intersects || value.distance > SURFACE_CONTACT_TOLERANCE),
+  ).length;
+/**
+ * Whether a candidate is progress. The margin keeps the search from taking
+ * steps that gain nothing but rounding, but it is a squared distance, so a
+ * contact less than ten micrometres past tolerance scores under it and no step
+ * could close it: it would be left, and reported open, at 4.003 mm. A step that
+ * closes a contact is progress however little the score moves.
+ */
+const improves = (candidate, candidateScore, measurements, bestScore, contacts) =>
+  candidateScore < bestScore - 1e-10 ||
+  (candidateScore < bestScore &&
+    unmet(candidate, contacts) < unmet(measurements, contacts));
 const clonePose = (actor) => ({
   root: {
     position: [...actor.pose.root.position],
@@ -776,7 +817,16 @@ export function* surfaceContactSteps(
           const newIntersection = candidate.some(
             (value, j) => value?.intersects && !measurements[j]?.intersects,
           );
-          if (newIntersection || candidateScore >= bestScore - 1e-10)
+          if (
+            newIntersection ||
+            !improves(
+              candidate,
+              candidateScore,
+              measurements,
+              bestScore,
+              solved.contacts,
+            )
+          )
             return false;
           measurements = candidate;
           currentSafety = safety;
@@ -1061,7 +1111,13 @@ export function* surfaceContactSteps(
           if (
             standingFramePreserved(actor, bodyFrames[contact.fromActor]) &&
             contactsSafe &&
-            candidateScore < bestScore - 1e-10 &&
+            improves(
+              candidate,
+              candidateScore,
+              measurements,
+              bestScore,
+              solved.contacts,
+            ) &&
             measureFigureSurfaces(solved, query).every(
               (pair) => pair.intersects === false,
             )

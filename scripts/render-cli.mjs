@@ -31,6 +31,7 @@ import { refineSurfaceContacts } from '../src/core/surfaceContacts.js';
 import { bindCorrections, buildHumanTemplate, featureRelief, skinHumanMesh } from "../src/core/humanMesh.js";
 import { withHair } from "../src/core/hair.js";
 import { withGarments } from "../src/core/garments.js";
+import { LACE_REPEAT, LACE_SIZE, lacePattern } from "../src/core/lace.js";
 import { buildBodyMesh, fieldOcclusion } from "../src/render/meshBuilder.js";
 import {
   mat4InvertRigid,
@@ -43,6 +44,7 @@ import {
 import { propShape, propTriangles } from "../src/core/propShapes.js";
 import { modelFiles } from "../src/core/bodyModels.js";
 import { decodePNG, sampleAtlas } from "./atlas.mjs";
+import { cardTexture, withBodyCards } from "./cards.mjs";
 
 /* ------------------------------------------------------------------ */
 /* Arguments                                                           */
@@ -196,6 +198,28 @@ const solved = solveScene(parsed.scene);
 const objects = [];
 
 /**
+ * Sheer draw calls - the stockings - kept apart from the rest, because they are
+ * drawn after everything else and over it: they neither cast a shadow nor hide
+ * the leg they are on, only tint it.
+ */
+const veils = [];
+
+/**
+ * How each finish of cloth takes the light, in the terms the hair's highlight
+ * below is written in: `sheen` scales its two broad lobes and `gloss` adds a
+ * tight third one, which is what makes leather and wet-look lycra read as a
+ * surface with a coat on it rather than as a matt one. The viewport's
+ * `garmentMaterial` is the same five, in three's terms.
+ */
+const FINISH = {
+  cotton: { sheen: 0.35, gloss: 0 },
+  lycra: { sheen: 0.7, gloss: 0.12 },
+  lace: { sheen: 0.4, gloss: 0 },
+  sheer: { sheen: 0.9, gloss: 0.06 },
+  leather: { sheen: 0.4, gloss: 0.55 },
+};
+
+/**
  * Which body to draw: the scanned human mesh, or the distance field itself.
  *
  * `--body sdf` is not a fallback, it is the diagnostic. The field is what
@@ -209,8 +233,9 @@ const BODY = flag("body", "skin");
 const MODELS = new URL("../assets/models/", import.meta.url);
 const templates = new Map();
 const scanned = (bodyType, model) => {
-  const file = `realistic-${modelFiles(bodyType, model).mesh}.glb`;
-  if (!templates.has(file)) templates.set(file, buildHumanTemplate(readFileSync(new URL(file, MODELS))));
+  const { mesh } = modelFiles(bodyType, model);
+  const file = `realistic-${mesh}.glb`;
+  if (!templates.has(file)) templates.set(file, withBodyCards(buildHumanTemplate(readFileSync(new URL(file, MODELS))), mesh));
   return templates.get(file);
 };
 
@@ -310,18 +335,30 @@ solved.actors.forEach((actor, index) => {
     // what marks the anatomy `featureRelief` adds.
     const flesh = part.primary || !part.colour;
     const textured = flesh && atlas && part.uvs;
-    objects.push({
+    // Hair cards are cut out of their texture by its alpha, and drawn from
+    // both sides because a strip of hair has two.
+    const cards = part.cards && part.uvs ? { image: cardTexture(part.cards.texture), gain: part.cards.gain } : null;
+    const finish = part.garment ? FINISH[part.finish] ?? FINISH.cotton : null;
+    const lace = part.finish === "lace" && part.uvs;
+    (part.finish === "sheer" ? veils : objects).push({
       positions: part.positions,
       normals: part.normals,
       // A part that brought its own occlusion keeps it. Only the eyes do, and
       // only because the field has no socket in it to shade them with.
       occlusion: part.occlusion ?? fieldOcclusion(part.positions, part.normals, allVolumes, RESOLUTION),
       indices: part.indices,
-      uvs: textured ? part.uvs : null,
+      uvs: textured || cards || lace ? part.uvs : null,
       atlas: textured ? atlas : null,
+      cards,
+      lace,
+      // Where a garment is worked solid - an edge, a strap, a waistband - and
+      // what colour that is, if not the garment's own.
+      trim: part.trim ?? null,
+      trimColour: part.trimColour ?? null,
       colour: flesh ? (textured ? tinted(SKIN[index % SKIN.length]) : SKIN[index % SKIN.length]) : part.colour,
       skin: flesh,
-      sheen: part.hair ? 1 : part.garment ? 0.35 : 0,
+      sheen: part.hair ? 1 : finish ? finish.sheen : 0,
+      gloss: finish ? finish.gloss : 0,
     });
   }
 });
@@ -405,7 +442,10 @@ objects.push({
  * One conversion, in one place, once per object rather than per pixel.
  */
 const toLinear = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-for (const object of objects) object.colour = object.colour.map(toLinear);
+for (const object of [...objects, ...veils]) {
+  object.colour = object.colour.map(toLinear);
+  if (object.trimColour) object.trimColour = object.trimColour.map(toLinear);
+}
 
 /* ------------------------------------------------------------------ */
 /* Framing                                                             */
@@ -461,6 +501,14 @@ const KEY = v3normalize([2.4, 3.2, 2.0]);
 const FILL = v3normalize([-3, 1.6, 1.4]);
 const RIM = v3normalize([-1.2, 2.2, -3.2]);
 
+// How far past the terminator the key wraps, per channel, and the exponents
+// that warm its shadow's edge - skin's, then everything else's. See the shading
+// below; skin's are `renderer.js`'s.
+const SKIN_WRAP = [0.5, 0.4, 0.34];
+const PLAIN_WRAP = [0.05, 0.05, 0.05];
+const SKIN_PENUMBRA = [0.8, 1.05, 1.2];
+const PLAIN_PENUMBRA = [1, 1, 1];
+
 const SHADOW_SIZE = 2048;
 // Sized to what is in frame, not to the scene.
 //
@@ -514,6 +562,65 @@ function clipSpace(m, x, y, z) {
  * the camera - the camera is framed from the scene's own bounds and never ends
  * up inside anybody.
  */
+/**
+ * The alpha a card's texel needs to count as hair. A half, as the viewport's
+ * alpha-to-coverage treats it; supersampling does the rest of what coverage
+ * does there, which is to soften the cut into an edge.
+ */
+const CARD_CUTOFF = 0.5;
+
+/**
+ * The lace tile as a mip chain of coverage, and a 4x4 ordered dither to cut it
+ * with.
+ *
+ * Lace is cut out where its thread is not, like a card - but the holes in it
+ * are a couple of millimetres across, which in a whole-figure picture is under
+ * a pixel, so a cut at one half of the full tile would be decided by which
+ * thread each pixel centre happened to land on and the garment would come out
+ * as noise. Each triangle reads the level of the chain whose texels are about
+ * a pixel on screen, so at a distance what it reads is how much of the area is
+ * thread, and the dither turns that fraction into the same fraction of pixels.
+ * Supersampling does the rest, which is what the viewport's alpha to coverage
+ * does with the same number.
+ */
+const LACE_LEVELS = (() => {
+  let size = LACE_SIZE;
+  let data = Float32Array.from(lacePattern(), (value) => value / 255);
+  const levels = [{ size, data }];
+  while (size > 1) {
+    const half = size / 2;
+    const next = new Float32Array(half * half);
+    for (let y = 0; y < half; y += 1)
+      for (let x = 0; x < half; x += 1)
+        next[y * half + x] =
+          (data[2 * y * size + 2 * x] + data[2 * y * size + 2 * x + 1] + data[(2 * y + 1) * size + 2 * x] + data[(2 * y + 1) * size + 2 * x + 1]) / 4;
+    levels.push({ size: half, data: next });
+    size = half;
+    data = next;
+  }
+  return levels;
+})();
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((value) => (value + 0.5) / 16);
+
+function laceCoverage(u, v, level) {
+  const { size, data } = LACE_LEVELS[Math.min(level, LACE_LEVELS.length - 1)];
+  const x = ((Math.floor(u * LACE_REPEAT * size) % size) + size) % size;
+  const y = ((Math.floor(v * LACE_REPEAT * size) % size) + size) % size;
+  return data[y * size + x];
+}
+
+/** Which level of the lace chain a triangle's texels are a pixel on. */
+function laceLevel(uvs, i0, i1, i2, screenArea) {
+  const scale = LACE_REPEAT * LACE_SIZE;
+  const du1 = (uvs[i1 * 2] - uvs[i0 * 2]) * scale;
+  const dv1 = (uvs[i1 * 2 + 1] - uvs[i0 * 2 + 1]) * scale;
+  const du2 = (uvs[i2 * 2] - uvs[i0 * 2]) * scale;
+  const dv2 = (uvs[i2 * 2 + 1] - uvs[i0 * 2 + 1]) * scale;
+  const texels = Math.abs(du1 * dv2 - dv1 * du2);
+  const perPixel = Math.sqrt(texels / Math.max(screenArea, 1e-6));
+  return perPixel > 1 ? Math.ceil(Math.log2(perPixel)) : 0;
+}
+
 function rasterise(matrix, width, height, depth, onFragment, awayFrom = null, list = objects) {
   const area2 = (ax, ay, bx, by, cx, cy) => (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
 
@@ -550,7 +657,7 @@ function rasterise(matrix, width, height, depth, onFragment, awayFrom = null, li
       // body rather than the near one. The test is on the shading normals, not
       // on the winding, so it agrees exactly with the `ndl > 0` test the main
       // pass uses to decide whether to look the shadow up at all.
-      if (awayFrom !== null) {
+      if (awayFrom !== null && !object.cards) {
         const facing =
           (normals[i0 * 3] + normals[i1 * 3] + normals[i2 * 3]) * awayFrom[0] +
           (normals[i0 * 3 + 1] + normals[i1 * 3 + 1] + normals[i2 * 3 + 1]) * awayFrom[1] +
@@ -572,6 +679,7 @@ function rasterise(matrix, width, height, depth, onFragment, awayFrom = null, li
       if (minX > maxX || minY > maxY) continue;
 
       const invArea = 1 / area;
+      const level = object.lace ? laceLevel(object.uvs, i0, i1, i2, Math.abs(area)) : 0;
       const iw0 = 1 / sw[i0];
       const iw1 = 1 / sw[i1];
       const iw2 = 1 / sw[i2];
@@ -588,8 +696,6 @@ function rasterise(matrix, width, height, depth, onFragment, awayFrom = null, li
           const z = w0 * sz[i0] + w1 * sz[i1] + w2 * sz[i2];
           const offset = py * width + px;
           if (z >= depth[offset]) continue;
-          depth[offset] = z;
-          if (!onFragment) continue;
 
           // Screen-space barycentrics interpolate a plane in screen space,
           // which is not how attributes vary across a perspective triangle.
@@ -600,6 +706,27 @@ function rasterise(matrix, width, height, depth, onFragment, awayFrom = null, li
           const b0 = (w0 * iw0) / persp;
           const b1 = (w1 * iw1) / persp;
           const b2 = (w2 * iw2) / persp;
+
+          // A card is only where its texture says there is hair, and that has
+          // to be decided before the depth is written - in both passes, or the
+          // clear half of every strip shadows and hides what is behind it.
+          if (object.cards) {
+            const { uvs } = object;
+            const u = b0 * uvs[i0 * 2] + b1 * uvs[i1 * 2] + b2 * uvs[i2 * 2];
+            const v = b0 * uvs[i0 * 2 + 1] + b1 * uvs[i1 * 2 + 1] + b2 * uvs[i2 * 2 + 1];
+            if (sampleAtlas(object.cards.image, u, v)[1] < CARD_CUTOFF) continue;
+          }
+          // So is lace where its thread is, except where it is worked solid.
+          if (object.lace) {
+            const { uvs, trim } = object;
+            if (!trim || b0 * trim[i0] + b1 * trim[i1] + b2 * trim[i2] <= 0.5) {
+              const u = b0 * uvs[i0 * 2] + b1 * uvs[i1 * 2] + b2 * uvs[i2 * 2];
+              const v = b0 * uvs[i0 * 2 + 1] + b1 * uvs[i1 * 2 + 1] + b2 * uvs[i2 * 2 + 1];
+              if (laceCoverage(u, v, level) <= BAYER[(py & 3) * 4 + (px & 3)]) continue;
+            }
+          }
+          depth[offset] = z;
+          if (!onFragment) continue;
 
           onFragment(offset, object, i0, i1, i2, b0, b1, b2);
         }
@@ -769,7 +896,7 @@ for (let i = 0; i < W * H; i += 1) {
 
 const eyeDir = [0, 0, 0];
 
-rasterise(viewProjection, W, H, depth, (offset, object, i0, i1, i2, b0, b1, b2) => {
+function shade(offset, object, i0, i1, i2, b0, b1, b2) {
   const { positions, normals, occlusion, colour: base } = object;
   const px = b0 * positions[i0 * 3] + b1 * positions[i1 * 3] + b2 * positions[i2 * 3];
   const py = b0 * positions[i0 * 3 + 1] + b1 * positions[i1 * 3 + 1] + b2 * positions[i2 * 3 + 1];
@@ -783,10 +910,6 @@ rasterise(viewProjection, W, H, depth, (offset, object, i0, i1, i2, b0, b1, b2) 
   ny /= length;
   nz /= length;
 
-  const ao = occlusion
-    ? b0 * occlusion[i0] + b1 * occlusion[i1] + b2 * occlusion[i2]
-    : 1;
-
   eyeDir[0] = eye[0] - px;
   eyeDir[1] = eye[1] - py;
   eyeDir[2] = eye[2] - pz;
@@ -795,10 +918,24 @@ rasterise(viewProjection, W, H, depth, (offset, object, i0, i1, i2, b0, b1, b2) 
   const vy = eyeDir[1] / eyeLength;
   const vz = eyeDir[2] / eyeLength;
 
+  // The far side of a card is seen through the gaps in the near one, and is
+  // lit as the side it is.
+  if (object.cards && nx * vx + ny * vy + nz * vz < 0) {
+    nx = -nx;
+    ny = -ny;
+    nz = -nz;
+  }
+
+  const ao = occlusion
+    ? b0 * occlusion[i0] + b1 * occlusion[i1] + b2 * occlusion[i2]
+    : 1;
+
   // Wrapped diffuse. Skin lit from the side stays lit well past ninety degrees,
   // because the light that gets under the surface comes back out somewhere
-  // nearby - and the eye reads that soft terminator as flesh.
-  const wrap = object.skin ? 0.45 : 0.05;
+  // nearby - and the eye reads that soft terminator as flesh. Red wraps
+  // furthest, being what travels furthest under the surface, which is what
+  // warms the terminator; `SKIN_WRAP` in `renderer.js` is the same three.
+  const wrap = object.skin ? SKIN_WRAP : PLAIN_WRAP;
   const ndl = nx * KEY[0] + ny * KEY[1] + nz * KEY[2];
 
   // The shadow map holds only surfaces turned away from the light, so a lookup
@@ -836,9 +973,17 @@ rasterise(viewProjection, W, H, depth, (offset, object, i0, i1, i2, b0, b1, b2) 
   // standing in for the source's angular size, so it is set by what a shadow
   // under a breast, a chin or a hand should read as, which is "dim" and not
   // "absent".
+  //
+  // On skin the shadow's edge is warmed on its way down to that floor, by the
+  // same scatter as the terminator: light entering on the lit side of the edge
+  // comes out on the dark side, and red is the part of it that gets there.
   const umbra = object.skin ? 0.18 : 0.08;
-  const key = Math.max(0, (ndl + wrap) / (1 + wrap)) *
-    (1 - gate * (1 - shadow) * (1 - umbra)) * 2.1;
+  const visible = 1 - gate * (1 - shadow);
+  const penumbra = object.skin ? SKIN_PENUMBRA : PLAIN_PENUMBRA;
+  const leak = umbra * (1 - visible);
+  const keyR = Math.max(0, (ndl + wrap[0]) / (1 + wrap[0])) * (visible ** penumbra[0] + leak) * 2.1;
+  const keyG = Math.max(0, (ndl + wrap[1]) / (1 + wrap[1])) * (visible ** penumbra[1] + leak) * 2.1;
+  const keyB = Math.max(0, (ndl + wrap[2]) / (1 + wrap[2])) * (visible ** penumbra[2] + leak) * 2.1;
 
   const fill = Math.max(0, nx * FILL[0] + ny * FILL[1] + nz * FILL[2]) * 0.4;
   const rim = Math.max(0, nx * RIM[0] + ny * RIM[1] + nz * RIM[2]) * 0.55;
@@ -858,6 +1003,14 @@ rasterise(viewProjection, W, H, depth, (offset, object, i0, i1, i2, b0, b1, b2) 
     const v = b0 * uvs[i0 * 2 + 1] + b1 * uvs[i1 * 2 + 1] + b2 * uvs[i2 * 2 + 1];
     const texel = sampleAtlas(atlas, u, v);
     tint = [base[0] * texel[0], base[1] * texel[1], base[2] * texel[2]];
+  } else if (object.cards) {
+    const { uvs, cards } = object;
+    const u = b0 * uvs[i0 * 2] + b1 * uvs[i1 * 2] + b2 * uvs[i2 * 2];
+    const v = b0 * uvs[i0 * 2 + 1] + b1 * uvs[i1 * 2 + 1] + b2 * uvs[i2 * 2 + 1];
+    const grey = sampleAtlas(cards.image, u, v)[0] * cards.gain;
+    tint = [base[0] * grey, base[1] * grey, base[2] * grey];
+  } else if (object.trimColour && b0 * object.trim[i0] + b1 * object.trim[i1] + b2 * object.trim[i2] > 0.5) {
+    tint = object.trimColour;
   }
 
   // The rim is added rather than tinted, which is deliberate - it stands in for
@@ -873,9 +1026,9 @@ rasterise(viewProjection, W, H, depth, (offset, object, i0, i1, i2, b0, b1, b2) 
   const rimAdd = object.sheen ? 0 : rim;
   const rimMul = object.sheen ? rim : 0;
 
-  let r = tint[0] * (key * 1.03 + fill * 0.78 + sky * 0.88 + bounce + rimMul) + rimAdd * 0.9;
-  let g = tint[1] * (key * 0.96 + fill * 0.86 + sky * 0.92 + bounce + rimMul) + rimAdd * 0.9;
-  let b = tint[2] * (key * 0.9 + fill * 1.0 + sky * 1.0 + bounce + rimMul) + rimAdd * 0.92;
+  let r = tint[0] * (keyR * 1.03 + fill * 0.78 + sky * 0.88 + bounce + rimMul) + rimAdd * 0.9;
+  let g = tint[1] * (keyG * 0.96 + fill * 0.86 + sky * 0.92 + bounce + rimMul) + rimAdd * 0.9;
+  let b = tint[2] * (keyB * 0.9 + fill * 1.0 + sky * 1.0 + bounce + rimMul) + rimAdd * 0.92;
 
   if (object.skin) {
     // The transmission glow, concentrated where the surface turns away from the
@@ -894,6 +1047,29 @@ rasterise(viewProjection, W, H, depth, (offset, object, i0, i1, i2, b0, b1, b2) 
     r += 0.62 * glow;
     g += 0.23 * glow;
     b += 0.16 * glow;
+
+    // Skin's two specular lobes, as the webapp draws them: the skin's own,
+    // broad, and the tighter, weaker one off the film of oil over it, which is
+    // what puts a small highlight on a shoulder or the bridge of a nose. Without
+    // them skin is chalk. Blinn-Phong exponents matched to the webapp's GGX
+    // roughnesses (0.52 and the coat's 0.34), and strengths set against the
+    // webapp side by side - normalised and scaled to these lights they came out
+    // a third stronger than it draws, and the figure looked oiled. Reflectance
+    // is skin's 2.8% at normal incidence, the coat's 4%, and neither takes the
+    // floor the diffuse does - a highlight in a shadow is a glint that could
+    // not be there. The key's warm white, not the surface's colour: the first
+    // reflection off a dielectric is the colour of the light.
+    const hx = KEY[0] + vx;
+    const hy = KEY[1] + vy;
+    const hz = KEY[2] + vz;
+    const hl = Math.hypot(hx, hy, hz) || 1;
+    const ndh = Math.max(0, (nx * hx + ny * hy + nz * hz) / hl);
+    const schlick = (1 - Math.max(0, (vx * hx + vy * hy + vz * hz) / hl)) ** 5;
+    const lit = Math.max(0, ndl) * visible;
+    const spec = lit * ((0.028 + 0.972 * schlick) * 6 * ndh ** 25 + (0.04 + 0.96 * schlick) * 4 * ndh ** 148);
+    r += spec;
+    g += spec * 0.96;
+    b += spec * 0.91;
   }
 
   if (object.sheen) {
@@ -934,7 +1110,9 @@ rasterise(viewProjection, W, H, depth, (offset, object, i0, i1, i2, b0, b1, b2) 
     const hl = Math.hypot(hx, hy, hz) || 1;
     const ndh = Math.max(0, (nx * hx + ny * hy + nz * hz) / hl);
     const lit = Math.max(0, ndl) * (1 - gate * (1 - shadow) * (1 - umbra));
-    const spec = lit * (ndh ** 30 * 0.14 + ndh ** 5 * 0.10) * object.sheen;
+    // And a coat over leather or wet-look lycra: a tight lobe, which on a strap
+    // is the thin bright line along its crown that says it is not cloth.
+    const spec = lit * ((ndh ** 30 * 0.14 + ndh ** 5 * 0.10) * object.sheen + ndh ** 90 * object.gloss);
     r += spec;
     g += spec * 0.98;
     b += spec * 0.94;
@@ -943,7 +1121,56 @@ rasterise(viewProjection, W, H, depth, (offset, object, i0, i1, i2, b0, b1, b2) 
   colour[offset * 3] = r;
   colour[offset * 3 + 1] = g;
   colour[offset * 3 + 2] = b;
-});
+}
+
+rasterise(viewProjection, W, H, depth, shade);
+
+/**
+ * Stockings, over the finished picture.
+ *
+ * Tested against the depth of what is drawn and never writing it, like the
+ * glass below, and each pixel takes only the nearest veil in front of it - the
+ * hit is recorded in a first pass and shaded in a second, because shading as
+ * the triangles come would tint a pixel once for each layer of the tube, and
+ * at the edge of a leg there are two.
+ *
+ * How much of what is behind comes through is the nylon's: a sheer knit is
+ * mostly holes seen square on and mostly thread seen at a slant, because the
+ * slant looks through more of it. `DENIER` is what it covers square on; the
+ * welt at the top is knitted close, and covers nearly all of it.
+ */
+const DENIER = 0.45;
+if (veils.length) {
+  const veilDepth = Float32Array.from(depth);
+  const hit = new Int32Array(W * H).fill(-1);
+  const corners = new Uint32Array(W * H * 3);
+  const weights = new Float32Array(W * H * 3);
+  rasterise(viewProjection, W, H, veilDepth, (offset, object, i0, i1, i2, b0, b1, b2) => {
+    hit[offset] = veils.indexOf(object);
+    corners.set([i0, i1, i2], offset * 3);
+    weights.set([b0, b1, b2], offset * 3);
+  }, null, veils);
+  const behind = [0, 0, 0];
+  for (let offset = 0; offset < W * H; offset += 1) {
+    if (hit[offset] < 0) continue;
+    const object = veils[hit[offset]];
+    const [i0, i1, i2] = corners.subarray(offset * 3, offset * 3 + 3);
+    const [b0, b1, b2] = weights.subarray(offset * 3, offset * 3 + 3);
+    const { positions, normals, trim } = object;
+    let nx = b0 * normals[i0 * 3] + b1 * normals[i1 * 3] + b2 * normals[i2 * 3];
+    let ny = b0 * normals[i0 * 3 + 1] + b1 * normals[i1 * 3 + 1] + b2 * normals[i2 * 3 + 1];
+    let nz = b0 * normals[i0 * 3 + 2] + b1 * normals[i1 * 3 + 2] + b2 * normals[i2 * 3 + 2];
+    const vx = eye[0] - (b0 * positions[i0 * 3] + b1 * positions[i1 * 3] + b2 * positions[i2 * 3]);
+    const vy = eye[1] - (b0 * positions[i0 * 3 + 1] + b1 * positions[i1 * 3 + 1] + b2 * positions[i2 * 3 + 1]);
+    const vz = eye[2] - (b0 * positions[i0 * 3 + 2] + b1 * positions[i1 * 3 + 2] + b2 * positions[i2 * 3 + 2]);
+    const facing = Math.abs(nx * vx + ny * vy + nz * vz) / ((Math.hypot(nx, ny, nz) || 1) * (Math.hypot(vx, vy, vz) || 1));
+    const welt = trim && b0 * trim[i0] + b1 * trim[i1] + b2 * trim[i2] > 0.5;
+    const alpha = Math.max(1 - (1 - DENIER) ** (1 / Math.max(facing, 0.08)), welt ? 0.92 : 0);
+    for (let c = 0; c < 3; c += 1) behind[c] = colour[offset * 3 + c];
+    shade(offset, object, i0, i1, i2, b0, b1, b2);
+    for (let c = 0; c < 3; c += 1) colour[offset * 3 + c] = behind[c] * (1 - alpha) + colour[offset * 3 + c] * alpha;
+  }
+}
 
 /**
  * A car's shell, laid over the finished picture.
@@ -1063,7 +1290,7 @@ function lineArt() {
   const segments = [];
   const scale = 1 / SS;
 
-  for (const object of objects) {
+  for (const object of [...objects, ...veils]) {
     if (object.ground) continue;
     const { positions, indices } = object;
     const count = indices.length / 3;
@@ -1209,7 +1436,7 @@ if (has("svg")) {
 /* Report                                                             */
 /* ------------------------------------------------------------------ */
 
-const triangles = objects.reduce((sum, object) => sum + object.indices.length / 3, 0);
+const triangles = [...objects, ...veils].reduce((sum, object) => sum + object.indices.length / 3, 0);
 console.log(JSON.stringify(parsed.scene.title || parsed.scene.description || SCENE_FILE || flag('preset', null) || text));
 console.log(`  ${OUT}  ${WIDTH}x${HEIGHT} (${SS}x) · ${(triangles / 1000).toFixed(1)}k triangles`);
 if (svgOut) console.log(`  ${svgOut}  vector outlines`);

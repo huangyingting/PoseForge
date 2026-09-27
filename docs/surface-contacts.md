@@ -15,6 +15,13 @@ weights, posed vertices and dressed triangle indices as the renderer. Entire
 connected limbs are checked as well: a clear hand/forearm target must not conceal
 an intersection with the nearby wrist or hand.
 
+The one drawn surface it does not measure is hair cards. They are strands, and a
+card a centimetre off the scalp, measured as solid, holds a supine head off the
+bed and crosses a partner's hip where real hair would flatten. A figure drawn
+with cards is measured with the fitted hair shell under them instead - the
+surface a figure without cards is drawn with - so every contact, support and
+calibrated layout measures the same with either.
+
 For a limb-to-body contact, that complete limb is checked against the complete
 target figure, including colored auxiliary geometry. The regional query still
 uses its anatomical ownership and radius. Synthetic patches verify that a clear

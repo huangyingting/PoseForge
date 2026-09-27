@@ -5,8 +5,8 @@
  * a person: hair is most of a head's silhouette, and a smooth scalp under a key
  * light reads as a mannequin no matter how good the face under it is.
  *
- * There is no hair asset to load and no hope of one that fits two different
- * skulls, so this generates a shell. The shape is not sculpted by hand either -
+ * Without an asset fitted to the skull it sits on, this generates a shell. The
+ * shape is not sculpted by hand either -
  * a hand-placed ellipsoid fits one model and floats off the other - it is
  * *measured* off whichever scalp it is asked to sit on, and the style is a
  * handful of numbers describing what the shell does with that measurement.
@@ -40,7 +40,13 @@
  * with the crown at y = 1 and the face down +z. The shell is rigid to the head
  * joint: hair is attached to the scalp, so when the neck bends it all swings
  * together, and weighting it to the neck instead would shear a bob in half.
+ *
+ * The shell is now the fallback. A template that carries MakeHuman's own
+ * hairstyles, fitted to its body (`hairCards.js`), wears those instead, as
+ * cards; the shell is for one that does not.
  */
+
+import { cardSubmesh } from "./hairCards.js";
 
 /** Cells around the head in the measured fields, and steps down the shell. */
 const AZIMUTHS = 72;
@@ -169,7 +175,7 @@ const FRINGE_RAG = (1.2 * Math.PI) / 180;
 const FRINGE_STANDOFF = 0.009 / 1.72;
 
 /**
- * The styles.
+ * The shells, one per length of hair, which `HAIR_STYLES` below falls back to.
  *
  * `lift` moves the whole hairline, in degrees off the crown, and the sign is
  * the opposite of what the name suggests: the angle is measured *from the
@@ -254,13 +260,47 @@ const FRINGE_STANDOFF = 0.009 / 1.72;
  * styles here stop at 72 at the midline, and `FRINGE_SWEEP` carries the ends
  * ten degrees further, which is still short of the outer corner of the eye.
  */
-export const HAIR_STYLES = {
-  none: null,
+const SHELLS = {
   crop: { thickness: 0.0042, lift: 6, fall: 0, front: 60, flare: 1, lump: 0.42, fade: 0.45, part: 0, locks: 0.0016, ragged: 0, fringe: 3 },
   short: { thickness: 0.0080, lift: 3, fall: 0, front: 60, flare: 1, lump: 0.45, fade: 0.50, part: 0.22, locks: 0.0040, ragged: 0, fringe: 14 },
   bob: { thickness: 0.0098, lift: -8, fall: 0.082, front: 48, flare: 1.05, lump: 0.34, fade: 0.16, part: 0.35, locks: 0.0058, ragged: 0.16, fringe: 24 },
   medium: { thickness: 0.0102, lift: -7, fall: 0.118, front: 46, flare: 1.08, lump: 0.32, fade: 0.15, part: 0.30, locks: 0.0066, ragged: 0.20, fringe: 26 },
   long: { thickness: 0.0108, lift: -8, fall: 0.150, front: 45, flare: 1.10, lump: 0.30, fade: 0.14, part: 0.40, locks: 0.0076, ragged: 0.22, fringe: 22 },
+};
+
+/**
+ * The hairstyles a figure can wear.
+ *
+ * Each is one of MakeHuman's hairstyles, drawn as cards (see `hairCards.js`),
+ * and names the shell above that stands in for it when a template has no cards
+ * to draw - a body loaded without them, or a test that never asked. The shell
+ * is the nearest length rather than the same haircut: it has no ponytail or
+ * braid in it to give.
+ */
+export const HAIR_STYLES = {
+  none: null,
+  crop: { cards: "short02", shell: "crop" },
+  short: { cards: "short01", shell: "short" },
+  pixie: { cards: "short03", shell: "short" },
+  undercut: { cards: "short04", shell: "short" },
+  afro: { cards: "afro01", shell: "short" },
+  bob: { cards: "bob02", shell: "bob" },
+  medium: { cards: "bob01", shell: "medium" },
+  ponytail: { cards: "ponytail01", shell: "medium" },
+  braid: { cards: "braid01", shell: "long" },
+  long: { cards: "long01", shell: "long" },
+};
+
+/**
+ * The brows and lashes each body type wears, whatever its hairstyle - a
+ * shaved head still has eyebrows. Fine and arched against heavy and straight,
+ * and the lashes likewise, because at a face's scale in a render those two are
+ * most of what reads as a woman's eye or a man's.
+ */
+export const FACE_TRIMS = {
+  female: { brows: "eyebrow010", lashes: "eyelashes02" },
+  male: { brows: "eyebrow009", lashes: "eyelashes01" },
+  neutral: { brows: "eyebrow010", lashes: "eyelashes01" },
 };
 
 /**
@@ -476,7 +516,7 @@ const lockMass = (f) => Math.sin(LOCKS[0][0] * f + LOCKS[0][1]);
  */
 export function buildHair(template, { bodyType = "neutral", style, colour = HAIR_COLOUR } = {}) {
   const name = style ?? DEFAULT_HAIR[bodyType] ?? "short";
-  const shape = HAIR_STYLES[name];
+  const shape = SHELLS[HAIR_STYLES[name]?.shell];
   if (!shape) return null;
 
   const body = template.submeshes.find((submesh) => submesh.primary);
@@ -975,9 +1015,42 @@ function finish(name, positions, indices, colour, jointIndex) {
   };
 }
 
-/** The template with hair on it, or the same template if the style is `none`. */
-export function withHair(template, options) {
-  const hair = buildHair(template, options);
-  if (!hair) return template;
-  return { ...template, submeshes: [...template.submeshes, hair] };
+/**
+ * The template with hair on it: the style's cards and the body type's brows
+ * and lashes if the template carries cards (see `withCards`), the style's
+ * shell otherwise, and the same template if that leaves nothing to add.
+ *
+ * Cards are drawn but not measured - they are strands, and where one met a
+ * pillow real hair would flatten - so a template given them carries the shell
+ * as well, as `hairShell`, for the contact queries to measure in their place
+ * (see `surfaceContacts.js`). Nothing draws it.
+ *
+ * @param {object} template
+ * @param {object} [options]
+ * @param {string} [options.bodyType] picks the default style and the brows
+ * @param {string} [options.style] a key of `HAIR_STYLES`
+ * @param {number[]} [options.colour] sRGB 0..1
+ */
+export function withHair(template, options = {}) {
+  const { bodyType = "neutral", style, colour = HAIR_COLOUR } = options;
+  const parts = [];
+  const shell = buildHair(template, options);
+  if (template.cards) {
+    const name = style ?? DEFAULT_HAIR[bodyType] ?? "short";
+    const face = FACE_TRIMS[bodyType] ?? FACE_TRIMS.neutral;
+    parts.push(
+      cardSubmesh(template, face.brows, { name: "brows", colour }),
+      cardSubmesh(template, face.lashes, { name: "lashes", colour }),
+    );
+    if (HAIR_STYLES[name]) parts.push(cardSubmesh(template, HAIR_STYLES[name].cards, { name: `hair-${name}`, colour }));
+  } else {
+    parts.push(shell);
+  }
+  const added = parts.filter(Boolean);
+  if (!added.length) return template;
+  return {
+    ...template,
+    submeshes: [...template.submeshes, ...added],
+    ...(template.cards && shell ? { hairShell: shell } : {}),
+  };
 }

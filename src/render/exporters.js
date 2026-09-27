@@ -169,10 +169,12 @@ function renderDepth(view, width, height) {
   depthMaterial.uniforms.far.value = camera.far;
   scene.overrideMaterial = depthMaterial;
   scene.background = null;
-  // A car's glass would hide every line behind it.
+  // A car's glass would hide every line behind it, and so would hair cards,
+  // which the override draws as the solid strips they are without their
+  // cut-out: the head's own outline is what stands for the hair in line art.
   const shells = [];
   scene.traverse((node) => {
-    if (node.name === "shell" && node.visible) shells.push(node);
+    if ((node.name === "shell" || node.userData.cards) && node.visible) shells.push(node);
   });
   for (const node of shells) node.visible = false;
 

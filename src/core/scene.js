@@ -20,7 +20,7 @@ import { HAIR_STYLES } from "./hair.js";
 import { BODY_MODELS } from "./bodyModels.js";
 import { HAND_SHAPES } from "./handPose.js";
 import { footJoints, knownFeet } from "./footPose.js";
-import { GARMENT_COLOURS, GARMENT_NAMES } from "./garments.js";
+import { CUPPED, GARMENT_COLOURS, GARMENT_NAMES, resolveWearing } from "./garments.js";
 import { CHANNELS, POSEABLE_BONES, ROM } from "./skeleton.js";
 import { checkPlacement } from "./placement.js";
 import {
@@ -54,8 +54,9 @@ export const MAX_SCENE_ACTORS = 4;
  *           omitted means the default. How they look, never how they collide
  * @property {string} [hair] hairstyle name, see HAIR_STYLES; omitted means the
  *           default for the body type
- * @property {string|string[]} [wearing] garment names, see GARMENT_NAMES; omitted
- *           means nude, an empty array means nude explicitly
+ * @property {string|string[]} [wearing] garment names, see GARMENT_NAMES, one
+ *           to each of GARMENT_SLOTS; omitted means nude, an empty array means
+ *           nude explicitly
  * @property {string} [outfit] garment colour name, see GARMENT_COLOURS
  * @property {string|{l?:string,r?:string}} [hands] hand shape name, see
  *           HAND_SHAPES; overrides what the contacts imply
@@ -307,6 +308,18 @@ export function validateScene(scene) {
       if (unknown.length) {
         note("warning", `${id}: cannot make ${unknown.join(", ")}, left off`);
         wearing = wearing.filter((item) => GARMENT_NAMES.includes(item));
+      }
+      // One piece to a place: two bras at once would be two surfaces lifted
+      // off the same skin by the same distance, fighting over every pixel.
+      const { wearing: kept, dropped } = resolveWearing(wearing);
+      if (dropped.length) {
+        note("warning", `${id}: already wearing something there, left off ${dropped.join(", ")}`);
+      }
+      wearing = kept;
+      const cupless = bodyType === "female" ? [] : wearing.filter((item) => CUPPED.has(item));
+      if (cupless.length) {
+        note("warning", `${id}: ${cupless.join(", ")} ${cupless.length > 1 ? "need" : "needs"} a bust to hold, left off`);
+        wearing = wearing.filter((item) => !CUPPED.has(item));
       }
     }
     let outfit = spec.outfit;

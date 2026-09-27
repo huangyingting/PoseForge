@@ -28,22 +28,51 @@ import {
   featureRelief,
   skinHumanMesh,
 } from "../src/core/humanMesh.js";
-import { withGarments, GARMENT_NAMES } from "../src/core/garments.js";
+import {
+  withGarments,
+  resolveWearing,
+  CUPPED,
+  GARMENT_COLOURS,
+  GARMENT_FINISHES,
+  GARMENT_NAMES,
+} from "../src/core/garments.js";
 
-const MODEL = new URL("../assets/models/realistic-female.glb", import.meta.url);
+/** A scan, relieved, built once for the whole file. */
+const templates = Object.fromEntries(
+  ["female", "male"].map((bodyType) => [
+    bodyType,
+    featureRelief(
+      buildHumanTemplate(
+        readFileSync(new URL(`../assets/models/realistic-${bodyType}.glb`, import.meta.url)),
+      ),
+      { bodyType, build: 1 },
+    ),
+  ]),
+);
 
-/** The scan, relieved and dressed, built once for the whole file. */
-const dressed = (() => {
-  const body = featureRelief(buildHumanTemplate(readFileSync(MODEL)), {
-    bodyType: "female",
-    build: 1,
-  });
-  return withGarments(body, {
-    bodyType: "female",
-    wearing: GARMENT_NAMES,
-    colour: "red",
-  });
-})();
+// One piece to a place, so a figure cannot wear everything at once: this is
+// one of each kind of thing that is not in a slot, over a bra and briefs.
+const OUTFIT = ["bra", "briefs", "stockings", "garter-belt", "harness", "cuffs"];
+
+/** The female scan dressed in all of that. */
+const dressed = withGarments(templates.female, {
+  bodyType: "female",
+  wearing: OUTFIT,
+  colour: "red",
+});
+
+/**
+ * Every garment, each built on its own on each body it is made for: all of
+ * them for the female scan, and all but the cupped ones for the male.
+ */
+const alone = ["female", "male"].flatMap((bodyType) =>
+  GARMENT_NAMES.filter((name) => bodyType === "female" || !CUPPED.has(name)).map((name) => {
+    const mesh = withGarments(templates[bodyType], { bodyType, wearing: [name], colour: "red" })
+      .submeshes.find((s) => s.name === name);
+    assert.ok(mesh, `${bodyType}: no ${name} submesh`);
+    return { bodyType, name, mesh };
+  }),
+);
 
 /** The same template skinned into a standing pose. */
 const posed = (() => {
@@ -53,7 +82,7 @@ const posed = (() => {
         id: "a",
         bodyType: "female",
         posture: "standing",
-        wearing: GARMENT_NAMES,
+        wearing: OUTFIT,
       },
     ],
   });
@@ -79,15 +108,11 @@ const submesh = (name) => {
 
 test("opaque studio clothing removes covered skin without changing the source or exposed extremities", () => {
   for (const bodyType of ["female", "male"]) {
+    // A fresh one, not the file's: that has been dressed a dozen times already,
+    // and if any of them had changed it this would be comparing against the
+    // changed copy.
     const template = featureRelief(
-      buildHumanTemplate(
-        readFileSync(
-          new URL(
-            `../assets/models/realistic-${bodyType}.glb`,
-            import.meta.url,
-          ),
-        ),
-      ),
+      buildHumanTemplate(readFileSync(new URL(`../assets/models/realistic-${bodyType}.glb`, import.meta.url))),
       { bodyType, build: 1 },
     );
     const skin = template.submeshes.find((part) => part.primary);
@@ -132,17 +157,7 @@ test("opaque studio clothing removes covered skin without changing the source or
 
 test("studio outfits stay attached to male and female figures through standing, seated and kneeling poses", () => {
   for (const bodyType of ["female", "male"]) {
-    const template = featureRelief(
-      buildHumanTemplate(
-        readFileSync(
-          new URL(
-            `../assets/models/realistic-${bodyType}.glb`,
-            import.meta.url,
-          ),
-        ),
-      ),
-      { bodyType, build: 1 },
-    );
+    const template = templates[bodyType];
     const studio = withGarments(template, {
       bodyType,
       wearing: ["top", "shorts"],
@@ -223,14 +238,36 @@ const freeBoundary = (mesh) => {
   return out;
 };
 
-test("garments are built for a female body", () => {
-  for (const name of GARMENT_NAMES) {
-    const mesh = submesh(name);
-    assert.ok(mesh.indices.length >= 3, `${name} has no triangles`);
-    assert.ok(
-      mesh.colour,
-      `${name} should carry its own colour, not the skin tone`,
-    );
+test("every garment is built for a female body, and all but the cupped ones for a male", () => {
+  // The ones whose finish is the point of them: lace that is not lace is a
+  // plain bra, and on a man the thong's front stands off the skin over the
+  // bulge, where holes would be a view into the figure, so there it is solid.
+  const finishes = {
+    "female lace-bra": "lace",
+    "female lace-thong": "lace",
+    "male lace-thong": "lycra",
+    "female bikini-top": "lycra",
+    "female stockings": "sheer",
+    "female garter-belt": "lace",
+    "female harness": "leather",
+    "male harness": "leather",
+    "female cuffs": "leather",
+  };
+  assert.equal(alone.length, GARMENT_NAMES.length * 2 - CUPPED.size);
+  for (const { bodyType, name, mesh } of alone) {
+    const label = `${bodyType} ${name}`;
+    const count = mesh.positions.length / 3;
+    assert.ok(mesh.indices.length >= 300, `${label} has ${mesh.indices.length / 3} triangles`);
+    assert.deepEqual(mesh.colour, GARMENT_COLOURS.red, `${label} should carry its own colour, not the skin tone`);
+    assert.ok(GARMENT_FINISHES.includes(mesh.finish), `${label} is made of ${mesh.finish}`);
+    if (finishes[label]) assert.equal(mesh.finish, finishes[label], `${label} finish`);
+    // Lace is cut out of the texture the body is mapped with, so a garment
+    // without the body's texture coordinates has no holes to show.
+    assert.equal(mesh.uvs?.length, count * 2, `${label} texture coordinates`);
+    if (mesh.trim) {
+      assert.equal(mesh.trim.length, count, `${label} trim`);
+      assert.ok(mesh.trim.every(Number.isFinite), `${label} trim is not finite`);
+    }
   }
 });
 
@@ -259,8 +296,9 @@ test("cuffs are four straps, one above each wrist and each ankle, and nothing el
 });
 
 test("every garment vertex is bound to bones that sum to one", () => {
-  for (const name of GARMENT_NAMES) {
-    const { weights } = submesh(name);
+  for (const { bodyType, mesh } of alone) {
+    const name = `${bodyType} ${mesh.name}`;
+    const { weights } = mesh;
     for (let v = 0; v < weights.length / 4; v += 1) {
       let sum = 0;
       for (let k = 0; k < 4; k += 1) {
@@ -292,8 +330,9 @@ test("coincident garment vertices agree on their bones", () => {
   // here and the other side there. That pair really is left unwelded, and at a
   // thousandth of a unit of weight it moves the fabric by a millionth of the
   // lift. The bar is set where the defect starts mattering.
-  for (const name of GARMENT_NAMES) {
-    const { positions, joints, weights } = submesh(name);
+  for (const { bodyType, mesh } of alone) {
+    const name = `${bodyType} ${mesh.name}`;
+    const { positions, joints, weights } = mesh;
     const seen = new Map();
     for (let v = 0; v < positions.length / 3; v += 1) {
       const key = [0, 1, 2]
@@ -332,6 +371,81 @@ test("coincident garment vertices agree on their bones", () => {
       }
     }
   }
+});
+
+test("every garment is one piece, but for a stocking on each leg and a cuff on each limb", () => {
+  // Welded on position, as `freeBoundary` is, so the scan's UV seams do not
+  // count as cuts. A strap is three or four millimetres wide and the scan's
+  // vertex rows are a centimetre apart in places; if the cutting misses one,
+  // it is not missing, it is two straps with a gap in them, and the only way to
+  // see that in a number is to count the pieces.
+  const expected = { stockings: 2, cuffs: 4 };
+  for (const { bodyType, name, mesh } of alone) {
+    const { positions, indices } = mesh;
+    const weld = new Int32Array(positions.length / 3);
+    const seen = new Map();
+    for (let v = 0; v < weld.length; v += 1) {
+      const key = [0, 1, 2].map((k) => Math.round(positions[v * 3 + k] * 1e6)).join(",");
+      if (!seen.has(key)) seen.set(key, v);
+      weld[v] = seen.get(key);
+    }
+    const parent = Int32Array.from(weld);
+    const find = (v) => {
+      while (parent[v] !== v) v = parent[v] = parent[parent[v]];
+      return v;
+    };
+    for (let i = 0; i < indices.length; i += 3) {
+      const a = find(weld[indices[i]]);
+      for (const other of [indices[i + 1], indices[i + 2]]) {
+        const b = find(weld[other]);
+        if (a !== b) parent[b] = a;
+      }
+    }
+    const pieces = new Set();
+    for (let i = 0; i < indices.length; i += 3) pieces.add(find(weld[indices[i]]));
+    assert.equal(pieces.size, expected[name] ?? 1, `${bodyType} ${name} comes in ${pieces.size} pieces`);
+  }
+});
+
+test("a figure wears one piece to a place, the first it is given", () => {
+  assert.deepEqual(resolveWearing(["bra", "top", "briefs", "bra", "shorts", "cuffs", "stockings"]), {
+    wearing: ["bra", "briefs", "cuffs", "stockings"],
+    dropped: ["top", "shorts"],
+  });
+  assert.deepEqual(resolveWearing([]), { wearing: [], dropped: [] });
+
+  // And a caller that has not asked the scene first gets the same answer
+  // rather than two surfaces fighting over the same skin.
+  const both = withGarments(templates.female, { bodyType: "female", wearing: ["briefs", "shorts"] });
+  const garments = both.submeshes.filter((s) => s.garment).map((s) => s.name);
+  assert.deepEqual(garments, ["briefs"]);
+
+  const { scene, issues } = validateScene({
+    actors: [{ id: "a", bodyType: "female", wearing: ["bra", "top", "briefs"] }],
+  });
+  assert.deepEqual(scene.actors[0].wearing, ["bra", "briefs"]);
+  assert.ok(
+    issues.some((issue) => issue.level === "warning" && /already wearing something there, left off top/.test(issue.message)),
+    JSON.stringify(issues),
+  );
+});
+
+test("cups are made for a bust and refused without one", () => {
+  for (const name of CUPPED) {
+    assert.equal(
+      withGarments(templates.male, { bodyType: "male", wearing: [name] }),
+      templates.male,
+      `${name} was built on a male figure`,
+    );
+  }
+  const { scene, issues } = validateScene({
+    actors: [{ id: "a", bodyType: "male", wearing: ["lace-bra", "lace-thong"] }],
+  });
+  assert.deepEqual(scene.actors[0].wearing, ["lace-thong"]);
+  assert.ok(
+    issues.some((issue) => issue.level === "warning" && /lace-bra needs a bust to hold, left off/.test(issue.message)),
+    JSON.stringify(issues),
+  );
 });
 
 test("the waistband is cut flat in bind space", () => {

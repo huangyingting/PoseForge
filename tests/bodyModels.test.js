@@ -9,6 +9,7 @@ import {
   modelFiles,
 } from "../src/core/bodyModels.js";
 import { buildHumanTemplate } from "../src/core/humanMesh.js";
+import { readCards } from "../src/core/hairCards.js";
 import { validateScene } from "../src/core/scene.js";
 
 const MODELS = new URL("../assets/models/", import.meta.url);
@@ -35,15 +36,22 @@ test("the default model is the original pair of scans, and neutral wears the fem
     assert.ok(BODY_MODELS[name].label.length > 0, name);
 });
 
-test("every body type in every model has a scan and an atlas, and nothing else ships", () => {
-  const expected = new Set(["HUMAN-MODEL-LICENSE.txt"]);
+test("every body type in every model has a scan, an atlas and its hair, and nothing else ships", () => {
+  const expected = new Set(["HUMAN-MODEL-LICENSE.txt", "hair"]);
+  // The hair is what every body shares, where each body's copy of it sits,
+  // and the texture each trim names.
+  const hair = new Set(["cards.bin"]);
+  const { meta } = readCards(readFileSync(new URL("hair/cards.bin", MODELS)));
+  for (const trim of Object.values(meta.trims)) hair.add(`${trim.texture}.png`);
   for (const model of BODY_MODEL_NAMES)
     for (const bodyType of BODY_TYPES) {
       const { mesh, atlas } = modelFiles(bodyType, model);
       expected.add(`realistic-${mesh}.glb`);
       expected.add(`skin-${atlas}.png`);
+      hair.add(`cards-${mesh}.bin`);
     }
   assert.deepEqual(new Set(readdirSync(MODELS)), expected);
+  assert.deepEqual(new Set(readdirSync(new URL("hair/", MODELS))), hair);
 });
 
 test("every scan parses into the same rig and topology, and every atlas is one the renderers can read", () => {
