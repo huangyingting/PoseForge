@@ -22,7 +22,7 @@
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { deflateSync, inflateSync } from "node:zlib";
+import { deflateSync } from "node:zlib";
 import { parseDescription } from "../src/nlp/parser.js";
 import { validateScene } from "../src/core/scene.js";
 import { BUILTIN_PRESETS, parseCatalog } from '../src/core/catalog.js';
@@ -41,6 +41,8 @@ import {
   v3normalize,
 } from "../src/core/math.js";
 import { propShape, propTriangles } from "../src/core/propShapes.js";
+import { modelFiles } from "../src/core/bodyModels.js";
+import { decodePNG, sampleAtlas } from "./atlas.mjs";
 
 /* ------------------------------------------------------------------ */
 /* Arguments                                                           */
@@ -205,16 +207,9 @@ const objects = [];
 const BODY = flag("body", "skin");
 
 const MODELS = new URL("../assets/models/", import.meta.url);
-const MODEL_FILE = {
-  female: "realistic-female.glb",
-  male: "realistic-male.glb",
-  // No third body was made, and of the two the female model is the less
-  // secondary-sex-charactered, so it is the closer fit to a neutral build.
-  neutral: "realistic-female.glb",
-};
 const templates = new Map();
-const scanned = (bodyType) => {
-  const file = MODEL_FILE[bodyType] ?? MODEL_FILE.neutral;
+const scanned = (bodyType, model) => {
+  const file = `realistic-${modelFiles(bodyType, model).mesh}.glb`;
   if (!templates.has(file)) templates.set(file, buildHumanTemplate(readFileSync(new URL(file, MODELS))));
   return templates.get(file);
 };
@@ -228,16 +223,11 @@ const scanned = (bodyType) => {
  * geometry is. `--texture off` turns them off, which is the only honest way to
  * see what the geometry alone is doing.
  */
-const TEXTURE_FILE = {
-  female: "skin-female.png",
-  male: "skin-male.png",
-  neutral: "skin-female.png",
-};
 const TEXTURED = flag("texture", "on") !== "off";
 const atlases = new Map();
-const skinAtlas = (bodyType) => {
+const skinAtlas = (bodyType, model) => {
   if (!TEXTURED) return null;
-  const file = TEXTURE_FILE[bodyType] ?? TEXTURE_FILE.neutral;
+  const file = `skin-${modelFiles(bodyType, model).atlas}.png`;
   if (!atlases.has(file)) {
     try {
       atlases.set(file, decodePNG(readFileSync(new URL(file, MODELS))));
@@ -261,88 +251,6 @@ const skinAtlas = (bodyType) => {
 const ATLAS_TINT = 0.65;
 const tinted = (colour) => colour.map((c) => c + (1 - c) * ATLAS_TINT);
 
-/**
- * A PNG, as linear-light RGB.
- *
- * Only what the atlases are: 8-bit truecolour, no interlace, no palette. The
- * five filter types are the whole of the format's compression on top of
- * DEFLATE, and `zlib` supplies the rest.
- */
-function decodePNG(bytes) {
-  const width = bytes.readUInt32BE(16);
-  const height = bytes.readUInt32BE(20);
-  if (bytes[24] !== 8 || bytes[25] !== 2 || bytes[28] !== 0) {
-    throw new Error("only 8-bit truecolour, non-interlaced PNG is supported");
-  }
-  const chunks = [];
-  for (let at = 8; at + 8 <= bytes.length; ) {
-    const length = bytes.readUInt32BE(at);
-    const type = bytes.toString("ascii", at + 4, at + 8);
-    if (type === "IDAT") chunks.push(bytes.subarray(at + 8, at + 8 + length));
-    at += length + 12;
-  }
-  const raw = inflateSync(Buffer.concat(chunks));
-
-  const stride = width * 3;
-  const out = new Float32Array(width * height * 3);
-  const line = Buffer.alloc(stride);
-  const prior = Buffer.alloc(stride);
-  for (let y = 0; y < height; y += 1) {
-    const filter = raw[y * (stride + 1)];
-    raw.copy(line, 0, y * (stride + 1) + 1, y * (stride + 1) + 1 + stride);
-    for (let i = 0; i < stride; i += 1) {
-      const a = i >= 3 ? line[i - 3] : 0;
-      const b = prior[i];
-      const c = i >= 3 ? prior[i - 3] : 0;
-      let value = line[i];
-      if (filter === 1) value += a;
-      else if (filter === 2) value += b;
-      else if (filter === 3) value += (a + b) >> 1;
-      else if (filter === 4) {
-        const p = a + b - c;
-        const pa = Math.abs(p - a);
-        const pb = Math.abs(p - b);
-        const pc = Math.abs(p - c);
-        value += pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
-      }
-      line[i] = value & 0xff;
-    }
-    for (let i = 0; i < stride; i += 1) {
-      const s = line[i] / 255;
-      out[y * stride + i] = s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-    }
-    line.copy(prior);
-  }
-  return { width, height, data: out };
-}
-
-/** Bilinear sample, wrapped. The atlas has a border of flat tone, so the wrap
- *  never shows; clamping instead would streak it. */
-function sampleAtlas(atlas, u, v) {
-  const x = (u - Math.floor(u)) * atlas.width - 0.5;
-  const y = (v - Math.floor(v)) * atlas.height - 0.5;
-  const x0 = Math.floor(x);
-  const y0 = Math.floor(y);
-  const fx = x - x0;
-  const fy = y - y0;
-  const at = (px, py) => {
-    const cx = ((px % atlas.width) + atlas.width) % atlas.width;
-    const cy = ((py % atlas.height) + atlas.height) % atlas.height;
-    return (cy * atlas.width + cx) * 3;
-  };
-  const a = at(x0, y0);
-  const b = at(x0 + 1, y0);
-  const c = at(x0, y0 + 1);
-  const d = at(x0 + 1, y0 + 1);
-  const out = [0, 0, 0];
-  for (let k = 0; k < 3; k += 1) {
-    const top = atlas.data[a + k] + (atlas.data[b + k] - atlas.data[a + k]) * fx;
-    const bottom = atlas.data[c + k] + (atlas.data[d + k] - atlas.data[c + k]) * fx;
-    out[k] = top + (bottom - top) * fy;
-  }
-  return out;
-}
-
 // The relief is cached apart from the scan and on a different key: two actors
 // on the same GLB are the same parse but not the same body, because
 // `featureRelief` reads the volumes `bust` and `build` produce. The hair goes on
@@ -355,9 +263,10 @@ const humanTemplate = (actor) => {
   const hair = actor.spec?.hair;
   const wearing = actor.spec?.wearing;
   const outfit = actor.spec?.outfit;
-  const key = `${bodyType}|${bust ?? ""}|${build ?? 1}|${hair ?? ""}|${(wearing ?? []).join(",")}|${outfit ?? ""}`;
+  const model = actor.spec?.model;
+  const key = `${bodyType}|${model ?? ""}|${bust ?? ""}|${build ?? 1}|${hair ?? ""}|${(wearing ?? []).join(",")}|${outfit ?? ""}`;
   if (!relieved.has(key)) {
-    const body = featureRelief(scanned(bodyType), { bodyType, bust, build: build ?? 1 });
+    const body = featureRelief(scanned(bodyType, model), { bodyType, bust, build: build ?? 1 });
     const dressed = withGarments(body, { bodyType, wearing, colour: outfit });
     relieved.set(key, withHair(dressed, { bodyType, style: hair }));
   }
@@ -384,7 +293,7 @@ solved.actors.forEach((actor, index) => {
   }
 
   const template = humanTemplate(actor);
-  const atlas = skinAtlas(actor.skeleton.bodyType);
+  const atlas = skinAtlas(actor.skeleton.bodyType, actor.spec?.model);
   for (const part of skinHumanMesh(template, actor.skeleton, actor.evaluated, undefined, actor.hands, actor.hang)) {
     // ONLY=<regex> draws just the submeshes whose names match, and it is worth
     // the two lines. Anything small and concave on a body is unreadable in a

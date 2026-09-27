@@ -353,9 +353,12 @@ export function buildBodyVolumes(skeleton, { bust, anatomy = true } = {}) {
     // which is inside what the refined ~5mm edges can carry without folding.
     //
     // One set of numbers for every body type that has a bust at all: a man gets
-    // `bustScale` 0 and never reaches this block, and the neutral figure is
-    // drawn with the female mesh, so the female mesh is what the remaining two
-    // cases are both fitted to. `bustScale` alone separates them.
+    // `bustScale` 0 and never reaches this block, and `bustScale` alone
+    // separates the other two. The neutral figure was once drawn with the
+    // female mesh, which is why the numbers are the female's; it has its own
+    // now, and every other scan with a bust, made with MakeHuman's
+    // breast-position modifiers set to put its painted areola here instead
+    // (scripts/models/bodies.json; `validate-skin` measures it).
     const lift = 0.02711 * bustScale;
 
     // How far the bust yields in a collision, in metres, overriding the 18mm

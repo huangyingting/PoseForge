@@ -6,6 +6,7 @@ import { solvedPreview } from "../src/core/posePreview.js";
 import { buildHumanTemplate, featureRelief } from "../src/core/humanMesh.js";
 import { withGarments } from "../src/core/garments.js";
 import { withHair } from "../src/core/hair.js";
+import { modelFiles } from "../src/core/bodyModels.js";
 import { refineSurfaceContacts } from "../src/core/surfaceContacts.js";
 
 const rendered = process.argv.includes("--rendered");
@@ -22,8 +23,8 @@ if (!presets.length) throw new Error(`Unknown ${scope} preset: ${requested}`);
 const raw = new Map(),
   dressed = new Map();
 function template(actor) {
-  const { bodyType, build, bust, wearing, outfit, hair } = actor.spec;
-  const type = bodyType === "male" ? "male" : "female";
+  const { bodyType, model, build, bust, wearing, outfit, hair } = actor.spec;
+  const type = modelFiles(bodyType, model).mesh;
   if (!raw.has(type))
     raw.set(
       type,
@@ -33,7 +34,7 @@ function template(actor) {
         ),
       ),
     );
-  const key = JSON.stringify([bodyType, build, bust, wearing, outfit, hair]);
+  const key = JSON.stringify([type, bodyType, build, bust, wearing, outfit, hair]);
   if (!dressed.has(key)) {
     const body = featureRelief(raw.get(type), {
       bodyType,

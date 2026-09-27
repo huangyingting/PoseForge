@@ -27,6 +27,11 @@ import {
   POSEABLE_BONES,
   ROM,
 } from "../core/skeleton.js";
+import {
+  BODY_MODELS,
+  DEFAULT_BODY_MODEL,
+  bodyModel,
+} from "../core/bodyModels.js";
 import { HAIR_STYLES } from "../core/hair.js";
 import { GARMENT_COLOURS, GARMENT_NAMES } from "../core/garments.js";
 import { HAND_SHAPE_NAMES } from "../core/handPose.js";
@@ -52,13 +57,16 @@ const section = (title, body) =>
   el("section", {}, [el("h2", { textContent: title }), body]);
 
 /** A labelled <select>. */
-function picker(label, options, { blank = null } = {}) {
+function picker(label, options, { blank = null, labels = {} } = {}) {
   const select = el("select", { id: `control-${++controlId}` });
   if (blank !== null)
     select.append(el("option", { value: "", textContent: blank }));
   for (const option of options) {
     select.append(
-      el("option", { value: option, textContent: option.replace(/_/g, " ") }),
+      el("option", {
+        value: option,
+        textContent: labels[option] ?? option.replace(/_/g, " "),
+      }),
     );
   }
   const field = el("div", { className: "field" }, [
@@ -621,6 +629,11 @@ export function buildPanel(root, handlers) {
         format: (v) => (v < 0.94 ? "slim" : v > 1.08 ? "heavy" : "average"),
       });
 
+      const model = picker("Body model", Object.keys(BODY_MODELS), {
+        labels: Object.fromEntries(
+          Object.entries(BODY_MODELS).map(([name, { label }]) => [name, label]),
+        ),
+      });
       const hair = picker("Hair", Object.keys(HAIR_STYLES), {
         blank: "— for the body —",
       });
@@ -629,7 +642,13 @@ export function buildPanel(root, handlers) {
         blank: "— black —",
       });
       const look = group("Appearance");
-      look.body.append(skinField, hair.field, wearing.field, outfit.field);
+      look.body.append(
+        model.field,
+        skinField,
+        hair.field,
+        wearing.field,
+        outfit.field,
+      );
 
       const handL = picker("Left hand", HAND_SHAPE_NAMES, {
         blank: "— from the pose —",
@@ -722,6 +741,15 @@ export function buildPanel(root, handlers) {
         scene.actors[index].skinTone = skinTone.value;
         emit();
       });
+      // The default is written as absent, like every other "you decide", so a
+      // scene that never chose a model does not start naming one.
+      model.select.addEventListener("change", () => {
+        scene.actors[index].model =
+          model.select.value === DEFAULT_BODY_MODEL
+            ? undefined
+            : model.select.value;
+        emit();
+      });
 
       posture.select.addEventListener("change", () => {
         scene.actors[index].posture = posture.select.value;
@@ -781,6 +809,7 @@ export function buildPanel(root, handlers) {
       actorControls.push({
         nameInput,
         bodyType,
+        model,
         skinTone,
         posture,
         stature,
@@ -932,6 +961,7 @@ export function buildPanel(root, handlers) {
         if (document.activeElement !== control.nameInput)
           control.nameInput.value = actor.label ?? `Figure ${index + 1}`;
         control.bodyType.select.value = actor.bodyType ?? "neutral";
+        control.model.select.value = bodyModel(actor.model);
         control.skinTone.value =
           actor.skinTone ?? swatches[index % swatches.length];
         control.posture.select.value = actor.posture ?? "standing";

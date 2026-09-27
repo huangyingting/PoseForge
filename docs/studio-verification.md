@@ -701,8 +701,8 @@ required by the new interface.
 
 The existing solver still reports unresolved arbitrary combinations. This
 iteration does not make all combinations physically accurate, replace the
-licensed face meshes, or introduce cloth simulation. The neutral body still
-uses an existing scan. Garments are fitted surface layers. Model-download and
+licensed face meshes, or introduce cloth simulation. The neutral body now has
+its own scan, MakeHuman's gender-0.5 body wearing the female skin. Garments are fitted surface layers. Model-download and
 WebGL failures are exercised separately from normal rendering.
 
 Contact readouts now distinguish visible-region gaps from estimated body-model

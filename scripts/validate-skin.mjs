@@ -19,21 +19,58 @@
  *      drawn surface above the surrounding body, against the same measurement
  *      taken on the field.
  *
- * Run with `node scripts/validate-skin.mjs`.
+ *   3. **Is the painted areola on the field's bust?** The relief moves the
+ *      drawn chest onto the field's bust wherever the scan's own breast was, so
+ *      a scan whose nipple sits off the bust's centre shows it off-centre on
+ *      every figure. Found as the darkest skin, through the model's UVs, on the
+ *      front of the right-hand chest.
+ *
+ * Every body type is measured in every model (`src/core/bodyModels.js`).
+ *
+ * Run with `node scripts/validate-skin.mjs [model ...]`.
  */
 
 import { readFileSync } from "node:fs";
 import { bodyDistance, buildBodyVolumes, poseVolumes } from "../src/core/body.js";
 import { buildHumanTemplate, featureRelief, skinHumanMesh } from "../src/core/humanMesh.js";
 import { HIP_HEIGHT_RATIO, Skeleton, evaluatePose } from "../src/core/skeleton.js";
+import { BODY_MODEL_NAMES, modelFiles } from "../src/core/bodyModels.js";
+import { decodePNG, sampleAtlas } from "./atlas.mjs";
 
 const mm = (v) => `${(v * 1000).toFixed(1)}mm`.padStart(8);
 const pct = (v) => `${(v * 100).toFixed(1)}%`.padStart(6);
 
-function load(bodyType) {
-  const file = new URL(`../assets/models/realistic-${bodyType === "male" ? "male" : "female"}.glb`, import.meta.url);
+function load(bodyType, model) {
+  const file = new URL(`../assets/models/realistic-${modelFiles(bodyType, model).mesh}.glb`, import.meta.url);
   const bytes = readFileSync(file);
   return buildHumanTemplate(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+}
+
+const atlases = new Map();
+function atlas(bodyType, model) {
+  const name = modelFiles(bodyType, model).atlas;
+  if (!atlases.has(name)) atlases.set(name, decodePNG(readFileSync(new URL(`../assets/models/skin-${name}.png`, import.meta.url))));
+  return atlases.get(name);
+}
+
+/**
+ * The painted areola's centre on the drawn body, in the XY plane.
+ *
+ * The darkest forty vertices of the front of the right-hand chest, by the
+ * atlas under their UVs. Forty is about how many fall inside the areola on
+ * these meshes, and taking a count rather than a threshold keeps the answer the
+ * same on a dark skin as on a light one.
+ */
+function areola(positions, uvs, image, H) {
+  const found = [];
+  for (let v = 0; v < positions.length / 3; v += 1) {
+    const [x, y, z] = [positions[v * 3] / H, positions[v * 3 + 1] / H, positions[v * 3 + 2] / H];
+    if (x < 0.025 || x > 0.1 || y < 0.68 || y > 0.79 || z < 0.03) continue;
+    const [r, g, b] = sampleAtlas(image, uvs[v * 2], uvs[v * 2 + 1]);
+    found.push({ x: positions[v * 3], y: positions[v * 3 + 1], lum: 0.2126 * r + 0.7152 * g + 0.0722 * b });
+  }
+  const darkest = found.sort((a, b) => a.lum - b.lum).slice(0, 40);
+  return [darkest.reduce((sum, p) => sum + p.x, 0) / darkest.length, darkest.reduce((sum, p) => sum + p.y, 0) / darkest.length];
 }
 
 /**
@@ -83,7 +120,10 @@ function skinAll(template, skeleton, evaluated) {
 
 let failures = 0;
 
-for (const bodyType of ["female", "male"]) {
+const models = process.argv.slice(2).length ? process.argv.slice(2) : BODY_MODEL_NAMES;
+for (const model of models) if (!BODY_MODEL_NAMES.includes(model)) throw new Error(`no body model "${model}"`);
+
+for (const model of models) for (const bodyType of ["female", "male", "neutral"]) {
   const skeleton = new Skeleton({ bodyType });
   const H = skeleton.stature;
   const evaluated = evaluatePose(skeleton, {
@@ -93,7 +133,7 @@ for (const bodyType of ["female", "male"]) {
   const all = poseVolumes(skeleton, evaluated, buildBodyVolumes(skeleton, {}), 0);
   const frame = all.filter((volume) => !volume.feature);
 
-  const plain = load(bodyType);
+  const plain = load(bodyType, model);
   const relieved = featureRelief(plain, { bodyType });
   // Everything the viewer reads as flesh, which after `featureRelief` is the
   // scan *plus* whatever it had to add. Measuring only the primary part would
@@ -101,7 +141,7 @@ for (const bodyType of ["female", "male"]) {
   const before = skinAll(plain, skeleton, evaluated);
   const after = skinAll(relieved, skeleton, evaluated);
 
-  console.log(`\n=== ${bodyType} (${H}m) ===`);
+  console.log(`\n=== ${bodyType}, ${model} (${H}m, realistic-${modelFiles(bodyType, model).mesh}.glb) ===`);
   console.log(
     `relief: ${relieved.relief.moved} vertices moved, ` +
       `mean ${mm(relieved.relief.mean).trim()}, worst ${mm(relieved.relief.worst).trim()}` +
@@ -160,7 +200,27 @@ for (const bodyType of ["female", "male"]) {
         `  ${ok ? "ok" : "TOO SHALLOW"}`
     );
   }
+
+  // --- 3. is the painted areola on the field's bust -------------------------
+  // Measured on the scan before relief: relief moves the chest along its own
+  // normals, so where the paint is in the plane is where the scan put it.
+  // The nipple is the one bust volume that stands proud of the others.
+  const nipple = all
+    .filter((v) => v.feature && v.bone === "spine03" && v.a[0] > 0)
+    .reduce((a, b) => (a && a.a[2] >= b.a[2] ? a : b), null);
+  if (nipple) {
+    const [primary] = skinHumanMesh(plain, skeleton, evaluated).filter((p) => p.primary);
+    const [x, y] = areola(primary.positions, plain.submeshes.find((part) => part.primary).uvs, atlas(bodyType, model), H);
+    const off = Math.hypot(x - nipple.a[0], y - nipple.a[1]);
+    // The default female, which the bust is fitted to, measures 1.8 mm.
+    const ok = off <= 0.005;
+    if (!ok) failures += 1;
+    console.log(
+      `  areola    painted at (${mm(x).trim()}, ${mm(y).trim()})  field nipple (${mm(nipple.a[0]).trim()}, ${mm(nipple.a[1]).trim()})` +
+        `  off by${mm(off)}  ${ok ? "ok" : "OFF THE BUST"}`
+    );
+  }
 }
 
-console.log(failures ? `\n${failures} feature(s) not carried onto the drawn body` : "\nall features carried onto the drawn body");
+console.log(failures ? `\n${failures} feature(s) not carried onto the drawn body` : "\nall features carried onto the drawn body, every areola on its bust");
 process.exit(failures ? 1 : 0);

@@ -56,7 +56,7 @@ export function createTemplateCache(
         bodyCapacity,
         bodyKey,
         Promise.resolve()
-          .then(() => scanned(body.bodyType))
+          .then(() => scanned(body.bodyType, body.model))
           .then((scan) => (scan ? relieve(scan, body) : null)),
       );
     const template = bodies.get(bodyKey).then((shaped) => {

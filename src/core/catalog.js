@@ -16,6 +16,7 @@ import {
 import { ARCHETYPES } from "../nlp/archetypes.js";
 import { applyPresetLayout } from "../nlp/presetLayouts.js";
 import { HAIR_STYLES } from "./hair.js";
+import { BODY_MODELS } from "./bodyModels.js";
 import { GARMENT_COLOURS } from "./garments.js";
 import { HAND_SHAPE_NAMES } from "./handPose.js";
 import { FOOT_SHAPE_NAMES } from "./footPose.js";
@@ -131,6 +132,8 @@ export function checkScene(input) {
     }
     if (actor.skinTone != null && !/^#[0-9a-f]{6}$/i.test(actor.skinTone))
       fail("Skin tone must be a six-digit hex color.");
+    if (actor.model != null && !Object.hasOwn(BODY_MODELS, actor.model))
+      fail("Unknown body model.");
     if (actor.hair != null && !Object.hasOwn(HAIR_STYLES, actor.hair))
       fail("Unknown hairstyle.");
     if (actor.outfit != null && !Object.hasOwn(GARMENT_COLOURS, actor.outfit))

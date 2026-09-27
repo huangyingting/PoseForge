@@ -1,0 +1,60 @@
+{
+  "female": {
+    "macros": { "asian": 1, "gender": 0, "height": 0.58, "muscle": 0.43, "weight": 0.51, "age": 0.44, "proportions": 0.64 },
+    "skin": "young_asian_female"
+  },
+  "male": {
+    "macros": { "asian": 1, "gender": 1, "height": 0.67, "muscle": 0.64, "weight": 0.49, "age": 0.44, "proportions": 0.64 },
+    "skin": "young_asian_male"
+  },
+  "neutral": {
+    "macros": { "asian": 1, "gender": 0.5, "height": 0.625, "muscle": 0.535, "weight": 0.5, "age": 0.44, "proportions": 0.64 },
+    "modifiers": { "breast/breast-dist-decr|incr": 0.3, "breast/breast-trans-down|up": -0.19 },
+    "skin": "young_asian_female",
+    "atlasOf": "female"
+  },
+  "female-european": {
+    "macros": { "caucasian": 1, "gender": 0, "height": 0.58, "muscle": 0.43, "weight": 0.51, "age": 0.44, "proportions": 0.64 },
+    "skin": "young_caucasian_female"
+  },
+  "male-european": {
+    "macros": { "caucasian": 1, "gender": 1, "height": 0.67, "muscle": 0.64, "weight": 0.49, "age": 0.44, "proportions": 0.64 },
+    "skin": "young_caucasian_male"
+  },
+  "neutral-european": {
+    "macros": { "caucasian": 1, "gender": 0.5, "height": 0.625, "muscle": 0.535, "weight": 0.5, "age": 0.44, "proportions": 0.64 },
+    "modifiers": { "breast/breast-dist-decr|incr": 0.31, "breast/breast-trans-down|up": -0.19 },
+    "skin": "young_caucasian_female",
+    "atlasOf": "female-european"
+  },
+  "female-african": {
+    "macros": { "african": 1, "gender": 0, "height": 0.58, "muscle": 0.43, "weight": 0.51, "age": 0.44, "proportions": 0.64 },
+    "modifiers": { "breast/breast-dist-decr|incr": 0.12, "breast/breast-trans-down|up": 0.13 },
+    "skin": "young_african_female"
+  },
+  "male-african": {
+    "macros": { "african": 1, "gender": 1, "height": 0.67, "muscle": 0.64, "weight": 0.49, "age": 0.44, "proportions": 0.64 },
+    "skin": "young_african_male"
+  },
+  "neutral-african": {
+    "macros": { "african": 1, "gender": 0.5, "height": 0.625, "muscle": 0.535, "weight": 0.5, "age": 0.44, "proportions": 0.64 },
+    "modifiers": { "breast/breast-dist-decr|incr": 0.48, "breast/breast-trans-down|up": -0.09 },
+    "skin": "young_african_female",
+    "atlasOf": "female-african"
+  },
+  "female-mature": {
+    "macros": { "asian": 1, "gender": 0, "height": 0.58, "muscle": 0.43, "weight": 0.51, "age": 0.69, "proportions": 0.64 },
+    "modifiers": { "breast/breast-trans-down|up": 0.07 },
+    "skin": "middleage_asian_female"
+  },
+  "male-mature": {
+    "macros": { "asian": 1, "gender": 1, "height": 0.67, "muscle": 0.64, "weight": 0.49, "age": 0.69, "proportions": 0.64 },
+    "skin": "middleage_asian_male"
+  },
+  "neutral-mature": {
+    "macros": { "asian": 1, "gender": 0.5, "height": 0.625, "muscle": 0.535, "weight": 0.5, "age": 0.69, "proportions": 0.64 },
+    "modifiers": { "breast/breast-dist-decr|incr": 0.31 },
+    "skin": "middleage_asian_female",
+    "atlasOf": "female-mature"
+  }
+}

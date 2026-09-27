@@ -40,6 +40,7 @@ import {
   WebGLRenderer,
 } from "three";
 import { buildProps, disposeProps } from "./props.js";
+import { modelFiles } from "../core/bodyModels.js";
 
 /**
  * Skin tones, by actor index.
@@ -77,24 +78,26 @@ export const SKIN = [0xe8c9a4, 0xd9b183, 0xc69a6a, 0xab7f53, 0xf2dcbd];
  * in one picture still differ from each other. The atlas is close to neutral,
  * so the product keeps both the photograph's detail and the tone's identity.
  */
-const SKIN_ATLAS = {
-  female: new URL("../../assets/models/skin-female.png", import.meta.url),
-  male: new URL("../../assets/models/skin-male.png", import.meta.url),
-  neutral: new URL("../../assets/models/skin-female.png", import.meta.url),
+const atlasUrl = (bodyType, model) => {
+  // One name inside the template, so the bundler can see which files it may be
+  // and ship all of them.
+  const { atlas } = modelFiles(bodyType, model);
+  return String(new URL(`../../assets/models/skin-${atlas}.png`, import.meta.url));
 };
 const atlases = new Map();
 const loader = new TextureLoader();
 const textureListeners = new Set();
 
 /**
- * The atlas for a body type, loaded once and shared.
+ * The atlas for a body type and model (see `core/bodyModels.js`), loaded once
+ * and shared.
  *
  * Failure is not fatal: three hands back a texture that is simply never
  * populated, the material keeps its flat tone, and the picture is the one this
  * renderer drew before the atlases existed.
  */
-function skinAtlas(bodyType) {
-  const url = String(SKIN_ATLAS[bodyType] ?? SKIN_ATLAS.neutral);
+function skinAtlas(bodyType, model) {
+  const url = atlasUrl(bodyType, model);
   if (!atlases.has(url)) {
     const texture = loader.load(url, () => textureListeners.forEach(notify => notify()), undefined,
       () => textureListeners.forEach(notify => notify()));
@@ -463,7 +466,7 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
         // so "is this flesh" is `primary` *or* the absence of a colour - which
         // is what marks the anatomy `featureRelief` adds as a separate part.
         const flesh = part.primary || !part.colour;
-        const atlas = flesh && part.uvs && displayMode === 'natural' ? skinAtlas(mesh.bodyType) : null;
+        const atlas = flesh && part.uvs && displayMode === 'natural' ? skinAtlas(mesh.bodyType, mesh.model) : null;
         const material = displayMode === 'clay'
           ? new MeshPhysicalMaterial({ color: index % 2 ? 0x9bafa5 : 0xd2bca6, roughness: 0.78 })
           : flesh

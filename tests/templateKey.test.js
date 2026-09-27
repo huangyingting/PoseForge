@@ -45,6 +45,7 @@ test("default appearance and explicit equivalent settings have one immutable key
     });
     const explicit = {
       bodyType,
+      model: "asian",
       bust,
       build: 1,
       hair: DEFAULT_HAIR[bodyType],
@@ -57,6 +58,11 @@ test("default appearance and explicit equivalent settings have one immutable key
   assert.equal(
     humanTemplateKey({}),
     humanTemplateKey({ bodyType: "neutral", wearing: [] }),
+  );
+  // A model nobody makes is the default, as it is for the loader.
+  assert.equal(
+    humanTemplateKey({ model: "elf" }),
+    humanTemplateKey({ model: "asian" }),
   );
 });
 
@@ -73,6 +79,9 @@ test("real template changes stay distinct while pose, skin tone and metadata do 
   for (const change of [
     { bodyType: "male" },
     { bodyType: "neutral" },
+    { model: "european" },
+    { model: "african" },
+    { model: "mature" },
     { bust: 0 },
     { bust: 0.8 },
     { build: 1.1 },

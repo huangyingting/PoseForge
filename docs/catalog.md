@@ -429,7 +429,8 @@ working starter. All dimensions are in meters and joint angles are degrees.
 | `category`, `tags` | Required category up to 40 characters; at most 12 tags, each up to 32 |
 | `source` | Optional `{dataset: "SexPoses", recordId, annotationHash}` provenance; never a quality endorsement |
 | `scene.actors` | 1–4 actors with distinct IDs and known postures |
-| `bodyType` | `female`, `male`, or `neutral`; neutral currently uses the female scan with neutral proportions |
+| `bodyType` | `female`, `male`, or `neutral`; each has its own skeleton, collision field and scanned body |
+| `model` | Optional scanned-body model: `asian` (the default), `european`, `african` or `mature`; appearance only, never the pose or contacts |
 | `stature`, `build` | 1.4–2.1 meters; 0.8–1.3 build multiplier |
 | `skinTone` | Six-digit hex color, independent of body type |
 | `wearing`, `outfit` | Known garment names and a named fabric color from `garments.js` |

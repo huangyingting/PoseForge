@@ -32,7 +32,7 @@ raw source prose into the application:
 - Three records contain inferred angles clamped to the rig's limits.
 - Six records have some unread limb/trunk detail.
 - Ninety-three records contain an unspecified body choice, represented by the
-  existing neutral model; that model shares a scan with the female model.
+  existing neutral model, a MakeHuman gender-0.5 scan wearing the female skin.
 
 Clicking a card now loads the preview; its separate information button opens
 provenance. `?reference=<source-id>` supports direct links and reload. Camera,

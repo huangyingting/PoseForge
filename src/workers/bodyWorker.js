@@ -23,6 +23,7 @@ import { surfaceContactSteps } from '../core/surfaceContacts.js';
 import { solvedPreview } from '../core/posePreview.js';
 import { buildHumanTemplate, skinHumanMesh } from "../core/humanMesh.js";
 import { createTemplateCache } from "./templateCache.js";
+import { modelFiles } from "../core/bodyModels.js";
 import { buildBodyMesh, fieldOcclusion } from "../render/meshBuilder.js";
 
 // 30mm draws in around a sixth of the time of the final pass and still reads as
@@ -33,7 +34,8 @@ const DRAFT = 0.03;
 const FINAL = 0.012;
 
 /**
- * The scanned bodies, fetched once each and kept as parsed templates.
+ * The scanned bodies, one for each body type and model (see
+ * `core/bodyModels.js`), fetched once each and kept as parsed templates.
  *
  * The map holds the *promise*, not the template, so that two actors of the same
  * build in the same scene - and every later sentence that mentions one - share
@@ -47,19 +49,18 @@ const FINAL = 0.012;
  * after a while, so a dropped connection costs the scanned body for the next
  * few solves rather than for the rest of the session.
  */
-const MODELS = {
-  female: new URL("../../assets/models/realistic-female.glb", import.meta.url),
-  male: new URL("../../assets/models/realistic-male.glb", import.meta.url),
-  // No third body was made, and of the two the female model is the less
-  // secondary-sex-charactered, so it is the closer fit to a neutral build.
-  neutral: new URL("../../assets/models/realistic-female.glb", import.meta.url),
+const modelUrl = (bodyType, model) => {
+  // One name inside the template, so the bundler can see which files it may be
+  // and ship all of them.
+  const { mesh } = modelFiles(bodyType, model);
+  return String(new URL(`../../assets/models/realistic-${mesh}.glb`, import.meta.url));
 };
 const templates = new Map();
 const modelWarnings = new Map();
 const MODEL_RETRY_MS = 10_000;
 
-function scanned(bodyType) {
-  const url = String(MODELS[bodyType] ?? MODELS.neutral);
+function scanned(bodyType, model) {
+  const url = modelUrl(bodyType, model);
   if (!templates.has(url)) {
     const attempt = fetch(url)
       .then((response) => {
@@ -72,7 +73,7 @@ function scanned(bodyType) {
         return template;
       })
       .catch((error) => {
-        modelWarnings.set(url, `Could not load the ${bodyType} scanned body (${error.message}); drawing the collision field instead.`);
+        modelWarnings.set(url, `Could not load the ${modelFiles(bodyType, model).mesh} scanned body (${error.message}); drawing the collision field instead.`);
         setTimeout(() => {
           if (templates.get(url) === attempt) templates.delete(url);
         }, MODEL_RETRY_MS);
@@ -157,6 +158,7 @@ function templatesFor(actors) {
     actors.map((actor) =>
       humanTemplate({
         bodyType: actor.skeleton.bodyType,
+        model: actor.spec?.model,
         bust: actor.spec?.bust,
         build: actor.skeleton.build,
         hair: actor.spec?.hair,
@@ -184,9 +186,10 @@ async function meshActors(actors, { occlusion, resolution }, transfers, loaded) 
     return {
       id: actor.id ?? `actor${index}`,
       parts,
-      // Which skin atlas this figure wears. The renderer needs the body type,
-      // not the file, because the file is its business.
+      // Which skin atlas this figure wears. The renderer needs the body type
+      // and model, not the file, because the file is its business.
       bodyType: actor.skeleton.bodyType,
+      model: actor.spec?.model,
       skinTone: actor.spec?.skinTone,
       source: loaded[index] ? "scanned" : `field ${Math.round(resolution * 1000)}mm`,
       triangles: parts.reduce((sum, part) => sum + part.indices.length / 3, 0),
@@ -286,7 +289,7 @@ self.onmessage = async (event) => {
       id,
       scene: parsed.scene,
       interpretation: parsed.interpretation,
-      warnings: [...parsed.warnings, ...new Set(solved.actors.map(actor => modelWarnings.get(String(MODELS[actor.skeleton.bodyType] ?? MODELS.neutral))).filter(Boolean))],
+      warnings: [...parsed.warnings, ...new Set(solved.actors.map(actor => modelWarnings.get(modelUrl(actor.skeleton.bodyType, actor.spec?.model))).filter(Boolean))],
       matched: parsed.matched,
       ...summarise(solved),
     };

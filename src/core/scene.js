@@ -17,6 +17,7 @@
 import { LANDMARK_NAMES, resolveLandmark } from "./landmarks.js";
 import { limbJoints } from "./limbPose.js";
 import { HAIR_STYLES } from "./hair.js";
+import { BODY_MODELS } from "./bodyModels.js";
 import { HAND_SHAPES } from "./handPose.js";
 import { footJoints, knownFeet } from "./footPose.js";
 import { GARMENT_COLOURS, GARMENT_NAMES } from "./garments.js";
@@ -49,6 +50,8 @@ export const MAX_SCENE_ACTORS = 4;
  * @property {number} [stature] metres; overrides the body type's default
  * @property {number} [build] 0.8 slim .. 1.3 heavy
  * @property {number} [bust] chest fullness multiplier, 0 disables
+ * @property {string} [model] which scanned body draws them, see BODY_MODELS;
+ *           omitted means the default. How they look, never how they collide
  * @property {string} [hair] hairstyle name, see HAIR_STYLES; omitted means the
  *           default for the body type
  * @property {string|string[]} [wearing] garment names, see GARMENT_NAMES; omitted
@@ -288,6 +291,11 @@ export function validateScene(scene) {
     // with a warning rather than substituted: falling back to a default would
     // dress someone in something they did not ask for, which is worse than
     // leaving them as the body type has them.
+    let model = spec.model;
+    if (model != null && !Object.hasOwn(BODY_MODELS, model)) {
+      note("warning", `${id}: no such body model "${model}", used the default`);
+      model = undefined;
+    }
     let hair = spec.hair;
     if (hair != null && !(hair in HAIR_STYLES)) {
       note("warning", `${id}: unknown hair "${hair}", used the default for this body`);
@@ -377,6 +385,7 @@ export function validateScene(scene) {
       // Written unconditionally, because `...spec` above has already copied
       // whatever the caller wrote and a rejected value has to be overwritten
       // rather than merely not re-added.
+      model,
       hair,
       wearing,
       outfit,

@@ -48,6 +48,11 @@ the figures, rising over them, dipping low behind and coming in closer, and
 ends on the view it was framed in. Dragging, scrolling or a key stops it where
 it is. **Tour** in the camera toolbar turns this off (remembered) or back on,
 which tours the current position; with reduced motion requested it starts off.
+Each figure's **Body model** (first under Appearance) picks one of four
+scanned bodies for its body type: East Asian about 22 (the default), European
+about 22, African about 22, or East Asian about 50. They change the face, the
+body's shape and the skin photograph, never the pose: the skeleton and the
+collision field are the body type's, so every contact measures the same.
 Saved libraries use IndexedDB, migrate legacy data without deleting the backup,
 and accept up to **5,000 presets / 32 MB** (whichever limit is reached first).
 The unified catalog uses bounded 24-card pages. Position metadata and interaction
@@ -457,7 +462,7 @@ src/nlp/       lexicon, archetypes, parser
 src/render/    mesh builder, WebGL renderer, props, exporters
 src/workers/   meshing off the main thread
 src/app/       webapp: panel, viewport, export
-scripts/       headless renderer and the four validators
+scripts/       headless renderer and the validators; models/ regenerates the scans
 tests/         node:test, no framework
 docs/          design documentation
 ```
@@ -502,6 +507,17 @@ nose, lips, ears and brows, separate fingers, and eyes split into a white, an
 iris and a pupil. It is the mesh that makes the picture read as a person; it is
 never asked a geometric question. If it fails to load the viewport falls back
 to drawing the field and says so.
+
+There are twelve of them — female, male and neutral in each of the four models
+in `src/core/bodyModels.js` — all made by MakeHuman on one rig and one
+topology, with 2048px skin photographs. `node scripts/models/make-bodies.mjs`
+regenerates them from `scripts/models/bodies.json`, and
+`node scripts/validate-skin.mjs` checks every one: how far the drawn surface
+sits from the field, whether the relief carries the field's bust and genitals,
+and the painted areola against the field's bust (0.5–2.1 mm on the rest pose).
+MakeHuman's mesh is the finest rigged body whose licence (CC0) allows
+shipping it here; SMPL-X is non-commercial, MB-Lab is AGPL, and the finer
+Blender Studio base meshes have no rig.
 
 `buildBodyVolumes` takes `bust` and `anatomy`. `anatomy` is **on by default**,
 and that is a deliberate reversal: this system exists to judge how two bodies

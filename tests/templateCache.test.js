@@ -8,6 +8,7 @@ import { Skeleton } from "../src/core/skeleton.js";
 import { buildHumanTemplate, featureRelief } from "../src/core/humanMesh.js";
 import { withGarments } from "../src/core/garments.js";
 import { withHair, DEFAULT_HAIR } from "../src/core/hair.js";
+import { modelFiles } from "../src/core/bodyModels.js";
 
 function mockCache(options = {}, scanned = async (bodyType) => ({ bodyType })) {
   const calls = { bodies: [], templates: [] };
@@ -69,6 +70,25 @@ test("outfit, hair and clothing changes retain the shaped body without conflatin
     await get({ ...source, stature: 1.55, joints: {}, label: "renamed" }),
     a,
   );
+});
+
+test("each body model is its own scan and its own shaped body", async () => {
+  const asked = [];
+  const { get, calls } = mockCache({}, async (bodyType, model) => {
+    asked.push([bodyType, model]);
+    return { bodyType, model };
+  });
+  const standard = await get({ bodyType: "female" });
+  const european = await get({ bodyType: "female", model: "european" });
+  const same = await get({ bodyType: "female", model: "asian", outfit: "black" });
+  assert.equal(same, standard, "the default named outright is the default");
+  assert.notEqual(european.shape, standard.shape);
+  assert.equal(european.shape.scan.model, "european");
+  assert.deepEqual(asked, [
+    ["female", "asian"],
+    ["female", "european"],
+  ]);
+  assert.equal(calls.bodies.length, 2);
 });
 
 test("different bodies retain their own shape and both cache tiers are bounded", async () => {
@@ -189,7 +209,7 @@ test("normalized cache defaults preserve real dressed geometry for every body ty
     const scan = buildHumanTemplate(
       readFileSync(
         new URL(
-          `../assets/models/realistic-${bodyType === "male" ? "male" : "female"}.glb`,
+          `../assets/models/realistic-${modelFiles(bodyType).mesh}.glb`,
           import.meta.url,
         ),
       ),

@@ -178,6 +178,8 @@ test("invalid scenes fail at import instead of silently becoming different poses
     (scene) => (scene.actors[0].hands = 12),
     (scene) => (scene.actors[0].hands = "toString"),
     (scene) => (scene.actors[0].hair = "constructor"),
+    (scene) => (scene.actors[0].model = "constructor"),
+    (scene) => (scene.actors[0].model = "elf"),
     (scene) => (scene.actors[0].feet = { wrongSide: "flat" }),
     (scene) => (scene.actors[0].joints = { missing: { flexion: 10 } }),
     (scene) => (scene.actors[1].id = scene.actors[0].id),

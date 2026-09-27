@@ -99,7 +99,7 @@ All three use generated test studies, not a user's saved library or browser stat
 - Rendered geometry and coarse proxies are separate. The sofa's documented
   coarse proxy overlap is not a rendered collision; neither balance estimate is
   a force or physical-stability simulation.
-- Neutral uses an existing scan; fitted garments are not cloth simulation.
+- Neutral has its own scan (MakeHuman's gender-0.5 body) wearing the female skin; fitted garments are not cloth simulation.
 - Storage is browser-local, with JSON as backup and transfer. No cloud account,
   database, external OAuth identity or hosted deployment was requested.
 - Software-Chrome desktop and mobile viewport/touch emulation are available.

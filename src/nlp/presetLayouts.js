@@ -580,7 +580,7 @@ export function applyPresetLayout(scene, definition) {
     reference.placement.position[1] +=
       surface.height - calibrated.referenceHeight;
     const appearance = {};
-    for (const key of ["id", "label", "skinTone", "outfit", "wearing"])
+    for (const key of ["id", "label", "model", "skinTone", "outfit", "wearing"])
       if (actor[key] != null) appearance[key] = actor[key];
     return { ...actor, ...reference, ...appearance };
   });

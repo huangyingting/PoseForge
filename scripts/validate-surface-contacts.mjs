@@ -7,6 +7,7 @@ import { resolveLandmark } from "../src/core/landmarks.js";
 import { buildHumanTemplate, featureRelief } from "../src/core/humanMesh.js";
 import { withGarments } from "../src/core/garments.js";
 import { withHair } from "../src/core/hair.js";
+import { modelFiles } from "../src/core/bodyModels.js";
 import {
   createSurfaceContactQuery,
   refineSurfaceContacts,
@@ -16,7 +17,7 @@ import {
 const raw = new Map(),
   dressed = new Map();
 function template(actor) {
-  const type = actor.bodyType === "male" ? "male" : "female";
+  const type = modelFiles(actor.bodyType, actor.spec.model).mesh;
   if (!raw.has(type))
     raw.set(
       type,

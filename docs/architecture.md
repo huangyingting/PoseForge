@@ -65,6 +65,7 @@ src/core/          no dependencies, runs in plain Node
   collision.js     broad/narrow phase, compression budgets, rigid correction
   gltf.js          GLB container, accessors, node transforms
   humanMesh.js     scanned body: bind to the rig, skin, smooth, split the eyes
+  bodyModels.js    the four scanned-body models and the files each body type loads
   meshDistance.js  triangle distance and bounding-volume hierarchy
   surfaceContacts.js  visible-region queries, constrained refinement, cancellation
   catalog.js       portable presets and strict interchange validation
@@ -101,8 +102,10 @@ src/app/
 
 scripts/           no dependencies
   render-cli.mjs   software rasteriser: z-buffer, shadow map, zlib PNG
+  atlas.mjs        skin-atlas PNG decoding and sampling for the headless tools
   validate-*.mjs   geometry validators, including scanned-surface contact checks
   measure-body.mjs anthropometric check of the rendered surface
+  models/          regenerate assets/models with MakeHuman and Blender (not run by the app)
 
 tests/             node:test geometry/data checks; browser/ uses Playwright and Axe
 ```
@@ -174,7 +177,7 @@ What the parser produces and the solver consumes. Every field is optional except
 ```js
 {
   actors: [
-    { id, label, posture, bodyType: "female"|"male"|"neutral", stature, build, bust,
+    { id, label, posture, bodyType: "female"|"male"|"neutral", model, stature, build, bust,
       wearing, outfit, skinTone, joints, hands, feet, mobility }
   ],
   relationship: { arrangement, yaw, contactMode: "automatic"|"custom" },
