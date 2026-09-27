@@ -93,6 +93,16 @@ test("all 1,283 positions are in the library and open in 3D, searchable, favorit
   await loaded(page, trio);
   await page.getByRole("button", { name: "Favorites", exact: true }).click();
   await expect(page.locator(".preset-card")).toHaveCount(1);
+
+  // A link from when positions were named after their dataset images opens
+  // the same position, and the address becomes its name.
+  await page.goto("/?preset=builtin.position.img-0001&variant=artistic");
+  await expect(page.locator("#scene-title")).toHaveText(
+    "Kneeling Missionary · Artistic interpretation",
+  );
+  await expect(page).toHaveURL(
+    /\?preset=builtin\.position\.kneeling-missionary&variant=artistic$/,
+  );
 });
 
 test("a failed positions download is retryable and leaves the stock presets usable", async ({

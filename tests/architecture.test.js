@@ -109,6 +109,7 @@ test("three.js is confined to the drawing layer", () => {
   const allowed = new Set([
     "src/render/renderer.js",
     "src/render/props.js",
+    "src/render/room.js",
     "src/render/exporters.js",
   ]);
   for (const file of [...sources("src")]) {

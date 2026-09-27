@@ -7,6 +7,7 @@ import { solveScene } from "../src/core/solver.js";
 import { captureSolvedPose } from "../src/core/placement.js";
 import { volumesBounds } from "../src/core/body.js";
 import { checkScene } from "../src/core/catalog.js";
+import { imageOfPosition } from "../src/core/datasetImages.js";
 import { POSTURES } from "../src/core/poseLibrary.js";
 import {
   artisticJointSignature,
@@ -153,7 +154,10 @@ export function buildArtisticStudies(entries, approximateScenes) {
       pool(family, original.actors[i].bodyType),
     );
     const size = choices.reduce((n, p) => n * p.length, 1);
-    const start = parseInt(hash(entry.sourceId).slice(0, 8), 16) % size;
+    // Seeded by the dataset image rather than the position's name, so the
+    // compositions stay what they were when positions were named by image.
+    const seed = imageOfPosition(entry.sourceId) ?? entry.sourceId;
+    const start = parseInt(hash(seed).slice(0, 8), 16) % size;
     let selected;
     for (let attempt = 0; attempt < size; attempt++) {
       let code = (start + attempt) % size;
@@ -181,7 +185,7 @@ export function buildArtisticStudies(entries, approximateScenes) {
         figures.reduce((n, p) => n + p.bounds.max[0] - p.bounds.min[0], 0) +
         0.6 * (figures.length - 1);
       let cursor = -width / 2;
-      const title = `Study ${entry.sourceId.replace(/^img-/, "")} · ${figures.map((p) => p.name).join(" / ")}`;
+      const title = `Study · ${figures.map((p) => p.name).join(" / ")}`;
       const scene = checkScene({
         ...single(null),
         title,

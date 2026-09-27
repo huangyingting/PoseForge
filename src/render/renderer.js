@@ -51,6 +51,7 @@ import {
   ZeroFactor,
 } from "three";
 import { buildProps, disposeProps } from "./props.js";
+import { buildRoom, disposeRoom, prepareRoom, roomLayout, SETTINGS, updateRoom, wallColour } from "./room.js";
 import { modelFiles } from "../core/bodyModels.js";
 import { LACE_REPEAT, LACE_SIZE, lacePattern } from "../core/lace.js";
 
@@ -884,6 +885,9 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
   let propGroup = null;
   let displayMode = 'natural';
   let lastPayload = null;
+  let setting = "studio";
+  let room = null;
+  let roomKey = null;
 
   const focus = new Vector3(0, 0.9, 0);
 
@@ -894,6 +898,46 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
       child.material.dispose();
       bodies.remove(child);
     }
+  }
+
+  /** Everything the solver placed, figures and furniture, as one box. */
+  function sceneBounds(meshes, props) {
+    const min = [Infinity, Infinity, Infinity];
+    const max = [-Infinity, -Infinity, -Infinity];
+    const add = (x, y, z) => {
+      if (x < min[0]) min[0] = x;
+      if (x > max[0]) max[0] = x;
+      if (y < min[1]) min[1] = y;
+      if (y > max[1]) max[1] = y;
+      if (z < min[2]) min[2] = z;
+      if (z > max[2]) max[2] = z;
+    };
+    for (const mesh of meshes) {
+      for (const part of mesh.parts ?? [mesh]) {
+        const p = part.positions;
+        for (let i = 0; i < p.length; i += 3) add(p[i], p[i + 1], p[i + 2]);
+      }
+    }
+    for (const prop of props ?? []) {
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+        add(prop.center[0] + (sx * prop.size[0]) / 2, prop.center[1], prop.center[2] + (sz * prop.size[2]) / 2);
+      }
+    }
+    if (!Number.isFinite(min[0])) return { min: [0, 0, 0], max: [0, 0, 0] };
+    return { min, max };
+  }
+
+  /** Keep the room there is when it is laid out the same, and build it when not. */
+  function placeRoom(layout) {
+    const key = layout ? JSON.stringify(layout) : null;
+    if (key === roomKey) return;
+    if (room) {
+      scene.remove(room);
+      disposeRoom(room);
+    }
+    room = layout ? buildRoom(layout) : null;
+    roomKey = key;
+    if (room) scene.add(room);
   }
 
   /**
@@ -908,7 +952,17 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
       disposeProps(propGroup);
       scene.remove(propGroup);
     }
-    propGroup = buildProps(props, { shell });
+    // A car is a room of its own: its cabin in a bedroom would be neither.
+    const layout = shell?.length ? null : roomLayout(setting, sceneBounds(meshes, props), props);
+    placeRoom(layout);
+    // The room's floor takes the shadows the studio's ground would.
+    propGroup = buildProps(props, { shell, ground: !room });
+    if (room) {
+      // A wall to lean on is the room's own wall, so it is painted to match.
+      propGroup.traverse((node) => {
+        if (node.isMesh && node.name === "wall") node.material.color.set(wallColour(setting));
+      });
+    }
     scene.add(propGroup);
 
     meshes.forEach((mesh, index) => {
@@ -1096,6 +1150,7 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
   }
 
   function render() {
+    updateRoom(room, camera);
     renderer.render(scene, camera);
   }
 
@@ -1103,6 +1158,7 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
     textureListeners.delete(onChange);
     clearBodies();
     if (propGroup) disposeProps(propGroup);
+    disposeRoom(room);
     renderer.dispose();
   }
 
@@ -1114,6 +1170,12 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
     setDisplayMode(mode) {
       displayMode = mode === 'clay' ? 'clay' : 'natural';
       if (lastPayload) setScene(lastPayload);
+    },
+    /** Put the scene in a room, or back in the studio; see `room.js`. */
+    setSetting(name) {
+      setting = SETTINGS.includes(name) ? name : "studio";
+      if (lastPayload) setScene(lastPayload);
+      else (globalThis.requestIdleCallback ?? setTimeout)(() => prepareRoom(setting));
     },
     frame,
     setView,

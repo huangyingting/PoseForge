@@ -162,7 +162,7 @@ add("arrangement", "spooning", [
 add("arrangement", "over_supine", [
   "on top of her", "on top of him", "over her", "over him", "above her", "above him",
   "missionary", "lying on top", "on top", "between her legs", "between his legs",
-  "压在身上", "在上面", "覆在身上", "在双腿之间",
+  "压在身上", "在上面", "在她上面", "在他上面", "覆在身上", "在双腿之间",
 ]);
 add("arrangement", "straddle_lap", [
   "straddling his lap", "straddling her lap", "on his lap", "on her lap",
@@ -429,6 +429,7 @@ export const FILLER = new Set([
   "up", "down", "against", "around", "between", "onto", "lying", "lies",
   "couple", "partner", "partners", "person", "people", "man", "woman",
   "的", "了", "着", "在", "和", "与", "一个", "两个", "姿势", "体位", "正在",
+  "上", "里", "人", "个", "位", "她", "他", "她们", "他们", "一位", "两位",
 ]);
 
 /** Everything the matcher scans, longest phrase first. */

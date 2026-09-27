@@ -30,6 +30,7 @@ import { applyPresetLayout } from "./presetLayouts.js";
 
 const CJK = /[㐀-䶿一-鿿]/;
 const WORDY = /[a-z0-9]/;
+const CJK_FILLER = [...FILLER].filter((word) => CJK.test(word)).sort((a, b) => b.length - a.length);
 
 /**
  * Everything the scanner looks for, longest phrase first.
@@ -636,12 +637,15 @@ export function parseDescription(text) {
   const tokens = normalised.matchAll(/[a-z0-9]+|[㐀-䶿一-鿿]+/g);
   for (const token of tokens) {
     const word = token[0];
-    if (taken[token.index]) continue;
     if (CJK.test(word)) {
-      const unread = [...word].filter((ch) => !FILLER.has(ch)).join("");
-      if (unread.length) leftovers.push(unread);
+      // Chinese runs on without spaces, so a run holds read and unread
+      // words alike: only the characters no phrase took are unread.
+      let unread = [...word].map((ch, k) => (taken[token.index + k] ? " " : ch)).join("");
+      for (const filler of CJK_FILLER) unread = unread.replaceAll(filler, " ");
+      leftovers.push(...unread.split(" ").filter(Boolean));
       continue;
     }
+    if (taken[token.index]) continue;
     if (word.length < 2 || FILLER.has(word)) continue;
     leftovers.push(word);
   }

@@ -75,10 +75,10 @@ test("all 1283 position IDs are reachable through bounded pages without changing
   await expect(
     page.getByRole("button", { name: "Next", exact: true }),
   ).toBeDisabled();
-  await page.getByLabel("Search positions").fill("img-0001");
+  await page.getByLabel("Search positions").fill("kneeling-missionary");
   await expect(page.locator(".preset-card")).toHaveCount(1);
   const card = page.getByRole("button", {
-    name: "Position details img-0001",
+    name: "Position details kneeling-missionary",
     exact: true,
   });
   await card.focus();
@@ -169,9 +169,9 @@ test("source association survives save, export and reload without inheriting a v
   await page.goto("/?preset=builtin.standing-female");
   await ready(page);
   await positions(page);
-  await page.getByLabel("Search positions").fill("img-0001");
+  await page.getByLabel("Search positions").fill("kneeling-missionary");
   await page
-    .getByRole("button", { name: "Position details img-0001", exact: true })
+    .getByRole("button", { name: "Position details kneeling-missionary", exact: true })
     .click();
   await page
     .getByRole("button", {
@@ -180,7 +180,7 @@ test("source association survives save, export and reload without inheriting a v
     })
     .click();
   await expect(page.locator("#scene-title")).toHaveText("Standing · female");
-  await expect(page.locator("#scene-source")).toContainText("img-0001");
+  await expect(page.locator("#scene-source")).toContainText("kneeling-missionary");
   await page.locator("#save-preset").click();
   await page.getByLabel("Preset name").fill("Source-linked standing study");
   await page
@@ -192,7 +192,7 @@ test("source association survives save, export and reload without inheriting a v
   );
   await page.reload();
   await ready(page);
-  await expect(page.locator("#scene-source")).toContainText("img-0001");
+  await expect(page.locator("#scene-source")).toContainText("kneeling-missionary");
   await page.getByRole("button", { name: "Saved", exact: true }).click();
   await openLibraryFilters(page);
   await page.getByLabel("Support status").selectOption("needs-adjustment");
@@ -205,7 +205,7 @@ test("source association survives save, export and reload without inheriting a v
   await page.getByLabel("Support status").selectOption("needs-adjustment");
   await expect(page.locator(".preset-card")).toHaveCount(0);
   await page.getByRole("button", { name: "Saved", exact: true }).click();
-  await page.getByLabel("Search presets").fill("img-0001");
+  await page.getByLabel("Search presets").fill("kneeling-missionary");
   await expect(page.locator(".preset-card")).toHaveCount(1);
   await page.getByRole("button", { name: "Library tools", exact: true }).click();
   const tools = page.getByRole("dialog", { name: "Library tools" });
@@ -217,7 +217,7 @@ test("source association survives save, export and reload without inheriting a v
   ]);
   await tools.getByRole("button", { name: "Close dialog" }).click();
   const pack = JSON.parse(await readFile(await download.path(), "utf8"));
-  expect(pack.presets[0].source.recordId).toBe("img-0001");
+  expect(pack.presets[0].source.recordId).toBe("kneeling-missionary");
   expect(pack.presets[0].status).toBeUndefined();
   expect(pack.presets[0].scene.actors[0].posture).toBe("standing");
 });

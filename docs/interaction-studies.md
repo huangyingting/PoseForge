@@ -5,12 +5,13 @@ the clothed participants are placed together, in contact, in the arrangement the
 source image shows. The earlier artistic interpretation and generated approximation
 remain available from each position's **•••** details (**Open artistic
 interpretation** / **Open generated approximation**) and through
-`?preset=builtin.position.img-0001&variant=artistic|generated`.
+`?preset=builtin.position.kneeling-missionary&variant=artistic|generated`.
 
 ## Library positions
 
 Every scene is also registered as a read-only built-in library preset
-(`builtin.position.<img-id>`), listed in the unified **Positions** catalog once
+(`builtin.position.<name>`, the position's title in lower case with dashes),
+listed in the unified **Positions** catalog once
 the pack has loaded (a loading row with **Retry positions** is shown meanwhile).
 Each position is titled with its own name from
 `scripts/data/position-names.json` (the source sites' titles for the image,
@@ -21,8 +22,8 @@ Descriptions start with the template type and state the actual classified
 arrangement, participants and surface. Broad categories (nine are in use)
 expand to their template types and counts. Tags include the template, category, type, aliases,
 surface and source ID, so search works by name ("golden arch"), type ("reverse
-cowgirl"), category ("partner on top") or ID ("img-0042"). Positions can be
-favorited and opened with `?preset=builtin.position.img-0042`.
+cowgirl"), category ("partner on top") or ID ("zodiac"). Positions can be
+favorited and opened with `?preset=builtin.position.zodiac`.
 They cannot be deleted and are never written to local storage.
 
 These are **approximations composed from templates**, not measured
@@ -124,12 +125,12 @@ wheelbarrow's hands rest on (`ottoman`).
 Two sources give nothing to read the pose from, so their records were composed
 from what the position is called and carry a low `confidence` to say so:
 
-- `img-1006` "Lie Back Oral" (confidence 0.2): the image is blank. Read from the
+- `lie-back-oral` "Lie Back Oral" (confidence 0.2): the image is blank. Read from the
   name as oral on a partner lying flat on the back (`lying flat`), the knees
   bent and open and the hands behind the head, the other partner lying face
-  down between the legs. The arms are what tell it from `img-0025`, which it
+  down between the legs. The arms are what tell it from `grounded-feedbag`, which it
   otherwise matches.
-- `img-1277` (confidence 0.3): the picture does not match its annotation, and
+- `reverse-oral` (confidence 0.3): the picture does not match its annotation, and
   had been classified as a 69. Read from the picture's own title, "Reverse
   Oral Sex Position", as `rear_oral`: A low on the forearms and knees, the
   chest down and one leg stretched back, and B low behind with the face at A's
@@ -160,8 +161,8 @@ shows beyond them, and the build rejects none of it silently:
   the floor alongside a partner lying on it).
 - **Clothes**: `a_wear` and `b_wear` add garments to a role's studio top and
   shorts. The only one used is `cuffs`, a strap above each wrist and ankle, on
-  the seven figures the pictures show restrained (`img-0100`, `0389`, `0681`,
-  `0730`, `0822`, `0945` for A and `img-1058` for B). A name `garments.js` does not
+  the seven figures the pictures show restrained (`bend-over-boyfriend-shower`, `0389`, `0681`,
+  `0730`, `0822`, `0945` for A and `standing-oral-iii` for B). A name `garments.js` does not
   know stops the build.
 - **Leg shape**: `a_legs` shapes A's legs where the template leaves them open.
   Where the template's own shape already is the recorded one (a partner lying
@@ -184,10 +185,10 @@ shows beyond them, and the build rejects none of it silently:
   Spooning already leans the pair together, so only `back` shows there; tied
   to a pole, `forward` is the head bowed, the chest being in the partner's
   way. Where the pose fixes the trunk, the recorded lean changes nothing, by
-  design: low from behind facing away (`img-0873`), bent over a car seat
-  (`img-0224`, `0447`), perched on a stool (`img-0531`), over the ball
-  (`img-0486`), kneeling up on a bed face to face with a partner standing
-  (`img-1077`), and in the backbends and bridges (`img-0061`, `0128`, `0156`,
+  design: low from behind facing away (`reverse-doggy`), bent over a car seat
+  (`shotgun-tucked-groundhog`, `0447`), perched on a stool (`high-chair`), over the ball
+  (`punishment`), kneeling up on a bed face to face with a partner standing
+  (`kneeling`), and in the backbends and bridges (`cradle-knees-open`, `0128`, `0156`,
   `0645`, `0699`, `0724`, `0732`, `0765`, `0791`, `0961`, `1032`, `1157`).
 - **Hands**: `b_hands` (`hips`, `legs`, `shoulders`, `embrace`, `behind`,
   `surface`) becomes hand contacts closed by IK, or for `behind` the arms
@@ -265,19 +266,19 @@ The rest are plain boxes, for the furniture and gear the pictures show:
 A strap, chain, pole or bar is held or leant on, not sat on, so the scene's
 seat height stays at the swing's seat, the sling's sheet or the floor. In the
 swing a partner sits hanging back in the seat, the hands up on its straps,
-facing a partner standing (`img-0009`) or kneeling in front of them for oral
-(`img-0132`); let down low, a rider kneels up astride in it over a partner
-lying on the floor (`img-1083`). In the sling a figure lies face up with the
-legs up either side of the chains (`img-0936`), or face down along it with a
-partner standing at its end (`img-1145`). At the stairs a partner kneels on
+facing a partner standing (`flying-missionary`) or kneeling in front of them for oral
+(`airborne-oral`); let down low, a rider kneels up astride in it over a partner
+lying on the floor (`swinging-cowgirl`). In the sling a figure lies face up with the
+legs up either side of the chains (`wide-open`), or face down along it with a
+partner standing at its end (`doggy-in-space`). At the stairs a partner kneels on
 the floor facing up them, the hands on the third step, the other kneeling
-behind (`img-0084`, `img-0381`); at the pole a partner stands with the back to
+behind (`stairway-to-heaven`, `stairway-to-heaven-ii`); at the pole a partner stands with the back to
 it, the arms tied back round it, facing a partner standing in close
-(`img-0369`); at the spreader bar a figure kneels up with the wrists at its
-ends (`img-0999`). Over the pillow stack a partner kneels with the chest on it
-(`img-0206`), on the pillow a figure on the forearms and knees has the hips on
-it (`img-1028`), and up the ramp a partner lies back with the head at its
-tall end, the other kneeling between the legs (`img-0996`).
+(`pole-bondage`); at the spreader bar a figure kneels up with the wrists at its
+ends (`vertical-x-bondage`). Over the pillow stack a partner kneels with the chest on it
+(`magic-mountain-bench-knees-open`), on the pillow a figure on the forearms and knees has the hips on
+it (`bed-humping`), and up the ramp a partner lies back with the head at its
+tall end, the other kneeling between the legs (`sloped-admission`).
 
 The car seat sits inside a `shell`: the roof, both doors, the rear glass and
 the backs of the front seats. Nothing rests on it, but every body is fitted and
@@ -287,7 +288,7 @@ line-art and depth exports leave it out. Inside it the car poses are the ones
 the roof allows: kneeling up on the seat, B's back is rounded and the head
 bowed; on a lap, B slides down the seat against its rake and A bows over; a
 partner lying across the seat has the head against the door; and a partner
-receiving oral lies back across the seat with the legs raised (`img-0229`),
+receiving oral lies back across the seat with the legs raised (`oral-pleasures`),
 the other crouched on the seat at the hips, tipped forward on the knees with
 the feet up behind against the far door, since shins laid flat on the seat
 would go through it.
@@ -306,20 +307,20 @@ What remains approximate:
   the back seat of the same cabin, which is the only seat modeled.
 - **The wedge and ramp**: the wedge is lower than some of the blocks drawn, so
   a figure lying back up it rests only the head and shoulders on it; the one
-  lain back up a tall ramp (`img-0996`) is on the ramp. The two lying face down
-  over a tall block with a partner kneeling behind (`img-0462`, `img-1066`)
+  lain back up a tall ramp (`sloped-admission`) is on the ramp. The two lying face down
+  over a tall block with a partner kneeling behind (`over-the-wedge`, `double-mount-penetration`)
   stay on the wedge: over the ramp's 38 cm the knees no longer reach the floor
-  and the partner cannot kneel in behind the feet. A bolster (`img-0886`) is
-  drawn as the wedge, and a tall wedge stood on end (`img-0189`) is left out,
+  and the partner cannot kneel in behind the feet. A bolster (`speed-bump-ii`) is
+  drawn as the wedge, and a tall wedge stood on end (`ramp-it-up`) is left out,
   the figure bent over on the floor.
 - **Hung gear** is boxes: a strap or chain hangs straight down and cannot
   slant to a hand, so the hands hold it where it hangs; the low swing's seat is
   a strip under the hips alone, so the thighs come forward off it clear of the
   straps. Props do not move or bend, so none is worn: a spreader bar between
-  the ankles (`img-0945`) is drawn as the cuffs alone, and a swing lain on in
-  a 69 (`img-0635`) is left out, the pair lying on the floor.
+  the ankles (`carnal-clutch`) is drawn as the cuffs alone, and a swing lain on in
+  a 69 (`sex-swing-69`) is left out, the pair lying on the floor.
 - **Placement**: against the pole the partner stands in contact rather than a
-  step away, and on the stairs `img-0381`'s partner kneels on the floor at
+  step away, and on the stairs `stairway-to-heaven-ii`'s partner kneels on the floor at
   their foot rather than on a lower step.
 
 ## Templates

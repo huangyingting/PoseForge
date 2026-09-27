@@ -5,6 +5,7 @@ import {
   isFixedPlacement,
 } from "../core/placement.js";
 import { newId } from "./ids.js";
+import { message, t } from "../i18n/index.js";
 
 const el = (tag, props = {}, children = []) => {
   const node = Object.assign(document.createElement(tag), props);
@@ -22,35 +23,36 @@ export function createPlacementEditor(getActor, changed) {
   const capture = el("button", {
     type: "button",
     className: "action small",
-    textContent: "Capture solved pose",
+    textContent: t("Capture solved pose"),
     disabled: true,
   });
   const guide = el("button", {
     type: "button",
     className: "action small",
-    textContent: "Use solved pose as guide",
+    textContent: t("Use solved pose as guide"),
     disabled: true,
   });
   const reset = el("button", {
     type: "button",
     className: "action small",
-    textContent: "Reset placement",
+    textContent: t("Reset placement"),
     disabled: true,
   });
   const hint = el("p", {
     className: "hint",
-    textContent:
+    textContent: t(
       "World position and XYZ rotation. Authored placement sets the initial position and facing. Fixed placement stays there; guided placement may adjust. Capture fixes all joint angles too; a solved-pose guide leaves them guided. Reset placement to use the arrangement again, and reset joints separately. Contacts and support are still checked. Use Fit view if needed.",
+    ),
   });
   const feedback = el("p", { className: "hint" });
   feedback.setAttribute("role", "alert");
   const output = el("output", { className: "hint solved-placement" });
-  output.setAttribute("aria-label", "Solved placement");
+  output.setAttribute("aria-label", t("Solved placement"));
   output.setAttribute("aria-live", "off");
   const fields = [];
   for (const [key, label, limit] of [
-    ["position", "Position", PLACEMENT_POSITION_LIMIT],
-    ["rotation", "Rotation", 180],
+    ["position", t("Position"), PLACEMENT_POSITION_LIMIT],
+    ["rotation", t("Rotation"), 180],
   ])
     for (const [axis, name] of ["X", "Y", "Z"].entries()) {
       const input = el("input", {
@@ -62,7 +64,7 @@ export function createPlacementEditor(getActor, changed) {
         required: true,
         inputMode: "decimal",
       });
-      const title = `${label} ${name} (${key === "position" ? "m" : "degrees"})`;
+      const title = `${label} ${name} (${key === "position" ? t("m") : t("degrees")})`;
       const field = el("div", { className: "field" }, [
         el("label", { htmlFor: input.id, textContent: title }),
         input,
@@ -72,7 +74,10 @@ export function createPlacementEditor(getActor, changed) {
         const actor = getActor();
         if (!actor?.placement) return;
         if (!input.checkValidity() || !Number.isFinite(Number(input.value))) {
-          feedback.textContent = `${title} must be a number from -${limit} to ${limit}.`;
+          feedback.textContent = t("{field} must be a number from -{limit} to {limit}.", {
+            field: title,
+            limit,
+          });
           feedbackKind = "input";
           input.reportValidity();
           return;
@@ -113,11 +118,14 @@ export function createPlacementEditor(getActor, changed) {
       feedbackKind = null;
     }
     if (solvedPlacement) {
-      output.textContent = `Solved: position ${solvedPlacement.position.map((value) => value.toFixed(3)).join(", ")} m · rotation ${solvedPlacement.rotation.map((value) => `${value.toFixed(1)}°`).join(", ")}`;
+      output.textContent = t("Solved: position {position} m · rotation {rotation}", {
+        position: solvedPlacement.position.map((value) => value.toFixed(3)).join(", "),
+        rotation: solvedPlacement.rotation.map((value) => `${value.toFixed(1)}°`).join(", "),
+      });
       output.dataset.position = JSON.stringify(solvedPlacement.position);
       output.dataset.rotation = JSON.stringify(solvedPlacement.rotation);
     } else {
-      output.textContent = "No completed placement available yet.";
+      output.textContent = t("No completed placement available yet.");
       delete output.dataset.position;
       delete output.dataset.rotation;
     }
@@ -163,7 +171,7 @@ export function createPlacementEditor(getActor, changed) {
   const body = el("div", {}, [
     el("label", { className: "toggle" }, [
       fixed,
-      el("span", { textContent: "Keep placement" }),
+      el("span", { textContent: t("Keep placement") }),
     ]),
     hint,
     ...fields.map(({ field }) => field),
@@ -187,7 +195,7 @@ export function createPlacementEditor(getActor, changed) {
             feedbackKind = null;
           }
         } catch (error) {
-          feedback.textContent = error.message;
+          feedback.textContent = message(error.message);
           feedbackKind = "capture";
         }
       } else if (feedbackKind === "capture") {

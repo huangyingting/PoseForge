@@ -17,10 +17,11 @@ lap**, and **Oral**) expand to related position types and counts. Each card
 is titled with the position's own name (for example `Golden Arch` or
 `Reverse Cowgirl II`), with its type, figures and surface below; the artistic
 and generated variants carry the same name. Search matches names, aliases,
-types, categories, surfaces and `img-NNNN` IDs (with or without the zero
-padding, so `img-42` finds `img-0042`).
-Positions can be favorited and deep-linked with
-`?preset=builtin.position.img-0001`.
+types, categories, surfaces and position IDs. A position's ID is its name
+(`kneeling-missionary`, `reverse-cowgirl-ii`), so positions can be favorited
+and deep-linked with `?preset=builtin.position.kneeling-missionary`. Links,
+saved libraries and exports from when positions were named after their
+dataset images still open, under the new names.
 
 Each source-linked position also keeps its **artistic 3D composition** (**••• →
 Open artistic
@@ -40,6 +41,14 @@ button for provenance and alternate interpretations; its main action opens the
 3D position. Solved joint diagrams show the figures together, including their
 support props; pose notes identify unresolved geometry.
 
+The studio reads in **English or Chinese (中文)**. The **中文 / EN** switch in
+the top bar changes every label, note and message, and the positions' names,
+categories and descriptions; the choice is kept in the browser, a first visit
+follows the browser's own language, and `?lang=zh` or `?lang=en` in a link
+chooses it too. Switching reloads the page with the same scene open. IDs, tags
+and links stay the same in both, so a link or a saved library works in
+either; a pose description may be written in either language.
+
 Figure/contact editing, favorites, saved presets, undo/redo and JSON import/export
 let you build a personal library. The viewport supports drag/keyboard orbit,
 pinch/wheel/button zoom, natural and clay materials, and PNG/SVG export.
@@ -48,6 +57,13 @@ the figures, rising over them, dipping low behind and coming in closer, and
 ends on the view it was framed in. Dragging, scrolling or a key stops it where
 it is. **Tour** in the camera toolbar turns this off (remembered) or back on,
 which tours the current position; with reduced motion requested it starts off.
+**Setting**, beside the material, puts the scene in a **bedroom** (the
+default) or a **living room**, or back on the plain **studio** backdrop. A
+room has a board floor and a rug under the figures, and a window with
+curtains, lamps, pictures, plants, a nightstand or a bookcase along its walls.
+It is sized to the scene, so nothing in it stands where the figures or their
+props do. The walls between the camera and the figures are left out as it
+orbits. PNG export keeps the room, and transparent PNG leaves only the figures.
 Each figure's **Body model** (first under Appearance) picks one of four
 scanned bodies for its body type: East Asian about 22 (the default), European
 about 22, African about 22, or East Asian about 50. They change the face, the
@@ -63,7 +79,7 @@ Saved libraries use IndexedDB, migrate legacy data without deleting the backup,
 and accept up to **5,000 presets / 32 MB** (whichever limit is reached first).
 The unified catalog uses bounded 24-card pages. Position metadata and interaction
 scenes load together; artistic and generated alternatives remain lazy.
-Position links use `?preset=builtin.position.img-0001`; alternate views add
+Position links use `?preset=builtin.position.kneeling-missionary`; alternate views add
 `&variant=artistic|generated`. Orbit, zoom, editing, save and export use the
 same position contract.
 
@@ -471,6 +487,7 @@ src/nlp/       lexicon, archetypes, parser
 src/render/    mesh builder, WebGL renderer, props, exporters
 src/workers/   meshing off the main thread
 src/app/       webapp: panel, viewport, export
+src/i18n/      the English/Chinese switch and the Chinese dictionary
 scripts/       headless renderer and the validators; models/ regenerates the scans
 tests/         node:test, no framework
 docs/          design documentation

@@ -16,7 +16,7 @@
  * while every primitive stays circular so the collision maths stays exact.
  */
 
-import { closestPointOnSegment, v3add, v3dist, v3sub, v3mul, v3lenSq, v3normalize } from "./math.js";
+import { closestPointOnSegment, v3add, v3sub, v3mul, v3lenSq, v3normalize } from "./math.js";
 
 /** Collision groups; used for classifying contacts, not for exempting them. */
 export const GROUP = {
@@ -1655,20 +1655,31 @@ function transform(m, p) {
  * cone band between them.
  */
 export function roundConeDistance(p, volume) {
+  // Written out component by component rather than through the vector
+  // helpers: this is the innermost loop of every field evaluation, and the
+  // three arrays those would allocate per call were a third of the time a pose
+  // took to mesh. The arithmetic is theirs, term for term, so the distances
+  // are the same to the last bit.
   const { a, b, ra, rb } = volume;
-  const ba = v3sub(b, a);
-  const l2 = v3lenSq(ba);
-  if (l2 < 1e-12) return v3dist(p, a) - ra;
+  const bax = b[0] - a[0];
+  const bay = b[1] - a[1];
+  const baz = b[2] - a[2];
+  const l2 = bax * bax + bay * bay + baz * baz;
+  const pax = p[0] - a[0];
+  const pay = p[1] - a[1];
+  const paz = p[2] - a[2];
+  if (l2 < 1e-12) return Math.sqrt(pax * pax + pay * pay + paz * paz) - ra;
 
   const rr = ra - rb;
   const a2 = l2 - rr * rr;
   const il2 = 1 / l2;
 
-  const pa = v3sub(p, a);
-  const y = pa[0] * ba[0] + pa[1] * ba[1] + pa[2] * ba[2];
+  const y = pax * bax + pay * bay + paz * baz;
   const z = y - l2;
-  const xx = v3lenSq([pa[0] * l2 - ba[0] * y, pa[1] * l2 - ba[1] * y, pa[2] * l2 - ba[2] * y]);
-  const x2 = xx;
+  const qx = pax * l2 - bax * y;
+  const qy = pay * l2 - bay * y;
+  const qz = paz * l2 - baz * y;
+  const x2 = qx * qx + qy * qy + qz * qz;
   const y2 = y * y * l2;
   const z2 = z * z * l2;
 

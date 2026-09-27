@@ -23,11 +23,11 @@ illustration is not itself an importable preset:
 
 ```json
 {
-  "id": "builtin.position.img-0001",
+  "id": "builtin.position.kneeling-missionary",
   "title": "Position title",
   "description": "Participant arrangement and support",
   "category": "Face-to-face",
-  "tags": ["bed", "img-0001"],
+  "tags": ["bed", "kneeling-missionary"],
   "position": {
     "type": "missionary",
     "name": "Missionary",
@@ -35,7 +35,7 @@ illustration is not itself an importable preset:
   },
   "source": {
     "dataset": "SexPoses",
-    "recordId": "img-0001",
+    "recordId": "kneeling-missionary",
     "annotationHash": "..."
   },
   "scene": {

@@ -322,19 +322,23 @@ test("repeated ID collisions never overwrite an existing saved study", () => {
   assert.equal(library.saved().length, 1);
 });
 
-test("search finds a source ID typed without its zero padding", () => {
+test("search finds a position by its ID, whole or in part", () => {
   const sourced = (recordId) => ({
     ...example(),
     id: `user.${recordId}`,
     source: { dataset: "SexPoses", recordId, annotationHash: "a".repeat(64) },
   });
-  const all = ["img-0042", "img-0420", "img-1042", "img-0001", "img-1283"].map(sourced);
+  const all = ["zodiac", "viennese-oyster", "dancer-ii", "kneeling-missionary", "prison-guard"].map(sourced);
   const ids = (query) => searchCatalog(all, { query }).map((p) => p.source.recordId);
-  assert.deepEqual(ids("img-42"), ["img-0042"]);
-  assert.deepEqual(ids("IMG42"), ["img-0042"]);
-  assert.deepEqual(ids("img-0042"), ["img-0042"]);
-  // A partly typed ID still narrows as it did.
-  assert.deepEqual(ids("img-04"), ["img-0420"]);
-  assert.deepEqual(ids("img-00"), ["img-0042", "img-0001"]);
-  assert.deepEqual(ids("img-1"), ["img-1042", "img-0001", "img-1283"]);
+  assert.deepEqual(ids("viennese-oyster"), ["viennese-oyster"]);
+  assert.deepEqual(ids("OYSTER"), ["viennese-oyster"]);
+  assert.deepEqual(ids("dancer-i"), ["dancer-ii"]);
+  // The dataset's image IDs are not how positions are named any more.
+  assert.deepEqual(ids("img-0042"), []);
+  // A name inside other names still lists its own position first.
+  const nested = ["deep-squat", "squat-ii", "squat", "frog-squat"].map(sourced);
+  assert.deepEqual(
+    searchCatalog(nested, { query: "Squat" }).map((p) => p.source.recordId),
+    ["squat", "deep-squat", "squat-ii", "frog-squat"],
+  );
 });

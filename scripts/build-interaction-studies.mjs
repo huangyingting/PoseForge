@@ -119,7 +119,7 @@ export async function buildInteractionStudies(entries, classifications, names = 
     const label = templateLabel(cls.template === "group_three" ? cls.base : cls.template);
     const participants = study.scene.actors.length;
     const named = names[entry.sourceId];
-    const title = (named?.name ?? `Interaction ${entry.sourceId.replace(/^img-/, "")} · ${label}`).slice(0, 80);
+    const title = (named?.name ?? `Interaction · ${label}`).slice(0, 80);
     return {
       sourceId: entry.sourceId,
       annotationHash: entry.annotationHash,

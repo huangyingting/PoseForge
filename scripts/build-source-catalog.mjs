@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createGeneratedStudyBuilder } from "./generated-posture-scenes.mjs";
+import { positionOfImage } from "../src/core/datasetImages.js";
 
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 function canonical(value) {
@@ -68,6 +69,11 @@ export function buildSourceCatalog(text) {
       ids.add(a.image_id);
       if (!digest(row.source_sha256) || !digest(row.normalized_sha256))
         throw new Error(`Missing image fingerprint on line ${index + 1}.`);
+      // Positions are named after their titles, not the dataset's image IDs;
+      // an image without a name has no position yet.
+      const sourceId = positionOfImage(a.image_id);
+      if (sourceId === a.image_id)
+        throw new Error(`No position is named for ${a.image_id} in src/data/dataset-images.json.`);
       const postures = a.participants.map((p) => postureFamily(p.posture));
       const preview = buildPreview(a);
       scenes.set(preview.key, preview.scene);
@@ -78,8 +84,9 @@ export function buildSourceCatalog(text) {
         relationship: a.relationship ?? {},
       };
       return {
-        id: `source.sexposes.${a.image_id}`,
-        sourceId: a.image_id,
+        image: a.image_id,
+        id: `source.sexposes.${sourceId}`,
+        sourceId,
         figures: a.participants.length,
         family: [...new Set(postures)].sort().join(" + "),
         postures,
@@ -91,7 +98,9 @@ export function buildSourceCatalog(text) {
         imageHash: row.normalized_sha256,
       };
     })
-    .sort((a, b) => a.sourceId.localeCompare(b.sourceId, "en"));
+    // Dataset order, which is the order the catalog has always had.
+    .sort((a, b) => a.image.localeCompare(b.image, "en"))
+    .map(({ image, ...entry }) => entry);
   if (!entries.length) throw new Error("No source records found.");
   const data =
     JSON.stringify({ format: "poseforge.sources", version: 1, entries }) +

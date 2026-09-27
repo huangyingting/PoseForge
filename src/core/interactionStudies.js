@@ -237,7 +237,7 @@ export function interactionPositions(studies, entries = []) {
     const preset = checkPreset({
       id: positionId(record.sourceId),
       title,
-      description: `${name}: ${label}.${record.aliases?.length ? ` Also known as ${record.aliases.join(", ")}.` : ""} ${figures} clothed ${figures === 1 ? "figure" : "figures"} in ${postureText} positions ${SURFACE_PHRASES[surface] ?? `on ${surface.toLowerCase()}`}. Approximate template-based 3D interpretation of source ${record.sourceId}.`,
+      description: `${name}: ${label}.${record.aliases?.length ? ` Also known as ${record.aliases.join(", ")}.` : ""} ${figures} clothed ${figures === 1 ? "figure" : "figures"} in ${postureText} positions ${SURFACE_PHRASES[surface] ?? `on ${surface.toLowerCase()}`}. Approximate template-based 3D interpretation of its source image.`,
       category,
       position: {
         type,
@@ -249,7 +249,6 @@ export function interactionPositions(studies, entries = []) {
         "position",
         record.template,
         record.surface,
-        record.sourceId,
         category,
         name,
         ...(record.aliases ?? []),

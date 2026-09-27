@@ -3,6 +3,8 @@
  * are drawers layered over its edges. Opening or closing a drawer never
  * changes the current scene.
  */
+import { t } from "../i18n/index.js";
+
 export const LAYOUT_KEY = "poseforge.layout.v1";
 const DRAWERS = { library: "library", inspector: "panel" };
 const REGION_DRAWER = { library: "library", edit: "inspector" };
@@ -47,7 +49,10 @@ export function bindWorkspaceLayout(root, storage) {
     root.dataset[name] = open ? "open" : "closed";
     if (!toggle) return;
     toggle.setAttribute("aria-expanded", String(open));
-    toggle.title = `${open ? "Hide" : "Show"} ${name === "library" ? "library" : "editor"}`;
+    toggle.title =
+      name === "library"
+        ? open ? t("Hide library") : t("Show library")
+        : open ? t("Hide editor") : t("Show editor");
   }
   function set(name, open) {
     if (!(name in DRAWERS) || state[name] === open) return;

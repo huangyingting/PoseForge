@@ -19,6 +19,7 @@ import {
   isPositionVariant,
 } from "../core/positionContract.js";
 import { migrateLibraryData } from "./libraryMigrations.js";
+import { localizePreset } from "../i18n/presets.js";
 
 export const LIBRARY_KEY = "poseforge.library.v1";
 
@@ -27,8 +28,12 @@ export const LIBRARY_KEY = "poseforge.library.v1";
 let positions = [];
 let positionIndex = new Map();
 let positionSourceIndex = new Map();
-const stock = () => (positions.length ? [...BUILTIN_PRESETS, ...positions] : BUILTIN_PRESETS);
-const findStock = (id) => positionIndex.get(id) ?? BUILTIN_PRESETS.find((p) => p.id === id);
+/** The starter studies, in the reader's language. */
+export const STARTERS = Object.freeze(
+  BUILTIN_PRESETS.map((preset) => Object.freeze(localizePreset(preset))),
+);
+const stock = () => (positions.length ? [...STARTERS, ...positions] : STARTERS);
+const findStock = (id) => positionIndex.get(id) ?? STARTERS.find((p) => p.id === id);
 
 /** Register the built-in interaction positions (replacing any earlier set). */
 export function registerPositions(list) {

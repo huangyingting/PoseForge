@@ -207,6 +207,20 @@ p {
   font-weight: 620;
   white-space: nowrap;
 }
+.language-switch {
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid var(--glass-line);
+  border-radius: 10px;
+  background: var(--glass);
+  color: #555562;
+  font-size: 12px;
+  font-weight: 620;
+  white-space: nowrap;
+}
+.language-switch:hover {
+  color: var(--accent-strong);
+}
 .drawer-toggle > span {
   font-size: 14px;
   line-height: 1;
@@ -1598,6 +1612,11 @@ dialog .buttons {
   .header-actions .action {
     font-size: 11px;
     padding: 8px 10px;
+    min-height: 40px;
+  }
+  .language-switch {
+    font-size: 11px;
+    padding: 8px;
     min-height: 40px;
   }
   .primary span {

@@ -58,7 +58,7 @@ export function generatedPosition(entry, scenes, name = null) {
   if (!scene) throw new Error("This source has no generated study.");
   const title = name
     ? `${name} · Generated approximation`
-    : `Generated approximation · ${entry.sourceId.toUpperCase()}`;
+    : "Generated approximation";
   const description =
     "Approximate clothed posture study. Participants are separate; original relationships and contacts are not reconstructed.";
   const preset = checkPreset({

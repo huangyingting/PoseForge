@@ -342,3 +342,13 @@ test("Chinese is read without needing spaces", () => {
   const byId = Object.fromEntries(out.scene.actors.map((a) => [a.id, a]));
   assert.ok(byId.female && byId.male, "the two people were not identified");
 });
+
+test("a Chinese sentence reports only the characters no phrase read", () => {
+  // Chinese runs on without spaces, so one run holds words that were read and
+  // words that were not; only the second kind is unread.
+  for (const text of ["一个女人坐在椅子上", "两个人面对面站着", "一个女人仰卧在床上，男人在她上面"])
+    assert.deepEqual(parseDescription(text).warnings, [], text);
+  const out = parseDescription("一个女人坐在椅子上看书");
+  assert.deepEqual(out.warnings, ['did not understand: "看书"']);
+  assert.equal(out.scene.support.surface, "chair");
+});

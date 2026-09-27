@@ -139,7 +139,7 @@ test("a fresh library has all artistic previews ready without importing or creat
     if (r.url().includes("/catalog/")) requests.push(r.url().split("/").at(-1));
   });
   await page.goto(
-    "/?preset=builtin.position.img-0001&variant=artistic",
+    "/?preset=builtin.position.kneeling-missionary&variant=artistic",
   );
   await check(page, pack.studies[0]);
   await expect(page).toHaveURL(/variant=artistic/);
@@ -164,7 +164,7 @@ test("a fresh library has all artistic previews ready without importing or creat
   expect(exported.tags).toContain("artistic");
   expect(exported.description).toContain("not a reconstruction");
   expect(exported.status).toBeUndefined();
-  expect(exported.source.recordId).toBe("img-0001");
+  expect(exported.source.recordId).toBe("kneeling-missionary");
   await page.getByRole("button", { name: "Saved", exact: true }).click();
   await expect(page.locator(".preset-card")).toHaveCount(0);
   await page.getByRole("button", { name: "Positions", exact: true }).click();

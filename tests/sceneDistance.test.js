@@ -12,7 +12,7 @@ const scene = (id) => structuredClone(pack.studies.find((s) => s.sourceId === id
 const difference = (p, q) => poseDifference(poseSignature(p), poseSignature(q));
 
 test("a scene moved or turned about the room, or dressed differently, is the same picture", () => {
-  const base = scene("img-0001");
+  const base = scene("kneeling-missionary");
   const moved = structuredClone(base);
   const yaw = quatFromEulerXYZ(0, (70 * Math.PI) / 180, 0);
   for (const actor of moved.actors) {
@@ -24,7 +24,7 @@ test("a scene moved or turned about the room, or dressed differently, is the sam
 });
 
 test("the smallest visible bend, spine curve or step apart reads as a different picture", () => {
-  const base = scene("img-0001");
+  const base = scene("kneeling-missionary");
   const knee = structuredClone(base);
   knee.actors[1].joints.knee_l.flexion += VISIBLE.joint;
   assert.deepEqual(difference(base, knee), { difference: 1, by: "actor 1 knee_l.flexion" });
@@ -42,7 +42,7 @@ test("the smallest visible bend, spine curve or step apart reads as a different 
 });
 
 test("a different support or number of people is never the same picture", () => {
-  const base = scene("img-0001");
+  const base = scene("kneeling-missionary");
   assert.deepEqual(difference(base, { ...base, support: { surface: "bed" } }), { difference: Infinity, by: "surface" });
   assert.deepEqual(difference(base, { ...base, actors: base.actors.slice(0, 1) }), { difference: Infinity, by: "people" });
 });

@@ -47,6 +47,7 @@ import { newId } from "./ids.js";
 import { createContactEditor } from "./contactEditor.js";
 import { createPlacementEditor } from "./placementEditor.js";
 import { captureSolvedPose, isFixedPlacement } from "../core/placement.js";
+import { message, t, term } from "../i18n/index.js";
 
 const EXAMPLES = [
   "a woman standing on the floor wearing clothes",
@@ -72,7 +73,7 @@ function picker(label, options, { blank = null, labels = {} } = {}) {
     select.append(
       el("option", {
         value: option,
-        textContent: labels[option] ?? option.replace(/_/g, " "),
+        textContent: labels[option] ?? term(option),
       }),
     );
   }
@@ -133,7 +134,7 @@ function toggles(label, options, { labels = {} } = {}) {
     row.append(
       el("label", { className: "toggle" }, [
         input,
-        el("span", { textContent: labels[option] ?? option }),
+        el("span", { textContent: labels[option] ?? term(option) }),
       ]),
     );
   }
@@ -183,15 +184,24 @@ function bothSides(left, right) {
 
 /** What each of `OUTFITS` is called on the control. */
 const OUTFIT_LABELS = {
-  studio: "Top & shorts",
-  underwear: "Underwear",
-  bikini: "Bikini",
-  lingerie: "Lingerie",
-  swim: "Swim briefs",
-  boxers: "Boxer briefs",
-  leather: "Leather",
-  custom: "Mixed",
+  studio: t("Top & shorts"),
+  underwear: t("Underwear"),
+  bikini: t("Bikini"),
+  lingerie: t("Lingerie"),
+  swim: t("Swim briefs"),
+  boxers: t("Boxer briefs"),
+  leather: t("Leather"),
+  custom: t("Mixed"),
 };
+
+/** Each garment's name on the control, in the reader's language. */
+const PIECE_LABELS = Object.fromEntries(
+  Object.entries(GARMENT_LABELS).map(([name, label]) => [name, t(`clothing|${label}`)]),
+);
+
+/** A joint channel as a slider names it: "Flexion". */
+const channelName = (channel) =>
+  term(channel, `${channel[0].toUpperCase()}${channel.slice(1)}`);
 
 /** The pieces worn over or under whatever is on top and below. */
 const EXTRAS = GARMENT_NAMES.filter(
@@ -227,7 +237,7 @@ export function buildPanel(root, handlers) {
     hidden: true,
   });
   const tabs = el("div", { className: "inspector-tabs" });
-  const tabButtons = ["Scene", "Figures"].map((name, index) => {
+  const tabButtons = [t("Scene"), t("Figures")].map((name, index) => {
     const button = el("button", {
       type: "button",
       textContent: name,
@@ -247,11 +257,14 @@ export function buildPanel(root, handlers) {
     return button;
   });
   const mobileHistory = el("div", { className: "mobile-history" });
-  for (const name of ["Undo", "Redo"]) {
+  for (const [name, label] of [
+    ["Undo", t("Undo")],
+    ["Redo", t("Redo")],
+  ]) {
     const button = el("button", {
       type: "button",
       className: "action small",
-      textContent: name,
+      textContent: label,
       disabled: true,
     });
     button.dataset.history = name.toLowerCase();
@@ -267,17 +280,16 @@ export function buildPanel(root, handlers) {
   /* ---- description ---- */
   const input = el("textarea", {
     id: "description-input",
-    placeholder:
-      "Describe a pose, e.g. a woman seated on a chair wearing clothes",
+    placeholder: t("Describe a pose, e.g. a woman seated on a chair wearing clothes"),
     spellcheck: false,
   });
   const examples = el("div", { className: "examples" });
-  for (const [index, example] of EXAMPLES.entries()) {
+  for (const [index, example] of EXAMPLES.map((text) => t(text)).entries()) {
     examples.append(
       el("button", {
         className: "chip",
         type: "button",
-        textContent: index ? "Seated study" : "Standing study",
+        textContent: index ? t("Seated study") : t("Standing study"),
         title: example,
         onclick: () => {
           input.value = example;
@@ -289,17 +301,17 @@ export function buildPanel(root, handlers) {
   const generate = el("button", {
     type: "button",
     className: "action primary full",
-    textContent: "Apply description",
+    textContent: t("Apply description"),
     onclick: () => handlers.onText(input.value),
   });
   scenePane.append(
     section(
-      "Describe a scene",
+      t("Describe a scene"),
       el("div", {}, [
         el("label", {
           className: "sr-only",
           htmlFor: input.id,
-          textContent: "Pose description",
+          textContent: t("Pose description"),
         }),
         input,
         generate,
@@ -318,22 +330,28 @@ export function buildPanel(root, handlers) {
   const trace = el("ul", { className: "trace" });
   const traceEmpty = el("p", {
     className: "empty",
-    textContent: "Nothing read yet.",
+    textContent: t("Nothing read yet."),
   });
-  const interpretation = group("How the description was read");
+  const interpretation = group(t("How the description was read"));
   interpretation.body.append(traceEmpty, trace);
 
   /* ---- notes ---- */
   const notes = el("ul", { className: "notes" });
-  const diagnostics = group("Pose checks");
+  const diagnostics = group(t("Pose checks"));
   diagnostics.body.append(notes);
 
   /* ---- overrides ---- */
-  const arrangement = picker("Arrangement", ARRANGEMENT_NAMES, {
-    blank: "— none —",
+  const arrangement = picker(t("Arrangement"), ARRANGEMENT_NAMES, {
+    blank: t("— none —"),
   });
-  const surface = picker("Surface", SURFACE_NAMES);
-  const facing = picker("Facing", ["as written", "toward", "away"]);
+  const surface = picker(t("Surface"), SURFACE_NAMES);
+  const facing = picker(t("Facing"), ["as written", "toward", "away"], {
+    labels: {
+      "as written": t("as written"),
+      toward: t("toward"),
+      away: t("away"),
+    },
+  });
   const placementHint = el("p", { className: "hint", hidden: true });
   const actorHost = el("div");
   const contactEditor = createContactEditor((next) => {
@@ -347,7 +365,7 @@ export function buildPanel(root, handlers) {
     placementHint,
   ]);
   scenePane.append(
-    section("Composition", overrides),
+    section(t("Composition"), overrides),
     contactEditor.root,
     interpretation.details,
     diagnostics.details,
@@ -356,7 +374,7 @@ export function buildPanel(root, handlers) {
   const captureLayout = el("button", {
     type: "button",
     className: "action full",
-    textContent: "Capture current layout",
+    textContent: t("Capture current layout"),
     disabled: true,
     onclick: () => {
       if (!completedActors || !scene) return;
@@ -377,20 +395,21 @@ export function buildPanel(root, handlers) {
     captureLayout,
     el("p", {
       className: "hint",
-      textContent:
+      textContent: t(
         "Keep every figure’s completed placement and joint angles as an editable layout.",
+      ),
     }),
     actorHost,
   );
   const addFigure = el("button", {
     className: "action full",
     type: "button",
-    textContent: "+ Add figure",
+    textContent: t("+ Add figure"),
     onclick: () => {
       if (!scene || scene.actors.length >= 4) return;
       scene.actors.push({
         id: newId("figure"),
-        label: `Figure ${scene.actors.length + 1}`,
+        label: t("Figure {letter}", { letter: scene.actors.length + 1 }),
         bodyType: "male",
         posture: "standing",
         wearing: ["top", "shorts"],
@@ -491,26 +510,27 @@ export function buildPanel(root, handlers) {
     const fixed = el("input", { type: "checkbox" });
     const mode = el("label", { className: "toggle" }, [
       fixed,
-      el("span", { textContent: "Keep edited angles" }),
+      el("span", { textContent: t("Keep edited angles") }),
     ]);
     const modeHint = el("p", {
       className: "hint",
-      textContent:
+      textContent: t(
         "Keeps specified angle channels fixed. Other joints and placement may still adjust; contacts can remain unresolved.",
+      ),
     });
     const solvedOutput = el("output", {
       className: "hint solved-joints",
     });
-    solvedOutput.setAttribute("aria-label", "Solved joint angles");
+    solvedOutput.setAttribute("aria-label", t("Solved joint angles"));
     solvedOutput.setAttribute("aria-live", "off");
     let solvedJoints = null;
     const bone = picker(
-      "Joint",
+      t("Joint"),
       POSEABLE_BONES.map((entry) => entry.name),
     );
     const channels = CHANNELS.map((channel) => ({
       channel,
-      control: slider(`${channel[0].toUpperCase()}${channel.slice(1)}`, {
+      control: slider(channelName(channel), {
         min: -180,
         max: 180,
         step: 1,
@@ -521,18 +541,22 @@ export function buildPanel(root, handlers) {
     const reset = el("button", {
       className: "action small",
       type: "button",
-      textContent: "Reset joint",
+      textContent: t("Reset joint"),
     });
     const resetAll = el("button", {
       className: "action small",
       type: "button",
-      textContent: "Reset all",
+      textContent: t("Reset all"),
     });
     const showSolved = () => {
       const solved = solvedJoints?.[bone.select.value];
       solvedOutput.textContent = solved
-        ? `Solved: ${CHANNELS.map((channel) => `${channel[0].toUpperCase()}${channel.slice(1)} ${(solved[channel] ?? 0).toFixed(1)}°`).join(" · ")}`
-        : "No solved angles available yet.";
+        ? t("Solved: {angles}", {
+            angles: CHANNELS.map(
+              (channel) => `${channelName(channel)} ${(solved[channel] ?? 0).toFixed(1)}°`,
+            ).join(" · "),
+          })
+        : t("No solved angles available yet.");
       for (const channel of CHANNELS) {
         if (solved)
           solvedOutput.dataset[channel] = String(solved[channel] ?? 0);
@@ -558,8 +582,10 @@ export function buildPanel(root, handlers) {
       }
       const names = Object.keys(scene?.actors?.[index]?.joints ?? {});
       adjusted.textContent = names.length
-        ? `Set away from the posture: ${names.join(", ")}`
-        : "Nothing set; the posture decides every joint.";
+        ? t("Set away from the posture: {joints}", {
+            joints: names.map((name) => term(name)).join(", "),
+          })
+        : t("Nothing set; the posture decides every joint.");
       showSolved();
     };
 
@@ -629,69 +655,69 @@ export function buildPanel(root, handlers) {
         maxLength: 80,
       });
       const nameField = el("div", { className: "field" }, [
-        el("label", { htmlFor: nameInput.id, textContent: "Figure name" }),
+        el("label", { htmlFor: nameInput.id, textContent: t("Figure name") }),
         nameInput,
       ]);
       nameInput.addEventListener("change", () => {
         scene.actors[index].label =
-          nameInput.value.trim() || `Figure ${index + 1}`;
+          nameInput.value.trim() || t("Figure {letter}", { letter: index + 1 });
         emit();
       });
-      const bodyType = picker("Body type", ["female", "male", "neutral"]);
+      const bodyType = picker(t("Body type"), ["female", "male", "neutral"]);
       const skinTone = el("input", {
         type: "color",
         id: `control-${++controlId}`,
         value: "#e8c9a4",
       });
       const skinField = el("div", { className: "field" }, [
-        el("label", { htmlFor: skinTone.id, textContent: "Skin tone" }),
+        el("label", { htmlFor: skinTone.id, textContent: t("Skin tone") }),
         skinTone,
       ]);
-      const posture = picker("Posture", POSTURE_NAMES);
-      const stature = slider("Height", {
+      const posture = picker(t("Posture"), POSTURE_NAMES);
+      const stature = slider(t("Height"), {
         min: 1.4,
         max: 2.1,
         step: 0.01,
         format: (v) => `${Math.round(v * 100)} cm`,
       });
-      const build = slider("Build", {
+      const build = slider(t("Build"), {
         min: 0.8,
         max: 1.3,
         step: 0.01,
-        format: (v) => (v < 0.94 ? "slim" : v > 1.08 ? "heavy" : "average"),
+        format: (v) => (v < 0.94 ? t("slim") : v > 1.08 ? t("heavy") : t("average")),
       });
 
-      const model = picker("Body model", Object.keys(BODY_MODELS), {
+      const model = picker(t("Body model"), Object.keys(BODY_MODELS), {
         labels: Object.fromEntries(
-          Object.entries(BODY_MODELS).map(([name, { label }]) => [name, label]),
+          Object.entries(BODY_MODELS).map(([name, { label }]) => [name, t(label)]),
         ),
       });
-      const hair = picker("Hair", Object.keys(HAIR_STYLES), {
-        blank: "— for the body —",
+      const hair = picker(t("Hair"), Object.keys(HAIR_STYLES), {
+        blank: t("— for the body —"),
       });
       // Clothes as one choice, with the pieces under it for anyone who wants
       // to mix: a set, then what is on top and what is below - each of which
       // takes one piece, so a picker rather than a row of boxes that could
       // ask for two bras - then what goes over or under either.
-      const dress = picker("Outfit", [...Object.keys(OUTFITS), "custom"], {
-        blank: "— nothing —",
+      const dress = picker(t("Outfit"), [...Object.keys(OUTFITS), "custom"], {
+        blank: t("— nothing —"),
         labels: OUTFIT_LABELS,
       });
       // Shown when the pieces match no set; not something to choose.
       dress.select.querySelector('option[value="custom"]').disabled = true;
-      const top = picker("Top", GARMENT_SLOTS.chest, {
-        blank: "— none —",
-        labels: GARMENT_LABELS,
+      const top = picker(t("clothing|Top"), GARMENT_SLOTS.chest, {
+        blank: t("— none —"),
+        labels: PIECE_LABELS,
       });
-      const bottom = picker("Bottom", GARMENT_SLOTS.hips, {
-        blank: "— none —",
-        labels: GARMENT_LABELS,
+      const bottom = picker(t("Bottom"), GARMENT_SLOTS.hips, {
+        blank: t("— none —"),
+        labels: PIECE_LABELS,
       });
-      const extras = toggles("Extras", EXTRAS, { labels: GARMENT_LABELS });
-      const outfit = picker("Colour", Object.keys(GARMENT_COLOURS), {
-        blank: "— black —",
+      const extras = toggles(t("Extras"), EXTRAS, { labels: PIECE_LABELS });
+      const outfit = picker(t("Colour"), Object.keys(GARMENT_COLOURS), {
+        blank: t("— black —"),
       });
-      const look = group("Appearance");
+      const look = group(t("Appearance"));
       look.body.append(
         model.field,
         skinField,
@@ -703,29 +729,29 @@ export function buildPanel(root, handlers) {
         outfit.field,
       );
 
-      const handL = picker("Left hand", HAND_SHAPE_NAMES, {
-        blank: "— from the pose —",
+      const handL = picker(t("Left hand"), HAND_SHAPE_NAMES, {
+        blank: t("— from the pose —"),
       });
-      const handR = picker("Right hand", HAND_SHAPE_NAMES, {
-        blank: "— from the pose —",
+      const handR = picker(t("Right hand"), HAND_SHAPE_NAMES, {
+        blank: t("— from the pose —"),
       });
-      const footL = picker("Left foot", FOOT_SHAPE_NAMES, {
-        blank: "— from the posture —",
+      const footL = picker(t("Left foot"), FOOT_SHAPE_NAMES, {
+        blank: t("— from the posture —"),
       });
-      const footR = picker("Right foot", FOOT_SHAPE_NAMES, {
-        blank: "— from the posture —",
+      const footR = picker(t("Right foot"), FOOT_SHAPE_NAMES, {
+        blank: t("— from the posture —"),
       });
-      const ends = group("Hands & feet");
+      const ends = group(t("Hands & feet"));
       ends.body.append(handL.field, handR.field, footL.field, footR.field);
 
       const joints = jointEditor(index);
-      const bones = group("Joints");
+      const bones = group(t("Joints"));
       bones.body.append(joints.body);
       const placement = createPlacementEditor(
         () => scene?.actors?.[index],
         emit,
       );
-      const placementGroup = group("Placement");
+      const placementGroup = group(t("Placement"));
       placementGroup.body.append(placement.body);
 
       const title = el("h3", {}, [
@@ -734,7 +760,7 @@ export function buildPanel(root, handlers) {
           style: `background:${swatches[index] ?? "#ccc"}`,
         }),
         el("span", {
-          textContent: `Partner ${String.fromCharCode(65 + index)}`,
+          textContent: t("Partner {letter}", { letter: String.fromCharCode(65 + index) }),
         }),
       ]);
       actorHost.append(
@@ -752,7 +778,7 @@ export function buildPanel(root, handlers) {
           el("button", {
             className: "text-button danger",
             type: "button",
-            textContent: "Remove figure",
+            textContent: t("Remove figure"),
             disabled: count === 1,
             onclick: () => {
               const removed = scene.actors[index].id;
@@ -942,17 +968,17 @@ export function buildPanel(root, handlers) {
           ? entry.value.join(", ")
           : typeof entry.value === "object" && entry.value !== null
             ? JSON.stringify(entry.value)
-            : String(entry.value);
+            : term(entry.value, String(entry.value));
         trace.append(
           el("li", {}, [
             el("span", {
               className: "phrase",
-              textContent: entry.phrase ?? "(default)",
+              textContent: entry.phrase ?? t("(default)"),
             }),
             el("span", { className: "arrow", textContent: "→" }),
             el("span", {
               className: "effect",
-              textContent: `${entry.field} = ${value}${entry.note ? ` (${entry.note})` : ""}`,
+              textContent: `${entry.field} = ${value}${entry.note ? ` (${message(entry.note)})` : ""}`,
             }),
           ]),
         );
@@ -964,7 +990,7 @@ export function buildPanel(root, handlers) {
       notes.replaceChildren();
       if (entries.length === 0) {
         notes.append(
-          el("li", { className: "ok", textContent: "No problems reported." }),
+          el("li", { className: "ok", textContent: t("No problems reported.") }),
         );
         return;
       }
@@ -972,7 +998,7 @@ export function buildPanel(root, handlers) {
         notes.append(
           el("li", {
             className: entry.level ?? "warning",
-            textContent: entry.message,
+            textContent: message(entry.message),
           }),
         );
       }
@@ -1004,10 +1030,14 @@ export function buildPanel(root, handlers) {
       placementHint.hidden = fixedPlacements + guidedPlacements === 0;
       placementHint.textContent = [
         fixedPlacements
-          ? `${fixedPlacements} ${fixedPlacements === 1 ? "figure keeps" : "figures keep"} fixed placement. Change Placement in Figures to allow arrangement and facing adjustments.`
+          ? fixedPlacements === 1
+            ? t("1 figure keeps fixed placement. Change Placement in Figures to allow arrangement and facing adjustments.")
+            : t("{count} figures keep fixed placement. Change Placement in Figures to allow arrangement and facing adjustments.", { count: fixedPlacements })
           : "",
         guidedPlacements
-          ? `${guidedPlacements} ${guidedPlacements === 1 ? "figure uses" : "figures use"} guided starting placement. The solver may adjust it; reset Placement to use arrangement and facing initialization.`
+          ? guidedPlacements === 1
+            ? t("1 figure uses guided starting placement. The solver may adjust it; reset Placement to use arrangement and facing initialization.")
+            : t("{count} figures use guided starting placement. The solver may adjust it; reset Placement to use arrangement and facing initialization.", { count: guidedPlacements })
           : "",
       ]
         .filter(Boolean)
@@ -1020,7 +1050,7 @@ export function buildPanel(root, handlers) {
         const control = actorControls[index];
         if (!control) return;
         if (document.activeElement !== control.nameInput)
-          control.nameInput.value = actor.label ?? `Figure ${index + 1}`;
+          control.nameInput.value = actor.label ?? t("Figure {letter}", { letter: index + 1 });
         control.bodyType.select.value = actor.bodyType ?? "neutral";
         control.model.select.value = bodyModel(actor.model);
         control.skinTone.value =
@@ -1061,13 +1091,13 @@ export function buildPanel(root, handlers) {
         control.placement.setSolved(null, false);
         control.placementSummary.textContent = actor.placement
           ? isFixedPlacement(actor.placement)
-            ? "Placement (fixed)"
-            : "Placement (guided)"
-          : "Placement";
+            ? t("Placement (fixed)")
+            : t("Placement (guided)")
+          : t("Placement");
         const set = Object.keys(actor.joints ?? {}).length;
-        control.summary.textContent = set ? `Joints (${set} set)` : "Joints";
+        control.summary.textContent = set ? t("Joints ({count} set)", { count: set }) : t("Joints");
         control.title.textContent =
-          actor.label ?? `Partner ${String.fromCharCode(65 + index)}`;
+          actor.label ?? t("Partner {letter}", { letter: String.fromCharCode(65 + index) });
       });
       syncing = false;
       addFigure.disabled = scene.actors.length >= 4;

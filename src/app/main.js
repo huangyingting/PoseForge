@@ -1,15 +1,15 @@
 import "@fontsource-variable/manrope";
 import { createRenderer, SKIN } from "../render/renderer.js";
+import { SETTINGS } from "../render/room.js";
 import { exportPNG, exportSVG, download } from "../render/exporters.js";
 import { parseDescription } from "../nlp/parser.js";
 import {
-  BUILTIN_PRESETS,
   checkScene,
   checkSource,
   serializeCatalog,
 } from "../core/catalog.js";
 import { buildPanel } from "./ui.js";
-import { DRAFT_KEY, registerPositions } from "./libraryStore.js";
+import { DRAFT_KEY, STARTERS, registerPositions } from "./libraryStore.js";
 import { createPersistentLibrary } from "./persistentLibrary.js";
 import { buildStudio, toast, showRegion, openExport } from "./studioUI.js";
 import { bindCameraInput } from "./cameraInput.js";
@@ -27,11 +27,26 @@ import {
   positionSourceId,
 } from "../core/positionContract.js";
 import { captureSolvedPose } from "../core/placement.js";
+import { currentId, currentPreset } from "../core/datasetImages.js";
 import { isArtisticPosition } from "../core/artisticStudies.js";
 import { isInteractionPosition } from "../core/interactionStudies.js";
+import {
+  language,
+  localizeDocument,
+  message,
+  setLanguage,
+  t,
+} from "../i18n/index.js";
 
 const $ = (id) => document.getElementById(id);
 const clone = (value) => JSON.parse(JSON.stringify(value));
+localizeDocument();
+// The switch names the language it switches to, in that language.
+$("language").textContent = language === "zh" ? "EN" : "中文";
+$("language").lang = language === "zh" ? "en" : "zh-CN";
+$("language").title =
+  language === "zh" ? t("Switch to English") : t("Switch to Chinese");
+$("language").onclick = () => setLanguage(language === "zh" ? "en" : "zh");
 const canvas = $("viewport");
 let storage;
 try {
@@ -61,15 +76,17 @@ try {
   view = createRenderer(canvas, { onChange: draw });
 } catch {
   $("viewport-error").hidden = false;
-  $("viewport-error").textContent =
-    "3D preview is unavailable. Enable WebGL or try another browser. You can still edit and save presets.";
+  $("viewport-error").textContent = t(
+    "3D preview is unavailable. Enable WebGL or try another browser. You can still edit and save presets.",
+  );
 }
 canvas.addEventListener("webglcontextlost", (event) => {
   event.preventDefault();
   delete $("viewport-error").dataset.positionMissing;
   $("viewport-error").hidden = false;
-  $("viewport-error").textContent =
-    "The 3D connection was interrupted. Reload to restore the preview; your latest scene is saved in this browser.";
+  $("viewport-error").textContent = t(
+    "The 3D connection was interrupted. Reload to restore the preview; your latest scene is saved in this browser.",
+  );
 });
 canvas.addEventListener("webglcontextrestored", () => {
   $("viewport-error").hidden = true;
@@ -160,7 +177,7 @@ function persist() {
   } catch {
     if (!storageWarned) {
       toast(
-        "Autosave is unavailable. Download an editable preset to keep your scene.",
+        t("Autosave is unavailable. Download an editable preset to keep your scene."),
       );
       storageWarned = true;
     }
@@ -170,21 +187,21 @@ function heading() {
   $("scene-title").textContent = current.title;
   $("scene-title").title = current.title;
   $("scene-description").textContent =
-    current.description || "Your scene. Your point of view.";
+    current.description || t("Your scene. Your point of view.");
   $("scene-description").title = $("scene-description").textContent;
   $("scene-badge").textContent = current.dirty
-    ? "Unsaved changes"
+    ? t("Unsaved changes")
     : isPositionOverride(current)
-      ? "Authored · unreviewed"
+      ? t("Authored · unreviewed")
       : current.id?.startsWith("user.")
-        ? "My preset"
+        ? t("My preset")
         : isInteractionPosition(current)
-          ? "Interaction 3D"
+          ? t("Interaction 3D")
           : isArtisticPosition(current)
-            ? "Artistic 3D"
+            ? t("Artistic 3D")
             : isPositionVariant(current, "generated")
-              ? "Approximate 3D"
-            : "Built-in study";
+              ? t("Approximate 3D")
+            : t("Built-in study");
   let source = $("scene-source");
   if (!source) {
     source = document.createElement("p");
@@ -194,7 +211,16 @@ function heading() {
   }
   source.hidden = !current.source;
   source.textContent = current.source
-    ? `Source: SexPoses ${current.source.recordId} · ${isInteractionPosition(current) ? "approximate interaction" : isArtisticPosition(current) ? "artistic interpretation" : current.position?.variant === "generated" ? "generated approximation" : "independent study"}, not a verified reconstruction`
+    ? t("Source: SexPoses {record} · {kind}, not a verified reconstruction", {
+        record: current.source.recordId,
+        kind: isInteractionPosition(current)
+          ? t("approximate interaction")
+          : isArtisticPosition(current)
+            ? t("artistic interpretation")
+            : current.position?.variant === "generated"
+              ? t("generated approximation")
+              : t("independent study"),
+      })
     : "";
   $("position-actions").hidden = !current.source;
 }
@@ -209,7 +235,7 @@ function solve(scene, { frame = false, tour: tourAfter = false } = {}) {
   $("open-export").disabled = true;
   $("position-save").disabled = true;
   $("panel").setAttribute("aria-busy", "true");
-  status("Shaping your study…", true);
+  status(t("Shaping your study…"), true);
   worker.postMessage({ id: request, scene });
 }
 function cancelPositionLoad() {
@@ -230,7 +256,7 @@ function apply(
   heading();
   panel.setText(current.scene.description ?? "");
   panel.setInterpretation([]);
-  panel.setNotes([{ level: "pending", message: "Checking this pose…" }]);
+  panel.setNotes([{ level: "pending", message: t("Checking this pose…") }]);
   $("show-notes").hidden = true;
   panel.setScene(
     current.scene,
@@ -292,14 +318,16 @@ async function selectPosition(value, options = {}) {
     const preset = variant
       ? await positions.variant(entry, variant, library.get(catalogId)?.title)
       : library.resolve(catalogId);
-    if (!preset) throw new Error("Position is not available.");
+    if (!preset) throw new Error(t("Position is not available."));
     selectPreset(preset, { ...options, catalogId });
     if (matchMedia("(max-width: 900px)").matches) canvas.focus();
     return true;
   } catch (error) {
     if (token === positionRequest)
       toast(
-        `3D position unavailable: ${error.message} Your current study was kept. Select the position to retry.`,
+        t("3D position unavailable: {reason} Your current study was kept. Select the position to retry.", {
+          reason: message(error.message),
+        }),
       );
     return false;
   } finally {
@@ -321,13 +349,13 @@ function textScene(text) {
   apply(
     {
       id: null,
-      title: "Custom study",
+      title: t("Custom study"),
       description: text,
-      category: "My studies",
+      category: t("My studies"),
       tags: [],
       position: {
         type: "custom",
-        name: "Custom study",
+        name: t("Custom study"),
         variant: "studio",
       },
       scene: parsed.scene,
@@ -381,13 +409,13 @@ const studio = buildStudio(
       apply(
         {
           id: null,
-          title: "Untitled study",
+          title: t("Untitled study"),
           description: "",
-          category: "My studies",
+          category: t("My studies"),
           tags: [],
           position: {
             type: "custom",
-            name: "Untitled study",
+            name: t("Untitled study"),
             variant: "studio",
           },
           dirty: true,
@@ -395,7 +423,7 @@ const studio = buildStudio(
             actors: [
               {
                 id: "figure-a",
-                label: "Figure A",
+                label: t("Figure {letter}", { letter: "A" }),
                 bodyType: "female",
                 posture: "standing",
                 wearing: ["top", "shorts"],
@@ -449,61 +477,75 @@ function collectNotes(data) {
   const notes = [
     ...(isPositionOverride(current)
       ? [
-          "Locally authored position override. Unreviewed; not a verified reconstruction.",
+          t("Locally authored position override. Unreviewed; not a verified reconstruction."),
         ]
       : []),
     ...inputWarnings,
     ...data.warnings,
     ...data.quality.warnings,
-  ].map((message) => ({
+  ].map((text) => ({
     level: "warning",
-    message,
+    message: message(text),
   }));
   notes.push(
-    ...(data.quality.adjustments ?? []).map((message) => ({
+    ...(data.quality.adjustments ?? []).map((text) => ({
       level: "info",
-      message,
+      message: message(text),
     })),
   );
   if (data.quality.maxDepth > 0.022)
     notes.push({
       level: data.quality.maxDepth > 0.045 ? "error" : "warning",
-      message: `The body model reports ${Math.round(data.quality.maxDepth * 1000)} mm of unresolved overlap. Check the arrangement or adjust the figures.`,
+      message: t(
+        "The body model reports {depth} mm of unresolved overlap. Check the arrangement or adjust the figures.",
+        { depth: Math.round(data.quality.maxDepth * 1000) },
+      ),
     });
   if (data.quality.propPenetration > 0.022)
     notes.push({
       level: "warning",
-      message: `The body model overlaps its support by ${Math.round(data.quality.propPenetration * 1000)} mm.`,
+      message: t("The body model overlaps its support by {depth} mm.", {
+        depth: Math.round(data.quality.propPenetration * 1000),
+      }),
     });
   for (const actor of data.actors)
     if (actor.seatResidual > 0.02) {
-      const kind =
+      const penetration =
         actor.supportMeasurement === "rendered" &&
-        actor.supportPenetration >= actor.seatResidual - 1e-9
-          ? "support penetration"
-          : "support gap";
+        actor.supportPenetration >= actor.seatResidual - 1e-9;
+      const values = {
+        figure: actor.label,
+        size: Math.round(actor.seatResidual * 1000),
+      };
       notes.push({
         level: "warning",
-        message: `${actor.label} has a ${Math.round(actor.seatResidual * 1000)} mm ${actor.supportMeasurement ? `${actor.supportMeasurement} ` : ""}${kind}.`,
+        message: penetration
+          ? t("{figure} has a {size} mm rendered support penetration.", values)
+          : actor.supportMeasurement === "rendered"
+            ? t("{figure} has a {size} mm rendered support gap.", values)
+            : actor.supportMeasurement === "body-model"
+              ? t("{figure} has a {size} mm body-model support gap.", values)
+              : t("{figure} has a {size} mm support gap.", values),
       });
     }
   return notes;
 }
-function workerFailure(message) {
+function workerFailure(reason) {
+  const text = message(reason);
   ready = false;
   completedActors = null;
   $("position-save").disabled = true;
   panel.setSolvedActors([], { complete: false });
   $("show-notes").hidden = false;
   $("panel").setAttribute("aria-busy", "false");
-  status("This pose could not be rendered. Choose a preset to try again.");
-  panel.setNotes([{ level: "error", message }]);
-  toast(message);
+  status(t("This pose could not be rendered. Choose a preset to try again."));
+  panel.setNotes([{ level: "error", message: text }]);
+  toast(text);
 }
 worker.onerror = (event) =>
   workerFailure(
     event.message ||
-      "The pose worker stopped unexpectedly. Reload to restart it.",
+      t("The pose worker stopped unexpectedly. Reload to restart it."),
   );
 worker.onmessage = ({ data }) => {
   if (data.id !== request) return;
@@ -512,14 +554,15 @@ worker.onmessage = ({ data }) => {
     current.source &&
     data.meshes.some((mesh) => mesh.source !== "scanned")
   ) {
-    const message =
-      "Clothed 3D position unavailable because a body model could not load. Reload to retry.";
+    const reason = t(
+      "Clothed 3D position unavailable because a body model could not load. Reload to retry.",
+    );
     if (view) {
-      $("viewport-error").textContent = message;
+      $("viewport-error").textContent = reason;
       $("viewport-error").dataset.positionMissing = "true";
       $("viewport-error").hidden = false;
     }
-    return workerFailure(message);
+    return workerFailure(reason);
   }
   current.scene = clone({
     ...data.scene,
@@ -552,8 +595,13 @@ worker.onmessage = ({ data }) => {
   $("panel").setAttribute("aria-busy", String(!ready));
   status(
     ready
-      ? `Ready · ${data.scene.actors.length} ${data.scene.actors.length === 1 ? "figure" : "figures"}${notes.length ? ` · ${notes.length} pose notes` : ""}`
-      : "Adding the finishing touches…",
+      ? [
+          data.scene.actors.length === 1
+            ? t("Ready · 1 figure")
+            : t("Ready · {count} figures", { count: data.scene.actors.length }),
+          ...(notes.length ? [t("{count} pose notes", { count: notes.length })] : []),
+        ].join(" · ")
+      : t("Adding the finishing touches…"),
     !ready,
   );
   persist();
@@ -615,6 +663,36 @@ $("material").onchange = () => {
   view?.setDisplayMode($("material").value);
   draw();
 };
+// Where the scene is: a room, or the plain studio backdrop. One choice for
+// every scene, kept in this browser rather than in the presets.
+const SETTING_KEY = "poseforge.setting.v1";
+const SETTING_NAMES = {
+  bedroom: t("setting|Bedroom"),
+  living: t("setting|Living room"),
+  studio: t("setting|Studio"),
+};
+$("setting").replaceChildren(
+  ...SETTINGS.map((name) => new Option(SETTING_NAMES[name], name)),
+);
+$("setting").value = (() => {
+  try {
+    const saved = storage.getItem(SETTING_KEY);
+    if (SETTINGS.includes(saved)) return saved;
+  } catch {
+    // An unavailable store falls back to the default.
+  }
+  return SETTINGS[0];
+})();
+view?.setSetting($("setting").value);
+$("setting").onchange = () => {
+  view?.setSetting($("setting").value);
+  try {
+    storage.setItem(SETTING_KEY, $("setting").value);
+  } catch {
+    // The room still changes for this visit.
+  }
+  draw();
+};
 $("save-preset").onclick = () => {
   if (ready) {
     cancelPositionLoad();
@@ -645,7 +723,7 @@ $("position-save").onclick = async () => {
       await loadPositions();
       base = library.get(positionId(snapshot.source.recordId));
     }
-    if (!base) throw new Error("The source position is unavailable.");
+    if (!base) throw new Error(t("The source position is unavailable."));
     if (token !== positionRequest) return;
     studio.openPositionSave(snapshot, base, (preset) => {
       if (token === positionRequest)
@@ -656,7 +734,7 @@ $("position-save").onclick = async () => {
     });
   } catch (error) {
     if (token === positionRequest)
-      toast(`Position override not saved: ${error.message}`);
+      toast(t("Position override not saved: {reason}", { reason: message(error.message) }));
   }
 };
 $("open-export").onclick = () => {
@@ -749,7 +827,7 @@ new ResizeObserver(() => {
 async function exportImage(kind, options = {}) {
   if (!ready || exporting || !current) return;
   exporting = true;
-  const EXPORTING = "Preparing your export…";
+  const EXPORTING = t("Preparing your export…");
   const previousStatus = $("status").textContent;
   const name =
     current.title
@@ -767,7 +845,7 @@ async function exportImage(kind, options = {}) {
       );
     } else {
       if (!view || !$("viewport-error").hidden)
-        throw new Error("A working 3D preview is needed to export an image.");
+        throw new Error(t("A working 3D preview is needed to export an image."));
       // A mobile user can open export from the inspector; restore the stage's dimensions first.
       showRegion("studio");
       await new Promise((resolve) =>
@@ -783,9 +861,9 @@ async function exportImage(kind, options = {}) {
           "image/svg+xml",
         );
     }
-    toast("Your study was downloaded.");
+    toast(t("Your study was downloaded."));
   } catch (e) {
-    toast(`Export failed: ${e.message}`);
+    toast(t("Export failed: {reason}", { reason: message(e.message) }));
   } finally {
     exporting = false;
     // Put back the solve's own summary - unless a new solve has started while
@@ -800,21 +878,22 @@ let restored = null;
 try {
   const draft = JSON.parse(storage.getItem(DRAFT_KEY) ?? "null");
   if (draft?.version === 1 && draft.current) {
-    restored = { ...draft.current, scene: checkScene(draft.current.scene) };
+    const current = currentPreset(draft.current);
+    restored = { ...current, scene: checkScene(current.scene) };
     if (restored.source != null) restored.source = checkSource(restored.source);
     if (typeof restored.title !== "string") restored = null;
   }
 } catch {
   toast(
-    "The last workspace could not be restored. Your saved library is still available.",
+    t("The last workspace could not be restored. Your saved library is still available."),
   );
 }
 if (params.has("q")) textScene(params.get("q"));
 else if (params.has("preset")) {
-  const id = params.get("preset");
+  const id = currentId(params.get("preset"));
   const sourceId = positionSourceId(id);
   if (sourceId) {
-    apply(restored ?? BUILTIN_PRESETS[0], { history: false, frame: true });
+    apply(restored ?? STARTERS[0], { history: false, frame: true });
     await selectPosition(sourceId, {
       history: false,
       variant: params.get("variant"),
@@ -822,9 +901,9 @@ else if (params.has("preset")) {
   } else {
     const preset = library.resolve(id);
     if (!preset)
-      toast("That preset is not in this browser. Opening a starter study.");
-    selectPreset(preset ?? BUILTIN_PRESETS[0], { history: false });
+      toast(t("That preset is not in this browser. Opening a starter study."));
+    selectPreset(preset ?? STARTERS[0], { history: false });
   }
 } else if (restored)
   apply(restored, { history: false, frame: true, tour: true });
-else selectPreset(BUILTIN_PRESETS[0], { history: false });
+else selectPreset(STARTERS[0], { history: false });

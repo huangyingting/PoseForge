@@ -17,6 +17,7 @@ import {
   interactionPositions,
 } from "../core/interactionStudies.js";
 export { artisticManifest, interactionManifest };
+import { localizePreset } from "../i18n/presets.js";
 
 /**
  * Fetch a pack of known size, giving up only when it stops arriving.
@@ -164,17 +165,17 @@ export function createPositionService(options = {}) {
      */
     async variant(entry, variant = "interaction", name = null) {
       if (variant === "interaction")
-        return interactionPreset(entry, await interaction());
+        return localizePreset(interactionPreset(entry, await interaction()));
       if (variant === "artistic")
-        return artisticPreset(entry, await artistic(), name);
+        return localizePreset(artisticPreset(entry, await artistic(), name));
       if (variant === "generated")
-        return generatedPosition(entry, await scenes(), name);
+        return localizePreset(generatedPosition(entry, await scenes(), name));
       throw new Error(`Unknown position variant: ${variant}.`);
     },
     /** Unified source metadata and 3D scenes as playable library positions. */
     async positions() {
       const [index, studies] = await Promise.all([entries(), interaction()]);
-      return interactionPositions(studies, index);
+      return interactionPositions(studies, index).map((preset) => localizePreset(preset));
     },
   };
 }

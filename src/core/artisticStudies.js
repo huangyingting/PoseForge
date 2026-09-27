@@ -93,7 +93,7 @@ export function artisticPreset(entry, studies, name = null) {
     throw new Error("Artistic position unavailable for this source.");
   const title = name
     ? `${name} · Artistic interpretation`
-    : `Artistic interpretation · ${entry.sourceId.toUpperCase()}`;
+    : "Artistic interpretation";
   const preset = checkPreset({
     id: `builtin.artistic.${entry.sourceId}`,
     title,

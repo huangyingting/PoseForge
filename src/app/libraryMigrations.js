@@ -1,4 +1,5 @@
 import { positionOverrideId } from "../core/positionOverrides.js";
+import { currentId, currentPreset } from "../core/datasetImages.js";
 
 const LEGACY_OVERRIDE_PREFIX = "user.reference.sexposes.";
 const OVERRIDE_PREFIX = positionOverrideId("");
@@ -34,25 +35,31 @@ export function migrateLibraryData(data) {
   const current = new Set(
     data.saved.filter((input) => !legacy(input)).map((input) => input?.id),
   );
+  const saved = data.saved
+    .filter((input) => !legacy(input) || !current.has(migrateId(input.id)))
+    .map((input) =>
+      legacy(input)
+        ? {
+            ...input,
+            id: migrateId(input.id),
+            position: {
+              type: "source_override",
+              name: input.title,
+              variant: "override",
+            },
+          }
+        : copiedVariant(input)
+          ? { ...input, position: { ...input.position, variant: "studio" } }
+          : input,
+    );
+  // Positions were once named after their dataset images. The same reasoning
+  // as above applies if a library holds a record under both names: the one
+  // already under the new name is the newer.
+  const renamed = saved.map(currentPreset);
+  const named = new Set(saved.filter((input, i) => renamed[i] === input).map((input) => input?.id));
   return {
     version: 1,
-    saved: data.saved
-      .filter((input) => !legacy(input) || !current.has(migrateId(input.id)))
-      .map((input) =>
-        legacy(input)
-          ? {
-              ...input,
-              id: migrateId(input.id),
-              position: {
-                type: "source_override",
-                name: input.title,
-                variant: "override",
-              },
-            }
-          : copiedVariant(input)
-            ? { ...input, position: { ...input.position, variant: "studio" } }
-            : input,
-      ),
-    favorites: [...new Set(data.favorites.map(migrateId))],
+    saved: renamed.filter((input, i) => input === saved[i] || !named.has(input?.id)),
+    favorites: [...new Set(data.favorites.map((id) => currentId(migrateId(id))))],
   };
 }

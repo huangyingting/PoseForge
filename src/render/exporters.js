@@ -55,6 +55,10 @@ export async function exportPNG(view, { scale = 2, transparent = false, ground =
   const groundMesh = scene.getObjectByName("ground");
   const groundWas = groundMesh?.visible;
   if (groundMesh) groundMesh.visible = ground && !transparent;
+  // A cut-out is of the figures and what they are on, so the room stays behind.
+  const room = scene.getObjectByName("room");
+  const roomWas = room?.visible;
+  if (room) room.visible = roomWas && !transparent;
 
   const background = scene.background;
   if (transparent) scene.background = null;
@@ -81,6 +85,7 @@ export async function exportPNG(view, { scale = 2, transparent = false, ground =
     renderer.setClearAlpha(clearAlpha);
     scene.background = background;
     if (groundMesh) groundMesh.visible = groundWas;
+    if (room) room.visible = roomWas;
     target.dispose();
   }
 }
@@ -172,9 +177,11 @@ function renderDepth(view, width, height) {
   // A car's glass would hide every line behind it, and so would hair cards,
   // which the override draws as the solid strips they are without their
   // cut-out: the head's own outline is what stands for the hair in line art.
+  // The room is not drawn at all, and the override draws both sides of
+  // everything, so the walls the viewport leaves out would be in the way.
   const shells = [];
   scene.traverse((node) => {
-    if ((node.name === "shell" || node.userData.cards) && node.visible) shells.push(node);
+    if ((node.name === "shell" || node.name === "room" || node.userData.cards) && node.visible) shells.push(node);
   });
   for (const node of shells) node.visible = false;
 

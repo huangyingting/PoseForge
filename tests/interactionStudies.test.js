@@ -85,7 +85,7 @@ test("baked scenes solve to their fixed placements with finite geometry", () => 
 
 test("the offline composer reproduces the committed scenes", () => {
   const byId = new Map(classifications.map((c) => [c.id, c]));
-  for (const id of ["img-0001", "img-0032", "img-0140", "img-0252"]) {
+  for (const id of ["kneeling-missionary", "pearly-gates", "wrapped-saint", "juicy-ass"]) {
     const record = pack.studies.find((s) => s.sourceId === id);
     const study = composeStudy(byId.get(id));
     assert.deepEqual(study.scene.actors, record.scene.actors, id);
@@ -217,10 +217,10 @@ test("every interaction is a named, playable library position that can be listed
     assert.equal(listed.length, 1283);
     assert.equal(searchCatalog(index, { scope: "named" }).filter((p) => isBuiltInPosition(p)).length, 1283);
     assert.ok(searchCatalog(index, { query: "reverse cowgirl" }).length >= 61);
-    assert.equal(searchCatalog(index, { query: "img-0001" }).filter(isBuiltInPosition).length, 1);
+    assert.equal(searchCatalog(index, { query: "kneeling-missionary" }).filter(isBuiltInPosition).length, 1);
     assert.deepEqual(
-      searchCatalog(index, { query: names["img-0619"].aliases[0] }).filter(isBuiltInPosition).map((p) => p.source.recordId),
-      ["img-0619"],
+      searchCatalog(index, { query: names["over-the-top"].aliases[0] }).filter(isBuiltInPosition).map((p) => p.source.recordId),
+      ["over-the-top"],
     );
     const one = library.get(positions[0].id);
     assert.equal(one.scene.actors.length, positions[0].scene.actors.length);

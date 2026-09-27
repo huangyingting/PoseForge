@@ -140,7 +140,7 @@ test("categories disclose, filters reset pagination, and search clears without l
   await expect(
     page.getByRole("button", { name: "Filters", exact: true }),
   ).toBeFocused();
-  await page.getByLabel("Search positions").fill("img-0001");
+  await page.getByLabel("Search positions").fill("kneeling-missionary");
   await expect(page.locator(".preset-card")).toHaveCount(1);
   await page.getByRole("button", { name: "Clear search", exact: true }).click();
   await expect(page.getByLabel("Search positions")).toBeFocused();

@@ -25,6 +25,7 @@ const bytes = readFileSync(
 );
 const pack = JSON.parse(bytes);
 const hash = (data) => createHash("sha256").update(data).digest("hex");
+// Rows as the dataset writes them, named by image.
 const row = (id = "img-0001") => ({
   image_id: id,
   source_sha256: "1".repeat(64),
@@ -68,6 +69,15 @@ test("offline importer preserves source identity and deterministic groups withou
   );
   assert.equal(output.data, buildSourceCatalog(text).data);
   assert.ok(!/private|image_path|description_en|contacts/.test(output.data));
+  // Each image comes out as the position it became, named by its title.
+  assert.deepEqual(
+    output.entries.map((e) => [e.id, e.sourceId]),
+    [
+      ["source.sexposes.kneeling-missionary", "kneeling-missionary"],
+      ["source.sexposes.gimlet", "gimlet"],
+    ],
+  );
+  assert.ok(!/img-/.test(output.data));
   second.visual_annotation.participants[0].arms = ["raised"];
   const changed = buildSourceCatalog(
     [first, second].map(JSON.stringify).join("\n"),
@@ -83,6 +93,8 @@ test("malformed inputs and duplicate IDs fail the whole source import", () => {
     () => buildSourceCatalog([row(), row()].map(JSON.stringify).join("\n")),
     /Duplicate/,
   );
+  // An image no position has been named for cannot be indexed.
+  assert.throws(() => buildSourceCatalog(JSON.stringify(row("img-9999"))), /No position is named for img-9999/);
   for (const mutate of [
     (r) => {
       r.visual_annotation = null;
@@ -124,7 +136,7 @@ test("all pages expose every reference exactly once and clamp invalid page reque
 });
 
 test("source search, family, status and annotation grouping compose without claiming unique positions", () => {
-  assert.equal(querySources(pack.entries, { query: "IMG-0001" }).length, 1);
+  assert.equal(querySources(pack.entries, { query: "KNEELING-MISSIONARY" }).length, 1);
   for (const [family, count] of Object.entries(manifest.families))
     assert.equal(querySources(pack.entries, { family }).length, count);
   assert.equal(
@@ -138,9 +150,11 @@ test("source search, family, status and annotation grouping compose without clai
     ),
     1283,
   );
+  // The surface is found in the annotation or in the name: "Titanic (Floor)"
+  // is annotated on a sofa.
   assert.ok(
     querySources(pack.entries, { query: "2 figures floor" }).every(
-      (e) => e.figures === 2 && e.surface === "Floor",
+      (e) => e.figures === 2 && (e.surface === "Floor" || e.sourceId.includes("floor")),
     ),
   );
 });
@@ -189,7 +203,7 @@ test("source loader is lazy, shares requests, retries failure and verifies bytes
   for (const data of [
     bytes.subarray(0, -1),
     Buffer.concat([bytes, Buffer.from(" ")]),
-    Buffer.from(bytes.toString().replace("img-0001", "img-0000")),
+    Buffer.from(bytes.toString().replace("kneeling-missionary", "kneeling-missionarx")),
   ]) {
     const bad = createSourceCatalogLoader({
       fetcher: async () => new Response(data),
@@ -266,7 +280,7 @@ test("source metadata survives preset transfers but verification claims do not",
   );
   assert.throws(
     () =>
-      checkPreset({ ...entry, source: { ...source, recordId: ["img-0001"] } }),
+      checkPreset({ ...entry, source: { ...source, recordId: ["kneeling-missionary"] } }),
     /source reference/,
   );
 });

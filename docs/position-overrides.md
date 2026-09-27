@@ -21,7 +21,7 @@ see the [artistic collection](artistic-collection.md) for the bundled content.
    updates only this source ID; other records, even matching annotations,
    keep their own saved data.
 
-Cards and `?preset=builtin.position.img-0001` links prefer the local override. The
+Cards and `?preset=builtin.position.kneeling-missionary` links prefer the local override. The
 **Authored · unreviewed** filter finds them without creating duplicate position
 cards.
 Authored is a storage/workflow label, not a claim of physical quality, source

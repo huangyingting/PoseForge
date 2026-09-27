@@ -1,24 +1,25 @@
 import { newId } from "./ids.js";
+import { message, t } from "../i18n/index.js";
 
 const POINTS = [
-  ["hand.l", "Left hand"],
-  ["hand.r", "Right hand"],
-  ["forearm.l", "Left forearm"],
-  ["forearm.r", "Right forearm"],
-  ["elbow.l", "Left elbow"],
-  ["elbow.r", "Right elbow"],
-  ["shoulder.l", "Left shoulder"],
-  ["shoulder.r", "Right shoulder"],
-  ["upperArm.l", "Left upper arm"],
-  ["upperArm.r", "Right upper arm"],
-  ["back", "Back"],
-  ["upperBack", "Upper back"],
-  ["waist", "Waist"],
-  ["head", "Head"],
-  ["knee.l", "Left knee"],
-  ["knee.r", "Right knee"],
-  ["foot.l", "Left foot"],
-  ["foot.r", "Right foot"],
+  ["hand.l", t("Left hand")],
+  ["hand.r", t("Right hand")],
+  ["forearm.l", t("Left forearm")],
+  ["forearm.r", t("Right forearm")],
+  ["elbow.l", t("Left elbow")],
+  ["elbow.r", t("Right elbow")],
+  ["shoulder.l", t("Left shoulder")],
+  ["shoulder.r", t("Right shoulder")],
+  ["upperArm.l", t("Left upper arm")],
+  ["upperArm.r", t("Right upper arm")],
+  ["back", t("Back")],
+  ["upperBack", t("Upper back")],
+  ["waist", t("Waist")],
+  ["head", t("Head")],
+  ["knee.l", t("Left knee")],
+  ["knee.r", t("Right knee")],
+  ["foot.l", t("Left foot")],
+  ["foot.r", t("Right foot")],
 ];
 const names = new Map(POINTS);
 const node = (tag, props = {}, children = []) => {
@@ -53,30 +54,32 @@ function selectField(label, values) {
 function verdict(report) {
   if (!report || !Number.isFinite(report.distance))
     return [
-      report ? "Measurement unavailable" : "Waiting for the pose",
+      report ? t("Measurement unavailable") : t("Waiting for the pose"),
       report ? "warning" : "pending",
     ];
   if (report.basis === "rendered") {
-    const gap = `${(report.surfaceGap * 1000).toFixed(report.surfaceGap < 0.01 ? 1 : 0)} mm surface gap`;
+    const gap = t("{size} mm surface gap", {
+      size: (report.surfaceGap * 1000).toFixed(report.surfaceGap < 0.01 ? 1 : 0),
+    });
     if (report.limbIntersects)
-      return ["Contact limbs intersect · adjust the pose", "warning"];
+      return [t("Contact limbs intersect · adjust the pose"), "warning"];
     if (report.intersects)
-      return ["Surfaces intersect · adjust the pose", "warning"];
-    if (report.strength === 0) return [`No pull · ${gap}`, "pending"];
+      return [t("Surfaces intersect · adjust the pose"), "warning"];
+    if (report.strength === 0) return [`${t("No pull")} · ${gap}`, "pending"];
     if (report.surfaceGap <= report.tolerance)
-      return [`Close contact · ${gap}`, "ok"];
+      return [`${t("Close contact")} · ${gap}`, "ok"];
     if (report.reason === "load_bearing")
-      return [`Supporting limb · ${gap}`, "warning"];
-    if (report.unreachable) return [`Out of reach · ${gap}`, "warning"];
+      return [`${t("Supporting limb")} · ${gap}`, "warning"];
+    if (report.unreachable) return [`${t("Out of reach")} · ${gap}`, "warning"];
     if (report.reason === "fixed_channels")
-      return [`Fixed pose · ${gap}`, "warning"];
-    if (report.blocked) return [`Movement limited · ${gap}`, "warning"];
+      return [`${t("Fixed pose")} · ${gap}`, "warning"];
+    if (report.blocked) return [`${t("Movement limited")} · ${gap}`, "warning"];
     return [gap, "warning"];
   }
-  const error = `${Math.round(report.distance * 1000)} mm from target`;
-  if (report.strength === 0) return [`No pull · ${error}`, "pending"];
+  const error = t("{size} mm from target", { size: Math.round(report.distance * 1000) });
+  if (report.strength === 0) return [`${t("No pull")} · ${error}`, "pending"];
   return [
-    `Estimated target · ${error}`,
+    `${t("Estimated target")} · ${error}`,
     report.distance > 0.06 ? "warning" : "pending",
   ];
 }
@@ -86,39 +89,40 @@ export function createContactEditor(onChange) {
   let scene = null;
   let rows = [];
   let actorSignature = "";
-  const mode = selectField("Contact behavior", [
-    ["automatic", "Arrangement + my contacts"],
-    ["custom", "My contacts only"],
+  const mode = selectField(t("Contact behavior"), [
+    ["automatic", t("Arrangement + my contacts")],
+    ["custom", t("My contacts only")],
   ]);
   const help = node("p", { className: "hint" });
   const defaults = node("ul", { className: "contact-defaults" });
   const host = node("div", { className: "contact-list" });
   const empty = node("p", {
     className: "hint",
-    textContent:
-      "No custom contacts yet. Add one to guide a hand or another body part.",
+    textContent: t("No custom contacts yet. Add one to guide a hand or another body part."),
   });
   const add = node("button", {
     type: "button",
     className: "action full",
-    textContent: "+ Add contact",
+    textContent: t("+ Add contact"),
   });
   const root = node(
     "section",
     { className: "contact-editor", id: "contact-editor" },
     [
-      node("h2", { textContent: "Partner contacts" }),
+      node("h2", { textContent: t("Partner contacts") }),
       node("details", { className: "contact-help" }, [
-        node("summary", { textContent: "Contact help" }),
+        node("summary", { textContent: t("Contact help") }),
         node("p", {
           className: "hint",
-          textContent:
+          textContent: t(
             "Choose which parts should meet. A free limb may adjust on either side. Results measure visible surfaces when available; body-model estimates are labeled.",
+          ),
         }),
         node("p", {
           className: "hint",
-          textContent:
+          textContent: t(
             "Support contacts with nonzero pull let a hand hold a mounted figure's supporting knee or forearm off the surface. Rest and grip contacts keep the usual surface support.",
+          ),
         }),
       ]),
       mode.field,
@@ -164,15 +168,15 @@ export function createContactEditor(onChange) {
     rows = [];
     host.replaceChildren();
     for (const [index] of (scene.contacts ?? []).entries()) {
-      const fromActor = selectField("First figure", []);
-      const toActor = selectField("Second figure", []);
-      const fromPoint = selectField("First body part", POINTS);
-      const toPoint = selectField("Second body part", POINTS);
-      const type = selectField("Contact type", [
-        ["rest", "Rest"],
-        ["surface", "Surface"],
-        ["grip", "Grip"],
-        ["support", "Support"],
+      const fromActor = selectField(t("First figure"), []);
+      const toActor = selectField(t("Second figure"), []);
+      const fromPoint = selectField(t("First body part"), POINTS);
+      const toPoint = selectField(t("Second body part"), POINTS);
+      const type = selectField(t("Contact type"), [
+        ["rest", t("contact|Rest")],
+        ["surface", t("contact|Surface")],
+        ["grip", t("contact|Grip")],
+        ["support", t("contact|Support")],
       ]);
       const strength = node("input", {
         type: "range",
@@ -184,15 +188,15 @@ export function createContactEditor(onChange) {
       const readout = node("output", { htmlFor: strength.id });
       const result = node("p", {
         className: "contact-result pending",
-        textContent: "Waiting for the pose",
+        textContent: t("Waiting for the pose"),
       });
       result.setAttribute("role", "status");
       const remove = node("button", {
         type: "button",
         className: "text-button danger",
-        textContent: "Remove contact",
+        textContent: t("Remove contact"),
       });
-      remove.setAttribute("aria-label", `Remove contact ${index + 1}`);
+      remove.setAttribute("aria-label", t("Remove contact {number}", { number: index + 1 }));
       remove.onclick = () => {
         update((next) => next.contacts.splice(index, 1));
         (
@@ -200,18 +204,18 @@ export function createContactEditor(onChange) {
         ).focus();
       };
       const group = node("fieldset", { className: "contact-card" }, [
-        node("legend", { textContent: `Contact ${index + 1}` }),
+        node("legend", { textContent: t("Contact {number}", { number: index + 1 }) }),
         fromActor.field,
         fromPoint.field,
         node("div", {
           className: "contact-direction",
-          textContent: "↔ meets",
+          textContent: t("↔ meets"),
         }),
         toActor.field,
         toPoint.field,
         type.field,
         node("div", { className: "field" }, [
-          node("label", { htmlFor: strength.id, textContent: "Pull strength" }),
+          node("label", { htmlFor: strength.id, textContent: t("Pull strength") }),
           node("div", { className: "contact-strength" }, [strength, readout]),
         ]),
         result,
@@ -270,10 +274,10 @@ export function createContactEditor(onChange) {
       empty.hidden = !!scene.contacts?.length;
       help.textContent =
         scene.actors.length < 2
-          ? "Add a second figure in Figures to make a partner contact."
+          ? t("Add a second figure in Figures to make a partner contact.")
           : mode.select.value === "custom"
-            ? "Only the contacts below influence the pose. An empty list keeps the figures independent."
-            : "The arrangement supplies its own contacts. Your contacts below are added to them.";
+            ? t("Only the contacts below influence the pose. An empty list keeps the figures independent.")
+            : t("The arrangement supplies its own contacts. Your contacts below are added to them.");
       defaults.hidden =
         mode.select.value === "custom" || scene.actors.length < 2;
       defaults.replaceChildren();
@@ -287,7 +291,7 @@ export function createContactEditor(onChange) {
         if (rebuild || signature !== actorSignature) {
           const options = scene.actors.map((actor, i) => [
             i,
-            `${actor.label || "Figure"} (${i + 1})`,
+            `${actor.label || t("Figure")} (${i + 1})`,
           ]);
           row.fromActor.setOptions(options);
           row.toActor.setOptions(options);
@@ -327,7 +331,7 @@ export function createContactEditor(onChange) {
           );
         row.type.select.value = type;
         row.showStrength();
-        row.result.textContent = "Updating the pose…";
+        row.result.textContent = t("Updating the pose…");
         row.result.className = "contact-result pending";
         delete row.result.dataset.measurement;
         delete row.result.dataset.gap;
@@ -342,10 +346,10 @@ export function createContactEditor(onChange) {
       );
       rows.forEach((row, index) => {
         const report = authored.get(index);
-        const [message, state] = report
+        const [text, state] = report
           ? verdict(report)
-          : ["No result for this contact", "warning"];
-        row.result.textContent = message;
+          : [t("No result for this contact"), "warning"];
+        row.result.textContent = text;
         row.result.className = `contact-result ${state}`;
         row.result.dataset.measurement = report?.basis ?? "body-model";
         if (report?.surfaceGap != null)
@@ -355,9 +359,9 @@ export function createContactEditor(onChange) {
       for (const report of reports.filter(
         (report) => report.source === "arrangement",
       )) {
-        const from = scene.actors[report.fromActor]?.label ?? "Figure";
-        const to = scene.actors[report.toActor]?.label ?? "Figure";
-        const [message, state] = verdict(report);
+        const from = scene.actors[report.fromActor]?.label ?? t("Figure");
+        const to = scene.actors[report.toActor]?.label ?? t("Figure");
+        const [text, state] = verdict(report);
         defaults.append(
           node("li", {}, [
             node("span", {
@@ -365,7 +369,7 @@ export function createContactEditor(onChange) {
             }),
             node("span", {
               className: `contact-result ${state}`,
-              textContent: message,
+              textContent: text,
             }),
           ]),
         );

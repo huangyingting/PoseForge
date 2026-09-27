@@ -7,7 +7,14 @@ For independent source-linked editing and bulk imports, see the
 are unreviewed and do not change the committed source snapshot.
 
 **Positions** is the single catalog for the 23 studio presets and all 1,283
-source-linked interaction scenes (`builtin.position.img-NNNN`). Each source
+source-linked interaction scenes (`builtin.position.<name>`, for example
+`builtin.position.kneeling-missionary`). A position's ID is its unique title,
+lower-cased with dashes ("69" and "68" are spelled out, so no ID is a bare
+number). The dataset names its records by image instead (`img-0001`), and
+positions used to carry those IDs; `src/data/dataset-images.json` is the one
+place they remain. The source index is rebuilt from the dataset through it,
+and old deep links, saved libraries, workspace drafts and imported packs are
+renamed through it as they load (`src/core/datasetImages.js`). Each source
 record and its playable **Interaction 3D** scene are merged into one backend
 position object using the shared preset contract: taxonomy in `position`,
 participants in `scene.actors`, interactions in `scene.contacts`, provenance in
@@ -44,7 +51,7 @@ controls reachable. Descriptive contact guidance is under **Contact help**;
 contact controls and measured warnings remain visible.
 
 Search positions by name, alias, broad category, support surface or source ID
-(for example `img-0001`). Each position is titled with its own name (for
+(for example `kneeling-missionary`). Each position is titled with its own name (for
 example `Golden Arch` or `Reverse Cowgirl II`), taken from
 `scripts/data/position-names.json`; descriptions start with the template type
 and explain the classified participant arrangement. All 1,283 source IDs remain
@@ -72,7 +79,7 @@ Source IDs and annotation fingerprints survive preset export and import.
 Association does not generate a reconstruction or confer verification.
 
 Share or reload a position with `?preset=builtin.position.<source-id>`, for
-example `?preset=builtin.position.img-0001`. Add
+example `?preset=builtin.position.kneeling-missionary`. Add
 `&variant=artistic|generated` for an alternate view. Invalid IDs/download
 failures leave a usable prior study.
 Late preview requests cannot replace a newer selection, edited or saved study.
