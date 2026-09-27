@@ -74,7 +74,7 @@ src/core/          no dependencies, runs in plain Node
   solver.js        seating, arrangement, the annealed contact loop
 
 src/nlp/           no dependencies
-  lexicon.js       735 phrases (268 Chinese) → postures, parts, surfaces, …
+  lexicon.js       752 phrases (275 Chinese) → postures, parts, surfaces, …
   archetypes.js    12 named positions with their own phrasings
   parser.js        scanner, subject attachment, scene assembly
 

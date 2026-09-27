@@ -283,7 +283,7 @@ Meshing runs off the main thread, so typing never blocks the viewport.
 
 ## Reading the text
 
-`src/nlp/`. A 735-phrase lexicon plus 12 archetypes ("missionary", "cowgirl",
+`src/nlp/`. A 752-phrase lexicon plus 12 archetypes ("missionary", "cowgirl",
 "spooning") over a catalogue of 21 postures, 11 arrangements and 9 surfaces.
 268 of those phrases are Chinese; `她跪在他身后` parses without spaces.
 

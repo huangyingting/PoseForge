@@ -12,11 +12,11 @@ word"*, which is the single most useful thing this layer does.
 ## Shape
 
 ```
-lexicon.js     735 phrases → { kind, value }
+lexicon.js     752 phrases → { kind, value }
                kinds: posture(185) arrangement(97) part(116) arms(67)
-                      legs(65) surface(70) ref(54) relation(36)
+                      legs(65) surface(87) ref(54) relation(36)
                       build(19) facing(13) stature(9) side(4)
-               268 of those phrases are Chinese
+               275 of those phrases are Chinese
 
 archetypes.js  12 named positions ("missionary", "cowgirl", "spooning"),
                58 phrases between them, each expanding to
