@@ -72,13 +72,13 @@ the app notes this.
 | Template | Records | Pass all checks |
 |---|---:|---:|
 | `cowgirl` | 56 | 56 |
-| `doggy` | 31 | 31 |
+| `doggy` | 30 | 30 |
 | `doggy_low` | 45 | 45 |
 | `edge_head_oral` | 10 | 10 |
 | `edge_missionary` | 41 | 41 |
-| `edge_seated_facing` | 26 | 26 |
+| `edge_seated_facing` | 27 | 27 |
 | `facesitting` | 22 | 22 |
-| `furniture_rear` | 65 | 65 |
+| `furniture_rear` | 66 | 66 |
 | `group_three` | 10 | 10 |
 | `kneeling_missionary` | 111 | 111 |
 | `kneeling_rear_upright` | 15 | 15 |
@@ -100,7 +100,7 @@ the app notes this.
 | `spooning` | 33 | 33 |
 | `squat_cowgirl` | 15 | 15 |
 | `standing_bent_over` | 25 | 25 |
-| `standing_carry` | 18 | 18 |
+| `standing_carry` | 17 | 17 |
 | `standing_facing` | 29 | 29 |
 | `standing_rear` | 14 | 14 |
 | `supine_stack` | 12 | 12 |
@@ -111,12 +111,13 @@ Passing the checks means the declared contacts close, the figures are clear of
 each other and the furniture, and every figure rests on the floor, a surface or
 a partner. It does not mean the scene matches its reference in every detail.
 Each record was also compared with its source image by eye. The remaining
-simplifications are mostly a lean or arch shallower than drawn, a raised or held
-leg shown lower, and props drawn as the nearest one the pack models (a pillow
-stack, bolster or tall ramp as the wedge cushion or dropped). A second piece of
-furniture in the picture is in the scene where something rests on it: the
-chair drawn up to a table (`table_chair`), the wall a partner braces against
-(`wall`) and the footstool a wheelbarrow's hands rest on (`ottoman`).
+simplifications are mostly a lean or arch shallower than drawn and a raised or
+held leg shown lower, where the joint ranges stop them (a spine bends back 36°
+in all, a hip flexes to 135°), and a few props drawn as the nearest one the
+pack models (see [Props](#props)). A second piece of furniture in the picture
+is in the scene where something rests on it: the chair drawn up to a table
+(`table_chair`), the wall a partner braces against (`wall`) and the footstool a
+wheelbarrow's hands rest on (`ottoman`).
 
 ### Records read without a usable picture
 
@@ -159,8 +160,8 @@ shows beyond them, and the build rejects none of it silently:
   the floor alongside a partner lying on it).
 - **Clothes**: `a_wear` and `b_wear` add garments to a role's studio top and
   shorts. The only one used is `cuffs`, a strap above each wrist and ankle, on
-  the six figures the pictures show restrained (`img-0100`, `0389`, `0681`,
-  `0730`, `0822` for A and `img-1058` for B). A name `garments.js` does not
+  the seven figures the pictures show restrained (`img-0100`, `0389`, `0681`,
+  `0730`, `0822`, `0945` for A and `img-1058` for B). A name `garments.js` does not
   know stops the build.
 - **Leg shape**: `a_legs` shapes A's legs where the template leaves them open.
   Where the template's own shape already is the recorded one (a partner lying
@@ -172,6 +173,22 @@ shows beyond them, and the build rejects none of it silently:
   a wheelbarrow's legs on a chair are straight to the ankles or bent over its
   edge, under a partner in a plank the knees come up, and a partner giving
   oral with the knees drawn up together curls on the side.
+- **Lean**: `lean` (`forward`, `back`, `upright`) is the trunk of whichever
+  partner the template leaves free. Sitting on the edge of a table, bed or
+  sofa facing the partner (`edge_seated_facing`), it is A's: `back` tips A back
+  onto the hands, `forward` leans A in. Slouched on a chair, it is the partner's
+  in front. From behind, over furniture or low on the floor (`furniture_rear`,
+  `doggy_low`), and at hips raised high (`supported_inversion`), it is B's. A
+  partner leaning forward is tried leant in, then only bowed at the shoulders,
+  then upright, and keeps the first the bodies and furniture allow (`leanIn`).
+  Spooning already leans the pair together, so only `back` shows there; tied
+  to a pole, `forward` is the head bowed, the chest being in the partner's
+  way. Where the pose fixes the trunk, the recorded lean changes nothing, by
+  design: low from behind facing away (`img-0873`), bent over a car seat
+  (`img-0224`, `0447`), perched on a stool (`img-0531`), over the ball
+  (`img-0486`), kneeling up on a bed face to face with a partner standing
+  (`img-1077`), and in the backbends and bridges (`img-0061`, `0128`, `0156`,
+  `0645`, `0699`, `0724`, `0732`, `0765`, `0791`, `0961`, `1032`, `1157`).
 - **Hands**: `b_hands` (`hips`, `legs`, `shoulders`, `embrace`, `behind`,
   `surface`) becomes hand contacts closed by IK, or for `behind` the arms
   braced back on the hands, where the template leaves B's hands free. A
@@ -179,7 +196,7 @@ shows beyond them, and the build rejects none of it silently:
   wheelbarrow's legs up. Astride a partner lying down, `hips` leaves the hands
   as posed.
 - **Pose details**: `a_pose`, `b_pose` and `c_pose` list named details
-  (`DETAILS` in `scripts/interaction-templates.mjs`, 72 in use across 880
+  (`DETAILS` in `scripts/interaction-templates.mjs`, 72 in use across 878
   records). They cover the arms (`arms_overhead`, `arms_behind_head`,
   `arms_forearms`, `arm_head_l`, …), the head (`head_back`, `head_forward`,
   `head_turn_l`), the trunk (`arch`, `curl`, `twist_l`) and the legs
@@ -218,23 +235,49 @@ visible difference drawn here.
 
 ## Props
 
-Besides the floor, bed, sofa, chair, table and bench, three props are modeled
+Besides the floor, bed, sofa, chair, table and bench, four props are modeled
 in their own shape rather than as a box (see
 [the solver notes](solver.md#shaped-props)):
 
 | Surface | Prop | Records |
 |---|---|---:|
-| `ball` | a 65 cm exercise ball | 27 |
+| `ball` | a 65 cm exercise ball | 28 |
 | `car_seat` | a car's back seat, cushion and raked backrest, inside its cabin | 14 |
-| `wedge` | a 60 cm wedge cushion, 18 cm at its tall end | 10 |
+| `wedge` | a 60 cm wedge cushion, 18 cm at its tall end | 9 |
+| `ramp` | a 75 cm positioning ramp, 38 cm at its tall end | 1 |
 
-Three more are plain boxes, for a second piece of furniture the pictures show:
+The rest are plain boxes, for the furniture and gear the pictures show:
 
 | Surface | Prop | Records |
 |---|---|---:|
 | `ottoman` | a 42 cm footstool | 1 |
 | `wall` | a wall, its face 35 cm behind the scene's origin | 1 |
-| `table_chair` | a 75 cm table with a chair drawn up to it | 2 |
+| `table_chair` | a 75 cm table with a chair drawn up to it | 3 |
+| `swing` | a sex swing: a seat strap 75 cm up, a strap from each end to a bar at 2.1 m | 2 |
+| `swing_low` | the same swing let down to 33 cm, over a partner lying under it | 1 |
+| `sling` | a padded sheet 80 cm up, hung by a chain from each corner | 2 |
+| `pole` | a floor-to-ceiling pole, 20 cm behind the origin | 1 |
+| `stairs` | a flight of 18 cm steps, 28 cm deep | 2 |
+| `pillows` | three bed pillows stacked 45 cm high | 1 |
+| `pillow` | one pillow on the floor, under the hips | 1 |
+| `spreader_bar` | a 1.16 m bar hung on a chain at 1.47 m, the wrists held up and apart | 1 |
+
+A strap, chain, pole or bar is held or leant on, not sat on, so the scene's
+seat height stays at the swing's seat, the sling's sheet or the floor. In the
+swing a partner sits hanging back in the seat, the hands up on its straps,
+facing a partner standing (`img-0009`) or kneeling in front of them for oral
+(`img-0132`); let down low, a rider kneels up astride in it over a partner
+lying on the floor (`img-1083`). In the sling a figure lies face up with the
+legs up either side of the chains (`img-0936`), or face down along it with a
+partner standing at its end (`img-1145`). At the stairs a partner kneels on
+the floor facing up them, the hands on the third step, the other kneeling
+behind (`img-0084`, `img-0381`); at the pole a partner stands with the back to
+it, the arms tied back round it, facing a partner standing in close
+(`img-0369`); at the spreader bar a figure kneels up with the wrists at its
+ends (`img-0999`). Over the pillow stack a partner kneels with the chest on it
+(`img-0206`), on the pillow a figure on the forearms and knees has the hips on
+it (`img-1028`), and up the ramp a partner lies back with the head at its
+tall end, the other kneeling between the legs (`img-0996`).
 
 The car seat sits inside a `shell`: the roof, both doors, the rear glass and
 the backs of the front seats. Nothing rests on it, but every body is fitted and
@@ -244,14 +287,40 @@ line-art and depth exports leave it out. Inside it the car poses are the ones
 the roof allows: kneeling up on the seat, B's back is rounded and the head
 bowed; on a lap, B slides down the seat against its rake and A bows over; a
 partner lying across the seat has the head against the door; and a partner
-receiving oral sits on the seat (`img-0229`) with the other kneeling in the
-footwell in front.
+receiving oral lies back across the seat with the legs raised (`img-0229`),
+the other crouched on the seat at the hips, tipped forward on the knees with
+the feet up behind against the far door, since shins laid flat on the seat
+would go through it.
 
-What remains approximate: a figure bridged back over the ball keeps its arms at
-the ball's sides rather than reaching the floor; the car cabin is a large SUV's
-with the front seats slid all the way forward, roomier than a small car's; the
-wedge is lower than some of the ramps drawn, so a figure lying back up it rests
-only the head and shoulders on it.
+What remains approximate:
+
+- **Arches and raised legs** are as deep as the joint ranges allow and no
+  deeper: the three spine joints bend back 36° in all and a hip flexes to 135°,
+  so a steep backbend, a lean far back or a leg held high is shallower or lower
+  than drawn. A figure bridged back over the ball keeps its hands at the ball's
+  sides rather than reaching the floor for the same reason: with the hips on
+  the ball, the spine and shoulders cannot bend far enough back.
+- **The car** is a large SUV's cabin with the front seats slid all the way
+  forward, sized to the SUV the pictures show and roomier than a small car's.
+  The pictures of a reclined driver's or passenger's front seat are drawn on
+  the back seat of the same cabin, which is the only seat modeled.
+- **The wedge and ramp**: the wedge is lower than some of the blocks drawn, so
+  a figure lying back up it rests only the head and shoulders on it; the one
+  lain back up a tall ramp (`img-0996`) is on the ramp. The two lying face down
+  over a tall block with a partner kneeling behind (`img-0462`, `img-1066`)
+  stay on the wedge: over the ramp's 38 cm the knees no longer reach the floor
+  and the partner cannot kneel in behind the feet. A bolster (`img-0886`) is
+  drawn as the wedge, and a tall wedge stood on end (`img-0189`) is left out,
+  the figure bent over on the floor.
+- **Hung gear** is boxes: a strap or chain hangs straight down and cannot
+  slant to a hand, so the hands hold it where it hangs; the low swing's seat is
+  a strip under the hips alone, so the thighs come forward off it clear of the
+  straps. Props do not move or bend, so none is worn: a spreader bar between
+  the ankles (`img-0945`) is drawn as the cuffs alone, and a swing lain on in
+  a 69 (`img-0635`) is left out, the pair lying on the floor.
+- **Placement**: against the pole the partner stands in contact rather than a
+  step away, and on the stairs `img-0381`'s partner kneels on the floor at
+  their foot rather than on a lower step.
 
 ## Templates
 

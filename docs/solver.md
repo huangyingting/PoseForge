@@ -55,12 +55,13 @@ stand *on the tabletop*. That is why the solve result publishes both and has no
 
 ## Shaped props
 
-Most furniture is a box. Three supports are not, and say so with a `shape`:
+Most furniture is a box. Four supports are not, and say so with a `shape`:
 
 | Surface | Prop | Shape |
 |---|---|---|
 | `ball` | a 65 cm exercise ball | `sphere` |
 | `wedge` | a 60 × 60 cm wedge cushion, 18 cm high at its tall end (−z) | `prism` |
+| `ramp` | the same shape as a positioning ramp, 75 cm long and 38 cm high | `prism` |
 | `car_seat` | a car's back seat: a cushion 1.4 m wide and 40 cm high, and a raked backrest | box + `prism` |
 
 The car seat also carries a `shell`: the roof, both doors, the rear glass and
@@ -75,6 +76,23 @@ Three more supports are plain boxes with a second piece of furniture where the
 pictures show one: `ottoman` (a 42 cm footstool), `wall` (its face 35 cm behind
 the origin) and `table_chair` (a 75 cm table on legs with a chair drawn up to
 its +z side, the seat 46 cm up).
+
+The rest of the props the pictures show are built of boxes too:
+
+| Surface | Prop |
+|---|---|
+| `swing` | a sex swing: a seat strap 75 cm up, a strap from each end of it to a bar at 2.1 m, and the bar's chain |
+| `swing_low` | the same let down, the seat 33 cm up and set back behind the straps, clear above a partner lying under it |
+| `sling` | a padded sheet 80 cm up, lying along z, a chain from each corner to a bar over each end |
+| `pole` | a floor-to-ceiling pole 20 cm behind the origin |
+| `stairs` | four 18 cm steps, each 28 cm deep, rising towards −z; sat on, the first step is the seat |
+| `pillows` | three bed pillows stacked 45 cm high |
+| `pillow` | one pillow, 12 cm high |
+| `spreader_bar` | a bar 1.16 m wide at 1.47 m, hung on a chain, for wrists held up and apart |
+
+A strap, chain or bar is only held or leant on: `height` stays at the seat or
+the floor, so a figure standing or lying on the floor beside one is not lifted
+onto it.
 
 A prism is a convex, counter-clockwise `[z, y]` profile about the prop's centre,
 run across its full width. Every prop still carries the box that bounds it, for

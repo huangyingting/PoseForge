@@ -510,16 +510,23 @@ const SURFACE_WORDS = {
   ground: "floor",
   mat: "floor",
   rug: "floor",
-  // Nothing in the library holds a body in mid-air, so a suspended pose is
-  // solved against the floor and the props are simply absent. Saying "floor"
-  // here is honest about that: the height is right, the rigging is not drawn.
+  // A rig, straps or a harness is no one support the library has, so a pose
+  // suspended from one is solved against the floor and the rigging is simply
+  // absent. Saying "floor" here is honest about that: the height is right, the
+  // rigging is not drawn. A sling, a swing, a pole or a spreader bar named as
+  // such is a prop of its own.
   suspension: "floor",
   suspension_rig: "floor",
-  sling: "floor",
   straps: "floor",
   harness: "floor",
   wall: "floor",
   post: "floor",
+  sling: "sling",
+  swing: "swing",
+  sex_swing: "swing",
+  pole: "pole",
+  spreader_bar: "spreader_bar",
+  spreader: "spreader_bar",
 
   bed: "bed",
   mattress: "bed",
@@ -558,7 +565,7 @@ const SURFACE_WORDS = {
   exercise_ball: "ball",
   gym_ball: "ball",
   wedge: "wedge",
-  ramp: "wedge",
+  ramp: "ramp",
   ottoman: "ottoman",
   footstool: "ottoman",
   pouf: "ottoman",
@@ -566,7 +573,14 @@ const SURFACE_WORDS = {
   platform: "bench",
   block: "bench",
   step: "bench",
-  stairs: "bench",
+  stairs: "stairs",
+  stair: "stairs",
+  staircase: "stairs",
+  steps: "stairs",
+  pillow: "pillow",
+  pillows: "pillows",
+  pillow_stack: "pillows",
+  stacked_pillows: "pillows",
   box: "bench",
   ledge: "bench",
   edge: "bench",

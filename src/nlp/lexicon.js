@@ -212,10 +212,18 @@ add("surface", "bench", ["bench", "long chair", "长凳", "长椅"]);
 add("surface", "ottoman", ["ottoman", "footstool", "pouf", "pouffe", "脚凳", "软凳"]);
 add("surface", "wall", ["against the wall", "against a wall", "on the wall", "wall", "墙", "墙上", "靠墙"]);
 add("surface", "table_chair", ["table and chair", "chair at the table", "desk and chair", "桌椅", "桌子和椅子"]);
+add("surface", "swing", ["sex swing", "love swing", "in a swing", "in the swing", "on a swing", "swing", "秋千", "性爱秋千", "情趣秋千"]);
+add("surface", "sling", ["sex sling", "leather sling", "in a sling", "in the sling", "sling", "吊兜", "性爱吊兜"]);
+add("surface", "pole", ["tied to a pole", "against a pole", "stripper pole", "pole", "钢管", "柱子", "绑在柱子上"]);
+add("surface", "stairs", ["on the stairs", "on the steps", "staircase", "stairs", "stair", "楼梯", "台阶"]);
+add("surface", "pillows", ["stack of pillows", "pile of pillows", "stacked pillows", "pillows", "一叠枕头", "枕头堆", "几个枕头"]);
+add("surface", "pillow", ["on a pillow", "pillow", "枕头"]);
+add("surface", "spreader_bar", ["spreader bar", "spreader", "分腿杆", "分离杆"]);
 add("surface", "ball", [
   "exercise ball", "gym ball", "yoga ball", "swiss ball", "stability ball", "fitness ball",
   "on the ball", "on a ball", "over the ball", "over a ball", "健身球", "瑜伽球", "抗力球",
 ]);
+add("surface", "ramp", ["positioning ramp", "sex ramp", "ramp cushion", "ramp", "斜坡垫", "斜坡"]);
 add("surface", "wedge", ["wedge cushion", "wedge pillow", "sex wedge", "wedge", "楔形垫", "楔形枕", "三角垫"]);
 add("surface", "car_seat", [
   "car seat", "back seat", "backseat", "in the car", "in a car", "car", "车座", "汽车座椅", "后座", "车里", "车上", "车内",

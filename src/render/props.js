@@ -53,6 +53,18 @@ const PALETTE = {
   "car-door": 0x9fb4c2,
   "car-glass": 0x9fb4c2,
   "car-front-seat": 0x53575e,
+  "swing-seat": 0x3f7f86,
+  "swing-strap": 0x4a8e94,
+  "swing-bar": 0x8c9096,
+  "swing-chain": 0x7d8187,
+  sling: 0x3b3a3c,
+  "sling-chain": 0x7d8187,
+  "sling-bar": 0x8c9096,
+  pole: 0xc9b08a,
+  stair: 0xb09a80,
+  pillow: 0xf0e4cc,
+  "spreader-bar": 0x8c9096,
+  chain: 0x7d8187,
   default: 0x9b9b9b,
 };
 

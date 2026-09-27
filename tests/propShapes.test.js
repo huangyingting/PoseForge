@@ -67,8 +67,35 @@ test("every built-in prop is well formed and the new supports resolve by name", 
   assert.equal(resolveSurface("footstool").id, "ottoman");
   assert.equal(resolveSurface("wall").id, "wall");
   assert.equal(resolveSurface("table_chair").id, "table_chair");
+  for (const [name, id] of [
+    ["sex swing", "swing"],
+    ["swing_low", "swing_low"],
+    ["leather sling", "sling"],
+    ["pole", "pole"],
+    ["stairs", "stairs"],
+    ["stack of pillows", "pillows"],
+    ["pillow", "pillow"],
+    ["spreader bar", "spreader_bar"],
+    ["positioning ramp", "ramp"],
+  ])
+    assert.equal(resolveSurface(name).id, id, name);
   assert.equal(SURFACES.ball.height, propTopAt(ball, 0, 0));
   assert.equal(SURFACES.wedge.height, propTopAt(wedge, 0, -0.3));
+  const [ramp] = SURFACES.ramp.props.map(withBounds);
+  close(SURFACES.ramp.height, propTopAt(ramp, 0, -0.375));
+});
+
+test("stairs climb a step at a time, and a swing's straps run from its seat to the bar", () => {
+  // Each tread 18 cm above the last and 28 cm further back.
+  SURFACES.stairs.props.map(withBounds).forEach((step, k) => close(propTopAt(step, 0, 0.06 - 0.28 * k), 0.18 * (k + 1)));
+  for (const name of ["swing", "swing_low"]) {
+    const [seat, ...hung] = SURFACES[name].props.map(withBounds);
+    close(propBox(seat).max[1], SURFACES[name].height);
+    for (const strap of hung.filter((p) => p.kind === "swing-strap")) {
+      close(propBox(strap).min[1], SURFACES[name].height);
+      close(propBox(strap).max[1], 2.1);
+    }
+  }
 });
 
 test("a ball's distance and top follow the sphere, not its bounding box", () => {

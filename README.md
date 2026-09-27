@@ -283,9 +283,9 @@ Meshing runs off the main thread, so typing never blocks the viewport.
 
 ## Reading the text
 
-`src/nlp/`. A 752-phrase lexicon plus 12 archetypes ("missionary", "cowgirl",
-"spooning") over a catalogue of 21 postures, 11 arrangements and 9 surfaces.
-268 of those phrases are Chinese; `她跪在他身后` parses without spaces.
+`src/nlp/`. An 802-phrase lexicon plus 12 archetypes ("missionary", "cowgirl",
+"spooning") over a catalogue of 21 postures, 11 arrangements and 21 surfaces.
+293 of those phrases are Chinese; `她跪在他身后` parses without spaces.
 
 The rules that do the real work:
 
@@ -320,11 +320,13 @@ rather than driven through the floor.
 Surfaces carry **two heights**: `height` is the prop top where a trunk rests,
 `ground` is where feet and knees go. They are equal for things you get on top of
 (floor, bed, sofa) and differ for things you stand beside (chair, table, bench,
-exercise ball, wedge cushion, car seat, ottoman, a table with its chair) — which
-is how someone bent over a table has their chest at 750mm and their feet at 0.
+exercise ball, wedge cushion, ramp, car seat, ottoman, a table with its chair,
+stairs, pillows, a swing or sling) — which is how someone bent over a table has
+their chest at 750mm and their feet at 0. A pole, wall or spreader bar is only
+held or leant on, so both stay at the floor.
 
-Most furniture is a box. The exercise ball is a sphere, and the wedge cushion
-and the car seat's raked backrest are prisms; collision, what is underfoot, the
+Most furniture is a box. The exercise ball is a sphere, and the wedge cushion,
+the ramp and the car seat's raked backrest are prisms; collision, what is underfoot, the
 rendered mesh and its outline all read that shape from one module
 (`src/core/propShapes.js`), so a body lies on the ball's curve rather than its
 bounding cube. The car seat sits inside a see-through cabin whose roof and

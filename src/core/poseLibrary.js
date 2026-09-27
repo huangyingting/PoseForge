@@ -1023,6 +1023,39 @@ export function reconcileArrangement(arrangement, primaryPosture, secondaryPostu
  * shape. A car's back seat is a low cushion with a raked backrest, the rake
  * being why it is a prism rather than the chair's upright box.
  */
+/** A wedge cushion `height` tall at its -z end and `length` long, sloping down to +z. */
+function wedgeOf(height, length) {
+  const [h, l] = [height / 2, length / 2];
+  return {
+    height,
+    ground: 0,
+    props: [{ kind: "wedge", shape: "prism", size: [0.6, height, length], center: [0, h, 0], profile: [[-l, -h], [l, -h], [-l, h]] }],
+  };
+}
+// The straps rise from the ends of the seat, just inside the hands of a
+// figure holding them with the arms up, to a bar clear above those hands.
+const SWING_STRAP = { x: 0.3, z: 0, bar: 2.1 };
+/**
+ * A swing with its seat's top at `top`, the straps up from its ends to the bar.
+ * The seat runs `depth` along z back from the straps, or is centred on them.
+ */
+function swingAt(top, depth = null) {
+  const { x, z, bar } = SWING_STRAP;
+  return {
+    height: top,
+    ground: 0,
+    props: [
+      { kind: "swing-seat", size: [2 * x + 0.03, 0.03, depth ?? 0.3], center: [0, top - 0.015, depth ? z - 0.015 - depth / 2 : z] },
+      ...[-1, 1].map((side) => ({ kind: "swing-strap", size: [0.03, bar - top, 0.03], center: [side * x, (bar + top) / 2, z] })),
+      { kind: "swing-bar", size: [2 * x + 0.06, 0.04, 0.04], center: [0, bar + 0.02, z] },
+      { kind: "swing-chain", size: [0.03, 0.4, 0.03], center: [0, bar + 0.24, z] },
+    ],
+  };
+}
+// Just above the hands of a figure kneeling with the arms up and apart, and
+// as wide as they are.
+const SPREADER_BAR = { y: 1.47, z: 0.06, width: 1.16 };
+
 export const SURFACES = {
   floor: { height: 0, ground: 0, props: [] },
   bed: {
@@ -1088,21 +1121,60 @@ export const SURFACES = {
     props: [{ kind: "ball", shape: "sphere", size: [0.65, 0.65, 0.65], center: [0, 0.325, 0] }],
   },
   // Tall end at -z, like a backrest.
-  wedge: {
-    height: 0.18,
+  wedge: wedgeOf(0.18, 0.6),
+  // A positioning ramp: the same shape, 38 cm tall and 75 cm long.
+  ramp: wedgeOf(0.38, 0.75),
+  // A sex swing hung from above: a seat strap 75 cm up, a strap rising from
+  // each end of it to a bar at 2.1 m, and the chain the bar hangs from.
+  swing: swingAt(0.75),
+  // The same swing let right down, the seat 33 cm up and just clear of a
+  // partner lying under it. It is shallower and set back behind the straps,
+  // under the hips alone of a rider kneeling up in it, so the thighs come
+  // forward off it clear of the straps.
+  swing_low: swingAt(0.33, 0.18),
+  // A sling: a padded sheet 80 cm up, lying along z, a chain rising from each
+  // corner to a bar over each end.
+  sling: {
+    height: 0.8,
     ground: 0,
     props: [
-      {
-        kind: "wedge",
-        shape: "prism",
-        size: [0.6, 0.18, 0.6],
-        center: [0, 0.09, 0],
-        profile: [
-          [-0.3, -0.09],
-          [0.3, -0.09],
-          [-0.3, 0.09],
-        ],
-      },
+      { kind: "sling", size: [0.6, 0.03, 0.9], center: [0, 0.785, 0] },
+      ...[-1, 1].flatMap((x) => [-1, 1].map((z) => ({ kind: "sling-chain", size: [0.02, 1.5, 0.02], center: [x * 0.36, 1.55, z * 0.44] }))),
+      ...[-1, 1].map((z) => ({ kind: "sling-bar", size: [0.76, 0.03, 0.03], center: [0, 2.315, z * 0.44] })),
+    ],
+  },
+  // A floor-to-ceiling pole, 20 cm behind the origin, to stand with the back to.
+  pole: {
+    height: 0,
+    ground: 0,
+    props: [{ kind: "pole", size: [0.07, 2.4, 0.07], center: [0, 1.2, -0.2] }],
+  },
+  // A flight of stairs rising towards -z: 18 cm steps 28 cm deep, the first
+  // step's nosing 20 cm in front of the origin. Sat on, the first step is the seat.
+  stairs: {
+    height: 0.18,
+    ground: 0,
+    props: [0.18, 0.36, 0.54, 0.72].map((top, k) => ({ kind: "stair", size: [1.0, top, 0.28], center: [0, top / 2, 0.06 - 0.28 * k] })),
+  },
+  // Three bed pillows stacked 45 cm high, to kneel at and lie over.
+  pillows: {
+    height: 0.45,
+    ground: 0,
+    props: [0.075, 0.225, 0.375].map((y) => ({ kind: "pillow", size: [0.8, 0.15, 0.5], center: [0, y, 0] })),
+  },
+  // One pillow on the floor, to lie with the hips on.
+  pillow: {
+    height: 0.12,
+    ground: 0,
+    props: [{ kind: "pillow", size: [0.55, 0.12, 0.38], center: [0, 0.06, 0] }],
+  },
+  // A spreader bar hung on a chain, for wrists held up and apart.
+  spreader_bar: {
+    height: 0,
+    ground: 0,
+    props: [
+      { kind: "spreader-bar", size: [SPREADER_BAR.width, 0.035, 0.035], center: [0, SPREADER_BAR.y, SPREADER_BAR.z] },
+      { kind: "chain", size: [0.02, 2.4 - SPREADER_BAR.y, 0.02], center: [0, (2.4 + SPREADER_BAR.y) / 2, SPREADER_BAR.z] },
     ],
   },
   // The back seat of a large SUV, inside its cabin. The `shell` - roof, doors,

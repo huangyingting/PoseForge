@@ -125,6 +125,18 @@ const PROP_COLOUR = {
   "car-door": [0.62, 0.71, 0.76],
   "car-glass": [0.62, 0.71, 0.76],
   "car-front-seat": [0.33, 0.34, 0.37],
+  "swing-seat": [0.25, 0.5, 0.53],
+  "swing-strap": [0.29, 0.56, 0.58],
+  "swing-bar": [0.55, 0.56, 0.59],
+  "swing-chain": [0.49, 0.51, 0.53],
+  sling: [0.23, 0.23, 0.24],
+  "sling-chain": [0.49, 0.51, 0.53],
+  "sling-bar": [0.55, 0.56, 0.59],
+  pole: [0.79, 0.69, 0.54],
+  stair: [0.69, 0.6, 0.5],
+  pillow: [0.94, 0.89, 0.8],
+  "spreader-bar": [0.55, 0.56, 0.59],
+  chain: [0.49, 0.51, 0.53],
 };
 // A car's shell is drawn see-through, over everything else; see the pass below.
 const SHELL_OPACITY = { "car-front-seat": 0.22, default: 0.12 };

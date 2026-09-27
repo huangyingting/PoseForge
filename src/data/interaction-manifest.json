@@ -2,8 +2,8 @@
   "format": "poseforge.interaction-manifest",
   "version": 1,
   "file": "catalog/interaction-studies-v1.json",
-  "bytes": 4365132,
-  "sha256": "ab1c5ef5fb9e900f352338d4aa94997029d3a534d46b8a3375bdf2b7c7e0d818",
+  "bytes": 4365015,
+  "sha256": "f54cf2ea2a9a696fcd676271b0bc1f18f8aa1c7e537cd833712d079686c692c8",
   "records": 1283,
   "distinctScenes": 1283,
   "participants": 2544,
@@ -14,8 +14,8 @@
       "passed": 56
     },
     "doggy": {
-      "records": 31,
-      "passed": 31
+      "records": 30,
+      "passed": 30
     },
     "doggy_low": {
       "records": 45,
@@ -30,16 +30,16 @@
       "passed": 41
     },
     "edge_seated_facing": {
-      "records": 26,
-      "passed": 26
+      "records": 27,
+      "passed": 27
     },
     "facesitting": {
       "records": 22,
       "passed": 22
     },
     "furniture_rear": {
-      "records": 65,
-      "passed": 65
+      "records": 66,
+      "passed": 66
     },
     "group_three": {
       "records": 10,
@@ -126,8 +126,8 @@
       "passed": 25
     },
     "standing_carry": {
-      "records": 18,
-      "passed": 18
+      "records": 17,
+      "passed": 17
     },
     "standing_facing": {
       "records": 29,

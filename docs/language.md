@@ -4,7 +4,7 @@
 dependencies, no network — a lexicon, a scanner, and a set of attachment rules.
 
 That choice is deliberate. The vocabulary is small and closed (21 postures, 11
-arrangements, 9 surfaces), the failure mode of a statistical model here is a
+arrangements, 21 surfaces), the failure mode of a statistical model here is a
 confident wrong answer, and a wrong answer is indistinguishable from a right one
 once it has been rendered. A lookup table can say *"I did not understand this
 word"*, which is the single most useful thing this layer does.
@@ -12,7 +12,7 @@ word"*, which is the single most useful thing this layer does.
 ## Shape
 
 ```
-lexicon.js     752 phrases → { kind, value }
+lexicon.js     802 phrases → { kind, value }
                kinds: posture(185) arrangement(97) part(116) arms(67)
                       legs(65) surface(87) ref(54) relation(36)
                       build(19) facing(13) stature(9) side(4)

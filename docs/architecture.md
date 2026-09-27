@@ -74,7 +74,7 @@ src/core/          no dependencies, runs in plain Node
   solver.js        seating, arrangement, the annealed contact loop
 
 src/nlp/           no dependencies
-  lexicon.js       752 phrases (275 Chinese) → postures, parts, surfaces, …
+  lexicon.js       802 phrases (293 Chinese) → postures, parts, surfaces, …
   archetypes.js    12 named positions with their own phrasings
   parser.js        scanner, subject attachment, scene assembly
 
@@ -178,8 +178,9 @@ What the parser produces and the solver consumes. Every field is optional except
   ],
   relationship: { arrangement, yaw, contactMode: "automatic"|"custom" },
   support:      { surface },            // "floor"|"bed"|"sofa"|"chair"|"table"|"bench"
-                                        // |"ball"|"wedge"|"car_seat"|"ottoman"|"wall"
-                                        // |"table_chair"
+                                        // |"ball"|"wedge"|"ramp"|"car_seat"|"ottoman"|"wall"
+                                        // |"table_chair"|"swing"|"swing_low"|"sling"|"pole"
+                                        // |"stairs"|"pillows"|"pillow"|"spreader_bar"
   contacts: [
     { from: "hand.r", fromActor, to: "forearm.l", toActor, strength, type }
   ],

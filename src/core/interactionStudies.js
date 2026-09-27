@@ -139,13 +139,22 @@ const SURFACE_LABELS = {
   bench: "Bench",
   ball: "Exercise ball",
   wedge: "Wedge cushion",
+  ramp: "Ramp cushion",
   car_seat: "Car seat",
   ottoman: "Ottoman",
   wall: "Wall",
   table_chair: "Table and chair",
+  swing: "Sex swing",
+  swing_low: "Sex swing",
+  sling: "Sling",
+  pole: "Pole",
+  stairs: "Stairs",
+  pillows: "Pillow stack",
+  pillow: "Pillow",
+  spreader_bar: "Spreader bar",
 };
 // Props the source annotations have no word for: the scene's own name is more specific.
-const SPECIFIC_SURFACES = new Set(["ball", "wedge", "car_seat", "ottoman", "wall", "table_chair"]);
+const SPECIFIC_SURFACES = new Set(["ball", "wedge", "ramp", "car_seat", "ottoman", "wall", "table_chair", "swing", "swing_low", "sling", "pole", "stairs", "pillows", "pillow", "spreader_bar"]);
 // How each support reads inside a sentence; the labels above are headings.
 const SURFACE_PHRASES = {
   Floor: "on the floor",
@@ -157,10 +166,18 @@ const SURFACE_PHRASES = {
   Bench: "on a bench",
   "Exercise ball": "on an exercise ball",
   "Wedge cushion": "on a wedge cushion",
+  "Ramp cushion": "on a ramp cushion",
   "Car seat": "on a car's back seat",
   Ottoman: "at an ottoman",
   "Table and chair": "at a table and chair",
   Wall: "against a wall",
+  "Sex swing": "in a sex swing",
+  Sling: "in a sling",
+  Pole: "at a pole",
+  Stairs: "on a stair",
+  "Pillow stack": "over a stack of pillows",
+  Pillow: "on a pillow",
+  "Spreader bar": "under a spreader bar",
   Other: "on another support",
 };
 const POSTURE_LABELS = {

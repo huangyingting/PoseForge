@@ -214,15 +214,59 @@ test("a second piece of furniture in the picture is in the scene: a wall, a tabl
 });
 
 test("in a car the figures stay inside the cabin", () => {
-  // Sitting on the back seat with the partner kneeling in the footwell: the
-  // head clear of the roof, the knees inside the doors.
+  // Lying back across the back seat with the partner crouched on it at the
+  // hips: the heads clear of the roof, the knees inside the doors, and the
+  // feet raised behind against the far door no deeper than a prop may press.
   const car = compose("img-0229");
   assert.equal(car.surface, "car_seat");
-  assert.equal(car.scene.actors[0].posture, "seated");
+  assert.equal(car.scene.actors[0].posture, "supine");
+  assert.ok(Math.hypot(...car.at(1, "mouth").map((n, k) => n - car.at(0, "groin")[k])) < 0.22);
   for (const index of [0, 1]) {
     assert.ok(car.at(index, "head")[1] < 1.42);
-    for (const name of ["knee.l", "knee.r", "ankle.l", "ankle.r"]) assert.ok(Math.abs(car.at(index, name)[0]) < 0.76, `${index} ${name}`);
+    for (const name of ["knee.l", "knee.r"]) assert.ok(Math.abs(car.at(index, name)[0]) < 0.76, `${index} ${name}`);
+    for (const name of ["ankle.l", "ankle.r"]) assert.ok(Math.abs(car.at(index, name)[0]) < 0.79, `${index} ${name}`);
   }
+});
+
+test("where a picture shows a swing, sling, pole, stairs, pillows or a bar, the figures are on it or holding it", () => {
+  const hands = (study, index) => ["l", "r"].map((side) => study.at(index, `hand.${side}`));
+  // Sitting in a swing, the hands up on its straps 30 cm either side.
+  const swing = compose("img-0132");
+  assert.equal(swing.surface, "swing");
+  assert.ok(swing.at(0, "pelvis")[1] > 0.8);
+  for (const hand of hands(swing, 0)) assert.ok(Math.abs(Math.abs(hand[0]) - 0.3) < 0.08 && hand[1] > 1.7);
+  // The same with the partner standing between the legs.
+  assert.equal(compose("img-0009").scene.actors[1].posture, "standing");
+  // Let down low over a partner lying under it, the rider's hands still up on the straps.
+  const low = compose("img-1083");
+  assert.equal(low.surface, "swing_low");
+  assert.ok(low.at(0, "pelvis")[1] < 0.25);
+  for (const hand of hands(low, 1)) assert.ok(hand[1] > 1.3);
+  // In a sling the hips are on its pad, 80 cm up.
+  for (const id of ["img-0936", "img-1145"]) {
+    const sling = compose(id);
+    assert.equal(sling.surface, "sling");
+    assert.ok(sling.at(0, "pelvis")[1] > 0.85, id);
+  }
+  // Kneeling at the foot of the stairs, the hands on the third tread.
+  for (const id of ["img-0381", "img-0084"])
+    for (const hand of hands(compose(id), 0)) assert.ok(Math.abs(hand[1] - 0.54) < 0.05 && hand[2] < -0.36 && hand[2] > -0.64, id);
+  // Tied to a pole, the hands behind it.
+  for (const hand of hands(compose("img-0369"), 0)) assert.ok(hand[2] < -0.2);
+  // The wrists held up at the ends of a spreader bar.
+  for (const hand of hands(compose("img-0999"), 0)) assert.ok(Math.abs(Math.abs(hand[0]) - 0.58) < 0.06 && Math.abs(hand[1] - 1.47) < 0.08);
+  // The chest over a stack of pillows; the hips up on a single one.
+  assert.ok(compose("img-0206").at(0, "chest")[1] > 0.45);
+  assert.ok(compose("img-1028").at(0, "pelvis")[1] > 0.18);
+  // Lying back over a ball, a hand down on the floor.
+  const ball = compose("img-1263");
+  assert.equal(ball.surface, "ball");
+  assert.ok(ball.at(0, "pelvis")[1] > 0.4);
+  assert.ok(Math.min(...hands(ball, 0).map((hand) => hand[1])) < 0.1);
+  // Lying back up the taller ramp, the head on it.
+  const ramp = compose("img-0996");
+  assert.equal(ramp.surface, "ramp");
+  assert.ok(ramp.at(0, "head")[1] > 0.3);
 });
 
 test("where the template's shape is not the recorded one, the legs follow the record", () => {
