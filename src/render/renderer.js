@@ -859,7 +859,15 @@ function buildLights(scene) {
  * @param {{alpha?: boolean, shadows?: boolean}} [options]
  */
 export function createRenderer(canvas, { alpha = false, shadows = true, onChange = () => {} } = {}) {
-  textureListeners.add(onChange);
+  // The shadow map is drawn again only when what it shows can have changed:
+  // see `render`. A texture arriving can, because hair cards and lace cast
+  // through their cut-outs.
+  let shadowsStale = true;
+  const changed = () => {
+    shadowsStale = true;
+    onChange();
+  };
+  textureListeners.add(changed);
   const renderer = new WebGLRenderer({
     canvas,
     antialias: true,
@@ -871,6 +879,8 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
   renderer.toneMappingExposure = 0.95;
   renderer.shadowMap.enabled = shadows;
   renderer.shadowMap.type = PCFSoftShadowMap;
+  renderer.shadowMap.autoUpdate = false;
+  canvas.addEventListener("webglcontextrestored", () => (shadowsStale = true));
 
   const scene = new Scene();
   scene.background = alpha ? null : new Color(0xf1f3ef);
@@ -947,6 +957,7 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
    */
   function setScene({ meshes, props, shell }) {
     lastPayload = { meshes, props, shell };
+    shadowsStale = true;
     clearBodies();
     if (propGroup) {
       disposeProps(propGroup);
@@ -1069,6 +1080,7 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
     lights.key.target.position.copy(focus);
     lights.key.position.copy(focus).add(new Vector3(2.4, 3.2, 2.0));
     lights.key.target.updateMatrixWorld();
+    shadowsStale = true;
   }
 
   /** Orbit the camera around the current focus. */
@@ -1149,13 +1161,23 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
     camera.updateProjectionMatrix();
   }
 
+  /**
+   * Draw a frame. The key light's shadow map is two thousand pixels square and
+   * holds every triangle of both figures, and it is the same map from any
+   * camera: only what casts and the key light decide it. So an orbit or a tour
+   * redraws the figures and not their shadows, and the map is drawn again only
+   * after a new scene, a new framing, a texture, or a wall - with what stands
+   * against it - coming or going.
+   */
   function render() {
-    updateRoom(room, camera);
+    if (updateRoom(room, camera)) shadowsStale = true;
+    if (shadowsStale) renderer.shadowMap.needsUpdate = true;
+    shadowsStale = false;
     renderer.render(scene, camera);
   }
 
   function dispose() {
-    textureListeners.delete(onChange);
+    textureListeners.delete(changed);
     clearBodies();
     if (propGroup) disposeProps(propGroup);
     disposeRoom(room);
@@ -1185,6 +1207,11 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
     dolly,
     resize,
     render,
+    /** Say the shadows need drawing again, for a caller that has hidden or shown something. */
+    invalidateShadows() {
+      shadowsStale = true;
+      renderer.shadowMap.needsUpdate = true;
+    },
     dispose,
     focus,
   };

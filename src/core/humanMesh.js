@@ -36,7 +36,7 @@
  */
 
 import { nodeLocalMatrix, nodeParents, parseGLB, readAccessor } from "./gltf.js";
-import { applyHang, applyHangDirection, bodyDistance, bodyNormal, buildBodyVolumes, poseVolumes, smoothMin } from "./body.js";
+import { applyHang, applyHangDirection, bodyField, buildBodyVolumes, fieldNormal, poseVolumes, smoothMin } from "./body.js";
 import {
   mat4Compose,
   mat4InvertRigid,
@@ -1074,6 +1074,7 @@ export function featureRelief(template, { bodyType = "neutral", bust, build = 1 
   const all = poseVolumes(skeleton, evaluated, buildBodyVolumes(skeleton, { bust }), 0);
   const features = all.filter((volume) => volume.feature);
   if (!features.length) return template;
+  const whole = bodyField(all);
 
   const index = template.submeshes.findIndex((submesh) => submesh.primary);
   if (index < 0) return template;
@@ -1143,7 +1144,8 @@ export function featureRelief(template, { bodyType = "neutral", bust, build = 1 
     // the field by 16mm but sits on three scanned vertices, so the thickening
     // test alone can find a box only 6mm wide and the crest came out scalloped.
     const inCluster = new Set(cluster);
-    const bare = all.filter((volume) => !inCluster.has(volume));
+    const own = bodyField(cluster);
+    const bare = bodyField(all.filter((volume) => !inCluster.has(volume)));
     const shell = Math.max(...cluster.map((volume) => volume.blend));
     const box = { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] };
     let covered = 0;
@@ -1151,8 +1153,8 @@ export function featureRelief(template, { bodyType = "neutral", bust, build = 1 
     for (let v = 0; v < scout[index].positions.length; v += 3) {
       const p = [scout[index].positions[v], scout[index].positions[v + 1], scout[index].positions[v + 2]];
       if (!near(p)) continue;
-      const depth = -bodyDistance(p, cluster);
-      if (depth > -shell || bodyDistance(p, bare) - bodyDistance(p, all) > RELIEF_NOTICE) {
+      const depth = -own(p[0], p[1], p[2]);
+      if (depth > -shell || bare(p[0], p[1], p[2]) - whole(p[0], p[1], p[2]) > RELIEF_NOTICE) {
         for (let axis = 0; axis < 3; axis += 1) {
           const c = template.submeshes[index].positions[v + axis];
           if (c < box.min[axis]) box.min[axis] = c;
@@ -1160,7 +1162,7 @@ export function featureRelief(template, { bodyType = "neutral", bust, build = 1 
         }
       }
       if (depth <= 0) continue;
-      const out = bodyNormal(p, cluster);
+      const out = fieldNormal(own, p);
       covered += 1;
       if (scout[index].normals[v] * out[0] + scout[index].normals[v + 1] * out[1] +
           scout[index].normals[v + 2] * out[2] > 0) agree += 1;
@@ -1222,6 +1224,7 @@ export function featureRelief(template, { bodyType = "neutral", bust, build = 1 
     if (!joint) continue;
     const frame = mat4Multiply(jointWorld[joint.index], joint.inverseBind);
     const near = featureReach(cluster);
+    const own = bodyField(cluster);
 
     // Every drawn vertex this cluster reaches, and whether the surface there
     // faces out of the feature or into it. The `inside` test is what makes this
@@ -1233,10 +1236,10 @@ export function featureRelief(template, { bodyType = "neutral", bust, build = 1 
     for (let v = 0; v < world.length; v += 3) {
       const p = [world[v], world[v + 1], world[v + 2]];
       if (!near(p)) continue;
-      const out = bodyNormal(p, cluster);
+      const out = fieldNormal(own, p);
       const n = [facing[v], facing[v + 1], facing[v + 2]];
       const faces = n[0] * out[0] + n[1] * out[1] + n[2] * out[2];
-      if (-bodyDistance(p, cluster) > 0) {
+      if (-own(p[0], p[1], p[2]) > 0) {
         if (faces > 0) agree += 1;
         else agree -= 1;
       }
@@ -1254,7 +1257,7 @@ export function featureRelief(template, { bodyType = "neutral", bust, build = 1 
     // would be here if `body.js` had never authored a bust. Every volume is a
     // distinct object out of `poseVolumes`, so identity is the whole test.
     const inCluster = new Set(cluster);
-    const bare = all.filter((volume) => !inCluster.has(volume));
+    const bare = bodyField(all.filter((volume) => !inCluster.has(volume)));
 
     for (const hit of covered) {
       // A vertex whose own surface faces *into* the feature is on the far wall
@@ -1282,7 +1285,7 @@ export function featureRelief(template, { bodyType = "neutral", bust, build = 1 
       // The vote above still uses the cluster, and should: there the question
       // is whether a volume is a bulge in this skin or a separate organ in
       // front of it, which is exactly a question about the volume alone.
-      const way = bodyNormal(hit.p, all);
+      const way = fieldNormal(whole, hit.p);
       const agree = Math.max(0, way[0] * hit.n[0] + way[1] * hit.n[1] + way[2] * hit.n[2]);
       if (agree <= 0) continue;
 
@@ -1334,10 +1337,10 @@ export function featureRelief(template, { bodyType = "neutral", bust, build = 1 
       // to the ribs. Off the feature both terms are zero and `smoothMin` returns
       // -k/4, so the rounding costs nothing there either - it is rejected by the
       // same test that rejected a plain zero.
-      const full = surfaceExit(hit.p, hit.n, all, RELIEF_LIMIT);
+      const full = surfaceExit(hit.p, hit.n, whole, RELIEF_LIMIT);
       if (full <= 0) continue;
       const along = full - surfaceExit(hit.p, hit.n, bare, RELIEF_LIMIT);
-      const across = bodyDistance(hit.p, bare) - bodyDistance(hit.p, all);
+      const across = bare(hit.p[0], hit.p[1], hit.p[2]) - whole(hit.p[0], hit.p[1], hit.p[2]);
       const gain = smoothMin(along, across, RELIEF_MERGE);
       if (gain <= 0) continue;
 
@@ -1591,41 +1594,76 @@ function relaxDisplacement(disp, cap, owner, world, indices) {
     neighbour[fill[pairs[e + 1]]++] = pairs[e];
   }
 
+  // Only the vertices the displacement has reached, and the ring round them,
+  // are swept. Everywhere else a pass averages zeros into a zero and leaves the
+  // owner alone, so there is nothing to compute - and on a whole body that is
+  // most of it for most of the hundred passes. The front grows by a ring a pass,
+  // as the motion does. A negative zero counts as moved: the sweep turns it
+  // into a positive one, and skipping it would not.
+  const moved = (v) => !Object.is(disp[v * 3], 0) || !Object.is(disp[v * 3 + 1], 0) || !Object.is(disp[v * 3 + 2], 0);
+  const swept = new Uint8Array(count);
+  const spread = new Uint8Array(count);
+  const front = [];
+  const reach = (v) => {
+    if (!swept[v]) (swept[v] = 1), front.push(v);
+  };
+  const grow = (v) => {
+    if (spread[v]) return;
+    spread[v] = 1;
+    reach(v);
+    for (let e = offset[v]; e < offset[v + 1]; e += 1) reach(neighbour[e]);
+  };
+  for (let v = 0; v < count; v += 1) if (rep[v] === v && moved(v)) grow(v);
+
   // A vertex with no displacement of its own that picks one up from a neighbour
   // needs a bone frame to express it in, and the only sensible one is the frame
   // its donors used. Carried along with the value.
   const next = new Float32Array(disp.length);
+  // Each vertex's travel, taken once a pass rather than once per edge that reads it.
+  const travel = new Float64Array(count);
+  let order = new Int32Array(0);
   for (let pass = 0; pass < RELIEF_SPREAD; pass += 1) {
-    for (let v = 0; v < count; v += 1) {
-      if (rep[v] !== v) continue;
+    // In index order, as the whole sweep went: an owner taken this pass is read
+    // by the vertices after it in the same pass.
+    if (order.length !== front.length) order = Int32Array.from(front).sort();
+    for (let f = 0; f < order.length; f += 1) {
+      const v = order[f];
+      travel[v] = Math.hypot(disp[v * 3], disp[v * 3 + 1], disp[v * 3 + 2]);
+    }
+    for (let f = 0; f < order.length; f += 1) {
+      const v = order[f];
       const from = offset[v];
       const to = offset[v + 1];
       if (to === from) {
         for (let a = 0; a < 3; a += 1) next[v * 3 + a] = disp[v * 3 + a];
         continue;
       }
-      const mean = [0, 0, 0];
+      let mx = 0,
+        my = 0,
+        mz = 0;
       let donor = owner[v];
-      let loudest = owner[v] >= 0 ? Math.hypot(disp[v * 3], disp[v * 3 + 1], disp[v * 3 + 2]) : 0;
+      let loudest = owner[v] >= 0 ? travel[v] : 0;
       for (let e = from; e < to; e += 1) {
         const n = neighbour[e];
-        for (let a = 0; a < 3; a += 1) mean[a] += disp[n * 3 + a];
+        mx += disp[n * 3];
+        my += disp[n * 3 + 1];
+        mz += disp[n * 3 + 2];
         if (owner[n] < 0) continue;
-        const loud = Math.hypot(disp[n * 3], disp[n * 3 + 1], disp[n * 3 + 2]);
-        if (loud > loudest) {
-          loudest = loud;
+        if (travel[n] > loudest) {
+          loudest = travel[n];
           donor = owner[n];
         }
       }
       const share = to - from;
-      for (let a = 0; a < 3; a += 1) {
-        next[v * 3 + a] = disp[v * 3 + a] + RELIEF_RELAX * (mean[a] / share - disp[v * 3 + a]);
-      }
+      next[v * 3] = disp[v * 3] + RELIEF_RELAX * (mx / share - disp[v * 3]);
+      next[v * 3 + 1] = disp[v * 3 + 1] + RELIEF_RELAX * (my / share - disp[v * 3 + 1]);
+      next[v * 3 + 2] = disp[v * 3 + 2] + RELIEF_RELAX * (mz / share - disp[v * 3 + 2]);
       if (donor >= 0) owner[v] = donor;
     }
-    for (let v = 0; v < count; v += 1) {
-      if (rep[v] !== v) continue;
+    for (let f = 0; f < order.length; f += 1) {
+      const v = order[f];
       for (let a = 0; a < 3; a += 1) disp[v * 3 + a] = next[v * 3 + a];
+      if (moved(v)) grow(v);
     }
   }
 
@@ -1929,11 +1967,12 @@ const SKIN_PATCH = { u: 0.15, v: 0.55, width: 0.18, height: 0.16, scale: 1.25 };
  * Distance from an interior point to the first surface crossing along `n`.
  * Sphere tracing, so each step is the largest one that cannot overshoot.
  * Returns 0 for a point that is already outside or that never gets out.
+ * `field` is a `bodyField`.
  */
-function surfaceExit(p, n, set, limit) {
+function surfaceExit(p, n, field, limit) {
   let t = 0;
   for (let step = 0; step < 48; step += 1) {
-    const d = bodyDistance([p[0] + n[0] * t, p[1] + n[1] * t, p[2] + n[2] * t], set);
+    const d = field(p[0] + n[0] * t, p[1] + n[1] * t, p[2] + n[2] * t);
     if (d > -1e-5) return t;
     t -= d;
     if (t > limit) return 0;

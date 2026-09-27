@@ -235,6 +235,52 @@ refract, they read as mottled facets rather than as an iris.
 The eyes also carry their own baked occlusion rather than the field's, since the
 field has no eye socket in it to shade them with.
 
+## Faster, to the same numbers
+
+None of this changes what is computed. The final meshes for a pose hash the
+same before and after, position for position, normal for normal and shade for
+shade; `tests/bodyField.test.js` and `tests/meshDistance.test.js` pin the
+parts.
+
+- **The field is bound once.** `bodyField(volumes)` works out each round
+  cone's own terms - its axis, its length, its taper - once, into one flat
+  array, and leaves the per-point loop only what depends on the point. Term
+  for term and in the same order it is `roundConeDistance` and `smoothMin`, so
+  it is `bodyDistance` to the last bit. Meshing, the occlusion and the feature
+  relief each ask a fixed set of volumes for millions of points.
+- **The relief spreads only where it has reached.** Of `relaxDisplacement`'s
+  hundred passes over the skin, most averaged zeros into zeros. It now sweeps
+  the displaced vertices and the ring round them, a ring further each pass, in
+  the same order the whole sweep went.
+- **The contact tree sorts flat arrays.** `buildTriangleTree` splits each node
+  with a stable merge sort of the centres, which is the order `Array.sort` gave
+  them, ties and all, so it is the same tree without a comparator call for
+  every pair.
+- **The occlusion is shared out.** It is the slowest thing the final pass does,
+  and each vertex reads only its own position and normal and the volumes, so
+  `src/workers/occlusionPool.js` cuts the vertices into runs of 16,384 and has
+  helper workers shade them - the cores less two, from one to six, so two on
+  four cores - and puts back exactly what one thread would have written. A run is
+  handed out only when a helper is free, so a scene given up for a newer one
+  stops soon. Without nested workers the runs are shaded in the body worker.
+- **The shadow map is drawn when it changes.** The key light's map is 2048px
+  square and holds every triangle of both figures, and it is the same from any
+  camera. An orbit or a tour redraws the figures but not the map. It is drawn
+  again after a new scene or framing, a texture arriving (hair cards and lace
+  cast through their cut-outs), or a wall coming or going with what stands
+  against it. Exports that hide the room redraw it before and after.
+
+Measured on kneeling missionary and spooning, on four cores:
+
+| step | before | after |
+|---|---|---|
+| building the dressed templates, first load | 6.6 s | 4.3 s |
+| rendered-surface contact steps | 1.3–2.2 s | 0.5–1.0 s |
+| final-pass occlusion | 2.4–2.7 s | 1.1–1.3 s, across the helpers |
+
+The cached shadow map draws the same pixels as redrawing it every frame, and
+an orbit frame takes about 9% less under software GL.
+
 ## Edge cases
 
 - An empty volume list returns an empty mesh, not a throw.

@@ -79,5 +79,10 @@ test("the walls between the camera and the scene are hidden, with what stands ag
   assert.deepEqual(visible([0.5, 1.6, 0.5]), { "wall-north": true, "wall-south": true, "wall-west": true, "wall-east": true });
   // From behind the west wall, looking east.
   assert.deepEqual(visible([-6, 1.5, 0]), { "wall-north": true, "wall-south": true, "wall-west": false, "wall-east": true });
+  // It says when a wall came or went, and only then: the renderer draws its
+  // shadows again on that, since what stands against a wall casts.
+  assert.equal(updateRoom(room, { position: new Vector3(-6, 1.2, 0.3) }), false);
+  assert.equal(updateRoom(room, { position: new Vector3(4, 2, 5) }), true);
+  assert.equal(updateRoom(null, { position: new Vector3(4, 2, 5) }), false);
   disposeRoom(room);
 });

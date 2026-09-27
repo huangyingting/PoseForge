@@ -9,7 +9,8 @@
  * transfers rather than copies.
  *
  * It answers twice after contact validation. The draft omits final occlusion;
- * the final pass shades the same triangles rather than changing the pose.
+ * the final pass shades the same triangles rather than changing the pose,
+ * sharing that shading out among helper workers (see `occlusionPool.js`).
  * Contact trials and the gap between passes yield so a newer request can
  * cancel work on a scene that is no longer selected. Raw scans, shaped bodies
  * and dressed templates are cached independently of the current pose.
@@ -20,12 +21,14 @@ import { validateScene } from "../core/scene.js";
 import { solveScene } from "../core/solver.js";
 import { propData } from "../core/propShapes.js";
 import { surfaceContactSteps } from '../core/surfaceContacts.js';
+import { supportProps } from "../core/supports.js";
 import { solvedPreview } from '../core/posePreview.js';
 import { buildHumanTemplate, skinHumanMesh } from "../core/humanMesh.js";
 import { readCards, withCards } from "../core/hairCards.js";
 import { createTemplateCache } from "./templateCache.js";
 import { modelFiles } from "../core/bodyModels.js";
-import { buildBodyMesh, fieldOcclusion } from "../render/meshBuilder.js";
+import { buildBodyMesh } from "../render/meshBuilder.js";
+import { occludeParts } from "./occlusionPool.js";
 
 // 30mm draws in around a sixth of the time of the final pass and still reads as
 // the same two people in the same pose; 12mm is where the blends between limbs
@@ -149,7 +152,7 @@ const yieldToQueue = () => new Promise((resolve) => setTimeout(resolve, 0));
  * would detach the template and every later pose would come back empty. They
  * are copied.
  */
-function bodyParts(actor, template, scene, occlusion, resolution) {
+function bodyParts(actor, template, resolution) {
   if (!template) {
     const mesh = buildBodyMesh(actor.volumes, { resolution, ao: true });
     return [
@@ -182,11 +185,7 @@ function bodyParts(actor, template, scene, occlusion, resolution) {
     // A part that brought its own occlusion keeps it - only the eyes do, and
     // only because the field has no socket in it to shade them with. Everything
     // else gets it from the field on the final pass, not on the earlier draft.
-    occlusion: part.occlusion
-      ? part.occlusion.slice()
-      : occlusion
-        ? fieldOcclusion(part.positions, part.normals, scene, FINAL)
-        : null,
+    occlusion: part.occlusion ? part.occlusion.slice() : null,
   }));
 }
 
@@ -206,12 +205,22 @@ function templatesFor(actors) {
   );
 }
 
-/** Package the solved actors as drawable parts, and list their buffers for transfer. */
-async function meshActors(actors, { occlusion, resolution }, transfers, loaded) {
-  const scene = actors.flatMap((actor) => actor.volumes);
+/**
+ * Package the solved actors as drawable parts, and list their buffers for
+ * transfer. Null if `stale()` gave the scene up while it was being shaded.
+ */
+async function meshActors(actors, { occlusion, resolution }, transfers, loaded, stale) {
+  const meshed = actors.map((actor, index) => bodyParts(actor, loaded[index], resolution));
+  if (occlusion) {
+    const scene = actors.flatMap((actor) => actor.volumes);
+    const unshaded = meshed.flat().filter((part) => !part.occlusion);
+    const shaded = await occludeParts(unshaded, scene, FINAL, stale);
+    if (!shaded) return null;
+    unshaded.forEach((part, i) => (part.occlusion = shaded[i]));
+  }
 
   return actors.map((actor, index) => {
-    const parts = bodyParts(actor, loaded[index], scene, occlusion, resolution);
+    const parts = meshed[index];
     for (const part of parts) {
       transfers.push(part.positions.buffer, part.normals.buffer, part.indices.buffer);
       if (part.occlusion) transfers.push(part.occlusion.buffer);
@@ -248,7 +257,8 @@ function summarise(solved) {
   return {
     preview: solvedPreview(solved, 'refined'),
     surface: solved.surface,
-    props: solved.props.map(propData),
+    // What the figures rest on, and the cushions under any left resting on air.
+    props: [...solved.props, ...(solved.supports ?? [])].map(propData),
     shell: (solved.surface.shell ?? []).map(propData),
     quality: {
       maxDepth: solved.quality.maxDepth,
@@ -322,6 +332,8 @@ self.onmessage = async (event) => {
       await yieldToQueue();
       if (current !== id) return;
     }
+    // After the rendered surfaces have settled, so they are built to the figure as drawn.
+    solved.supports = supportProps(solved);
     const refinedAt = performance.now();
 
     const base = {
@@ -363,9 +375,10 @@ self.onmessage = async (event) => {
       solved.actors,
       { occlusion: true, resolution: FINAL },
       fineTransfers,
-      loaded
+      loaded,
+      () => current !== id
     );
-    if (current !== id) return;
+    if (current !== id || !fineMeshes) return;
     self.postMessage(
       {
         ...base,

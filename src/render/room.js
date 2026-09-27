@@ -706,13 +706,18 @@ export function prepareRoom(setting) {
  * A wall's own plane would cull itself - it faces into the room - but what
  * stands against it would not, so the whole wall group is switched off
  * together. A wall is drawn when the camera is on the room's side of it.
+ * Says whether any wall came or went, since what stands against one casts.
  */
 export function updateRoom(room, camera) {
-  if (!room) return;
+  if (!room) return false;
+  let changed = false;
   for (const wall of room.userData.walls) {
     const { axis, at, normal } = wall.userData;
-    wall.visible = (camera.position.getComponent(axis) - at) * normal[axis] > 0;
+    const visible = (camera.position.getComponent(axis) - at) * normal[axis] > 0;
+    changed ||= visible !== wall.visible;
+    wall.visible = visible;
   }
+  return changed;
 }
 
 /** Release the geometry and materials a room owns; the textures are shared. */

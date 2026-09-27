@@ -195,41 +195,108 @@ function boxDistance(a, b) {
   return distance;
 }
 function branch(triangles) {
-  const box = bounds(triangles);
-  if (triangles.length <= 8)
-    return { ...box, triangles, count: triangles.length };
-  const extents = box.max.map((value, k) => value - box.min[k]);
-  const axis = extents.indexOf(Math.max(...extents));
-  triangles.sort((a, b) => a.center[axis] - b.center[axis]);
-  const mid = Math.floor(triangles.length / 2);
-  return {
-    ...box,
-    count: triangles.length,
-    left: branch(triangles.slice(0, mid)),
-    right: branch(triangles.slice(mid)),
-  };
+  // Flat copies of what the split reads: each triangle's box and centre.
+  const n = triangles.length;
+  const boxes = new Float64Array(n * 6);
+  const centres = new Float64Array(n * 3);
+  triangles.forEach((triangle, t) => {
+    for (let k = 0; k < 3; k++) {
+      boxes[t * 6 + k] = triangle.min[k];
+      boxes[t * 6 + 3 + k] = triangle.max[k];
+      centres[t * 3 + k] = triangle.center[k];
+    }
+  });
+  const order = Int32Array.from(triangles.keys()),
+    key = new Float64Array(n);
+  const spare = new Int32Array(n),
+    spareKey = new Float64Array(n);
+
+  // A stable merge sort of one node's range along one axis. It is the order
+  // `Array.sort` on the centres gave, ties and all, so the tree is the same
+  // tree; it is only that it is sorted on flat arrays, without a comparator
+  // called into for every pair.
+  function sortRange(lo, hi, axis) {
+    for (let f = lo; f < hi; f++) key[f] = centres[order[f] * 3 + axis];
+    const RUN = 16;
+    for (let s = lo; s < hi; s += RUN) {
+      const e = Math.min(s + RUN, hi);
+      for (let i = s + 1; i < e; i++) {
+        const k = key[i],
+          o = order[i];
+        let j = i - 1;
+        for (; j >= s && key[j] > k; j--) {
+          key[j + 1] = key[j];
+          order[j + 1] = order[j];
+        }
+        key[j + 1] = k;
+        order[j + 1] = o;
+      }
+    }
+    let [from, fromKey, to, toKey] = [order, key, spare, spareKey];
+    for (let width = RUN; width < hi - lo; width *= 2) {
+      for (let s = lo; s < hi; s += 2 * width) {
+        const m = Math.min(s + width, hi),
+          e = Math.min(s + 2 * width, hi);
+        let i = s,
+          j = m,
+          d = s;
+        while (i < m && j < e) {
+          const next = fromKey[j] < fromKey[i] ? j++ : i++;
+          toKey[d] = fromKey[next];
+          to[d++] = from[next];
+        }
+        for (; i < m; i++, d++) (toKey[d] = fromKey[i]), (to[d] = from[i]);
+        for (; j < e; j++, d++) (toKey[d] = fromKey[j]), (to[d] = from[j]);
+      }
+      [from, fromKey, to, toKey] = [to, toKey, from, fromKey];
+    }
+    if (from !== order) order.set(from.subarray(lo, hi), lo);
+  }
+
+  function node(lo, hi) {
+    const min = [Infinity, Infinity, Infinity],
+      max = [-Infinity, -Infinity, -Infinity];
+    for (let f = lo; f < hi; f++) {
+      const o = order[f] * 6;
+      for (let k = 0; k < 3; k++) {
+        min[k] = Math.min(min[k], boxes[o + k]);
+        max[k] = Math.max(max[k], boxes[o + 3 + k]);
+      }
+    }
+    const count = hi - lo;
+    if (count <= 8) {
+      const leaf = [];
+      for (let f = lo; f < hi; f++) leaf.push(triangles[order[f]]);
+      return { min, max, triangles: leaf, count };
+    }
+    const extents = max.map((value, k) => value - min[k]);
+    const axis = extents.indexOf(Math.max(...extents));
+    sortRange(lo, hi, axis);
+    const mid = lo + Math.floor(count / 2);
+    return { min, max, count, left: node(lo, mid), right: node(mid, hi) };
+  }
+  return node(0, n);
 }
 
 /** Parts are already posed; only supplied triangle indices enter the tree. */
 export function buildTriangleTree(parts) {
   const triangles = [];
-  for (const [partIndex, part] of parts.entries())
-    for (let i = 0; i < part.indices.length; i += 3) {
-      const points = [0, 1, 2].map((k) =>
-        point(part.positions, part.indices[i + k]),
-      );
-      if (!points.flat().every(Number.isFinite)) continue;
-      const triangle = {
+  for (const [partIndex, part] of parts.entries()) {
+    const { positions, indices } = part;
+    for (let i = 0; i < indices.length; i += 3) {
+      const points = [point(positions, indices[i]), point(positions, indices[i + 1]), point(positions, indices[i + 2])];
+      if (!points.every((p) => Number.isFinite(p[0]) && Number.isFinite(p[1]) && Number.isFinite(p[2]))) continue;
+      const [a, b, c] = points;
+      triangles.push({
         part: partIndex,
-        vertices: Array.from(part.indices.slice(i, i + 3)),
+        vertices: [indices[i], indices[i + 1], indices[i + 2]],
         points,
-        center: [0, 1, 2].map(
-          (k) => (points[0][k] + points[1][k] + points[2][k]) / 3,
-        ),
-      };
-      Object.assign(triangle, bounds([triangle]));
-      triangles.push(triangle);
+        center: [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3],
+        min: [Math.min(a[0], b[0], c[0]), Math.min(a[1], b[1], c[1]), Math.min(a[2], b[2], c[2])],
+        max: [Math.max(a[0], b[0], c[0]), Math.max(a[1], b[1], c[1]), Math.max(a[2], b[2], c[2])],
+      });
     }
+  }
   return triangles.length
     ? {
         ...branch(triangles),

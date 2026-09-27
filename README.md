@@ -313,6 +313,10 @@ At 20mm a few triangles do come out inverted, because features that size are
 below the cell. The per-posture pass at 12mm gates on that and is clean.
 
 Meshing runs off the main thread, so typing never blocks the viewport.
+The final pass shares its occlusion out among helper workers, and the shadow
+map is drawn again only when it can have changed, so an orbit costs the figures
+and not their shadows. Every mesh comes out the same to the last bit; see
+[the meshing notes](docs/meshing.md#faster-to-the-same-numbers).
 
 ---
 
@@ -366,6 +370,25 @@ rendered mesh and its outline all read that shape from one module
 (`src/core/propShapes.js`), so a body lies on the ball's curve rather than its
 bounding cube. The car seat sits inside a see-through cabin whose roof and
 doors bodies are kept clear of. See [the solver notes](docs/solver.md#shaped-props).
+
+Some postures are meant to rest on furniture that their template leaves out.
+A partner sitting back with a lover on the lap is a figure on a sofa, but put
+on the floor it keeps the posture and loses the sofa: the buttocks hang
+several centimetres off the boards, the back leans on nothing, and the centre
+of mass is well behind the heels. When the solved scene is drawn,
+`src/core/supports.js` supplies the missing pieces for any figure whose trunk
+is meant to rest on something but whose centre of mass lies outside what holds
+it up:
+- a **floor cushion** raised to the buttocks;
+- behind it, a **wedge** sloped along the back and as wide as the arms beside
+  it allow.
+
+Each piece is built to the body as solved. It touches the figure, sinking in
+8 mm as a cushion gives, and keeps clear of everyone else. No figure is moved
+to fit it. Nothing is added for a figure that is already held up: by the
+surface, by a partner underneath, in a partner's arms, or on its own hands in
+a face-down wheelbarrow. Across the catalogue, 59 of the 1,283 positions gain
+a cushion, a wedge or both.
 
 IK is two-bone analytic with a pole hint, so elbows and knees bend the right
 way instead of wherever the seeding lands them. Out-of-reach targets report
@@ -497,7 +520,7 @@ docs/          design documentation
 dependencies at all** — not even three.js. Everything geometric runs in plain
 Node, which is why the validators exist and why the CLI can render without a
 browser. three.js appears only in `src/render/renderer.js`, `props.js`,
-`exporters.js` and the app. `tests/architecture.test.js` enforces the boundary.
+`exporters.js`, `room.js` and the app. `tests/architecture.test.js` enforces the boundary.
 
 ---
 

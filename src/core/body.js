@@ -1725,6 +1725,85 @@ export function bodyNormal(p, volumes, h = 1e-3) {
   return [dx / length, dy / length, dz / length];
 }
 
+// One volume's terms in a `bodyField`, in this order.
+const FIELD_STRIDE = 14;
+
+/**
+ * `bodyDistance` against one fixed set of volumes, for asking it at many
+ * points: `bodyField(volumes)(x, y, z)`.
+ *
+ * Meshing, occlusion and the feature relief ask the same few volumes for
+ * millions of points, and `roundConeDistance` spent a third of each call
+ * working out terms that belong to the volume and not to the point - its axis,
+ * its length, its taper. Here they are worked out once and kept in one flat
+ * array. What is left is `roundConeDistance` and `smoothMin` term for term, in
+ * the same order, so the answer is `bodyDistance`'s to the last bit.
+ *
+ * The volumes are read once, now. A field made before they move does not
+ * follow them.
+ */
+export function bodyField(volumes) {
+  const terms = new Float64Array(volumes.length * FIELD_STRIDE);
+  volumes.forEach(({ a, b, ra, rb, blend }, i) => {
+    const bax = b[0] - a[0];
+    const bay = b[1] - a[1];
+    const baz = b[2] - a[2];
+    const l2 = bax * bax + bay * bay + baz * baz;
+    const rr = ra - rb;
+    terms.set([a[0], a[1], a[2], bax, bay, baz, l2, ra, rb, rr, l2 - rr * rr, 1 / l2, Math.sign(rr) * rr * rr, blend], i * FIELD_STRIDE);
+  });
+  return (px, py, pz) => {
+    let d = Infinity;
+    for (let o = 0; o < terms.length; o += FIELD_STRIDE) {
+      const pax = px - terms[o];
+      const pay = py - terms[o + 1];
+      const paz = pz - terms[o + 2];
+      const l2 = terms[o + 6];
+      const ra = terms[o + 7];
+      let di;
+      if (l2 < 1e-12) di = Math.sqrt(pax * pax + pay * pay + paz * paz) - ra;
+      else {
+        const bax = terms[o + 3];
+        const bay = terms[o + 4];
+        const baz = terms[o + 5];
+        const a2 = terms[o + 10];
+        const il2 = terms[o + 11];
+        const y = pax * bax + pay * bay + paz * baz;
+        const z = y - l2;
+        const qx = pax * l2 - bax * y;
+        const qy = pay * l2 - bay * y;
+        const qz = paz * l2 - baz * y;
+        const x2 = qx * qx + qy * qy + qz * qz;
+        const y2 = y * y * l2;
+        const z2 = z * z * l2;
+        const k = terms[o + 12] * x2;
+        if (Math.sign(z) * a2 * z2 > k) di = Math.sqrt(Math.max(0, x2 + z2)) * il2 - terms[o + 8];
+        else if (Math.sign(y) * a2 * y2 < k) di = Math.sqrt(Math.max(0, x2 + y2)) * il2 - ra;
+        else di = (Math.sqrt(Math.max(0, x2 * a2 * il2)) + y * terms[o + 9]) * il2 - ra;
+      }
+      if (d === Infinity) d = di;
+      else {
+        const blend = terms[o + 13];
+        if (blend <= 1e-6) d = Math.min(d, di);
+        else {
+          const h = Math.max(0, Math.min(1, 0.5 + (0.5 * (di - d)) / blend));
+          d = di * (1 - h) + d * h - blend * h * (1 - h);
+        }
+      }
+    }
+    return d;
+  };
+}
+
+/** `bodyNormal` for a `bodyField`, to the same last bit. */
+export function fieldNormal(field, p, h = 1e-3) {
+  const dx = field(p[0] + h, p[1], p[2]) - field(p[0] - h, p[1], p[2]);
+  const dy = field(p[0], p[1] + h, p[2]) - field(p[0], p[1] - h, p[2]);
+  const dz = field(p[0], p[1], p[2] + h) - field(p[0], p[1], p[2] - h);
+  const length = Math.hypot(dx, dy, dz) || 1;
+  return [dx / length, dy / length, dz / length];
+}
+
 /** Radius of a round cone at parametric position `t` along its axis. */
 export const radiusAt = (volume, t) => volume.ra + (volume.rb - volume.ra) * t;
 

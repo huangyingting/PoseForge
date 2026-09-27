@@ -63,6 +63,10 @@ const PALETTE = {
   pole: 0xc9b08a,
   stair: 0xb09a80,
   pillow: 0xf0e4cc,
+  // A floor cushion and the wedge behind it, brought for a figure left sitting
+  // or leaning back on nothing (see `supports.js`).
+  cushion: 0xa89684,
+  backrest: 0x9a8876,
   "spreader-bar": 0x8c9096,
   chain: 0x7d8187,
   default: 0x9b9b9b,
@@ -90,7 +94,7 @@ function propMesh(prop) {
   const colour = PALETTE[prop.kind] ?? PALETTE.default;
   const material = new MeshStandardMaterial({
     color: new Color(colour),
-    roughness: prop.kind.startsWith("bed") ? 0.95 : prop.kind === "ball" ? 0.45 : 0.78,
+    roughness: prop.kind.startsWith("bed") || prop.kind === "cushion" || prop.kind === "backrest" ? 0.95 : prop.kind === "ball" ? 0.45 : 0.78,
     metalness: 0,
   });
   const mesh = new Mesh(propGeometry(prop), material);

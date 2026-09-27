@@ -141,6 +141,39 @@ point, or every foot sinks by one radius.
 > `surface.ground` as `undefined` and quietly poisoned every vertex with NaN,
 > which surfaced much later as a blank canvas. Failing at the call is cheaper.
 
+### Furniture a posture is missing
+
+Seating puts the declared supports on the surface, and some authored supports
+are not there. A seated_reclined partner on the floor, with a lover
+reverse-lap, is seated by its heels and hands. The buttocks hang 5–20 cm off
+the floor, the back leans on air, and the centre of mass is up to 80 cm behind
+the feet. Moving the figure would undo the fit the solver found. The missing
+furniture is supplied instead: `src/core/supports.js` runs in the body worker
+after the rendered-surface steps and adds props to draw, never moving a
+figure.
+
+A figure qualifies if it is not carried or mounted, one of its supports is its
+trunk (`BULK_SUPPORTS`: buttocks, back, head…), and its centre of mass is more
+than 5 cm outside the plan bounds of what bears it. That means what touches
+the surface within 3 cm, plus any partner it lies on, measured from above.
+Such a figure gets:
+
+- **a cushion** under the pelvis, if the pelvis is 2.5–30 cm clear of level,
+  empty ground. The cushion is 44 cm square. Its top is the lowest body
+  surface over its footprint plus 8 mm, so it holds up the pelvis first or is
+  not made.
+- **a wedge**, if the figure still overhangs, the trunk leans back at least
+  20°, and its back faces the wedge. A face-down wheelbarrow's chest is held
+  up by its arms, so it gets no wedge. The slope lies on the tangent that
+  touches most of the back behind the cushion's edge. That tangent is tried
+  within ±25° of the spine's line. The wedge rises to the shoulder blades and
+  carries on flat behind them for 16, 8 or 0 cm, whichever is clear. It is as
+  wide as everything else beside it allows: at least 30 cm, at most 60 cm.
+
+Both pieces are shaped props (`shape: "prism"` for the wedge) and are drawn by
+`props.js` like any other. `tests/supports.test.js` pins that they touch, cut
+into nobody else, and are left out where the body is already held.
+
 ## Arrangements
 
 An arrangement positions the second actor relative to the first:

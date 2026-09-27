@@ -925,7 +925,7 @@ export const isRecumbent = (posture) =>
   Math.abs(posture.spineDir[1]) < 0.35 && posture.rootHeight < 0.14;
 
 /** Supports that are the trunk itself rather than something the trunk stands on. */
-const BULK_SUPPORTS = new Set(["upperBack", "buttocks", "head", "chest", "hips", "shoulders"]);
+export const BULK_SUPPORTS = new Set(["upperBack", "buttocks", "head", "chest", "hips", "shoulders"]);
 
 /**
  * Whether a posture is one a partner could hold up.

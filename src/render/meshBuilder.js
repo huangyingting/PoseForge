@@ -27,7 +27,7 @@
  * that makes it materially worse cannot pass unnoticed.
  */
 
-import { bodyDistance, bodyNormal, volumesBounds } from "../core/body.js";
+import { bodyField, fieldNormal, volumesBounds } from "../core/body.js";
 
 /** Cells per side of a culling block. */
 const BLOCK = 8;
@@ -68,11 +68,17 @@ function volumeBounds(volume) {
  * reach once grown by both its blend radius and that reach - which means any
  * volume absent from a cell was already too far to move the fold for any sample
  * taken from inside it. Bins keep the volumes in list order, because
- * `bodyDistance` folds its smooth minimum sequentially.
+ * `bodyDistance` folds its smooth minimum sequentially, and each is handed back
+ * as its `bodyField`.
  */
 function binVolumes(volumes, reach, cell = 0.25) {
   const bins = new Map();
-  const key = (i, j, k) => `${i},${j},${k}`;
+  // A number while the block is within 16 km of the origin, which is every
+  // scene: a string key costs more to build and hash than the lookup it serves.
+  const key = (i, j, k) =>
+    Math.abs(i) < 65536 && Math.abs(j) < 65536 && Math.abs(k) < 65536
+      ? ((k + 65536) * 131072 + (j + 65536)) * 131072 + (i + 65536)
+      : `${i},${j},${k}`;
   for (const volume of volumes) {
     const [lo, hi] = volumeBounds(volume);
     const from = lo.map((v) => Math.floor((v - reach) / cell));
@@ -88,6 +94,7 @@ function binVolumes(volumes, reach, cell = 0.25) {
       }
     }
   }
+  for (const [id, bin] of bins) bins.set(id, bodyField(bin));
   return (p) =>
     bins.get(key(Math.floor(p[0] / cell), Math.floor(p[1] / cell), Math.floor(p[2] / cell)));
 }
@@ -135,8 +142,8 @@ function sampleField(volumes, origin, step, dims) {
     }
   }
 
-  const point = [0, 0, 0];
   for (const [key, subset] of bins) {
+    const distance = bodyField(subset);
     const bx = key % blocks[0];
     const by = Math.floor(key / blocks[0]) % blocks[1];
     const bz = Math.floor(key / (blocks[0] * blocks[1]));
@@ -144,13 +151,12 @@ function sampleField(volumes, origin, step, dims) {
     const y1 = Math.min((by + 1) * BLOCK, ny);
     const z1 = Math.min((bz + 1) * BLOCK, nz);
     for (let k = bz * BLOCK; k < z1; k += 1) {
-      point[2] = origin[2] + k * step;
+      const z = origin[2] + k * step;
       for (let j = by * BLOCK; j < y1; j += 1) {
-        point[1] = origin[1] + j * step;
+        const y = origin[1] + j * step;
         const row = (k * ny + j) * nx;
         for (let i = bx * BLOCK; i < x1; i += 1) {
-          point[0] = origin[0] + i * step;
-          field[row + i] = bodyDistance(point, subset);
+          field[row + i] = distance(origin[0] + i * step, y, z);
         }
       }
     }
@@ -187,6 +193,7 @@ export function buildBodyMesh(volumes, options = {}) {
   const dims = [0, 1, 2].map((axis) => Math.ceil((hi[axis] - lo[axis]) / step) + 2);
   const [nx, ny, nz] = dims;
   const field = sampleField(volumes, lo, step, dims);
+  const whole = bodyField(volumes);
 
   const at = (i, j, k) => field[(k * ny + j) * nx + i];
 
@@ -240,9 +247,9 @@ export function buildBodyMesh(volumes, options = {}) {
         // what buys the extra apparent resolution over marching cubes, and it
         // costs one field evaluation per vertex.
         if (relax > 0) {
-          const d = bodyDistance(p, volumes);
+          const d = whole(p[0], p[1], p[2]);
           if (Math.abs(d) < step) {
-            const n = bodyNormal(p, volumes);
+            const n = fieldNormal(whole, p);
             const shift = Math.max(-step, Math.min(step, d)) * relax;
             p[0] -= n[0] * shift;
             p[1] -= n[1] * shift;
@@ -271,7 +278,7 @@ export function buildBodyMesh(volumes, options = {}) {
     sample[0] = positionArray[v * 3];
     sample[1] = positionArray[v * 3 + 1];
     sample[2] = positionArray[v * 3 + 2];
-    const n = bodyNormal(sample, volumes);
+    const n = fieldNormal(whole, sample);
     normals[v * 3] = n[0];
     normals[v * 3 + 1] = n[1];
     normals[v * 3 + 2] = n[2];
@@ -385,21 +392,25 @@ export function fieldOcclusion(positions, normals, volumes, step, { strength = 0
     p[0] = positions[v * 3];
     p[1] = positions[v * 3 + 1];
     p[2] = positions[v * 3 + 2];
-    const subset = nearby(p);
-    if (!subset) {
+    const distance = nearby(p);
+    if (!distance) {
       out[v] = 1;
       continue;
     }
-    const base = bodyDistance(p, subset);
+    const base = distance(p[0], p[1], p[2]);
     let occlusion = 0;
     let total = 0;
     let weight = 1;
     for (let s = 1; s <= 5; s += 1) {
       const step_ = s * step * 1.6;
-      p[0] = positions[v * 3] + normals[v * 3] * step_;
-      p[1] = positions[v * 3 + 1] + normals[v * 3 + 1] * step_;
-      p[2] = positions[v * 3 + 2] + normals[v * 3 + 2] * step_;
-      const free = (bodyDistance(p, subset) - base) / step_;
+      const free =
+        (distance(
+          positions[v * 3] + normals[v * 3] * step_,
+          positions[v * 3 + 1] + normals[v * 3 + 1] * step_,
+          positions[v * 3 + 2] + normals[v * 3 + 2] * step_,
+        ) -
+          base) /
+        step_;
       occlusion += weight * Math.max(0, Math.min(1, 1 - free));
       total += weight;
       weight *= 0.62;

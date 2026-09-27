@@ -222,3 +222,48 @@ test("refitting rebuilds changed or partially missing topology without stale tri
   );
   assert.deepEqual(refitTriangleTree(null, [part]), initial);
 });
+
+test("the hierarchy splits where a stable sort of the centres splits it, ties and all", () => {
+  // The builder sorts on flat arrays rather than calling `Array.sort`, and
+  // that is only safe if every node comes out holding the same triangles in
+  // the same order. A grid is all ties: whole rows of centres share a value.
+  const reference = (triangles) => {
+    const box = (list) => ({
+      min: [0, 1, 2].map((k) => Math.min(...list.flatMap((t) => t.points.map((p) => p[k])))),
+      max: [0, 1, 2].map((k) => Math.max(...list.flatMap((t) => t.points.map((p) => p[k])))),
+    });
+    const branch = (list) => {
+      const { min, max } = box(list);
+      if (list.length <= 8) return { min, max, triangles: list, count: list.length };
+      const extents = max.map((value, k) => value - min[k]);
+      const axis = extents.indexOf(Math.max(...extents));
+      list.sort((a, b) => a.center[axis] - b.center[axis]);
+      const mid = Math.floor(list.length / 2);
+      return { min, max, count: list.length, left: branch(list.slice(0, mid)), right: branch(list.slice(mid)) };
+    };
+    return branch(triangles);
+  };
+  const leaves = (node) => (node.triangles ? [node.triangles.map((t) => t.vertices)] : [...leaves(node.left), ...leaves(node.right)]);
+  const positions = [];
+  const indices = [];
+  for (let i = 0; i < 30; i++) for (let j = 0; j < 30; j++) positions.push(i * 0.01, (i * j) % 3 === 0 ? 0 : 0.002, j * 0.01);
+  for (let i = 0; i < 29; i++)
+    for (let j = 0; j < 29; j++) {
+      const v = i * 30 + j;
+      indices.push(v, v + 1, v + 30, v + 1, v + 31, v + 30);
+    }
+  const parts = [{ positions, indices }, { positions, indices: indices.slice(0, 600) }];
+  const built = buildTriangleTree(parts);
+  // The triangles as the builder takes them in: part by part, in index order.
+  const original = parts.flatMap((part, index) =>
+    Array.from({ length: part.indices.length / 3 }, (_, t) => {
+      const vertices = part.indices.slice(t * 3, t * 3 + 3);
+      const points = vertices.map((v) => positions.slice(v * 3, v * 3 + 3));
+      return { part: index, vertices, points, center: [0, 1, 2].map((k) => (points[0][k] + points[1][k] + points[2][k]) / 3) };
+    }),
+  );
+  const expected = reference(original);
+  assert.deepEqual(leaves(built), leaves(expected));
+  const boxes = (node) => [node.min, node.max, node.count, ...(node.triangles ? [] : [...boxes(node.left), ...boxes(node.right)])];
+  assert.deepEqual(boxes(built), boxes(expected));
+});

@@ -76,6 +76,9 @@ export async function exportPNG(view, { scale = 2, transparent = false, ground =
   try {
     renderer.setClearAlpha(transparent ? 0 : 1);
     renderer.setRenderTarget(target);
+    // Without the room, what stood in it casts nothing: the viewport's shadows
+    // are drawn again for the export, and again for the viewport after it.
+    view.invalidateShadows?.();
     renderer.render(scene, camera);
     const pixels = new Uint8Array(target.width * target.height * 4);
     renderer.readRenderTargetPixels(target, 0, 0, target.width, target.height, pixels);
@@ -86,6 +89,7 @@ export async function exportPNG(view, { scale = 2, transparent = false, ground =
     scene.background = background;
     if (groundMesh) groundMesh.visible = groundWas;
     if (room) room.visible = roomWas;
+    view.invalidateShadows?.();
     target.dispose();
   }
 }
@@ -203,6 +207,8 @@ function renderDepth(view, width, height) {
   scene.overrideMaterial = override;
   scene.background = background;
   for (const node of shells) node.visible = true;
+  // Drawn without the room and the cards, so the shadows are not the viewport's.
+  view.invalidateShadows?.();
   target.dispose();
 
   // Back to metres, in the same units the projected points are measured in.
