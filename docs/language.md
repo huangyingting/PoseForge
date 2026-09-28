@@ -12,11 +12,11 @@ word"*, which is the single most useful thing this layer does.
 ## Shape
 
 ```
-lexicon.js     802 phrases → { kind, value }
-               kinds: posture(185) arrangement(97) part(116) arms(67)
-                      legs(65) surface(87) ref(54) relation(36)
-                      build(19) facing(13) stature(9) side(4)
-               275 of those phrases are Chinese
+lexicon.js     876 phrases → { kind, value }
+               kinds: posture(185) surface(137) part(116) arrangement(99)
+                      expression(72) arms(67) legs(65) ref(54)
+                      relation(36) build(19) facing(13) stature(9) side(4)
+               328 of those phrases are Chinese
 
 archetypes.js  12 named positions ("missionary", "cowgirl", "spooning"),
                58 phrases between them, each expanding to
@@ -108,6 +108,12 @@ the pair standing face to face.
 
 **A posture that needs a prop supplies one.** "Bent over" with no surface named
 would otherwise be bent over thin air.
+
+**A kiss is a face too.** A face said outright — "a smiling woman", "她闭着眼"
+— belongs to the nearest person, like any modifier. Otherwise a kiss that lands
+somewhere ("kissing her neck") shuts the kisser's eyes and purses their lips,
+and one that lands nowhere ("两人亲吻") is mouth on mouth, so both of them
+wear it.
 
 ## A turn is relative
 

@@ -1,5 +1,8 @@
 /** Clothed table-supported pair: fixed support figure and a validated partner guide.
- * All original supports and contacts are retained on the unchanged table. */
+ * All original supports and contacts are retained on the unchanged table.
+ * Her hands are braced flat on the top beside her head, palms about 2.5mm off
+ * it and the fingertips short of the front edge, rather than hanging a hand's
+ * breadth above it as they first were. */
 export const TABLE_SUPPORT_LAYOUT = {
   referenceHeight: 0.75,
   surfaces: ["table"],
@@ -53,19 +56,19 @@ export const TABLE_SUPPORT_LAYOUT = {
           rotation: 0,
         },
         shoulder_l: {
-          flexion: 142.98240489847922,
-          abduction: 53.158409030581346,
-          rotation: 71.30228607981677,
+          flexion: 111.723,
+          abduction: 61.72,
+          rotation: 60.108,
         },
         elbow_l: {
-          flexion: 85.4900451194048,
+          flexion: 125.389,
           abduction: 0,
           rotation: 0,
         },
         wrist_l: {
-          flexion: -37.99225549278238,
-          abduction: 34.58238297677067,
-          rotation: -15,
+          flexion: -48.857,
+          abduction: 31.991,
+          rotation: 14.878,
         },
         clavicle_r: {
           flexion: 0,
@@ -73,19 +76,19 @@ export const TABLE_SUPPORT_LAYOUT = {
           rotation: 0,
         },
         shoulder_r: {
-          flexion: 142.99830283185491,
-          abduction: 53.0484172237368,
-          rotation: 71.35507727550014,
+          flexion: 111.739,
+          abduction: 61.715,
+          rotation: 60.115,
         },
         elbow_r: {
-          flexion: 85.68400593861475,
+          flexion: 125.375,
           abduction: 0,
           rotation: 0,
         },
         wrist_r: {
-          flexion: -37.646121242830816,
-          abduction: 34.86441598667711,
-          rotation: -15,
+          flexion: -48.577,
+          abduction: 31.911,
+          rotation: 15,
         },
         hip_l: {
           flexion: 75.58828320770454,
@@ -129,8 +132,8 @@ export const TABLE_SUPPORT_LAYOUT = {
         },
       },
       hands: {
-        l: "relaxed",
-        r: "relaxed",
+        l: "brace",
+        r: "brace",
       },
     },
     {

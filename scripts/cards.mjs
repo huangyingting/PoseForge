@@ -1,13 +1,16 @@
 /**
- * The hair cards, read in node: the headless renderer and the validators put
- * them on the templates they load, as the viewport's worker does.
+ * The hair cards and the faces, read in node: the headless renderer and the
+ * validators put them on the templates they load, as the viewport's worker
+ * does.
  */
 
 import { readFileSync } from "node:fs";
 import { readCards, withCards } from "../src/core/hairCards.js";
+import { withFaces } from "../src/core/faces.js";
 import { decodePNG } from "./atlas.mjs";
 
 const HAIR = new URL("../assets/models/hair/", import.meta.url);
+const FACES = new URL("../assets/models/faces/", import.meta.url);
 let shared = null;
 const fitted = new Map();
 const textures = new Map();
@@ -22,6 +25,19 @@ export function withBodyCards(template, mesh) {
     shared ??= readCards(readFileSync(new URL("cards.bin", HAIR)));
     if (!fitted.has(mesh)) fitted.set(mesh, readCards(readFileSync(new URL(`cards-${mesh}.bin`, HAIR))));
     return withCards(template, shared, fitted.get(mesh));
+  } catch (error) {
+    if (error.code === "ENOENT") return template;
+    throw error;
+  }
+}
+
+/**
+ * `template` with `mesh`'s expressions on it, or unchanged if it has none -
+ * which leaves its face at rest.
+ */
+export function withBodyFaces(template, mesh) {
+  try {
+    return withFaces(template, readCards(readFileSync(new URL(`faces-${mesh}.bin`, FACES))));
   } catch (error) {
     if (error.code === "ENOENT") return template;
     throw error;

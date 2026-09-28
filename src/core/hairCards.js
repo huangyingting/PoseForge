@@ -276,6 +276,8 @@ export function cardSubmesh(template, trim, { name, colour }) {
     // the texture by name (theirs to find), and the factor that brings its
     // stretched grey back to an average of one.
     cards: { texture: meta.texture, gain: meta.gain },
+    // Which trim it is, for what moves it after it is made (see `withExpression`).
+    trim,
     positions,
     normals,
     uvs,

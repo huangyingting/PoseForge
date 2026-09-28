@@ -5,6 +5,7 @@ import {
   landmarkSurface,
   resolveLandmark,
 } from "./landmarks.js";
+import { backFirstShape } from "./handPose.js";
 import { LIMB_CHAINS, solveTwoBoneIK } from "./ik.js";
 import { CHANNELS } from "./skeleton.js";
 import { clamp, quatRotate, v3dot, v3sub } from "./math.js";
@@ -169,17 +170,20 @@ function topology(template, definition) {
  * would part or flatten, and measured as solid the cards hold a supine head
  * off the bed and call a cheek on a hip a crossing. So a template drawn with
  * cards is measured with the shell that `withHair` fits under them instead,
- * which is a surface - the one a template without cards is drawn with.
+ * which is a surface - the one a template without cards is drawn with. The
+ * teeth and the tongue are behind the lips, which meet whatever they meet
+ * first, and are not measured at all.
  */
 const measuredTemplates = new WeakMap();
 function measured(template) {
-  if (!template?.hairShell) return template;
+  const mouth = template?.submeshes.some((part) => part.mouth);
+  if (!template?.hairShell && !mouth) return template;
   if (!measuredTemplates.has(template))
     measuredTemplates.set(template, {
       ...template,
       submeshes: [
-        ...template.submeshes.filter((part) => !part.cards),
-        template.hairShell,
+        ...template.submeshes.filter((part) => !(template.hairShell && part.cards) && !part.mouth),
+        ...(template.hairShell ? [template.hairShell] : []),
       ],
     });
   return measuredTemplates.get(template);
@@ -627,6 +631,39 @@ function handBodyReach(actor, targetActor, contact, chain) {
     pole: quatRotate(actor.pose.root.quaternion, [chain.side, 0, 1]),
     twist: -outward * 75,
   };
+}
+
+/**
+ * Resting hands that reached what they touch back first, and the shape each
+ * takes instead - see `backFirstShape`. The palm faces along the hand bone's
+ * x axis, away from it on the left hand and along it on the right, where the
+ * rig mirrors; every bundled body model is drawn that way round. What the hand
+ * touches lies towards the other end of the contact's closest pair of points.
+ */
+function backFirstHands(solved, measurements) {
+  const turns = [];
+  solved.contacts.forEach((contact, i) => {
+    const gap = measurements[i];
+    if (contact.strength <= 0 || !gap || gap.intersects || !(gap.distance > 1e-4))
+      return;
+    for (const end of ["from", "to"]) {
+      const landmark = resolveLandmark(contact[end], contact[`${end}Side`]);
+      if (landmark?.base !== "hand") continue;
+      const actor = solved.actors[contact[`${end}Actor`]];
+      const side = landmark.side;
+      const toward =
+        end === "from" ? v3sub(gap.to, gap.from) : v3sub(gap.from, gap.to);
+      const matrix =
+        actor.evaluated.matrices[actor.skeleton.boneIndex(landmark.bone)];
+      const facing =
+        ((side === "r" ? 1 : -1) * v3dot(matrix.slice(0, 3), toward)) /
+        gap.distance;
+      const shape = backFirstShape(actor, side, facing);
+      if (shape && !turns.some((turn) => turn.actor === actor && turn.side === side))
+        turns.push({ actor, side, shape });
+    }
+  });
+  return turns;
 }
 
 /** Mutates the solved rig, never the template or independent rendered vertices. */
@@ -1393,6 +1430,45 @@ export function* surfaceContactSteps(
     }
     // Always query the final state again: another contact may move the same arm.
     measurements = solved.contacts.map(query);
+    // Last of all, because it needs each arm where it finally is: a resting
+    // hand that arrived back first lies flat rather than closing on nothing.
+    // Its fingers straighten towards the partner, so the new shape is kept only
+    // if nothing it touches is crossed, nothing met comes apart and no
+    // clearance is worse than it was.
+    let handSafety = null;
+    for (const { actor, side, shape } of backFirstHands(solved, measurements)) {
+      const kept = actor.hands;
+      handSafety ??= measureSurfaceSafety(solved, query);
+      actor.hands = { ...kept, [side]: shape };
+      refresh(actor);
+      const candidate = solved.contacts.map(query);
+      const after = measureSurfaceSafety(solved, query);
+      yield { steps };
+      if (
+        candidate.some(
+          (value, k) =>
+            (value?.intersects && !measurements[k]?.intersects) ||
+            (measurements[k]?.distance <= SURFACE_CONTACT_TOLERANCE &&
+              !(value?.distance <= SURFACE_CONTACT_TOLERANCE)),
+        ) ||
+        [
+          "maxDepth",
+          "maxSelfDepth",
+          "maxBodyDepth",
+          "propPenetration",
+          "totalDepth",
+        ].some((key) => after[key] > handSafety[key] + 1e-8)
+      ) {
+        actor.hands = kept;
+        refresh(actor);
+        continue;
+      }
+      measurements = candidate;
+      handSafety = after;
+      adjustments.push(
+        `${actor.label ?? actor.id}: the ${side === "l" ? "left" : "right"} hand arrived back first, so it lies flat rather than cupped.`,
+      );
+    }
     const targetDistances = measureContactTargets(solved);
     const previous = solved.quality.contactDetail;
     const detail = solved.contacts.map((contact, i) => {

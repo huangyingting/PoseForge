@@ -410,6 +410,22 @@ add("build", 1.0, ["average build", "medium build", "普通身材"]);
 add("stature", "tall", ["tall", "taller", "高", "高个"]);
 add("stature", "short", ["short", "shorter", "petite", "矮", "矮个"]);
 
+// What the face is doing, see EXPRESSIONS. A kiss is not here: "kissing" is a
+// mouth, and the parser reads a mouth as a kiss on whoever it belongs to.
+add("expression", "neutral", ["expressionless", "blank face", "blank expression", "面无表情"]);
+add("expression", "soft", ["relaxed", "calm", "at ease", "放松", "平静", "安详"]);
+add("expression", "smile", ["smiling", "smiles", "smile", "微笑", "笑着", "笑"]);
+add("expression", "laugh", ["laughing", "laughs", "laugh", "大笑", "哈哈大笑"]);
+add("expression", "tender", ["tender", "tenderly", "affectionate", "温柔", "深情"]);
+add("expression", "shy", ["shy", "shyly", "bashful", "blushing", "害羞", "羞涩", "脸红"]);
+add("expression", "pleasure", ["moaning", "moans", "in pleasure", "呻吟", "享受", "愉悦"]);
+add("expression", "ecstasy", ["ecstasy", "ecstatic", "in ecstasy", "climaxing", "orgasm", "陶醉", "高潮", "欲仙欲死"]);
+add("expression", "closed", ["eyes closed", "eyes shut", "closed eyes", "闭眼", "闭着眼", "闭着眼睛", "闭上眼睛"]);
+add("expression", "surprise", ["surprised", "shocked", "惊讶", "吃惊"]);
+add("expression", "focused", ["focused", "concentrating", "专注", "认真"]);
+add("expression", "effort", ["straining", "grimacing", "吃力", "用力", "咬牙"]);
+add("expression", "smirk", ["smirking", "smirks", "smirk", "坏笑", "邪笑"]);
+
 // ---------------------------------------------------------------------------
 // Words that carry no geometry
 //

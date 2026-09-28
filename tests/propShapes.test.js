@@ -8,6 +8,7 @@ import {
   propDistance,
   propOutline,
   propProblem,
+  propShape,
   propTopAt,
   propTriangles,
   withBounds,
@@ -272,6 +273,41 @@ test("rendered balls and wedges are the solver's shapes, drawn in place", () => 
     mesh.geometry.boundingBox.min.toArray().forEach((n, k) => close(n, min[k], 1e-6));
     mesh.geometry.boundingBox.max.toArray().forEach((n, k) => close(n, max[k], 1e-6));
   }
+});
+
+test("furniture is drawn as it is made, inside the box the solver leans on", () => {
+  const surfaces = Object.values(SURFACES).filter((surface) => surface.props.some((p) => propShape(p) === "box"));
+  let made = 0;
+  for (const surface of surfaces) {
+    const props = surface.props;
+    buildProps(props, { ground: false }).children.forEach((mesh, i) => {
+      const prop = props[i];
+      if (!Array.isArray(mesh.material)) return;
+      made += 1;
+      assert.equal(mesh.userData.shape, "box");
+      assert.deepEqual(mesh.position.toArray(), prop.center);
+      mesh.geometry.computeBoundingBox();
+      const { min, max } = mesh.geometry.boundingBox;
+      const half = prop.size.map((s) => s / 2);
+      // The top is the box's own and nothing is past its sides; only the floor
+      // is below it, for what stands under a box that does not reach it.
+      [0, 2].forEach((k) => {
+        assert.ok(min.getComponent(k) >= -half[k] - 1e-6 && max.getComponent(k) <= half[k] + 1e-6, prop.kind);
+      });
+      close(max.y, half[1], 1e-6);
+      assert.ok(min.y >= -prop.center[1] - 1e-6 && min.y <= -half[1] + 1e-6, `${prop.kind} ${min.y}`);
+      // Its lines are still the box's twelve edges.
+      assert.equal(mesh.userData.edges.length, 12);
+      for (const edge of mesh.userData.edges)
+        for (const point of edge)
+          point.forEach((n, k) => close(Math.abs(n - prop.center[k]), half[k], 1e-9));
+      // Every material has triangles, and every triangle a material.
+      const groups = mesh.geometry.groups;
+      assert.equal(groups.reduce((sum, g) => sum + g.count, 0), mesh.geometry.index.count);
+      assert.deepEqual([...new Set(groups.map((g) => g.materialIndex))].sort(), mesh.material.map((_, k) => k));
+    });
+  }
+  assert.ok(made >= 8, `${made} pieces`);
 });
 
 test("a car's back seat sits inside a see-through shell that bodies are fitted against but never rest on", () => {

@@ -51,6 +51,7 @@ test("default appearance and explicit equivalent settings have one immutable key
       hair: DEFAULT_HAIR[bodyType],
       wearing: ["shorts", "top", "top"],
       outfit: "black",
+      expression: "soft",
     };
     assert.equal(humanTemplateKey(implicit), humanTemplateKey(explicit));
     assert.deepEqual(implicit.wearing, ["top", "shorts"]);
@@ -63,6 +64,11 @@ test("default appearance and explicit equivalent settings have one immutable key
   assert.equal(
     humanTemplateKey({ model: "elf" }),
     humanTemplateKey({ model: "asian" }),
+  );
+  // And an expression nobody baked is the resting face.
+  assert.equal(
+    humanTemplateKey({ expression: "grimace" }),
+    humanTemplateKey({ expression: "soft" }),
   );
 });
 
@@ -89,6 +95,8 @@ test("real template changes stay distinct while pose, skin tone and metadata do 
     { wearing: ["top"] },
     { wearing: [] },
     { outfit: "navy" },
+    { expression: "smile" },
+    { expression: "neutral" },
   ])
     assert.notEqual(
       humanTemplateKey({ ...source, ...change }),

@@ -61,6 +61,11 @@ which tours the current position; with reduced motion requested it starts off.
 default) or a **living room**, or back on the plain **studio** backdrop. A
 room has a board floor and a rug under the figures, and a window with
 curtains, lamps, pictures, plants, a nightstand or a bookcase along its walls.
+The boards and the furniture have a wood grain, the walls are painted plaster
+with the roller's stipple in it, and curtains, sheets and upholstery are woven
+cloth. The furniture the figures use is built as furniture: a bed is a
+mattress on a divan with feet, a sofa has its seat and back cushions on a frame,
+and a chair or a table has legs and rails under its top.
 It is sized to the scene, so nothing in it stands where the figures or their
 props do. The walls between the camera and the figures are left out as it
 orbits. PNG export keeps the room, and transparent PNG leaves only the figures.
@@ -71,11 +76,23 @@ with five times the triangles. They change the face, the body's shape and the
 skin photograph, never the pose: the skeleton and the collision field are the
 body type's, so every contact measures the same.
 **Hair** is drawn as MakeHuman's own textured hair cards, with brows and
-lashes, fitted to each body. **Outfit** dresses a figure in the
+lashes, fitted to each body. **Expression** sets the face: at ease (the
+default), a smile, a laugh, tender, shy, pleasure, ecstasy, a kiss, eyes
+closed, surprise, focused, strain or a smirk, posed in MakeHuman on each body's
+own face; a figure whose mouth is on its partner kisses unless told otherwise,
+and a description can say it ("a smiling woman", "她闭着眼"). An open mouth
+shows MakeHuman's teeth and tongue, in the shade of the mouth.
+**Outfit** dresses a figure in the
 studio top and shorts, underwear, a bikini, lingerie (lace bra and thong,
 stockings and garter belt), swim briefs, boxer briefs or a leather jockstrap
 and harness; **Top**, **Bottom** and **Extras** change one piece at a time.
-Clothes are cut from the body's own surface, so they fit and move with it.
+Clothes are cut from the body's own surface, so they fit and move with it,
+and bridge the hollows they would stretch across rather than following the skin
+down into them. They are drawn as cloth - a jersey knit, ribbed bands, creases
+across the body, leather's grain, lace standing off its net - and skin has
+pores, fine creases and a thin sheen, and each eye a painted iris.
+A resting hand cups what it touches, unless the only reach the figures leave
+arrives back first, as a standing embrace's does; then it lies flat instead.
 Saved libraries use IndexedDB, migrate legacy data without deleting the backup,
 and accept up to **5,000 presets / 32 MB** (whichever limit is reached first).
 The unified catalog uses bounded 24-card pages. Position metadata and interaction

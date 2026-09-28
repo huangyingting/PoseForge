@@ -290,6 +290,24 @@ test("coupled hand-to-back reaches clear complete arms without worsening unrelat
   );
 });
 
+test("resting hands that reach a back back first lie flat against it without new collisions", () => {
+  const solved = solveScene(checkScene(standingPair()));
+  assert.deepEqual(solved.actors[1].hands, { l: "cup", r: "cup" });
+  refineSurfaceContacts(solved, forScene(solved));
+  assert.deepEqual(solved.actors[1].hands, { l: "lay", r: "lay" });
+  for (const side of ["left", "right"])
+    assert.ok(
+      solved.quality.adjustments.includes(
+        `Figure B: the ${side} hand arrived back first, so it lies flat rather than cupped.`,
+      ),
+    );
+  assert.equal(solved.quality.unmetContacts, 0);
+  assert.ok(
+    solved.quality.figureSurfaces.every((pair) => pair.intersects === false),
+  );
+  assert.equal(solved.quality.maxBodyDepth, 0);
+});
+
 test("standing body contacts close with complete figure clearance and preserved support and wrist frames", () => {
   const solved = solveScene(checkScene(standingPair())),
     bodies = forScene(solved);

@@ -1,9 +1,11 @@
 import { featureRelief } from "../core/humanMesh.js";
 import { withGarments } from "../core/garments.js";
 import { withHair } from "../core/hair.js";
+import { withExpression } from "../core/faces.js";
 import {
   humanBodyOptions,
   humanBodyKey,
+  humanExpression,
   humanTemplateKey,
 } from "./templateKey.js";
 
@@ -18,6 +20,7 @@ export function createTemplateCache(
     relieve = featureRelief,
     dress = withGarments,
     addHair = withHair,
+    express = withExpression,
   } = {},
 ) {
   for (const value of [bodyCapacity, templateCapacity])
@@ -48,7 +51,8 @@ export function createTemplateCache(
     const body = humanBodyOptions(spec);
     const wearing = spec.wearing?.slice(),
       outfit = spec.outfit,
-      hair = spec.hair;
+      hair = spec.hair,
+      expression = humanExpression(spec);
     const bodyKey = humanBodyKey(body);
     if (!bodies.has(bodyKey))
       remember(
@@ -66,7 +70,9 @@ export function createTemplateCache(
         wearing,
         colour: outfit,
       });
-      return addHair(clothed, { bodyType: body.bodyType, style: hair });
+      // The face last, on everything it moves: the skin, and the brows and
+      // lashes the hair put on it.
+      return express(addHair(clothed, { bodyType: body.bodyType, style: hair }), expression);
     });
     return remember(templates, templateCapacity, key, template);
   };

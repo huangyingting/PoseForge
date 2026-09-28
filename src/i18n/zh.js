@@ -343,6 +343,21 @@ const ui = {
   "East Asian, about 22, finer": "东亚，约 22 岁，精细",
   Hair: "发型",
   "— for the body —": "— 按体型 —",
+  Expression: "表情",
+  Still: "平静",
+  "At ease": "放松",
+  Smile: "微笑",
+  Laugh: "大笑",
+  Tender: "温柔",
+  Shy: "害羞",
+  Pleasure: "愉悦",
+  Ecstasy: "陶醉",
+  Kiss: "亲吻",
+  "Eyes closed": "闭眼",
+  Surprise: "惊讶",
+  Focused: "专注",
+  Strain: "用力",
+  Smirk: "坏笑",
   Outfit: "服装",
   "— nothing —": "— 无 —",
   "Top & shorts": "上衣和短裤",
@@ -838,6 +853,7 @@ const terms = {
   grip: "抓握",
   fist: "握拳",
   open: "张开",
+  lay: "轻贴",
   spread: "五指张开",
   point: "指向",
   pinch: "捏",
@@ -848,6 +864,20 @@ const terms = {
   flexed: "勾脚",
   tucked: "收拢",
   tiptoe: "踮脚",
+  // expressions ("neutral" is the body type's; the picker labels its own)
+  soft: "放松",
+  smile: "微笑",
+  laugh: "大笑",
+  tender: "温柔",
+  shy: "害羞",
+  pleasure: "愉悦",
+  ecstasy: "陶醉",
+  kiss: "亲吻",
+  closed: "闭眼",
+  surprise: "惊讶",
+  focused: "专注",
+  effort: "用力",
+  smirk: "坏笑",
 };
 
 // The words in brackets after a position's name.
@@ -893,6 +923,10 @@ const messages = {
     "在核实渲染后的接触、支撑和完整间隙后，采用了引导式初始姿势。",
   "adjusted the standing stance to improve body contacts while preserving hand placement.":
     "在保持手部位置的同时调整了站姿，以改善身体接触。",
+  "the left hand arrived back first, so it lies flat rather than cupped.":
+    "左手是以手背先碰到对方的，因此改为平贴而非托握。",
+  "the right hand arrived back first, so it lies flat rather than cupped.":
+    "右手是以手背先碰到对方的，因此改为平贴而非托握。",
   "adjusted seated support against the rendered seat and floor while preserving foot placement.":
     "在保持双脚位置的同时，依据渲染后的座面和地面调整了坐姿支撑。",
   "adjusted kneeling support against the rendered surface while preserving foot frames and contacted hands.":
@@ -1165,6 +1199,10 @@ const patterns = [
     (m) => `无法加载扫描人体 ${m[1]} 的头发（${m[2]}）；改为绘制较简单的外壳。`,
   ],
   [
+    /^Could not load the expressions for the (.+) scanned body \((.*)\); drawing its face at rest instead\.$/,
+    (m) => `无法加载扫描人体 ${m[1]} 的表情（${m[2]}）；改为绘制静止的面部。`,
+  ],
+  [
     /^Could not load the (.+) scanned body \((.*)\); drawing the collision field instead\.$/,
     (m) => `无法加载扫描人体 ${m[1]}（${m[2]}）；改为绘制碰撞场。`,
   ],
@@ -1180,6 +1218,7 @@ const patterns = [
   [/^unknown body type "(.+)", used neutral$/, (m) => `未知的体型“${m[1]}”，已改用中性`],
   [/^no such body model "(.+)", used the default$/, (m) => `没有人体模型“${m[1]}”，已改用默认模型`],
   [/^unknown hair "(.+)", used the default for this body$/, (m) => `未知的发型“${m[1]}”，已改用该体型的默认发型`],
+  [/^unknown expression "(.+)", left to the pose$/, (m) => `未知的表情“${m[1]}”，交由姿势决定`],
   [/^cannot make (.+), left off$/, (m) => `无法制作 ${m[1]}，已省略`],
   [/^already wearing something there, left off (.+)$/, (m) => `该部位已有穿着，已省略 ${m[1]}`],
   [/^(.+) needs? a bust to hold, left off$/, (m) => `${m[1]} 需要胸部支撑，已省略`],

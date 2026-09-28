@@ -237,6 +237,22 @@ rollback. Specified channels remain exact through refinement and cancellation;
 unmodified channels can still participate in a correction. A fixed arm may leave
 an unreachable or movement-limited target, which remains reported normally.
 
+### Hands that arrive back first
+
+A resting contact cups the hand (`rest` → `cup` in `handPose.js`), which assumes
+the palm is what touches. After every other stage the pass checks which way
+each resting hand's palm faces: the hand bone's x axis, negated on the left,
+against the direction to the closest point of what it touches. Past a cosine of
+-0.3 the back of the hand is on the partner and the cup would close on nothing,
+so the hand takes `BACK_FIRST`'s shape instead - `lay`, nearly open, the fingers
+bent just enough to follow a back. The standing embrace arrives this way: the
+only reach that clears her hanging arms has his palms turned outward.
+
+The new shape is re-measured like any candidate and kept only when no contact
+newly crosses, no met contact comes apart and none of the depth measures
+worsens; otherwise the cup stays. A shape the figure asked for in `hands` is
+never changed. Each change is reported as a pose note.
+
 ## Readouts
 
 `basis: "rendered"` means `surfaceGap` is the distance between the selected

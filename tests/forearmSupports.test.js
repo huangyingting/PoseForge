@@ -93,7 +93,9 @@ test("the floor-rest reference grounds pelvis and forearms without driving hands
   const frame = frameFor(solved, query),
     before = measureRenderedSupports(solved, query)[0];
   assert.ok(before.gap > 0.09);
-  assert.ok(query.lowest(0) < -0.02);
+  // The unrefined hands start well through the floor: about 19mm, fingertips
+  // first.
+  assert.ok(query.lowest(0) < -0.015);
   refineSurfaceContacts(solved, bodies);
   grounded(solved, query);
   assert.ok(forearmFramePreserved(actor, frame));

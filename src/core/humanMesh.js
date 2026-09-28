@@ -392,6 +392,78 @@ function smoothNormals(positions, normals, indices, crease = Math.cos((70 * Math
 }
 
 /**
+ * The normals of `submesh` once its vertices are at `positions`, where only
+ * the ones `moved` marks have gone anywhere.
+ *
+ * The authored normal plus the change the move made to the area-weighted
+ * average of the faces round each point, for the reasons `featureRelief` gives
+ * where it does the same to the whole body: the scan's normals are right at
+ * its seams and over its facets, and a rebuilt one is not. Only the points on
+ * a face with a moved corner can change, so only they are visited - an
+ * expression moves a few thousand vertices of a body of seventy thousand, and
+ * is laid on every template of that body a scene asks for.
+ *
+ * @param {object} submesh with `positions`, `normals` and `indices` as they were
+ * @param {Float32Array} positions the same vertices, moved
+ * @param {Uint8Array} moved one per vertex
+ * @returns {Float32Array}
+ */
+export function movedNormals(submesh, positions, moved) {
+  const { indices, normals } = submesh;
+  const before = submesh.positions;
+  const count = before.length / 3;
+  const near = new Uint8Array(count);
+  for (let i = 0; i < indices.length; i += 3) {
+    const [a, b, c] = [indices[i], indices[i + 1], indices[i + 2]];
+    if (moved[a] || moved[b] || moved[c]) near[a] = near[b] = near[c] = 1;
+  }
+  // Welded by position as `smoothNormals` welds, so the copies of a point on
+  // either side of a UV seam turn together - including a copy whose own faces
+  // did not move.
+  const key = (v) => `${Math.round(before[v * 3] * 1e5)},${Math.round(before[v * 3 + 1] * 1e5)},${Math.round(before[v * 3 + 2] * 1e5)}`;
+  const groups = new Map();
+  const weld = new Int32Array(count).fill(-1);
+  for (let v = 0; v < count; v += 1) {
+    if (!near[v]) continue;
+    const k = key(v);
+    if (!groups.has(k)) groups.set(k, groups.size);
+    weld[v] = groups.get(k);
+  }
+  for (let v = 0; v < count; v += 1) if (!near[v]) weld[v] = groups.get(key(v)) ?? -1;
+
+  const sums = [new Float64Array(groups.size * 3), new Float64Array(groups.size * 3)];
+  for (let i = 0; i < indices.length; i += 3) {
+    const corners = [indices[i], indices[i + 1], indices[i + 2]];
+    if (corners.every((v) => weld[v] < 0)) continue;
+    [before, positions].forEach((p, s) => {
+      const [a, b, c] = corners.map((v) => v * 3);
+      const u = [p[b] - p[a], p[b + 1] - p[a + 1], p[b + 2] - p[a + 2]];
+      const w = [p[c] - p[a], p[c + 1] - p[a + 1], p[c + 2] - p[a + 2]];
+      const face = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
+      for (const v of corners) {
+        if (weld[v] < 0) continue;
+        for (let k = 0; k < 3; k += 1) sums[s][weld[v] * 3 + k] += face[k];
+      }
+    });
+  }
+
+  const out = Float32Array.from(normals);
+  const unit = (sum, g) => {
+    const length = Math.hypot(sum[g * 3], sum[g * 3 + 1], sum[g * 3 + 2]) || 1;
+    return [sum[g * 3] / length, sum[g * 3 + 1] / length, sum[g * 3 + 2] / length];
+  };
+  for (let v = 0; v < count; v += 1) {
+    const g = weld[v];
+    if (g < 0) continue;
+    const [was, now] = [unit(sums[0], g), unit(sums[1], g)];
+    const n = [0, 1, 2].map((k) => normals[v * 3 + k] + now[k] - was[k]);
+    const length = Math.hypot(...n);
+    out.set(length > 0.1 ? n.map((x) => x / length) : now, v * 3);
+  }
+  return out;
+}
+
+/**
  * Give the eyes an iris, a pupil and a white.
  *
  * The models do ship eyes. What looked like a face with two dark slits for
@@ -450,6 +522,9 @@ const EYE_ZONES = [
  */
 const FISSURE = [0.011 / 1.72, 0.0055 / 1.72];
 
+/** How far the limbus is from the middle of the eye's texture, in UV. */
+export const IRIS_UV = 0.16;
+
 function splitEyes(proxy) {
   const count = proxy.positions.length / 3;
   const eyes = [-1, 1].map((side) => fitEye(proxy, side)).filter(Boolean);
@@ -466,6 +541,7 @@ function splitEyes(proxy) {
   // sphere it was cut out of is the honest surface. Outside the limbus this
   // changes nothing: the proxy is already spherical to 0.9mm there.
   const normals = new Float32Array(count * 3);
+  const uvs = new Float32Array(count * 2);
   for (let v = 0; v < count; v += 1) {
     const eye = eyes[proxy.positions[v * 3] < 0 ? 0 : 1];
     const d = [0, 1, 2].map((c) => proxy.positions[v * 3 + c] - eye.centre[c]);
@@ -475,6 +551,20 @@ function splitEyes(proxy) {
     const angle = Math.acos(Math.max(-1, Math.min(1, along)));
     zone[v] = EYE_ZONES.reduce((best, z, i) => (angle <= z.limit ? i : best), 0);
     occlusion[v] = eyeOcclusion(d, eye);
+    // Where it sits seen straight down the gaze, as a texture coordinate: the
+    // pole at the middle, the limbus at `IRIS_UV` out from it. The renderer
+    // paints the iris, the pupil and the white in these (see `eyeTexture`),
+    // and a disc laid square to the gaze is what an iris is. The file's own
+    // UVs address a texture that did not come across, so nothing is lost.
+    const right = v3normalize([eye.axis[2], 0, -eye.axis[0]]);
+    const up = v3normalize([
+      eye.axis[1] * right[2] - eye.axis[2] * right[1],
+      eye.axis[2] * right[0] - eye.axis[0] * right[2],
+      eye.axis[0] * right[1] - eye.axis[1] * right[0],
+    ]);
+    const scale = IRIS_UV / Math.sin(EYE_ZONES[1].limit) / length;
+    uvs[v * 2] = 0.5 + (d[0] * right[0] + d[1] * right[1] + d[2] * right[2]) * scale;
+    uvs[v * 2 + 1] = 0.5 - (d[0] * up[0] + d[1] * up[1] + d[2] * up[2]) * scale;
   }
 
   return EYE_ZONES.map((definition, index) => {
@@ -485,7 +575,7 @@ function splitEyes(proxy) {
       const z = Math.min(zone[proxy.indices[i]], zone[proxy.indices[i + 1]], zone[proxy.indices[i + 2]]);
       if (z === index) keep.push(i);
     }
-    return { ...definition, ...extract(proxy, keep, normals, occlusion), primary: false };
+    return { ...definition, ...extract({ ...proxy, uvs }, keep, normals, occlusion), primary: false, eye: true };
   }).filter((part) => part.indices.length > 0);
 }
 
@@ -1005,7 +1095,7 @@ export function skinHumanMesh(template, skeleton, evaluated, align = bindCorrect
         normals.set(n, v * 3);
       }
     }
-    return { name: submesh.name, primary: submesh.primary, colour: submesh.colour, hair: submesh.hair ?? false, garment: submesh.garment ?? false, finish: submesh.finish ?? null, trim: submesh.trim ?? null, trimColour: submesh.trimColour ?? null, cards: submesh.cards ?? null, positions, normals, uvs: submesh.uvs, occlusion: submesh.occlusion ?? null, indices: submesh.indices };
+    return { name: submesh.name, primary: submesh.primary, colour: submesh.colour, hair: submesh.hair ?? false, eye: submesh.eye ?? false, mouth: submesh.mouth ?? false, garment: submesh.garment ?? false, finish: submesh.finish ?? null, trim: submesh.trim ?? null, trimColour: submesh.trimColour ?? null, cards: submesh.cards ?? null, positions, normals, uvs: submesh.uvs, occlusion: submesh.occlusion ?? null, cavity: submesh.cavity ?? null, indices: submesh.indices };
   });
 }
 

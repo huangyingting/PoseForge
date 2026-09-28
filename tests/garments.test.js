@@ -407,6 +407,42 @@ test("every garment is one piece, but for a stocking on each leg and a cuff on e
   }
 });
 
+test("the studio top and shorts open only where they are cut", () => {
+  // A neck, two sleeves and a waist; a waist and two legs. Counted as loops of
+  // edges with one triangle, welded on position. The collar's oval once ran
+  // the whole height of the figure and opened the small of the back where the
+  // spine curves forward into it, and the scan's own holes by the pelvis came
+  // through the shorts as two windows.
+  const expected = { top: 4, shorts: 3 };
+  for (const { bodyType, name, mesh } of alone) {
+    if (!(name in expected)) continue;
+    const { positions, indices } = mesh;
+    const key = (v) => [0, 1, 2].map((k) => Math.round(positions[v * 3 + k] * 1e6)).join(",");
+    const edges = new Map();
+    for (let i = 0; i < indices.length; i += 3) {
+      for (let e = 0; e < 3; e += 1) {
+        const a = key(indices[i + e]);
+        const b = key(indices[i + ((e + 1) % 3)]);
+        const k = a < b ? `${a}|${b}` : `${b}|${a}`;
+        edges.set(k, (edges.get(k) ?? 0) + 1);
+      }
+    }
+    const parent = new Map();
+    const find = (v) => {
+      while (parent.get(v) !== v) v = parent.get(v);
+      return v;
+    };
+    for (const [k, n] of edges) {
+      if (n !== 1) continue;
+      const [a, b] = k.split("|");
+      for (const v of [a, b]) if (!parent.has(v)) parent.set(v, v);
+      parent.set(find(a), find(b));
+    }
+    const loops = new Set([...parent.keys()].map(find));
+    assert.equal(loops.size, expected[name], `${bodyType} ${name} has ${loops.size} openings`);
+  }
+});
+
 test("a figure wears one piece to a place, the first it is given", () => {
   assert.deepEqual(resolveWearing(["bra", "top", "briefs", "bra", "shorts", "cuffs", "stockings"]), {
     wearing: ["bra", "briefs", "cuffs", "stockings"],

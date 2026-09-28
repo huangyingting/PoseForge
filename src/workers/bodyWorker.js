@@ -27,6 +27,7 @@ import { supportProps } from "../core/supports.js";
 import { solvedPreview } from '../core/posePreview.js';
 import { buildHumanTemplate, skinHumanMesh } from "../core/humanMesh.js";
 import { readCards, withCards } from "../core/hairCards.js";
+import { inMouth, withFaces } from "../core/faces.js";
 import { createTemplateCache } from "./templateCache.js";
 import { modelFiles } from "../core/bodyModels.js";
 import { buildBodyMesh } from "../render/meshBuilder.js";
@@ -93,26 +94,42 @@ function bodyCards(mesh) {
     });
 }
 
+/**
+ * How one body's face moves in each expression (see `core/faces.js`). Losing
+ * it costs the face its expressions and nothing else: the figure is drawn with
+ * the scan's own face.
+ */
+const bodyFaces = (mesh) => fetchBytes(String(new URL(`../../assets/models/faces/faces-${mesh}.bin`, import.meta.url))).then(readCards);
+
 function scanned(bodyType, model) {
   const url = modelUrl(bodyType, model);
   if (!templates.has(url)) {
     const { mesh } = modelFiles(bodyType, model);
     const cards = bodyCards(mesh).catch((error) => error);
+    const faces = bodyFaces(mesh).catch((error) => error);
     const attempt = fetchBytes(url)
       .then((bytes) => buildHumanTemplate(bytes))
       .then(async (template) => {
         modelWarnings.delete(url);
-        const loaded = await cards;
+        const [loaded, face] = await Promise.all([cards, faces]);
+        const lost = [];
         try {
           if (loaded instanceof Error) throw loaded;
-          return withCards(template, loaded.shared, loaded.fitted);
+          template = withCards(template, loaded.shared, loaded.fitted);
         } catch (error) {
-          modelWarnings.set(url, `Could not load the hair for the ${mesh} scanned body (${error.message}); drawing a plainer shell instead.`);
-          return template;
+          lost.push(`Could not load the hair for the ${mesh} scanned body (${error.message}); drawing a plainer shell instead.`);
         }
+        try {
+          if (face instanceof Error) throw face;
+          template = withFaces(template, face);
+        } catch (error) {
+          lost.push(`Could not load the expressions for the ${mesh} scanned body (${error.message}); drawing its face at rest instead.`);
+        }
+        if (lost.length) modelWarnings.set(url, lost);
+        return template;
       })
       .catch((error) => {
-        modelWarnings.set(url, `Could not load the ${modelFiles(bodyType, model).mesh} scanned body (${error.message}); drawing the collision field instead.`);
+        modelWarnings.set(url, [`Could not load the ${modelFiles(bodyType, model).mesh} scanned body (${error.message}); drawing the collision field instead.`]);
         setTimeout(() => {
           if (templates.get(url) === attempt) templates.delete(url);
         }, MODEL_RETRY_MS);
@@ -180,6 +197,8 @@ function bodyParts(actor, template, resolution) {
     primary: part.primary,
     colour: part.colour ?? null,
     hair: part.hair ?? false,
+    eye: part.eye ?? false,
+    mouth: part.mouth ?? false,
     cards: part.cards ?? null,
     garment: part.garment ?? false,
     finish: part.finish ?? null,
@@ -189,10 +208,13 @@ function bodyParts(actor, template, resolution) {
     normals: part.normals,
     uvs: part.uvs ?? null,
     indices: part.indices.slice(),
-    // A part that brought its own occlusion keeps it - only the eyes do, and
-    // only because the field has no socket in it to shade them with. Everything
-    // else gets it from the field on the final pass, not on the earlier draft.
+    // A part that brought its own occlusion keeps it - only the eyes and the
+    // inside of the mouth do, and only because the field has no socket and no
+    // mouth in it to shade them with. Everything else gets it from the field
+    // on the final pass, not on the earlier draft, and the skin has the dark
+    // of the mouth (`cavity`) taken out of it then.
     occlusion: part.occlusion ? part.occlusion.slice() : null,
+    cavity: part.cavity,
     scan: part.occlusion || part.cards ? null : template.submeshes[index],
   }));
 }
@@ -208,6 +230,7 @@ function templatesFor(actors) {
         hair: actor.spec?.hair,
         wearing: actor.spec?.wearing,
         outfit: actor.spec?.outfit,
+        expression: actor.face,
       })
     )
   );
@@ -235,7 +258,7 @@ async function meshActors(actors, { occlusion, resolution }, transfers, loaded, 
     }
     const shaded = await shading;
     if (!shaded) return null;
-    unshaded.forEach((part, i) => (part.occlusion = shaded[i]));
+    unshaded.forEach((part, i) => (part.occlusion = inMouth(shaded[i], part.cavity)));
     for (const [part, { positions, normals, indices, parents }] of finer)
       Object.assign(part, {
         positions,
@@ -246,7 +269,10 @@ async function meshActors(actors, { occlusion, resolution }, transfers, loaded, 
         occlusion: spread(part.occlusion, parents),
       });
   }
-  for (const part of meshed.flat()) delete part.scan;
+  for (const part of meshed.flat()) {
+    delete part.scan;
+    delete part.cavity;
+  }
 
   return actors.map((actor, index) => {
     const parts = meshed[index];
@@ -316,6 +342,7 @@ function summarise(solved) {
       joints: structuredClone(actor.pose.joints),
       root: structuredClone(actor.pose.root),
       hands: { ...actor.hands },
+      face: actor.face,
       // Surface gaps are measured on the returned rig. Null means that this
       // figure instead expects partner support, or declares no surface support.
       supportBasis: actor.supportBasis,
@@ -369,7 +396,7 @@ self.onmessage = async (event) => {
       id,
       scene: parsed.scene,
       interpretation: parsed.interpretation,
-      warnings: [...parsed.warnings, ...new Set(solved.actors.map(actor => modelWarnings.get(modelUrl(actor.skeleton.bodyType, actor.spec?.model))).filter(Boolean))],
+      warnings: [...parsed.warnings, ...new Set(solved.actors.flatMap(actor => modelWarnings.get(modelUrl(actor.skeleton.bodyType, actor.spec?.model)) ?? []))],
       matched: parsed.matched,
       ...summarise(solved),
     };

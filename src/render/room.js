@@ -31,19 +31,24 @@ import {
   CylinderGeometry,
   DataTexture,
   DoubleSide,
+  Float32BufferAttribute,
   Group,
   LatheGeometry,
   LinearFilter,
   LinearMipmapLinearFilter,
   Mesh,
   MeshBasicMaterial,
+  MeshPhysicalMaterial,
   MeshStandardMaterial,
   PlaneGeometry,
   RepeatWrapping,
   SphereGeometry,
   SRGBColorSpace,
   Vector2,
+  Vector3,
 } from "three";
+import { normals, roughnessData, ROUGHNESS_SPAN, weaveTile } from "./fabric.js";
+import { plasterTile, woodTile } from "./surfaces.js";
 
 /** The looks a scene can be set in; "studio" is the plain backdrop. */
 export const SETTINGS = ["bedroom", "living", "studio"];
@@ -144,6 +149,13 @@ const channels = (hex) => {
  * butted end to end at staggered joints, with a grain that wanders along the
  * plank and a dark hairline where two meet. One tile is 1.44 m square - eight
  * rows - so the repeat is longer than anything standing on it.
+ *
+ * And the relief to go with it, which is most of what separates a floor from a
+ * photograph of one laid on the ground: each board's edge is eased, so the
+ * joint is a groove that catches a line of light along one side; no board lies
+ * quite flat with its neighbours, so each takes the window a little
+ * differently; the late wood of the grain is sunk a little under the early; and
+ * the varnish is duller in the joints, where the dust is, and along the grain.
  */
 export const FLOOR_TILE = 1.44;
 function floorTexture(look) {
@@ -153,6 +165,8 @@ function floorTexture(look) {
   const grain = valueNoise(seeded(0x6a1), 64);
   const fleck = valueNoise(seeded(0x6a2), 256);
   const data = new Uint8Array(size * size * 4);
+  const height = new Float32Array(size * size);
+  const gloss = new Float32Array(size * size);
   const rowHeight = size / rows;
   const planks = [];
   for (let r = 0; r < rows; r += 1) {
@@ -160,13 +174,14 @@ function floorTexture(look) {
     // the joints stagger inside a row and still tile across the edge.
     const joints = [Math.floor(random() * size)];
     joints.push((joints[0] + Math.floor(size * (0.42 + 0.2 * random()))) % size);
-    planks.push({ joints: joints.sort((a, b) => a - b), tones: [random(), random()], phase: random() * 40 });
+    const tilts = [random() - 0.5, random() - 0.5];
+    planks.push({ joints: joints.sort((a, b) => a - b), tones: [random(), random()], phase: random() * 40, tilts });
   }
   const [red, green, blue] = look.base;
   for (let y = 0; y < size; y += 1) {
     const r = Math.floor(y / rowHeight);
     const across = (y % rowHeight) / rowHeight;
-    const { joints, tones, phase } = planks[r];
+    const { joints, tones, phase, tilts } = planks[r];
     const edgeY = Math.min(y % rowHeight, rowHeight - 1 - (y % rowHeight));
     for (let x = 0; x < size; x += 1) {
       const which = x >= joints[0] && x < joints[1] ? 0 : 1;
@@ -183,9 +198,22 @@ function floorTexture(look) {
       data[o + 1] = toByte(green * shade);
       data[o + 2] = toByte(blue * shade);
       data[o + 3] = 255;
+      // The eased edge over the last three texels - about four millimetres -
+      // of every board, and the board's own lean across its width.
+      const edge = Math.min(edgeY, edgeX);
+      const ease = edge < 3 ? (1 - edge / 3) ** 2 : 0;
+      const k = y * size + x;
+      height[k] = -1.6 * ease + tilts[which] * 0.015 * (across - 0.5) * rowHeight - 1.2 * figure;
+      gloss[k] = 0.9 + 1.6 * figure + 0.5 * ease + 0.8 * Math.max(0, tone);
     }
   }
-  return texture(data, [size, size]);
+  const relief = roughnessData(size, () => 1, (k) => gloss[k]);
+  return {
+    map: texture(data, [size, size]),
+    normal: texture(normals(height, size, 1), [size, size], { colour: false }),
+    roughness: texture(relief.data, [size, size], { colour: false }),
+    factor: relief.factor,
+  };
 }
 
 /**
@@ -259,17 +287,30 @@ function artTexture(palette) {
   return texture(data, [w, h], { repeat: false });
 }
 
-/** Daylight through the glass: pale sky over a band of distant haze. */
+/**
+ * Daylight through the glass: pale sky, and the tops of trees across the way
+ * against it. Out of focus - the eye is on the room - and washed out, the way
+ * a view is from indoors when the room is what the exposure is set for; but a
+ * window onto nothing at all, a sheet of blue, read as a panel painted blue.
+ */
 function skyTexture() {
-  const w = 64;
-  const h = 128;
+  const w = 128;
+  const h = 160;
+  const crowns = valueNoise(seeded(0x5c1), 16);
+  const clumps = valueNoise(seeded(0x5c2), 32);
   const data = new Uint8Array(w * h * 4);
   for (let y = 0; y < h; y += 1) {
     const v = y / (h - 1);
     const sky = [0.8 + 0.18 * v, 0.88 + 0.1 * v, 0.97];
     for (let x = 0; x < w; x += 1) {
+      const u = x / w;
+      // The line of the treetops, and how deep into the leaves a point is.
+      const line = 0.28 + 0.16 * crowns(u * 5, 0.5) + 0.05 * crowns(u * 16, 3.5);
+      const inside = Math.min(1, Math.max(0, (line - v) / 0.035));
+      const leaf = clumps(u * 12, v * 14);
+      const foliage = [0.58 + 0.1 * leaf, 0.66 + 0.08 * leaf, 0.56 + 0.06 * leaf].map((c) => c - 0.12 * (1 - v / line));
       const o = (y * w + x) * 4;
-      for (let i = 0; i < 3; i += 1) data[o + i] = toByte(sky[i]);
+      for (let i = 0; i < 3; i += 1) data[o + i] = toByte(sky[i] + (foliage[i] - sky[i]) * inside);
       data[o + 3] = 255;
     }
   }
@@ -301,6 +342,108 @@ function cached(key, make) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Surfaces                                                            */
+/* ------------------------------------------------------------------ */
+
+/** How much wall, board, curtain and rug one tile of each covers, in metres. */
+const PLASTER_TILE = 0.4;
+export const WOOD_TILE = 0.6;
+const LINEN_TILE = 0.025;
+const KILIM_TILE = 0.06;
+
+/** A tile from `fabric.js` or `surfaces.js`, as the textures three reads. */
+function surface(name, make) {
+  return cached(name, () => {
+    const tile = make();
+    const square = (data) => texture(data, [tile.size, tile.size], { colour: false });
+    return {
+      normal: square(tile.normal),
+      map: tile.map ? square(tile.map) : null,
+      mean: tile.mean ?? 1,
+      roughness: tile.roughness ? square(tile.roughness.data) : null,
+      factor: tile.roughness?.factor ?? 1,
+    };
+  });
+}
+
+const plaster = () => surface("plaster", plasterTile);
+const wood = () => surface("wood", woodTile);
+const linen = () => surface("linen", weaveTile);
+const kilim = () => surface("kilim", () => weaveTile({ size: 128, threads: 8, slub: 0.5, strength: 3, seed: 0x6b696c6d }));
+
+/**
+ * A material over a surface: the colour given, divided by the surface's own
+ * average so that from across the room it is still that colour, and the
+ * roughness likewise.
+ */
+function finished(colour, look, { roughness = 0.8, normalScale = 1, ...options } = {}) {
+  return standard(new Color(colour).multiplyScalar(1 / look.mean), {
+    map: look.map,
+    normalMap: look.normal,
+    normalScale: new Vector2(normalScale, normalScale),
+    roughness: look.roughness ? (roughness * ROUGHNESS_SPAN) / look.factor : roughness,
+    roughnessMap: look.roughness,
+    ...options,
+  });
+}
+
+/** A plane's UVs in tiles of `tile` metres, so one texture does for any size of it. */
+function tiled(geometry, width, height, tile) {
+  const uv = geometry.attributes.uv;
+  for (let i = 0; i < uv.count; i += 1) uv.setXY(i, (uv.getX(i) * width) / tile, (uv.getY(i) * height) / tile);
+  return geometry;
+}
+
+/**
+ * A box with its UVs in tiles of `tile` metres face by face, and the grain -
+ * which runs along `u` - down each face's longer side, the way a board's does.
+ * Each face starts somewhere else in the tile, so two boards side by side are
+ * not the same board twice.
+ */
+function grainedBox(size, tile, segments = [1, 1, 1]) {
+  const [w, h, d] = size;
+  const [sw, sh, sd] = segments;
+  const geometry = new BoxGeometry(w, h, d, sw, sh, sd);
+  // Three's faces in order, +x, -x, +y, -y, +z, -z: each one's extent across
+  // and down, and the segments it is cut into each way.
+  const faces = [[d, h, sd, sh], [d, h, sd, sh], [w, d, sw, sd], [w, d, sw, sd], [w, h, sw, sh], [w, h, sw, sh]];
+  const uv = geometry.attributes.uv;
+  let start = 0;
+  faces.forEach(([du, dv, gu, gv], f) => {
+    const shift = (f * 0.37 + w * 7.3 + h * 3.1 + d * 5.7) % 1;
+    const end = start + (gu + 1) * (gv + 1);
+    for (let k = start; k < end; k += 1) {
+      const u = (uv.getX(k) * du) / tile;
+      const v = (uv.getY(k) * dv) / tile;
+      if (dv > du) uv.setXY(k, v, u + shift);
+      else uv.setXY(k, u, v + shift);
+    }
+    start = end;
+  });
+  return geometry;
+}
+
+/**
+ * The light a corner gets, as a colour on the vertices: `shade` of each
+ * vertex's own x and y.
+ *
+ * A room is darker where its walls meet each other and the floor, because each
+ * hides half the room from the other. It is the thing about indoor light that
+ * most says indoors, and the one three's lights, which see no walls, do not
+ * do: without it the walls met the floor like sheets of card stood on a board.
+ */
+function shaded(geometry, shade) {
+  const position = geometry.attributes.position;
+  const colour = new Float32Array(position.count * 3);
+  for (let i = 0; i < position.count; i += 1) colour.fill(shade(position.getX(i), position.getY(i)), i * 3, i * 3 + 3);
+  geometry.setAttribute("color", new Float32BufferAttribute(colour, 3));
+  return geometry;
+}
+
+/** How dark a corner is `d` metres out from it, with `depth` of shade in it at most. */
+const corner = (d, depth, reach) => 1 - depth * Math.exp(-Math.max(0, d) / reach);
+
+/* ------------------------------------------------------------------ */
 /* Pieces                                                              */
 /* ------------------------------------------------------------------ */
 
@@ -323,19 +466,50 @@ function box(size, colour, at, options) {
   return node;
 }
 
-/** A curtain: a sheet hung in folds, deeper at the top where it is gathered. */
-function curtain(width, height, colour) {
-  const geometry = new PlaneGeometry(width, height, 48, 8);
+/** A box of wood, its grain along it; `material` is one of `woodFinish`'s. */
+function board(size, material, at) {
+  const node = mesh(grainedBox(size, WOOD_TILE), material);
+  node.position.set(...at);
+  return node;
+}
+
+/** Wood in a colour, figured, with its pores duller than its face. */
+export function woodFinish(colour, roughness = 0.55) {
+  return finished(colour, wood(), { roughness });
+}
+
+/**
+ * Woven cloth in a colour, for what is upholstered or made up: the curtains'
+ * linen, on geometry whose UVs are in tiles of however fine a weave it is.
+ */
+export function clothFinish(colour, options) {
+  return finished(colour, linen(), { roughness: 0.95, normalScale: 0.8, ...options });
+}
+
+/**
+ * A curtain: a sheet of linen hung in folds, deeper at the top where it is
+ * gathered and each a little different from the next - an even ripple, every
+ * fold the same, is what a curtain in a render looks like and no curtain does.
+ */
+function curtain(width, height, colour, seed = 1) {
+  const geometry = tiled(new PlaneGeometry(width, height, 64, 12), width, height, LINEN_TILE);
   const position = geometry.attributes.position;
   const folds = Math.round(width / 0.11);
+  const random = seeded(0xc0f7 + seed);
+  const [phase, wobble, drift] = [random() * 6, random() * 6, 0.6 + random() * 0.8];
   for (let i = 0; i < position.count; i += 1) {
     const x = position.getX(i);
     const y = position.getY(i);
-    const gather = 0.75 + 0.25 * ((y / height) + 0.5);
-    position.setZ(i, Math.sin(((x / width) + 0.5) * folds * Math.PI * 2) * 0.035 * gather);
+    const along = x / width + 0.5;
+    const down = 0.5 - y / height;
+    const gather = 0.75 + 0.25 * (1 - down);
+    // The folds' spacing wanders, and loosens towards the hem as they fall.
+    const turn = along * folds * Math.PI * 2 + 0.9 * Math.sin(along * 5 + phase) + drift * down * Math.sin(along * 9 + wobble);
+    const depth = 0.035 * gather * (0.85 + 0.15 * Math.sin(along * 7 + wobble));
+    position.setZ(i, Math.sin(turn) * depth);
   }
   geometry.computeVertexNormals();
-  return mesh(geometry, standard(colour, { roughness: 0.95, side: DoubleSide }), { cast: false });
+  return mesh(geometry, finished(colour, linen(), { roughness: 0.95, side: DoubleSide, normalScale: 0.8 }), { cast: false });
 }
 
 /** A lamp shade that glows from inside, open top and bottom. */
@@ -397,14 +571,18 @@ function tableLamp(look) {
 
 function nightstand(look) {
   const group = new Group();
-  const wood = standard(look.wood, { roughness: 0.6 });
-  group.add(box([0.5, 0.52, 0.4], wood, [0, 0.26, 0]));
-  const face = standard(new Color(look.wood).multiplyScalar(0.8), { roughness: 0.6 });
-  group.add(box([0.44, 0.16, 0.01], face, [0, 0.4, 0.2]));
-  group.add(box([0.44, 0.2, 0.01], face, [0, 0.17, 0.2]));
+  const carcass = woodFinish(look.wood);
+  // A top that overhangs a little, on a carcass on a plinth set back from it -
+  // the three lines a made piece of furniture has and a box does not.
+  group.add(board([0.5, 0.03, 0.4], carcass, [0, 0.505, 0]));
+  group.add(board([0.47, 0.44, 0.37], carcass, [0, 0.27, -0.015]));
+  group.add(board([0.43, 0.05, 0.33], woodFinish(new Color(look.wood).multiplyScalar(0.6)), [0, 0.025, -0.02]));
+  const face = woodFinish(new Color(look.wood).multiplyScalar(0.85));
+  group.add(board([0.44, 0.16, 0.012], face, [0, 0.4, 0.17]));
+  group.add(board([0.44, 0.2, 0.012], face, [0, 0.18, 0.17]));
   const brass = standard(0xb8955a, { roughness: 0.3, metalness: 0.8 });
-  group.add(box([0.1, 0.012, 0.02], brass, [0, 0.4, 0.212]));
-  group.add(box([0.1, 0.012, 0.02], brass, [0, 0.17, 0.212]));
+  group.add(box([0.1, 0.012, 0.02], brass, [0, 0.4, 0.186]));
+  group.add(box([0.1, 0.012, 0.02], brass, [0, 0.18, 0.186]));
   const lamp = tableLamp(look);
   lamp.position.set(-0.08, 0.52, -0.02);
   group.add(lamp);
@@ -438,12 +616,12 @@ function plant(look, height = 1.1) {
 
 function framedArt(look, width = 0.8, height = 1.0) {
   const group = new Group();
-  const frame = standard(look.wood, { roughness: 0.5 });
+  const frame = woodFinish(look.wood, 0.5);
   const t = 0.035;
-  group.add(box([width, t, 0.03], frame, [0, height / 2 - t / 2, 0.015]));
-  group.add(box([width, t, 0.03], frame, [0, -height / 2 + t / 2, 0.015]));
-  group.add(box([t, height, 0.03], frame, [-width / 2 + t / 2, 0, 0.015]));
-  group.add(box([t, height, 0.03], frame, [width / 2 - t / 2, 0, 0.015]));
+  group.add(board([width, t, 0.03], frame, [0, height / 2 - t / 2, 0.015]));
+  group.add(board([width, t, 0.03], frame, [0, -height / 2 + t / 2, 0.015]));
+  group.add(board([t, height, 0.03], frame, [-width / 2 + t / 2, 0, 0.015]));
+  group.add(board([t, height, 0.03], frame, [width / 2 - t / 2, 0, 0.015]));
   const mount = mesh(new PlaneGeometry(width - 2 * t, height - 2 * t), standard(0xf4f0e8, { roughness: 0.95 }), { cast: false });
   mount.position.z = 0.008;
   const picture = mesh(
@@ -458,14 +636,14 @@ function framedArt(look, width = 0.8, height = 1.0) {
 
 function bookcase(look) {
   const group = new Group();
-  const wood = standard(look.wood, { roughness: 0.6 });
+  const wood = woodFinish(look.wood);
   const width = 0.9;
   const height = 1.9;
   const depth = 0.32;
-  group.add(box([width, height, 0.02], wood, [0, height / 2, -depth / 2 + 0.01]));
-  for (const side of [-1, 1]) group.add(box([0.025, height, depth], wood, [side * (width / 2 - 0.0125), height / 2, 0]));
+  group.add(board([width, height, 0.02], wood, [0, height / 2, -depth / 2 + 0.01]));
+  for (const side of [-1, 1]) group.add(board([0.025, height, depth], wood, [side * (width / 2 - 0.0125), height / 2, 0]));
   const shelves = [0.04, 0.42, 0.8, 1.18, 1.56, height - 0.012];
-  for (const y of shelves) group.add(box([width - 0.05, 0.025, depth - 0.02], wood, [0, y, 0.005]));
+  for (const y of shelves) group.add(board([width - 0.05, 0.025, depth - 0.02], wood, [0, y, 0.005]));
   const random = seeded(0xb00c);
   const spines = [0x8b3a2e, 0x2f4858, 0xc9b27c, 0x5d6b4a, 0xe3dccb, 0x3e3a36, 0x9a6a3a, 0x6b7f8e];
   for (const y of shelves.slice(0, -1)) {
@@ -566,9 +744,24 @@ export function roomLayout(setting, bounds, props = []) {
   return { setting, half, north: +north.toFixed(3), wall: !!wall, rug: { size: rug, at } };
 }
 
-/** The paint a room's walls are, for a wall prop standing against them. */
-export function wallColour(setting) {
-  return LOOKS[setting]?.wall ?? null;
+/**
+ * Paint a wall to lean on as the room's own walls are painted. It stands where
+ * the room's north wall is (see `roomLayout`) and is the same wall as far as
+ * the picture goes, so a flat panel of the same colour in front of the plaster
+ * would give it away.
+ *
+ * @param {Mesh} node the prop's mesh, a box
+ * @param {string} setting
+ */
+export function paintWall(node, setting) {
+  const look = LOOKS[setting];
+  if (!look) return;
+  node.geometry.computeBoundingBox();
+  const size = node.geometry.boundingBox.getSize(new Vector3()).toArray();
+  node.geometry.dispose();
+  node.geometry = shaded(grainedBox(size, PLASTER_TILE, [1, Math.ceil(size[1] / 0.1), 1]), (x, y) => corner(y + size[1] / 2, 0.25, 0.2));
+  node.material.dispose();
+  node.material = finished(look.wall, plaster(), { roughness: 0.92, normalScale: 0.7, vertexColors: true });
 }
 
 /**
@@ -587,45 +780,91 @@ export function buildRoom(layout) {
   room.name = "room";
   room.userData.walls = [];
 
-  const floorMap = cached(`floor-${setting}`, () => floorTexture(look.floor)).clone();
-  floorMap.repeat.set((2 * half[0]) / FLOOR_TILE, depth / FLOOR_TILE);
-  floorMap.needsUpdate = true;
+  const width = 2 * half[0];
+  const boards = cached(`floor-${setting}`, () => floorTexture(look.floor));
+  // A vertex every ten centimetres, which is what the corners' shade needs to
+  // fall off smoothly, and the boards in metres rather than stretched.
+  const floorGeometry = tiled(
+    new PlaneGeometry(width, depth, Math.ceil(width / 0.1), Math.ceil(depth / 0.1)),
+    width,
+    depth,
+    FLOOR_TILE
+  );
+  shaded(floorGeometry, (x, y) => corner(width / 2 - Math.abs(x), 0.3, 0.2) * corner(depth / 2 - Math.abs(y), 0.3, 0.2));
+  // Varnished: the boards' own sheen under a coat that gives back the window.
   const floor = mesh(
-    new PlaneGeometry(2 * half[0], depth),
-    standard(0xffffff, { map: floorMap, roughness: 0.55 }),
+    floorGeometry,
+    new MeshPhysicalMaterial({
+      map: boards.map,
+      normalMap: boards.normal,
+      roughnessMap: boards.roughness,
+      roughness: (0.6 * ROUGHNESS_SPAN) / boards.factor,
+      metalness: 0,
+      clearcoat: 0.3,
+      clearcoatRoughness: 0.22,
+      vertexColors: true,
+    }),
     { cast: false }
   );
   floor.rotation.x = -Math.PI / 2;
   floor.position.set(0, 0, middleZ);
   floor.name = "room-floor";
   room.add(floor);
-  room.userData.floorMap = floorMap;
 
   // Flat: 3 mm is enough to catch the light as a thing of its own without
-  // lifting anybody lying on it off the floor they were solved on.
+  // lifting anybody lying on it off the floor they were solved on. Its pattern
+  // is drawn once across it and its weave tiled over that, from a second set
+  // of UVs in metres.
+  const rugGeometry = new BoxGeometry(layout.rug.size[0], 0.003, layout.rug.size[1]);
+  const inMetres = rugGeometry.attributes.uv.clone();
+  for (let i = 0; i < inMetres.count; i += 1)
+    inMetres.setXY(i, (inMetres.getX(i) * layout.rug.size[0]) / KILIM_TILE, (inMetres.getY(i) * layout.rug.size[1]) / KILIM_TILE);
+  rugGeometry.setAttribute("uv1", inMetres);
+  const weave = kilim();
+  weave.normal.channel = 1;
   const rug = mesh(
-    new BoxGeometry(layout.rug.size[0], 0.003, layout.rug.size[1]),
-    standard(0xffffff, { map: cached(`rug-${setting}`, () => rugTexture(look.rug)), roughness: 0.97 }),
+    rugGeometry,
+    standard(0xffffff, {
+      map: cached(`rug-${setting}`, () => rugTexture(look.rug)),
+      normalMap: weave.normal,
+      normalScale: new Vector2(0.8, 0.8),
+      roughness: 0.97,
+    }),
     { cast: false }
   );
   rug.position.set(layout.rug.at[0], 0.0015, layout.rug.at[1]);
   room.add(rug);
 
-  const paint = standard(look.wall, { roughness: 0.92 });
+  const paint = finished(look.wall, plaster(), { roughness: 0.92, normalScale: 0.7, vertexColors: true });
   const trim = standard(look.trim, { roughness: 0.5 });
   const frames = wallFrames(half);
   const centre = { north: [0, north], south: [0, south], west: [-half[0], middleZ], east: [half[0], middleZ] };
-  const along = { north: 2 * half[0], south: 2 * half[0], west: depth, east: depth };
+  const along = { north: width, south: width, west: depth, east: depth };
   const walls = {};
   for (const [name, frame] of Object.entries(frames)) {
     const wall = new Group();
     wall.name = `wall-${name}`;
     wall.position.set(centre[name][0], 0, centre[name][1]);
     wall.rotation.y = frame.turn;
-    const plane = mesh(new PlaneGeometry(along[name], WALL_HEIGHT), paint, { cast: false });
+    const length = along[name];
+    const geometry = tiled(new PlaneGeometry(length, WALL_HEIGHT, Math.ceil(length / 0.1), 26), length, WALL_HEIGHT, PLASTER_TILE);
+    shaded(geometry, (x, y) =>
+      corner(length / 2 - Math.abs(x), 0.25, 0.3) *
+      corner(y + WALL_HEIGHT / 2 - 0.1, 0.25, 0.2) *
+      // There is no ceiling - the camera looks in over the walls - but a
+      // wall is lit as if there were, or its top edge reads as the top of a
+      // partition.
+      corner(WALL_HEIGHT / 2 - y, 0.12, 0.25)
+    );
+    const plane = mesh(geometry, paint, { cast: false });
     plane.position.y = WALL_HEIGHT / 2;
-    const skirting = mesh(new BoxGeometry(along[name], 0.1, 0.018), trim, { cast: false });
+    // And the cornice the ceiling would meet: a board and a lip over it.
+    plane.add(box([length, 0.075, 0.02], trim, [0, WALL_HEIGHT / 2 - 0.0375, 0.01]));
+    plane.add(box([length, 0.022, 0.042], trim, [0, WALL_HEIGHT / 2 - 0.011, 0.021]));
+    const skirting = mesh(new BoxGeometry(length, 0.1, 0.018), trim, { cast: false });
     skirting.position.set(0, 0.05, 0.009);
+    // The skirting's rounded top, as a bead standing a little proud of it.
+    skirting.add(box([length, 0.012, 0.026], trim, [0, 0.044, 0.004]));
     wall.add(plane, skirting);
     wall.userData.normal = frame.normal;
     wall.userData.at = centre[name][frame.axis === 0 ? 0 : 1];
@@ -645,12 +884,11 @@ export function buildRoom(layout) {
     walls[name].add(piece);
     return piece;
   };
-  const width = 2 * half[0];
 
   /** A window, with curtains either side hung in front of its sill, and their rod. */
   const hangWindow = (name, u) => {
     place(name, windowUnit(look), u, 1.55, 0);
-    for (const side of [-1, 1]) place(name, curtain(0.55, 2.3, look.curtain), u + side * 0.95, 1.2, 0.2);
+    for (const side of [-1, 1]) place(name, curtain(0.55, 2.3, look.curtain, side + 2), u + side * 0.95, 1.2, 0.2);
     const rod = mesh(new CylinderGeometry(0.012, 0.012, 2.5, 12), standard(0x3a3632, { roughness: 0.4, metalness: 0.6 }));
     rod.rotation.z = Math.PI / 2;
     place(name, rod, u, 2.38, 0.2);
@@ -723,7 +961,6 @@ export function updateRoom(room, camera) {
 /** Release the geometry and materials a room owns; the textures are shared. */
 export function disposeRoom(room) {
   if (!room) return;
-  room.userData.floorMap?.dispose();
   const seen = new Set();
   room.traverse((node) => {
     if (!node.isMesh) return;

@@ -62,6 +62,7 @@ import {
 } from "./poseLibrary.js";
 import { Skeleton, evaluatePose } from "./skeleton.js";
 import { handShapes } from "./handPose.js";
+import { faceExpression } from "./expressions.js";
 import { rootFromPlacement, isFixedPlacement } from "./placement.js";
 import { LIMB_LANDMARKS, limbFirstContact } from "./contactOrientation.js";
 import { propTopAt, withBounds } from "./propShapes.js";
@@ -1554,6 +1555,8 @@ export function solveScene(scene, options = {}) {
   // better source for it than the solved geometry.
   for (const actor of actors) {
     actor.hands = handShapes(actor, contacts);
+    // And the face, from the same declarations: a mouth on a partner kisses.
+    actor.face = faceExpression(actor, contacts);
     // A clamp displacement describes one correction, not the final support
     // gaps. Re-measure guided and fixed poses after any snapshot restoration.
     // Partner-supported figures are not constrained to the surface plane.

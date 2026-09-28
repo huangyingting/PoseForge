@@ -845,6 +845,221 @@ function refine(body, field, veto, rounds = 4) {
 }
 
 /**
+ * How far the cloth stands off the skin, over and above its lift, where it is
+ * stretched across a hollow rather than lying in it.
+ *
+ * A garment lifted a constant distance off the skin is paint: it goes down into
+ * the cleavage and into the fold under each breast, and the figure reads as
+ * naked and coloured in. Real cloth is under tension, and cloth under tension
+ * spans a hollow on the chord across it and touches only what stands proud.
+ * That is a membrane over an obstacle, and the membrane is what this solves
+ * for: each vertex moves towards the average of its neighbours and is kept
+ * from going below the skin it started on. Over anything convex the average is
+ * below the vertex and the cloth stays down; across a hollow it is above, and
+ * the cloth bridges. The hem is held where it was cut, so the garment still
+ * meets the body at its edges.
+ *
+ * Per welded point, so the copies along a UV seam stay together, and moving
+ * mostly off the skin rather than over it - see `SLIDE` - so the UVs and the
+ * weights stay those of the skin underneath.
+ *
+ * `cap` bounds the bridge, as a function of the bind-space point, because the
+ * skin under a bridge moves when the figure does and the cloth only follows its
+ * weights: a sheet across the cleavage is fine, but one across the armpit would
+ * go through the arm the moment the arm came down. For the same reason a
+ * vertex loses its allowance as the named `limbs` take its weight, and is back
+ * on the skin by half.
+ */
+/**
+ * How far a draped vertex may slide over the skin, as a share of how far it may
+ * stand off it. Enough for the cloth under a breast to reach the chord from the
+ * nipple to the ribs; any more and neighbouring vertices sliding opposite ways
+ * fold the cloth over itself.
+ */
+const SLIDE = 0.4;
+
+function drapeLift({ px, nx, jx, wx, weld, tris, used, offset, cap, limbs = null, reach = 0.08 }) {
+  const capAt = typeof cap === "function" ? cap : () => cap;
+  const count = weld.length;
+  // The welded mesh as rows of neighbours, compressed.
+  const pairs = new Set();
+  let edgeSum = 0;
+  let edgeCount = 0;
+  for (let i = 0; i < tris.length; i += 3) {
+    for (let e = 0; e < 3; e += 1) {
+      const a = weld[tris[i + e]];
+      const b = weld[tris[i + ((e + 1) % 3)]];
+      if (a === b) continue;
+      const key = a < b ? a * count + b : b * count + a;
+      if (pairs.has(key)) continue;
+      pairs.add(key);
+      edgeSum += Math.hypot(px[a * 3] - px[b * 3], px[a * 3 + 1] - px[b * 3 + 1], px[a * 3 + 2] - px[b * 3 + 2]);
+      edgeCount += 1;
+    }
+  }
+  const degree = new Int32Array(count + 1);
+  for (const key of pairs) {
+    degree[Math.floor(key / count) + 1] += 1;
+    degree[(key % count) + 1] += 1;
+  }
+  for (let i = 0; i < count; i += 1) degree[i + 1] += degree[i];
+  const fill = degree.slice(0, count);
+  const rows = new Int32Array(degree[count]);
+  for (const key of pairs) {
+    const a = Math.floor(key / count);
+    const b = key % count;
+    rows[fill[a]++] = b;
+    rows[fill[b]++] = a;
+  }
+
+  const hem = new Uint8Array(count);
+  for (const [key, uses] of used) {
+    if (uses !== 1) continue;
+    const [a, b] = key.split(",").map(Number);
+    hem[a] = 1;
+    hem[b] = 1;
+  }
+  const limit = new Float64Array(count);
+  const base = new Float64Array(count);
+  const nodes = [];
+  for (let v = 0; v < count; v += 1) {
+    if (weld[v] !== v || degree[v + 1] === degree[v]) continue;
+    base[v] = offset(v);
+    if (hem[v]) continue;
+    let share = 0;
+    if (limbs) for (let k = 0; k < 4; k += 1) if (limbs.has(jx[v * 4 + k])) share += wx[v * 4 + k];
+    limit[v] = Math.max(0, capAt(px[v * 3], px[v * 3 + 1], px[v * 3 + 2])) * clamp01(1 - 2 * share);
+    if (limit[v] > 0) nodes.push(v);
+  }
+
+  // Solved twice, once as strings running up and down the body and once as
+  // strings running round it, and the cloth takes whichever stands further off.
+  // An even membrane cannot do what cloth does here, because the torso is a
+  // cylinder: pulled evenly, the cloth is held down round the cylinder harder
+  // than it is lifted across a fold, and comes away only along the bottom of
+  // it. Cloth is pulled mostly one way at a time - a top hangs from the bust,
+  // so it bridges the fold under the breast from top to bottom, and is pulled
+  // across the chest, so it bridges the cleavage and the groove of the spine
+  // from side to side - and each set of strings bridges one of those.
+  //
+  // Projected over-relaxed Gauss-Seidel, which converges in sweeps proportional
+  // to the length of a string rather than its square.
+  const edge = edgeSum / Math.max(1, edgeCount);
+  const sweeps = Math.max(40, Math.min(200, Math.round((2.5 * reach) / Math.max(edge, 1e-4))));
+  const weights = new Float64Array(rows.length);
+  const anchor = new Float64Array(count * 3);
+  for (let v = 0; v < count; v += 1) for (let k = 0; k < 3; k += 1) anchor[v * 3 + k] = px[v * 3 + k] + nx[v * 3 + k] * base[v];
+  const solve = (upright) => {
+    for (const v of nodes) {
+      // Round the body is level and in the surface; up and down it is in the
+      // surface and square to that - down the underside of a breast, too, where
+      // the skin faces the floor and "vertical" would be across it.
+      const n = [nx[v * 3], nx[v * 3 + 1], nx[v * 3 + 2]];
+      let round = [n[2], 0, -n[0]];
+      const size = Math.hypot(round[0], round[2]);
+      round = size > 0.2 ? [round[0] / size, 0, round[2] / size] : [1, 0, 0];
+      for (let r = degree[v]; r < degree[v + 1]; r += 1) {
+        const u = rows[r];
+        const d = [px[u * 3] - px[v * 3], px[u * 3 + 1] - px[v * 3 + 1], px[u * 3 + 2] - px[v * 3 + 2]];
+        const normal = d[0] * n[0] + d[1] * n[1] + d[2] * n[2];
+        const across = d[0] * round[0] + d[2] * round[2];
+        const flat = d[0] * d[0] + d[1] * d[1] + d[2] * d[2] - normal * normal || 1;
+        const level = Math.min(1, (across * across) / flat);
+        weights[r] = upright === null ? 1 : 0.04 + (upright ? 1 - level : level) ** 2;
+      }
+    }
+    // Free to move in any direction but into the skin: along the normal only,
+    // the underside of a breast - which faces the floor - could only be pushed
+    // downwards, and never out to the chord from the nipple to the ribs.
+    // `at` is where each point of the cloth is, the offset surface moved by
+    // `move`, kept alongside it so a sweep reads one array.
+    const move = new Float64Array(count * 3);
+    const at = anchor.slice();
+    for (let sweep = 0; sweep < sweeps; sweep += 1) {
+      for (const v of nodes) {
+        let total = 0;
+        let tx = 0;
+        let ty = 0;
+        let tz = 0;
+        for (let r = degree[v]; r < degree[v + 1]; r += 1) {
+          const u = rows[r] * 3;
+          const w = weights[r];
+          tx += w * at[u];
+          ty += w * at[u + 1];
+          tz += w * at[u + 2];
+          total += w;
+        }
+        const i = v * 3;
+        const ax = nx[i];
+        const ay = nx[i + 1];
+        const az = nx[i + 2];
+        const dx = move[i] + 1.7 * (tx / total - at[i]);
+        const dy = move[i + 1] + 1.7 * (ty / total - at[i + 1]);
+        const dz = move[i + 2] + 1.7 * (tz / total - at[i + 2]);
+        // Not into the skin, not further off it than the cap, and not sliding
+        // further over it than that either.
+        const out = dx * ax + dy * ay + dz * az;
+        const kept = Math.min(limit[v], Math.max(0, out));
+        const sx = dx - out * ax;
+        const sy = dy - out * ay;
+        const sz = dz - out * az;
+        const slid = Math.sqrt(sx * sx + sy * sy + sz * sz);
+        const scale = slid > limit[v] * SLIDE ? (limit[v] * SLIDE) / slid : 1;
+        move[i] = sx * scale + kept * ax;
+        move[i + 1] = sy * scale + kept * ay;
+        move[i + 2] = sz * scale + kept * az;
+        at[i] = anchor[i] + move[i];
+        at[i + 1] = anchor[i + 1] + move[i + 1];
+        at[i + 2] = anchor[i + 2] + move[i + 2];
+      }
+    }
+    return move;
+  };
+  // Each vertex takes whichever set of strings holds it further off the skin,
+  // blended over a fraction of a millimetre so the two regions meet smoothly.
+  const down = solve(true);
+  const round = solve(false);
+  const move = new Float64Array(count * 3);
+  for (const v of nodes) {
+    let a = 0;
+    let b = 0;
+    for (let k = 0; k < 3; k += 1) {
+      a += down[v * 3 + k] * nx[v * 3 + k];
+      b += round[v * 3 + k] * nx[v * 3 + k];
+    }
+    const t = smoothstep(-LIFT * 0.3, LIFT * 0.3, a - b);
+    for (let k = 0; k < 3; k += 1) move[v * 3 + k] = round[v * 3 + k] + (down[v * 3 + k] - round[v * 3 + k]) * t;
+  }
+  // And the two blended, which can turn sharply where one takes over from the
+  // other, smoothed as a field for a few sweeps - still off the skin, and never
+  // further off it than the strings held it. Smoothing alone would lift the
+  // points the strings rest on, the tip of a breast most of all, which is
+  // exactly where a partner's chest meets it.
+  const ceiling = new Float64Array(count);
+  for (const v of nodes) {
+    ceiling[v] = move[v * 3] * nx[v * 3] + move[v * 3 + 1] * nx[v * 3 + 1] + move[v * 3 + 2] * nx[v * 3 + 2] + LIFT * 0.1;
+  }
+  let from = move;
+  let to = move.slice();
+  for (let sweep = 0; sweep < 8; sweep += 1) {
+    for (const v of nodes) {
+      const d = [0, 0, 0];
+      for (let r = degree[v]; r < degree[v + 1]; r += 1) {
+        for (let k = 0; k < 3; k += 1) d[k] += from[rows[r] * 3 + k];
+      }
+      const n = degree[v + 1] - degree[v];
+      for (let k = 0; k < 3; k += 1) d[k] = 0.5 * from[v * 3 + k] + (0.5 * d[k]) / n;
+      const out = d[0] * nx[v * 3] + d[1] * nx[v * 3 + 1] + d[2] * nx[v * 3 + 2];
+      const fix = Math.min(ceiling[v], Math.max(0, out)) - out;
+      for (let k = 0; k < 3; k += 1) to[v * 3 + k] = d[k] + fix * nx[v * 3 + k];
+    }
+    [from, to] = [to, from];
+  }
+  move.set(from);
+  return move;
+}
+
+/**
  * Lift a region of the body into a garment.
  *
  * `field` is a signed function of a point in bind space - positive inside the
@@ -895,12 +1110,15 @@ function refine(body, field, veto, rounds = 4) {
  *   triangles.
  * - `trimColour` is what the trim is drawn in, where that is not the garment's
  *   own colour.
+ * - `drape` lets the cloth leave the skin where the skin falls away under it
+ *   (see `drapeLift`): `cap` is the most it may stand off, and `limbs` the
+ *   joints whose share of a vertex takes that allowance away.
  *
  * The body's UVs come across with everything else, interpolated at the cuts,
  * so a pattern laid on the atlas - the lace - lies on the garment the way the
  * skin's own texture lies on the skin.
  */
-function lift(scan, field, veto, colour, name, { bulge, layer = 1, finish = "cotton", trim, trimColour = null } = {}) {
+function lift(scan, field, veto, colour, name, { bulge, layer = 1, finish = "cotton", trim, trimColour = null, drape = null } = {}) {
   const body = refine(scan, field, veto);
   const { f } = body;
   const count = body.positions.length / 3;
@@ -1061,7 +1279,7 @@ function lift(scan, field, veto, colour, name, { bulge, layer = 1, finish = "cot
   // open along every seam - which is what put a row of teeth along the
   // waistband. Both go away by welding on position: one normal per point in
   // space, one edge per pair of points.
-  const weld = new Int32Array(px.length / 3);
+  let weld = new Int32Array(px.length / 3);
   const welds = new Map();
   for (let i = 0; i < weld.length; i += 1) {
     const key = `${Math.round(px[i * 3] * 1e6)},${Math.round(px[i * 3 + 1] * 1e6)},${Math.round(px[i * 3 + 2] * 1e6)}`;
@@ -1104,10 +1322,113 @@ function lift(scan, field, veto, colour, name, { bulge, layer = 1, finish = "cot
   const edgeKey = (a, b) =>
     weld[a] < weld[b] ? `${weld[a]},${weld[b]}` : `${weld[b]},${weld[a]}`;
 
+  // An edge used by one triangle is on the hem. Counted on the cut mesh, so it
+  // is the true boundary rather than whatever the original tessellation had.
+  const used = new Map();
+  const tally = () => {
+    used.clear();
+    for (let i = 0; i < tris.length; i += 3) {
+      for (let e = 0; e < 3; e += 1) {
+        const key = edgeKey(tris[i + e], tris[i + ((e + 1) % 3)]);
+        used.set(key, (used.get(key) ?? 0) + 1);
+      }
+    }
+  };
+  tally();
+
+  // The scan has holes of its own, a centimetre or two across, where a part
+  // drawn separately covers the skin - the anatomy at the front of the pelvis
+  // is one. Cut straight through, the cloth kept them, and with the anatomy
+  // hidden under it they were two windows into the inside of the shorts. A hem
+  // is a loop of cut points, every one of them with f = 0; a loop of the scan's
+  // own vertices, all inside the garment and all close together, is one of
+  // those holes, and the cloth is carried over it on a fan from its middle.
+  // Grouped by what touches what rather than walked round, because a hole in
+  // a scan can pinch to a point in the middle and walking a figure of eight
+  // from one end loses the other half.
+  const rim = [];
+  const group = new Map();
+  const root = (v) => {
+    while (group.get(v) !== v) {
+      group.set(v, group.get(group.get(v)));
+      v = group.get(v);
+    }
+    return v;
+  };
+  for (let i = 0; i < tris.length; i += 3) {
+    for (let e = 0; e < 3; e += 1) {
+      const a = weld[tris[i + e]];
+      const b = weld[tris[i + ((e + 1) % 3)]];
+      if (!(fx[a] > 0 && fx[b] > 0) || used.get(edgeKey(a, b)) !== 1) continue;
+      rim.push([a, b]);
+      for (const v of [a, b]) if (!group.has(v)) group.set(v, v);
+      group.set(root(a), root(b));
+    }
+  }
+  const holes = new Map();
+  for (const [a, b] of rim) {
+    const key = root(a);
+    if (!holes.has(key)) holes.set(key, { edges: [], ends: new Map() });
+    const hole = holes.get(key);
+    hole.edges.push([a, b]);
+    hole.ends.set(a, (hole.ends.get(a) ?? 0) + 1);
+    hole.ends.set(b, (hole.ends.get(b) ?? 0) - 1);
+  }
+  const patches = [];
+  for (const { edges, ends } of holes.values()) {
+    // Closed: every point on it is left as often as it is arrived at.
+    if (edges.length < 3 || edges.length > 64 || [...ends.values()].some((n) => n !== 0)) continue;
+    const loop = [...ends.keys()];
+    const lo = [Infinity, Infinity, Infinity];
+    const hi = [-Infinity, -Infinity, -Infinity];
+    for (const v of loop) {
+      for (let k = 0; k < 3; k += 1) {
+        lo[k] = Math.min(lo[k], px[v * 3 + k]);
+        hi[k] = Math.max(hi[k], px[v * 3 + k]);
+      }
+    }
+    if (Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) < 0.025) patches.push({ loop, edges });
+  }
+  for (const { loop, edges } of patches) {
+    const n = px.length / 3;
+    const mean = (array, width, k) => loop.reduce((sum, v) => sum + array[v * width + k], 0) / loop.length;
+    for (let k = 0; k < 3; k += 1) px.push(mean(px, 3, k));
+    const normal = [0, 1, 2].map((k) => mean(nx, 3, k));
+    const len = Math.hypot(...normal) || 1;
+    nx.push(normal[0] / len, normal[1] / len, normal[2] / len);
+    if (uvs) ux.push(mean(ux, 2, 0), mean(ux, 2, 1));
+    fx.push(loop.reduce((sum, v) => sum + fx[v], 0) / loop.length);
+    const blend = new Map();
+    for (const v of loop) {
+      for (let k = 0; k < 4; k += 1) {
+        if (wx[v * 4 + k] > 0) blend.set(jx[v * 4 + k], (blend.get(jx[v * 4 + k]) ?? 0) + wx[v * 4 + k]);
+      }
+    }
+    const best = [...blend].sort((p, q) => q[1] - p[1]).slice(0, 4);
+    const total = best.reduce((sum, [, weight]) => sum + weight, 0) || 1;
+    for (let k = 0; k < 4; k += 1) {
+      jx.push(best[k] ? best[k][0] : 0);
+      wx.push(best[k] ? best[k][1] / total : 0);
+    }
+    // Each boundary edge runs a to b in the triangle that has it, so the patch
+    // takes it b to a and faces the same way as the cloth round it.
+    for (const [a, b] of edges) tris.push(b, a, n);
+  }
+  if (patches.length) {
+    const grown = new Int32Array(px.length / 3);
+    grown.set(weld);
+    for (let i = weld.length; i < grown.length; i += 1) grown[i] = i;
+    weld = grown;
+    tally();
+  }
+
   /* ---- lift it off the skin and hem it ---- */
 
-  const height = (i) =>
+  const offset = (i) =>
     LIFT * layer + (bulge ? bulge(px[i * 3], px[i * 3 + 1], px[i * 3 + 2]) : 0);
+  const draped = drape ? drapeLift({ px, nx, jx, wx, weld, tris, used, offset, ...drape }) : null;
+  const shift = (w) => (draped ? Math.hypot(draped[w * 3], draped[w * 3 + 1], draped[w * 3 + 2]) : 0);
+  const height = offset;
 
   const positions = [];
   const normals = [];
@@ -1115,8 +1436,13 @@ function lift(scan, field, veto, colour, name, { bulge, layer = 1, finish = "cot
   const weights = [];
   const texcoords = [];
   const trims = [];
-  const emit = (i, h) => {
-    positions.push(px[i * 3] + nx[i * 3] * h, px[i * 3 + 1] + nx[i * 3 + 1] * h, px[i * 3 + 2] + nx[i * 3 + 2] * h);
+  const emit = (i, h, move = null) => {
+    const m = move ? weld[i] * 3 : -1;
+    positions.push(
+      px[i * 3] + nx[i * 3] * h + (move ? move[m] : 0),
+      px[i * 3 + 1] + nx[i * 3 + 1] * h + (move ? move[m + 1] : 0),
+      px[i * 3 + 2] + nx[i * 3 + 2] * h + (move ? move[m + 2] : 0),
+    );
     normals.push(nx[i * 3], nx[i * 3 + 1], nx[i * 3 + 2]);
     if (uvs) texcoords.push(ux[i * 2], ux[i * 2 + 1]);
     trims.push(trim ? 0.5 + trim(px[i * 3], px[i * 3 + 1], px[i * 3 + 2], fx[i]) / TRIM : 0);
@@ -1130,21 +1456,62 @@ function lift(scan, field, veto, colour, name, { bulge, layer = 1, finish = "cot
   const face = new Int32Array(px.length / 3).fill(-1);
   const indices = [];
   for (const i of tris) {
-    if (face[i] < 0) face[i] = emit(i, height(i));
+    if (face[i] < 0) face[i] = emit(i, height(i), draped);
+  }
+  // Where the cloth has left the skin it has a shape of its own, and shading it
+  // with the skin's normals would draw the cleavage it is stretched across. So
+  // the face is re-shaded there from its own triangles, welded as the lift was,
+  // fading back to the skin's normals where it lies on the skin.
+  if (draped) {
+    const shade = new Float64Array(px.length);
+    for (let i = 0; i < tris.length; i += 3) {
+      const [a, b, c] = [face[tris[i]], face[tris[i + 1]], face[tris[i + 2]]];
+      const ux = positions[b * 3] - positions[a * 3];
+      const uy = positions[b * 3 + 1] - positions[a * 3 + 1];
+      const uz = positions[b * 3 + 2] - positions[a * 3 + 2];
+      const vx = positions[c * 3] - positions[a * 3];
+      const vy = positions[c * 3 + 1] - positions[a * 3 + 1];
+      const vz = positions[c * 3 + 2] - positions[a * 3 + 2];
+      const g = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+      for (let e = 0; e < 3; e += 1) {
+        const w = weld[tris[i + e]];
+        for (let k = 0; k < 3; k += 1) shade[w * 3 + k] += g[k];
+      }
+    }
+    // Twice over the triangles round each point, since the cloth's triangles
+    // are the scan's, uneven, and their normals alone shade it in facets.
+    for (let pass = 0; pass < 2; pass += 1) {
+      for (let w = 0; w < weld.length; w += 1) {
+        const len = Math.hypot(shade[w * 3], shade[w * 3 + 1], shade[w * 3 + 2]) || 1;
+        for (let k = 0; k < 3; k += 1) shade[w * 3 + k] /= len;
+      }
+      const spread = new Float64Array(shade.length);
+      for (let i = 0; i < tris.length; i += 3) {
+        const [a, b, c] = [weld[tris[i]], weld[tris[i + 1]], weld[tris[i + 2]]];
+        for (let k = 0; k < 3; k += 1) {
+          const sum = shade[a * 3 + k] + shade[b * 3 + k] + shade[c * 3 + k];
+          spread[a * 3 + k] += sum;
+          spread[b * 3 + k] += sum;
+          spread[c * 3 + k] += sum;
+        }
+      }
+      shade.set(spread);
+    }
+    for (let i = 0; i < face.length; i += 1) {
+      if (face[i] < 0) continue;
+      const w = weld[i];
+      const len = Math.hypot(shade[w * 3], shade[w * 3 + 1], shade[w * 3 + 2]);
+      const t = smoothstep(0, LIFT * 0.6, shift(w));
+      if (len < 1e-12 || t <= 0) continue;
+      const n = [0, 1, 2].map((k) => nx[i * 3 + k] + (shade[w * 3 + k] / len - nx[i * 3 + k]) * t);
+      const l = Math.hypot(n[0], n[1], n[2]) || 1;
+      for (let k = 0; k < 3; k += 1) normals[face[i] * 3 + k] = n[k] / l;
+    }
   }
   for (let i = 0; i < tris.length; i += 3) {
     indices.push(face[tris[i]], face[tris[i + 1]], face[tris[i + 2]]);
   }
 
-  // An edge used by one triangle is on the hem. Counted on the cut mesh, so it
-  // is the true boundary rather than whatever the original tessellation had.
-  const used = new Map();
-  for (let i = 0; i < tris.length; i += 3) {
-    for (let e = 0; e < 3; e += 1) {
-      const key = edgeKey(tris[i + e], tris[i + ((e + 1) % 3)]);
-      used.set(key, (used.get(key) ?? 0) + 1);
-    }
-  }
   // Hem vertices are emitted again at both heights so the wall carries its own
   // normals. A two-millimetre wall sharing the face's smooth normals shades as
   // a continuation of the face and is invisible, and being seen is the whole
@@ -1382,7 +1749,7 @@ function bra(template, body, marks, colour, { lace = false } = {}) {
   };
   const field = (x, y, z) => Math.max(...parts(x, y, z));
 
-  if (!lace) return lift(body, field, veto, colour, "bra");
+  if (!lace) return lift(body, field, veto, colour, "bra", { drape: { cap: 0.008, limbs: jointSet(template, ARM_BONES) } });
   // Lace in the cups; the band, the straps and a narrow edge round the cups
   // are satin, because that is what holds a lace bra up and its shape together.
   const edge = hem(0.0025);
@@ -1783,16 +2150,99 @@ function harness(template, body, marks, colour, bodyType) {
   });
 }
 
+/**
+ * The trim of a garment with several bands - a hem at each edge - as the
+ * distance into the nearest of them. Held above a floor, since an edge a
+ * band is not measured from (a sleeve's, off the arm) is infinitely far, and
+ * an infinite trim would interpolate across a triangle into nonsense.
+ */
+const bands = (depths) => Math.max(-0.05, ...depths);
+
 /** Simple studio clothing follows the same skin weights as the scanned body. */
-function studioGarment(template, body, marks, colour, name) {
+function studioGarment(template, body, marks, colour, name, bodyType) {
   const top = name === 'top';
-  const veto = boneMargin(template, body, top
-    ? /lowerarm|hand|index|middle|pinky|ring|thumb|head|neck/
-    : ARM_BONES);
-  const field = top
-    ? (x, y, z) => Math.min(y - (marks.waistY - 0.035), 0.855 - y - Math.max(0, z) * 0.12)
-    : (x, y) => Math.min(marks.waistY - 0.012 - y, y - (marks.crotchY - 0.11));
-  return lift(body, field, veto, colour, name);
+  if (!top) {
+    const waist = (y) => marks.waistY - 0.012 - y;
+    const legs = (y) => y - (marks.crotchY - 0.11);
+    const field = (x, y) => Math.min(waist(y), legs(y));
+    // A waistband three centimetres deep and a hem at each leg, which the
+    // renderer draws ribbed and sewn on - a pair of shorts all one surface to
+    // the edge is a pair painted on.
+    return lift(body, field, boneMargin(template, body, ARM_BONES), colour, name, {
+      trim: (x, y) => bands([0.018 - waist(y), 0.012 - legs(y)]),
+    });
+  }
+  // The neckline and the sleeves are cut on the skeleton's geometry rather than
+  // on the skin weights, which is what they were cut on first and what gave the
+  // collar its ragged edge: the share of the neck's weight round the base of
+  // the neck wanders a centimetre either way between neighbouring vertices. A
+  // crew neck is an oval round the base of the neck, wider in front so it
+  // drops to the notch between the collarbones; a sleeve is a plane across the
+  // upper arm, a little above the elbow.
+  const neck = template.jointByBone.get("neck")?.rest;
+  const neckY = (neck?.[13] ?? 0.85) - 0.002;
+  const neckZ = neck?.[14] ?? 0;
+  const arms = [];
+  for (const side of ["l", "r"]) {
+    const a = template.jointByBone.get(`shoulder_${side}`)?.rest;
+    const b = template.jointByBone.get(`elbow_${side}`)?.rest;
+    if (!a || !b) continue;
+    const axis = [b[12] - a[12], b[13] - a[13], b[14] - a[14]];
+    const len = Math.hypot(...axis) || 1;
+    arms.push({ from: [a[12], a[13], a[14]], axis: axis.map((v) => v / len), len });
+  }
+  const sleeve = (x, y, z) => {
+    let best = Infinity;
+    for (const { from, axis, len } of arms) {
+      const d = [x - from[0], y - from[1], z - from[2]];
+      const t = d[0] * axis[0] + d[1] * axis[1] + d[2] * axis[2];
+      const r = Math.hypot(d[0] - t * axis[0], d[1] - t * axis[1], d[2] - t * axis[2]);
+      // Only on the arm itself: the plane carried on would cut the waist.
+      if (r < 0.045 && t > 0) best = Math.min(best, len * 0.72 - t);
+    }
+    return best;
+  };
+  // Round the neck rather than across it: the top of the shoulder by the neck
+  // is all but level, and a level cut through a level surface wanders. Only
+  // down to the shoulders, though: the oval is a column, and lower down it
+  // meets the small of the back where the spine curves forward into it.
+  const collar = (x, y, z) => {
+    if (y < neckY - 0.07) return Infinity;
+    const dz = z - neckZ;
+    const r = Math.hypot(x / 0.05, dz / (dz > 0 ? 0.05 : 0.036));
+    return (r - 1) * 0.05;
+  };
+  const field = (x, y, z) =>
+    Math.min(
+      y - (marks.waistY - 0.035),
+      neckY + 0.012 - y,
+      collar(x, y, z),
+      sleeve(x, y, z),
+    );
+  // Draped from the bust only: across the cleavage and under each breast is
+  // where a top painted on reads as skin. Below the bust it is let back down
+  // to the belly by five centimetres under the fold, and a flat chest is not
+  // draped at all, because a figure's belly and chest are exactly what a
+  // partner's are pressed against - a shirt hung off a man's pectorals stands
+  // a centimetre off his stomach, and in an embrace that centimetre is inside
+  // the other figure.
+  const veto = boneMargin(template, body, FOREARM_BONES);
+  const bust = marks.underY;
+  // A ribbed collar a centimetre and a half deep, and the sleeves and the
+  // bottom turned up and sewn two centimetres from the edge.
+  const trim = (x, y, z) =>
+    bands([
+      0.009 - Math.min(collar(x, y, z), neckY + 0.012 - y),
+      0.012 - sleeve(x, y, z),
+      0.012 - (y - (marks.waistY - 0.035)),
+    ]);
+  return lift(body, field, veto, colour, name, {
+    trim,
+    drape: bodyType === "female" && {
+      cap: (x, y) => 0.014 * smoothstep(bust - 0.05, bust - 0.005, y),
+      limbs: jointSet(template, /upperarm|lowerarm|hand/),
+    },
+  });
 }
 
 /**
@@ -1864,14 +2314,14 @@ export function withGarments(template, { bodyType = "neutral", wearing, colour =
     bra: () => bra(template, body, marks, tone),
     "lace-bra": () => bra(template, body, marks, tone, { lace: true }),
     "bikini-top": () => bikiniTop(template, body, marks, tone),
-    top: () => studioGarment(template, body, marks, tone, "top"),
+    top: () => studioGarment(template, body, marks, tone, "top", bodyType),
     briefs: () => briefs(template, body, marks, tone, { bulge }),
     "lace-thong": () => lowRise(template, body, marks, tone, { thong: true, bulge }),
     "bikini-bottom": () => lowRise(template, body, marks, tone, { bulge }),
     "swim-briefs": () => briefs(template, body, marks, tone, { bulge, swim: true }),
     "boxer-briefs": () => boxerBriefs(template, body, marks, tone, { bulge }),
     jockstrap: () => jockstrap(template, body, marks, tone, { bulge }),
-    shorts: () => studioGarment(template, body, marks, tone, "shorts"),
+    shorts: () => studioGarment(template, body, marks, tone, "shorts", bodyType),
     stockings: () => stockings(template, body, marks, tone),
     "garter-belt": () => garterBelt(template, body, marks, tone),
     harness: () => harness(template, body, marks, tone, bodyType),

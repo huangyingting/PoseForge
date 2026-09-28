@@ -33,6 +33,7 @@ import {
   bodyModel,
 } from "../core/bodyModels.js";
 import { HAIR_STYLES } from "../core/hair.js";
+import { EXPRESSION_NAMES } from "../core/expressions.js";
 import {
   CUPPED,
   GARMENT_COLOURS,
@@ -192,6 +193,27 @@ const OUTFIT_LABELS = {
   boxers: t("Boxer briefs"),
   leather: t("Leather"),
   custom: t("Mixed"),
+};
+
+/**
+ * Each expression's name on the control. Labelled here rather than through
+ * `term`, where "neutral" is already a body type.
+ */
+const EXPRESSION_LABELS = {
+  neutral: t("Still"),
+  soft: t("At ease"),
+  smile: t("Smile"),
+  laugh: t("Laugh"),
+  tender: t("Tender"),
+  shy: t("Shy"),
+  pleasure: t("Pleasure"),
+  ecstasy: t("Ecstasy"),
+  kiss: t("Kiss"),
+  closed: t("Eyes closed"),
+  surprise: t("Surprise"),
+  focused: t("Focused"),
+  effort: t("Strain"),
+  smirk: t("Smirk"),
 };
 
 /** Each garment's name on the control, in the reader's language. */
@@ -695,6 +717,10 @@ export function buildPanel(root, handlers) {
       const hair = picker(t("Hair"), Object.keys(HAIR_STYLES), {
         blank: t("— for the body —"),
       });
+      const expression = picker(t("Expression"), EXPRESSION_NAMES, {
+        blank: t("— from the pose —"),
+        labels: EXPRESSION_LABELS,
+      });
       // Clothes as one choice, with the pieces under it for anyone who wants
       // to mix: a set, then what is on top and what is below - each of which
       // takes one piece, so a picker rather than a row of boxes that could
@@ -722,6 +748,7 @@ export function buildPanel(root, handlers) {
         model.field,
         skinField,
         hair.field,
+        expression.field,
         dress.field,
         top.field,
         bottom.field,
@@ -849,6 +876,7 @@ export function buildPanel(root, handlers) {
       // rather than as a blank the validator would have to reject.
       for (const [control, key] of [
         [hair, "hair"],
+        [expression, "expression"],
         [outfit, "outfit"],
       ]) {
         control.select.addEventListener("change", () => {
@@ -899,6 +927,7 @@ export function buildPanel(root, handlers) {
         stature,
         build,
         hair,
+        expression,
         dress,
         top,
         bottom,
@@ -1062,6 +1091,7 @@ export function buildPanel(root, handlers) {
         control.stature.sync();
         control.build.sync();
         control.hair.select.value = actor.hair ?? "";
+        control.expression.select.value = actor.expression ?? "";
         control.outfit.select.value = actor.outfit ?? "";
         const worn = actor.wearing ?? [];
         control.top.select.value =

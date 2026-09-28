@@ -207,6 +207,13 @@ const GRASPING = new Set([
   "握着", "扶着", "抓着", "捧着",
 ]);
 
+/**
+ * The mouth words that are kisses. A kiss is a face as well as a mouth - the
+ * eyes shut, the lips pursed - so these also set the expression of whoever's
+ * mouth it is (see step 5).
+ */
+const KISSES = new Set(["kissing", "kisses", "kiss", "亲吻", "吻"]);
+
 const ARM_SHAPE_FOR = {
   hip: "arms_on_hips",
   buttocks: "arms_on_hips",
@@ -389,6 +396,7 @@ export function parseDescription(text) {
   const statureFor = new Map();
   const armsFor = new Map();
   const legsFor = new Map();
+  const expressionFor = new Map();
   const refPositions = matches
     .map((m, index) => ({ index, at: m.at, id: m.kind === "ref" ? m.value : m.ref }))
     .filter((entry) => entry.id && entry.id !== "both");
@@ -402,12 +410,33 @@ export function parseDescription(text) {
     }
     return best?.id ?? subjectAt[index] ?? identityOrder[0];
   };
-  const MODIFIER_BINS = { build: buildFor, stature: statureFor, arms: armsFor, legs: legsFor };
+  const MODIFIER_BINS = {
+    build: buildFor,
+    stature: statureFor,
+    arms: armsFor,
+    legs: legsFor,
+    expression: expressionFor,
+  };
   matches.forEach((match, index) => {
     const bin = MODIFIER_BINS[match.kind];
     if (!bin) return;
     const owner = nearestPerson(match, index);
     if (owner) bin.set(owner, match);
+  });
+  // A kiss that lands somewhere - "kissing her neck" - is the kisser's; one
+  // that lands nowhere - "a woman kissing a man", "两人亲吻" - is mouth on
+  // mouth, and both of them are kissing. Anything said about a face outright
+  // wins over either.
+  matches.forEach((match, index) => {
+    if (match.kind !== "part" || !KISSES.has(match.phrase)) return;
+    let next = index + 1;
+    while (matches[next]?.kind === "ref" || matches[next]?.kind === "side") next += 1;
+    const landed = matches[next]?.kind === "part" && matches[next].at - match.end <= 30;
+    const kissers = landed
+      ? [subjectAt[index] ?? nearestPerson(match, index)]
+      : [...slots.keys()].filter((identity) => slots.get(identity) < actorCount);
+    for (const owner of kissers)
+      if (owner && !expressionFor.has(owner)) expressionFor.set(owner, { ...match, value: "kiss" });
   });
 
   // 6. Assemble the people.
@@ -430,6 +459,8 @@ export function parseDescription(text) {
     if (armShape) spec.arms = armShape.value;
     const legShape = legsFor.get(identity);
     if (legShape) spec.legs = legShape.value;
+    const face = expressionFor.get(identity);
+    if (face) spec.expression = face.value;
     actors[slot] = spec;
 
     say(
@@ -442,6 +473,7 @@ export function parseDescription(text) {
     if (stature) say(`${identity}.stature`, spec.stature, stature.phrase);
     if (armShape) say(`${identity}.arms`, armShape.value, armShape.phrase);
     if (legShape) say(`${identity}.legs`, legShape.value, legShape.phrase);
+    if (face) say(`${identity}.expression`, face.value, face.phrase);
   }
   for (let i = 0; i < actorCount; i += 1) {
     if (!actors[i]) {

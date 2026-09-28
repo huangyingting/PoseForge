@@ -17,6 +17,7 @@
 import { LANDMARK_NAMES, resolveLandmark } from "./landmarks.js";
 import { limbJoints } from "./limbPose.js";
 import { HAIR_STYLES } from "./hair.js";
+import { EXPRESSIONS } from "./expressions.js";
 import { BODY_MODELS } from "./bodyModels.js";
 import { HAND_SHAPES } from "./handPose.js";
 import { footJoints, knownFeet } from "./footPose.js";
@@ -54,6 +55,8 @@ export const MAX_SCENE_ACTORS = 4;
  *           omitted means the default. How they look, never how they collide
  * @property {string} [hair] hairstyle name, see HAIR_STYLES; omitted means the
  *           default for the body type
+ * @property {string} [expression] what the face is doing, see EXPRESSIONS;
+ *           omitted means what the contacts imply (`faceExpression`)
  * @property {string|string[]} [wearing] garment names, see GARMENT_NAMES, one
  *           to each of GARMENT_SLOTS; omitted means nude, an empty array means
  *           nude explicitly
@@ -302,6 +305,11 @@ export function validateScene(scene) {
       note("warning", `${id}: unknown hair "${hair}", used the default for this body`);
       hair = undefined;
     }
+    let expression = spec.expression;
+    if (expression != null && !Object.hasOwn(EXPRESSIONS, expression)) {
+      note("warning", `${id}: unknown expression "${expression}", left to the pose`);
+      expression = undefined;
+    }
     let wearing = spec.wearing == null ? undefined : [spec.wearing].flat();
     if (wearing) {
       const unknown = wearing.filter((item) => !GARMENT_NAMES.includes(item));
@@ -400,6 +408,7 @@ export function validateScene(scene) {
       // rather than merely not re-added.
       model,
       hair,
+      expression,
       wearing,
       outfit,
       mobility: spec.mobility == null ? undefined : clamp(spec.mobility, 0, 1),

@@ -30,6 +30,17 @@
  * the unchanging hand the scan ships is what makes an idle figure read as a
  * mannequin; the numbers below are a hand hanging at the side.
  *
+ * Every shape but `brace` is added to the scan's own hand, which is not flat:
+ * both bundled rigs already bend each finger about 16 degrees at the knuckle
+ * and 10 at the middle joint, and the thumb nearly 40. The rows were first
+ * written as if from a flat hand, and on top of that curl a hand hanging at the
+ * side came out a claw and one resting on a partner a fist, so `relaxed` and
+ * `cup` are written as what is added to it: a relaxed hand ends near 22/28, a
+ * cupped one resting on a body near 30/30. `grip` and `hold` keep their closed
+ * rows. The stock layouts seat a gripping palm a few millimetres off a hip and
+ * were measured with these fingers wrapped round it; straighter ones run into
+ * the flank the layout checks for clearance.
+ *
  * `brace` is a load-bearing, flat hand. The renderer measures each model's
  * palm plane and cancels its native finger/thumb curl for this shape; a small
  * numeric extension is retained below as a fallback for unmeasured rigs.
@@ -43,12 +54,19 @@
  *
  * `splay` scales the fan at the knuckles, `SPLAY` below. It is a multiplier and
  * not an angle so that the shape of the fan - index in, little finger out - is
- * written once.
+ * written once. Like the curl it is added to the scan's own, and the scan's
+ * hand is spread already: index to little finger about 34 degrees apart at the
+ * knuckles, the hand of someone about to catch a ball. A hand at rest has its
+ * fingers nearly together, so the shapes that are not reaching or bearing
+ * weight close the fan rather than open it - with the fan opened on top of the
+ * scan's, the reaching arms of a figure on its back ended in claws.
  */
 export const HAND_SHAPES = {
-  relaxed: { fingers: [22, 30, 20], thumb: [14, 12, 10], splay: 0.8 },
-  brace: { fingers: [-6, 2, 0], thumb: [2, 6, 0], splay: 1.15 },
-  cup: { fingers: [32, 38, 24], thumb: [26, 18, 14], splay: 0.5 },
+  relaxed: { fingers: [6, 18, 12], thumb: [4, 6, 6], splay: -0.55 },
+  brace: { fingers: [-6, 2, 0], thumb: [2, 6, 0], splay: 0.4 },
+  cup: { fingers: [14, 20, 12], thumb: [12, 10, 8], splay: -0.6 },
+  // A grip keeps its fan open: a hand round a shoulder or a hip spreads to take
+  // it, and the stock carry's hands on a partner's shoulders were measured so.
   grip: { fingers: [56, 64, 42], thumb: [34, 28, 22], splay: 0.15 },
 
   // A closed fist. The thumb lies across the front of the fingers rather than
@@ -59,6 +77,11 @@ export const HAND_SHAPES = {
   // Flat: a hand held open with the fingers together, the gesture of showing a
   // palm or laying a hand on something without weight on it.
   open: { fingers: [5, 5, 2], thumb: [8, 6, 2], splay: 0.35 },
+
+  // Laid along a partner's body: nearly open, the fingers together and bent
+  // just enough to follow the curve of a back or a flank instead of standing
+  // off it or sinking into it.
+  lay: { fingers: [8, 10, 6], thumb: [6, 6, 4], splay: 0 },
 
   // The same hand with the fingers apart. Only the fan differs, which is the
   // whole reason the knuckles needed a second axis.
@@ -90,11 +113,23 @@ export const HAND_SHAPES = {
 
   // A loose hold, between `cup` and `grip`: a hand round a wrist or a thigh
   // rather than clamped on it.
-  hold: { fingers: [44, 50, 30], thumb: [30, 24, 18], splay: 0.25 },
+  hold: { fingers: [44, 50, 30], thumb: [30, 24, 18], splay: -0.4 },
 };
 
 /** Hand shape names, in the order a chooser should offer them. */
 export const HAND_SHAPE_NAMES = Object.keys(HAND_SHAPES);
+
+/**
+ * What a resting hand becomes when it has arrived back first.
+ *
+ * `cup` curls the fingers round whatever the palm is on. Sometimes the only
+ * reach the rendered surfaces leave is with the back of the hand against the
+ * partner - a standing embrace, whose arms have to pass over hers where they
+ * hang, arrives that way - and then the same curl closes on nothing and hangs
+ * off her back as a claw. A hand lying on its back lets its fingers lie along
+ * her. Not quite `open`: fingers held straight on a rounded back run into it.
+ */
+export const BACK_FIRST = { cup: "lay" };
 
 /**
  * Per-finger multipliers on the shape's flexion.
@@ -187,6 +222,24 @@ function asked(hands) {
     if (hands[side] in HAND_SHAPES) out[side] = hands[side];
   }
   return out;
+}
+
+/**
+ * The shape a resting hand takes once it is known which way its palm faces.
+ *
+ * `facing` is the cosine between the palm's normal and the direction to what
+ * the hand touches: 1 palm first, -1 back first. Past a right angle and a bit
+ * the back is what is on the partner, and `BACK_FIRST` says what the fingers
+ * do then. A shape the actor asked for is theirs and stays.
+ *
+ * @param {object} actor a solved actor, with `hands` and `spec`
+ * @param {"l"|"r"} side
+ * @param {number} facing
+ * @returns {string|null} the shape to use instead, or null to keep the one it has
+ */
+export function backFirstShape(actor, side, facing) {
+  if (!(facing < -0.3) || side in asked(actor.spec?.hands)) return null;
+  return BACK_FIRST[actor.hands?.[side]] ?? null;
 }
 
 /**

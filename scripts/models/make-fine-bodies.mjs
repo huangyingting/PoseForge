@@ -82,7 +82,6 @@ const TYPES = ["female", "male", "neutral"];
 const types = args.length ? args : TYPES;
 /** A millimetre on a body 1.7 m tall, in stature. */
 const MM = 1 / 1700;
-for (const type of types) if (!TYPES.includes(type)) throw new Error(`no body type "${type}"`);
 
 const run = (command, argv, what) => {
   const result = spawnSync(command, argv, { encoding: "utf8", maxBuffer: 1 << 28 });
@@ -514,6 +513,53 @@ class TriangleGrid {
 
   normal(t) {
     return [this.normals[t * 3], this.normals[t * 3 + 1], this.normals[t * 3 + 2]];
+  }
+
+  /**
+   * Whether a ray from `origin` along the unit `direction` meets any triangle
+   * within `reach`: the cells it passes through in order (Amanatides and Woo),
+   * each triangle in them once. A ray starting outside the grid starts at its
+   * nearest cell, which is near enough for the points this is asked about.
+   */
+  blocked(origin, direction, reach) {
+    const { cell, size, lo, positions: p, indices } = this;
+    const at = [0, 1, 2].map((k) => this.at(origin[k], k));
+    const step = direction.map((d) => (d > 0 ? 1 : d < 0 ? -1 : 0));
+    const next = [0, 1, 2].map((k) => (step[k] ? ((at[k] + (step[k] > 0 ? 1 : 0)) * cell + lo[k] - origin[k]) / direction[k] : Infinity));
+    const delta = [0, 1, 2].map((k) => (step[k] ? cell / Math.abs(direction[k]) : Infinity));
+    const [ox, oy, oz] = origin;
+    const [dx, dy, dz] = direction;
+    this.visit += 1;
+    for (;;) {
+      const i = at[0] + size[0] * (at[1] + size[1] * at[2]);
+      for (let j = this.start[i]; j < this.start[i + 1]; j += 1) {
+        const t = this.items[j];
+        if (this.stamp[t] === this.visit) continue;
+        this.stamp[t] = this.visit;
+        // Moller-Trumbore.
+        const a = indices[t * 3] * 3;
+        const b = indices[t * 3 + 1] * 3;
+        const c = indices[t * 3 + 2] * 3;
+        const e1x = p[b] - p[a], e1y = p[b + 1] - p[a + 1], e1z = p[b + 2] - p[a + 2];
+        const e2x = p[c] - p[a], e2y = p[c + 1] - p[a + 1], e2z = p[c + 2] - p[a + 2];
+        const hx = dy * e2z - dz * e2y, hy = dz * e2x - dx * e2z, hz = dx * e2y - dy * e2x;
+        const determinant = e1x * hx + e1y * hy + e1z * hz;
+        if (Math.abs(determinant) < 1e-18) continue;
+        const sx = ox - p[a], sy = oy - p[a + 1], sz = oz - p[a + 2];
+        const u = (sx * hx + sy * hy + sz * hz) / determinant;
+        if (u < 0 || u > 1) continue;
+        const qx = sy * e1z - sz * e1y, qy = sz * e1x - sx * e1z, qz = sx * e1y - sy * e1x;
+        const w = (dx * qx + dy * qy + dz * qz) / determinant;
+        if (w < 0 || u + w > 1) continue;
+        const distance = (e2x * qx + e2y * qy + e2z * qz) / determinant;
+        if (distance > 0 && distance < reach) return true;
+      }
+      const k = next[0] < next[1] ? (next[0] < next[2] ? 0 : 2) : next[1] < next[2] ? 1 : 2;
+      if (next[k] > reach) return false;
+      at[k] += step[k];
+      if (at[k] < 0 || at[k] >= size[k]) return false;
+      next[k] += delta[k];
+    }
   }
 }
 
@@ -2731,6 +2777,7 @@ export { readMakeHuman, TriangleGrid, vertexNormals, graft, paint, openLoops, wr
 if (import.meta.url === `file://${process.argv[1]}`) main();
 
 function main() {
+  for (const type of types) if (!TYPES.includes(type)) throw new Error(`no body type "${type}"`);
   const loaded = loadMHR();
   const { mhr, owner } = loaded;
   mkdirSync(join(out, "hair"), { recursive: true });

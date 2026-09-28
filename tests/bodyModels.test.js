@@ -40,11 +40,12 @@ test("the default model is the original pair of scans, and neutral wears the fem
     assert.ok(BODY_MODELS[name].label.length > 0, name);
 });
 
-test("every body type in every model has a scan, an atlas and its hair, and nothing else ships", () => {
-  const expected = new Set(["HUMAN-MODEL-LICENSE.txt", "hair"]);
+test("every body type in every model has a scan, an atlas, its hair and its faces, and nothing else ships", () => {
+  const expected = new Set(["HUMAN-MODEL-LICENSE.txt", "hair", "faces"]);
   // The hair is what every body shares, where each body's copy of it sits,
   // and the texture each trim names.
   const hair = new Set(["cards.bin"]);
+  const faces = new Set();
   const { meta } = readCards(readFileSync(new URL("hair/cards.bin", MODELS)));
   for (const trim of Object.values(meta.trims)) hair.add(`${trim.texture}.png`);
   for (const model of BODY_MODEL_NAMES)
@@ -53,9 +54,11 @@ test("every body type in every model has a scan, an atlas and its hair, and noth
       expected.add(`realistic-${mesh}.glb`);
       expected.add(`skin-${atlas}.png`);
       hair.add(`cards-${mesh}.bin`);
+      faces.add(`faces-${mesh}.bin`);
     }
   assert.deepEqual(new Set(readdirSync(MODELS)), expected);
   assert.deepEqual(new Set(readdirSync(new URL("hair/", MODELS))), hair);
+  assert.deepEqual(new Set(readdirSync(new URL("faces/", MODELS))), faces);
 });
 
 const loadTemplate = (mesh) => {

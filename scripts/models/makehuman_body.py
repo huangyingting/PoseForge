@@ -14,6 +14,13 @@ POSEFORGE_OUTPUT, since what it wants is the fit and not the body:
                     the hair, eyebrow and eyelash proxies to fit to the body
                     and the JSON file to write them to (see `trim`)
 
+and `make-faces.mjs` the same way again, with POSEFORGE_FACES in place of
+POSEFORGE_TRIM:
+
+  POSEFORGE_FACES   {"expressions": {name: {unit: weight, ...}, ...},
+                     "proxies": [...], "output": ...}, the expressions to
+                    pose the face in and the proxies to follow it (see `faces`)
+
 Without them the plugin does nothing, so an ordinary MakeHuman session that
 finds it installed is unaffected.
 
@@ -107,6 +114,78 @@ def trim(human, proxies, output):
         json.dump(result, handle)
 
 
+def faces(human, expressions, proxies, output):
+    """
+    Pose this body's face in each named expression and write how far every
+    visible vertex, and every vertex of each named proxy, moved.
+
+    An expression is MakeHuman's own: a weighted blend of the face pose units
+    (face-poseunits.bvh, whose weights the expression library's .mhpose files
+    are written in), put on the default skeleton's face bones exactly as the
+    Expression tab puts one on. Only the face bones move, so the rest of the
+    body comes back where it was and `make-faces.mjs` keeps what moved. The
+    proxies are refitted to the posed mesh, which is how a brow rides up with
+    the skin under it; they are the eyebrows and eyelashes `trim` fits, and the
+    teeth and the tongue, which are fitted to the helper geometry inside the
+    mouth and so drop with the jaw.
+    """
+    from collections import OrderedDict
+
+    import animation
+    import bvh
+    import numpy as np
+    import proxy
+
+    mesh = human.meshData
+    visible = mesh.getVertexMaskForFaceMask(mesh.getFaceMask())
+    fitted = []
+    for name, kind, path in proxies:
+        pxy = proxy.loadProxy(human, getpath.getSysDataPath(path), type=kind)
+        fitted.append((name, pxy, pxy.loadMeshAndObject(human)[0]))
+
+    track = bvh.load(getpath.getSysDataPath("poseunits/face-poseunits.bvh"), allowTranslation="none").createAnimationTrack(
+        human.getBaseSkeleton(), name="Expression-Face-PoseUnits"
+    )
+    with open(getpath.getSysDataPath("poseunits/face-poseunits.json"), encoding="utf-8") as handle:
+        names = json.load(handle, object_pairs_hook=OrderedDict)["framemapping"]
+    units = animation.PoseUnit(track.name, track._data, names)
+
+    rest = np.asarray(human.getRestposeCoordinates()[visible], dtype=float)
+    # The faces and UVs as `trim` writes them, so a proxy's vertices can be
+    # split the way its cards were.
+    result = {
+        "body": rest.round(6).tolist(),
+        "proxies": {
+            name: {
+                "coords": np.asarray(pxy.getCoords(), dtype=float).round(6).tolist(),
+                "faces": np.asarray(pmesh.fvert).tolist(),
+                "faceUVs": np.asarray(pmesh.fuvs).tolist(),
+                "uvs": np.asarray(pmesh.texco, dtype=float).round(6).tolist(),
+            }
+            for name, pxy, pmesh in fitted
+        },
+        "expressions": {},
+    }
+    for expression, mix in expressions.items():
+        pose = animation.Pose(expression, units.getBlendedPose(list(mix.keys()), list(mix.values()), only_data=True))
+        human.addAnimation(pose)
+        human.setActiveAnimation(expression)
+        human.setPosed(True)
+        human.refreshPose()
+        posed = np.asarray(mesh.coord[visible], dtype=float)
+        result["expressions"][expression] = {
+            "body": (posed - rest).round(6).tolist(),
+            "proxies": {
+                name: (np.asarray(pxy.getCoords(fit_to_posed=True), dtype=float) - np.asarray(pxy.getCoords(), dtype=float))
+                .round(6)
+                .tolist()
+                for name, pxy, _ in fitted
+            },
+        }
+    with open(output, "w") as handle:
+        json.dump(result, handle)
+
+
 def load(app):
     spec = os.environ.get("POSEFORGE_BODY")
     if not spec:
@@ -114,6 +193,7 @@ def load(app):
     body = json.loads(spec)
     output = os.environ.get("POSEFORGE_OUTPUT")
     trimmed = os.environ.get("POSEFORGE_TRIM")
+    faced = os.environ.get("POSEFORGE_FACES")
 
     def generate():
         try:
@@ -121,6 +201,9 @@ def load(app):
             if trimmed:
                 request = json.loads(trimmed)
                 trim(app.selectedHuman, request["proxies"], request["output"])
+            if faced:
+                request = json.loads(faced)
+                faces(app.selectedHuman, request["expressions"], request["proxies"], request["output"])
             if output:
                 app.mhapi.exports.exportAsFBX(output, useExportsDir=False)
         finally:

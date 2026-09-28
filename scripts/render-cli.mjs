@@ -44,7 +44,8 @@ import {
 import { propShape, propTriangles } from "../src/core/propShapes.js";
 import { modelFiles } from "../src/core/bodyModels.js";
 import { decodePNG, sampleAtlas } from "./atlas.mjs";
-import { cardTexture, withBodyCards } from "./cards.mjs";
+import { cardTexture, withBodyCards, withBodyFaces } from "./cards.mjs";
+import { inMouth, withExpression } from "../src/core/faces.js";
 
 /* ------------------------------------------------------------------ */
 /* Arguments                                                           */
@@ -235,7 +236,8 @@ const templates = new Map();
 const scanned = (bodyType, model) => {
   const { mesh } = modelFiles(bodyType, model);
   const file = `realistic-${mesh}.glb`;
-  if (!templates.has(file)) templates.set(file, withBodyCards(buildHumanTemplate(readFileSync(new URL(file, MODELS))), mesh));
+  if (!templates.has(file))
+    templates.set(file, withBodyFaces(withBodyCards(buildHumanTemplate(readFileSync(new URL(file, MODELS))), mesh), mesh));
   return templates.get(file);
 };
 
@@ -280,7 +282,9 @@ const tinted = (colour) => colour.map((c) => c + (1 - c) * ATLAS_TINT);
 // on the same GLB are the same parse but not the same body, because
 // `featureRelief` reads the volumes `bust` and `build` produce. The hair goes on
 // the same key rather than a later one - it is measured off the scalp, which
-// relief never touches, but it is cheaper to cache one template than two.
+// relief never touches, but it is cheaper to cache one template than two. The
+// face goes on last, as the viewport's cache puts it on, and for the same
+// reason: it moves the skin the relief and the clothes were measured from.
 const relieved = new Map();
 const humanTemplate = (actor) => {
   const { bodyType, build } = actor.skeleton;
@@ -289,11 +293,11 @@ const humanTemplate = (actor) => {
   const wearing = actor.spec?.wearing;
   const outfit = actor.spec?.outfit;
   const model = actor.spec?.model;
-  const key = `${bodyType}|${model ?? ""}|${bust ?? ""}|${build ?? 1}|${hair ?? ""}|${(wearing ?? []).join(",")}|${outfit ?? ""}`;
+  const key = `${bodyType}|${model ?? ""}|${bust ?? ""}|${build ?? 1}|${hair ?? ""}|${(wearing ?? []).join(",")}|${outfit ?? ""}|${actor.face ?? ""}`;
   if (!relieved.has(key)) {
     const body = featureRelief(scanned(bodyType, model), { bodyType, bust, build: build ?? 1 });
     const dressed = withGarments(body, { bodyType, wearing, colour: outfit });
-    relieved.set(key, withHair(dressed, { bodyType, style: hair }));
+    relieved.set(key, withExpression(withHair(dressed, { bodyType, style: hair }), actor.face));
   }
   return relieved.get(key);
 };
@@ -343,9 +347,14 @@ solved.actors.forEach((actor, index) => {
     (part.finish === "sheer" ? veils : objects).push({
       positions: part.positions,
       normals: part.normals,
-      // A part that brought its own occlusion keeps it. Only the eyes do, and
-      // only because the field has no socket in it to shade them with.
-      occlusion: part.occlusion ?? fieldOcclusion(part.positions, part.normals, allVolumes, RESOLUTION),
+      // A part that brought its own occlusion keeps it. Only the eyes and the
+      // inside of the mouth do, and only because the field has no socket and
+      // no mouth in it to shade them with. Inside the mouth it is all the
+      // light there is, so it dims everything (`dim`), as it does the skin
+      // round it (`cavity`): a lip does not let the key in any more than the
+      // sky.
+      occlusion: part.mouth ? null : part.occlusion ?? fieldOcclusion(part.positions, part.normals, allVolumes, RESOLUTION),
+      dim: part.mouth ? part.occlusion : part.cavity ? inMouth(new Float32Array(part.positions.length / 3).fill(1), part.cavity) : null,
       indices: part.indices,
       uvs: textured || cards || lace ? part.uvs : null,
       atlas: textured ? atlas : null,
@@ -1116,6 +1125,13 @@ function shade(offset, object, i0, i1, i2, b0, b1, b2) {
     r += spec;
     g += spec * 0.98;
     b += spec * 0.94;
+  }
+
+  if (object.dim) {
+    const dim = b0 * object.dim[i0] + b1 * object.dim[i1] + b2 * object.dim[i2];
+    r *= dim;
+    g *= dim;
+    b *= dim;
   }
 
   colour[offset * 3] = r;

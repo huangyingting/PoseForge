@@ -60,6 +60,7 @@ src/core/          no dependencies, runs in plain Node
   math.js          vectors, quaternions, matrices, segment/segment closest points
   skeleton.js      articulated rig, anthropometric scaling, range-of-motion clamping
   landmarks.js     "chest", "hand.left" → bone + offset
+  handPose.js      the hands' shapes, read off the contacts; a back-first rest lies flat
   ik.js            two-bone analytic IK with pole hints, aim, blending
   body.js          round cones, the SDF, smooth union, normals
   collision.js     broad/narrow phase, compression budgets, rigid correction
@@ -69,6 +70,8 @@ src/core/          no dependencies, runs in plain Node
   hairCards.js     MakeHuman's hair, brow and lash cards, fitted to each body
   hair.js          hairstyles, as cards where a body has them and as a shell where not;
                    under cards the shell is still what contacts measure
+  expressions.js   the faces, as MakeHuman face pose units, and which one an actor wears
+  faces.js         a baked expression laid on a template, with the teeth and tongue
   garments.js      clothes lifted off the drawn surface: cups, straps, hems, finishes
   lace.js          the lace tile both renderers cut with
   meshDistance.js  triangle distance and bounding-volume hierarchy
@@ -80,14 +83,17 @@ src/core/          no dependencies, runs in plain Node
   solver.js        seating, arrangement, the annealed contact loop
 
 src/nlp/           no dependencies
-  lexicon.js       802 phrases (293 Chinese) → postures, parts, surfaces, …
+  lexicon.js       876 phrases (328 Chinese) → postures, parts, surfaces, faces, …
   archetypes.js    12 named positions with their own phrasings
   parser.js        scanner, subject attachment, scene assembly
 
 src/render/
   meshBuilder.js   no dependencies — dual contouring, relaxation, AO
-  renderer.js      three.js — viewport, lighting, custom skin material
-  props.js         three.js — beds, tables, chairs
+  fabric.js        no dependencies — knit, rib, weave, grain and crease tiles for cloth
+  surfaces.js      no dependencies — painted plaster and wood-grain tiles for the room
+  renderer.js      three.js — viewport, lighting, skin, cloth and eye materials
+  props.js         three.js — beds, tables, chairs, in wood and upholstery
+  room.js          three.js — the bedroom or living room around the scene
   exporters.js     three.js — PNG and SVG
 
 src/workers/
@@ -137,9 +143,10 @@ produce an explicitly labeled estimate. See [surface-contacts.md](surface-contac
 
 ### 2. The core has no dependencies
 
-`src/core/`, `src/nlp/`, `src/render/meshBuilder.js` and `scripts/` import
-nothing — not even three.js. three.js appears only in `src/render/renderer.js`,
-`props.js` and `exporters.js`.
+`src/core/`, `src/nlp/`, `src/render/meshBuilder.js`, `fabric.js`,
+`surfaces.js` and `scripts/` import nothing — not even three.js. three.js
+appears only in `src/render/renderer.js`, `props.js`, `room.js` and
+`exporters.js`.
 
 This is not aesthetic. It is what makes the validators possible: the entire
 geometric pipeline runs headless in Node, so correctness can be *measured* in CI

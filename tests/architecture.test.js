@@ -89,6 +89,8 @@ test("the geometric core depends on nothing", () => {
     ...sources("src/nlp"),
     ...sources("scripts"),
     join(root, "src/render/meshBuilder.js"),
+    join(root, "src/render/fabric.js"),
+    join(root, "src/render/surfaces.js"),
   ];
   assert.ok(free.length > 15, `only found ${free.length} files to check`);
 
