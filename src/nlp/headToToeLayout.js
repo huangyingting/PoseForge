@@ -218,7 +218,7 @@ export const HEAD_TO_TOE_LAYOUT = {
           rotation: 0,
         },
         knee_l: {
-          flexion: 7,
+          flexion: 6.9,
           abduction: 0,
           rotation: 0,
         },
@@ -238,7 +238,7 @@ export const HEAD_TO_TOE_LAYOUT = {
           rotation: 0,
         },
         knee_r: {
-          flexion: 7,
+          flexion: 6.9,
           abduction: 0,
           rotation: 0,
         },
@@ -255,7 +255,7 @@ export const HEAD_TO_TOE_LAYOUT = {
       },
       placement: {
         position: [0, 0.3362044448852539, 0.14999999999999997],
-        rotation: [100.7, 0, 180],
+        rotation: [100.6, 0, 180],
         mode: "guided",
       },
       stature: 1.78,
