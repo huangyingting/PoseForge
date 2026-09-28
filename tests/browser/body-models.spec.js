@@ -94,7 +94,8 @@ test("the body model picker draws each model's own scan and skin, and only once 
       options.map((option) => [option.value, option.textContent]),
     ),
   ).toEqual(Object.entries(BODY_MODELS).map(([name, { label }]) => [name, label]));
-  expect(await report()).toMatchObject({ bodyType: "female", model: null, specModel: null });
+  const base = await report();
+  expect(base).toMatchObject({ bodyType: "female", model: null, specModel: null });
   const standard = await pixels(page);
 
   for (const model of ["european", "african", "mature"]) {
@@ -107,6 +108,19 @@ test("the body model picker draws each model's own scan and skin, and only once 
     expect(await pixels(page), model).not.toBe(standard);
   }
 
+  // The finer body is a scan and hair of its own, and wears the skin already
+  // fetched for the body it stands for.
+  const skins = () => urls.filter((url) => /\/skin-[^/]*\.png$/.test(url));
+  await choose("Body model", "fine");
+  const fine = await report();
+  expect(fine).toMatchObject({ bodyType: "female", model: "fine", specModel: "fine" });
+  expect(fine.triangles).toBeGreaterThan(base.triangles);
+  expect(fetched(urls, "realistic-female-fine", "glb")).toBe(1);
+  expect(fetched(urls, "cards-female-fine", "bin")).toBe(1);
+  expect(fetched(urls, "cards", "bin")).toBe(0);
+  expect(skins()).toEqual([]);
+  expect(await pixels(page)).not.toBe(standard);
+
   // Back to the default: the scene stops naming a model, and nothing already
   // fetched is fetched again.
   await choose("Body model", "asian");
@@ -116,7 +130,6 @@ test("the body model picker draws each model's own scan and skin, and only once 
 
   // The neutral body has its own scan but wears the female skin. (Its hair
   // and lashes are other trims, so other card textures may come with it.)
-  const skins = () => urls.filter((url) => /\/skin-[^/]*\.png$/.test(url));
   await choose("Body type", "neutral");
   expect(await report()).toMatchObject({ bodyType: "neutral", model: null });
   expect(fetched(urls, "realistic-neutral", "glb")).toBe(1);

@@ -358,6 +358,9 @@ function measure(template, body) {
 
   const apex = n ? [ax / n, apexY, az / n] : [0.045, apexY, front[apexSlot]];
   const underY = underSlot / STEPS;
+  // A body drawn over another's skeleton is cut where that one is; see
+  // `measureCutHeights`.
+  const cut = template.cutHeights ?? {};
   return {
     apex,
     underY,
@@ -387,10 +390,10 @@ function measure(template, body) {
     // fold under it. This is the one number the cup's size comes from, so a bust
     // slider moves the cup with the breast and no separate knob is needed.
     reach: Math.hypot(apex[1] - underY, apex[2] - front[underSlot]),
-    waistY: waistSlot / STEPS,
-    hipY: hipSlot / STEPS,
+    waistY: cut.waistY ?? waistSlot / STEPS,
+    hipY: cut.hipY ?? hipSlot / STEPS,
     hipWidth: wide[hipSlot],
-    crotchY: crotch,
+    crotchY: cut.crotchY ?? crotch,
     shoulder: template.jointByBone.get("shoulder_l")?.rest ?? null,
     // Where the front of the trunk ends and the back begins, which is not z = 0:
     // the scans stand with the pelvis a centimetre or two either side of it.
@@ -405,6 +408,25 @@ function measure(template, body) {
     },
     kneeY: template.jointByBone.get("knee_l")?.rest?.[13] ?? 0.29,
   };
+}
+
+/**
+ * The heights the pieces below the bust are cut at - the waist, the hips and
+ * the crotch - as `measure` finds them on a body's own surface.
+ *
+ * A body drawn finer over another's skeleton carries the other's (as
+ * `template.cutHeights`, written by scripts/models/make-fine-bodies.mjs from
+ * the body at its default build), because found on its own surface they are
+ * not the same heights. The waist is the narrowest row of the trunk and the
+ * crotch the lowest row with a point near the midline, and on a scan whose
+ * rows are a centimetre apart both land where its rows happen to fall: on the
+ * surface five times as dense that stands in for the male, the narrowest row
+ * is ten centimetres higher and his briefs came up to his navel. The same
+ * figure drawn finer wears its clothes where it always did.
+ */
+export function measureCutHeights(template) {
+  const { waistY, hipY, crotchY } = measure({ ...template, cutHeights: null }, template.submeshes.find((submesh) => submesh.primary));
+  return { waistY, hipY, crotchY };
 }
 
 /** Squared distance from a point to a segment, and where along it the foot lands. */

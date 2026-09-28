@@ -340,6 +340,7 @@ const ui = {
   "European, about 22": "欧洲，约 22 岁",
   "African, about 22": "非洲，约 22 岁",
   "East Asian, about 50": "东亚，约 50 岁",
+  "East Asian, about 22, finer": "东亚，约 22 岁，精细",
   Hair: "发型",
   "— for the body —": "— 按体型 —",
   Outfit: "服装",

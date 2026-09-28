@@ -44,7 +44,7 @@ same triangles that the renderer will draw.
         │
         ▼
   ┌───────────────┐   src/core/humanMesh.js      (in a Worker)
-  │     skin      │   scanned body → bound to the same rig → posed, ~27k tris
+  │     skin      │   scanned body → bound to the same rig → posed, ~27k tris (141k fine)
   └───────────────┘   src/render/meshBuilder.js  field → AO for those vertices
         │             (and the field's own isosurface, if the model won't load)
         │
@@ -65,7 +65,7 @@ src/core/          no dependencies, runs in plain Node
   collision.js     broad/narrow phase, compression budgets, rigid correction
   gltf.js          GLB container, accessors, node transforms
   humanMesh.js     scanned body: bind to the rig, skin, smooth, split the eyes
-  bodyModels.js    the four scanned-body models and the files each body type loads
+  bodyModels.js    the five scanned-body models and the files each body type loads
   hairCards.js     MakeHuman's hair, brow and lash cards, fitted to each body
   hair.js          hairstyles, as cards where a body has them and as a shell where not;
                    under cards the shell is still what contacts measure

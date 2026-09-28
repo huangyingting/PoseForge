@@ -56,21 +56,46 @@ function atlas(bodyType, model) {
 /**
  * The painted areola's centre on the drawn body, in the XY plane.
  *
- * The darkest forty vertices of the front of the right-hand chest, by the
- * atlas under their UVs. Forty is about how many fall inside the areola on
- * these meshes, and taking a count rather than a threshold keeps the answer the
- * same on a dark skin as on a light one.
+ * The darkest `AREOLA` of the front of the right-hand chest, by the atlas under
+ * it. That is less than the areola on any of the bodies, and taking an area
+ * rather than a threshold keeps the answer the same on a dark skin as on a
+ * light one. The skin is sampled a millimetre apart, not at its vertices: a
+ * count of those is a different area on every mesh - the MakeHuman bodies'
+ * crowd round the nipple, and the fine bodies' are fewer there and evenly
+ * spread, so forty of theirs reach down into the shade under the breast.
  */
-function areola(positions, uvs, image, H) {
+const AREOLA = 1e-4;
+function areola(positions, indices, uvs, image, H) {
+  const [lo, hi] = [[0.025 * H, 0.68 * H, 0.03 * H], [0.1 * H, 0.79 * H, Infinity]];
+  const inside = (p) => p.every((x, k) => x >= lo[k] && x <= hi[k]);
   const found = [];
-  for (let v = 0; v < positions.length / 3; v += 1) {
-    const [x, y, z] = [positions[v * 3] / H, positions[v * 3 + 1] / H, positions[v * 3 + 2] / H];
-    if (x < 0.025 || x > 0.1 || y < 0.68 || y > 0.79 || z < 0.03) continue;
-    const [r, g, b] = sampleAtlas(image, uvs[v * 2], uvs[v * 2 + 1]);
-    found.push({ x: positions[v * 3], y: positions[v * 3 + 1], lum: 0.2126 * r + 0.7152 * g + 0.0722 * b });
+  for (let t = 0; t < indices.length; t += 3) {
+    const corners = [indices[t], indices[t + 1], indices[t + 2]];
+    const p = corners.map((v) => [positions[v * 3], positions[v * 3 + 1], positions[v * 3 + 2]]);
+    if ([0, 1, 2].some((k) => Math.max(...p.map((q) => q[k])) < lo[k] || Math.min(...p.map((q) => q[k])) > hi[k])) continue;
+    const uv = corners.map((v) => [uvs[v * 2], uvs[v * 2 + 1]]);
+    const edge = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    // Cut into n² like triangles, a millimetre or so across, each sampled at its middle.
+    const n = Math.max(1, Math.ceil(Math.max(edge(p[0], p[1]), edge(p[1], p[2]), edge(p[2], p[0])) / 0.001));
+    const [u, w] = [p[1].map((x, k) => x - p[0][k]), p[2].map((x, k) => x - p[0][k])];
+    const area = Math.hypot(u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]) / 2 / (n * n);
+    for (let i = 0; i < n; i += 1)
+      for (let j = 0; i + j < n; j += 1)
+        for (const [a, b] of i + j + 1 < n ? [[i + 1 / 3, j + 1 / 3], [i + 2 / 3, j + 2 / 3]] : [[i + 1 / 3, j + 1 / 3]]) {
+          const bary = [1 - (a + b) / n, a / n, b / n];
+          const at = [0, 1, 2].map((k) => bary[0] * p[0][k] + bary[1] * p[1][k] + bary[2] * p[2][k]);
+          if (!inside(at)) continue;
+          const [r, g, bl] = sampleAtlas(image, ...[0, 1].map((k) => bary[0] * uv[0][k] + bary[1] * uv[1][k] + bary[2] * uv[2][k]));
+          found.push({ x: at[0], y: at[1], area, lum: 0.2126 * r + 0.7152 * g + 0.0722 * bl });
+        }
   }
-  const darkest = found.sort((a, b) => a.lum - b.lum).slice(0, 40);
-  return [darkest.reduce((sum, p) => sum + p.x, 0) / darkest.length, darkest.reduce((sum, p) => sum + p.y, 0) / darkest.length];
+  found.sort((a, b) => a.lum - b.lum);
+  let [area, x, y] = [0, 0, 0];
+  for (const p of found) {
+    if (area >= AREOLA) break;
+    [area, x, y] = [area + p.area, x + p.x * p.area, y + p.y * p.area];
+  }
+  return [x / area, y / area];
 }
 
 /**
@@ -210,9 +235,10 @@ for (const model of models) for (const bodyType of ["female", "male", "neutral"]
     .reduce((a, b) => (a && a.a[2] >= b.a[2] ? a : b), null);
   if (nipple) {
     const [primary] = skinHumanMesh(plain, skeleton, evaluated).filter((p) => p.primary);
-    const [x, y] = areola(primary.positions, plain.submeshes.find((part) => part.primary).uvs, atlas(bodyType, model), H);
+    const part = plain.submeshes.find((submesh) => submesh.primary);
+    const [x, y] = areola(primary.positions, part.indices, part.uvs, atlas(bodyType, model), H);
     const off = Math.hypot(x - nipple.a[0], y - nipple.a[1]);
-    // The default female, which the bust is fitted to, measures 1.8 mm.
+    // The default female, which the bust is fitted to, measures 2.0 mm.
     const ok = off <= 0.005;
     if (!ok) failures += 1;
     console.log(

@@ -64,11 +64,12 @@ curtains, lamps, pictures, plants, a nightstand or a bookcase along its walls.
 It is sized to the scene, so nothing in it stands where the figures or their
 props do. The walls between the camera and the figures are left out as it
 orbits. PNG export keeps the room, and transparent PNG leaves only the figures.
-Each figure's **Body model** (first under Appearance) picks one of four
+Each figure's **Body model** (first under Appearance) picks one of five
 scanned bodies for its body type: East Asian about 22 (the default), European
-about 22, African about 22, or East Asian about 50. They change the face, the
-body's shape and the skin photograph, never the pose: the skeleton and the
-collision field are the body type's, so every contact measures the same.
+about 22, African about 22, East Asian about 50, or the default drawn finer,
+with five times the triangles. They change the face, the body's shape and the
+skin photograph, never the pose: the skeleton and the collision field are the
+body type's, so every contact measures the same.
 **Hair** is drawn as MakeHuman's own textured hair cards, with brows and
 lashes, fitted to each body. **Outfit** dresses a figure in the
 studio top and shorts, underwear, a bikini, lingerie (lace bra and thong,
@@ -549,8 +550,8 @@ and a flat sole, and genital geometry appropriate to the body type. It is
 exact, cheap to query from any direction, and it is what every contact,
 penetration depth and seat height in this system is measured against.
 
-The one that is *drawn* is a scanned human mesh — about 27k triangles, skinned
-to the same skeleton the field is built from, so the two move together by
+The one that is *drawn* is a scanned human mesh — about 27k triangles, or 141k
+for the fine bodies, skinned to the same skeleton the field is built from, so the two move together by
 construction. It carries what a field of round cones cannot: a face with a
 nose, lips, ears and brows, separate fingers, and eyes split into a white, an
 iris and a pupil. It is the mesh that makes the picture read as a person; it is
@@ -564,16 +565,22 @@ to about 223k. Skin under cloth is left as the cloth was cut to fit, and the
 solver never sees the new vertices. See
 [the meshing notes](docs/meshing.md#finer-than-the-scan).
 
-There are twelve of them — female, male and neutral in each of the four models
-in `src/core/bodyModels.js` — all made by MakeHuman on one rig and one
-topology, with 2048px skin photographs. `node scripts/models/make-bodies.mjs`
-regenerates them from `scripts/models/bodies.json`, and
-`node scripts/validate-skin.mjs` checks every one: how far the drawn surface
+There are fifteen of them — female, male and neutral in each of the five models
+in `src/core/bodyModels.js`. Twelve are made by MakeHuman on one rig and one
+topology, with 2048px skin photographs, and `node scripts/models/make-bodies.mjs`
+regenerates them from `scripts/models/bodies.json`. The other three, *fine*,
+are the default MakeHuman bodies drawn with the densest surface of Meta's
+[MHR](https://github.com/facebookresearch/MHR) (Apache-2.0), five times the
+triangles, fitted onto them: the same skeletons, eyes, skin weights, skins,
+hair and cut of clothes. `node scripts/models/make-fine-bodies.mjs` rebuilds
+them; see [the meshing notes](docs/meshing.md#a-finer-body).
+`node scripts/validate-skin.mjs` checks every body: how far the drawn surface
 sits from the field, whether the relief carries the field's bust and genitals,
-and the painted areola against the field's bust (0.5–2.1 mm on the rest pose).
-MakeHuman's mesh is the finest rigged body whose licence (CC0) allows
-shipping it here; SMPL-X is non-commercial, MB-Lab is AGPL, and the finer
-Blender Studio base meshes have no rig.
+and the painted areola against the field's bust (0.6–2.6 mm on the rest pose).
+MHR is the finest rigged body we found whose licence allows shipping it here;
+SMPL-X is non-commercial, MB-Lab is AGPL, and the finer Blender Studio base
+meshes have no rig. Its densest level has no toes, so the fine bodies stand on
+MakeHuman's feet.
 
 `buildBodyVolumes` takes `bust` and `anatomy`. `anatomy` is **on by default**,
 and that is a deliberate reversal: this system exists to judge how two bodies

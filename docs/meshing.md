@@ -283,6 +283,65 @@ skin where they stood 0.8. Two vertices at a man's toes dip 0.1 mm into it.
 Where the pose already presses a thigh into the briefs, the rounder cloth runs
 up to 1.5 mm further in, on the same few vertices.
 
+## A finer body
+
+The MakeHuman bodies are cut for a game engine: 26,756 triangles each, with
+edges across a shoulder or a hip running past two centimetres. The splitting
+above rounds their outline, but it cannot put in what the scan never had. So
+there is a fifth model, `fine`, which draws each default body with the densest
+level of Meta's Momentum Human Rig (MHR, Apache-2.0): a closed surface fitted
+to thousands of scans, with a rig and 45 identity shapes.
+
+`scripts/models/make-fine-bodies.mjs` makes MHR's surface stand in for the
+MakeHuman body and writes it into that body's own file, with only the skin
+swapped. Its header goes through the steps. What matters downstream is what is
+kept:
+
+- **The skeleton, exactly.** Every joint reads back where it was on the
+  MakeHuman body, so stature, the field, the solver, the hand shapes and every
+  contact are unchanged. `tests/bodyModels.test.js` checks it joint by joint.
+- **The eyes**, byte for byte, sitting in pockets cut for them.
+- **The skin photograph and the weights.** Each vertex takes the UV, joints
+  and weights of the nearest point on the MakeHuman body, a finger only from
+  the same finger. The arms are laid on MakeHuman's joints before the fit, so
+  elbows, wrists and knuckles are where those weights bend them.
+- **The feet.** MHR's densest foot has no toes, so below the ankle the fine
+  body is the MakeHuman foot, cut finer and sewn on.
+- **The hair**, each card moved as far as the skin nearest it.
+- **Where the clothes are cut.** The waist, hip and crotch heights are the
+  MakeHuman body's, stored in the file (`measureCutHeights` in
+  `src/core/garments.js`). Found on the finer surface they are not the same:
+  the male's narrowest row is ten centimetres higher, and his briefs came up to
+  his navel. Everything else a garment is cut from is measured on the fine
+  body itself.
+
+| | female | male | neutral |
+|---|---|---|---|
+| triangles (MakeHuman: 26,756) | 140,824 | 141,436 | 141,272 |
+| shape fit to the MakeHuman body, rms | 7.3 mm | 7.6 mm | 6.7 mm |
+| off it after conforming, median / 90th, trunk | 0.4 / 1.3 mm | 0.4 / 1.5 mm | 0.4 / 1.2 mm |
+| the same, hands | 0.8 / 2.3 mm | 0.9 / 2.2 mm | 0.9 / 2.1 mm |
+| the same, feet | 1.1 / 3.6 mm | 1.6 / 4.6 mm | 1.4 / 4.2 mm |
+| painted areola off the field's nipple | 1.3 mm | - | 1.7 mm |
+| file | 6.1 MB | 6.1 MB | 6.1 MB |
+
+It costs time as well as bytes. On missionary and spooning, dressed, in Node
+on four cores with the occlusion on one thread:
+
+| step | MakeHuman | fine |
+|---|---|---|
+| drawn triangles, the pair, before and after splitting | 132,232 → 221,048 | 363,665 → 397,541 |
+| building the dressed templates, first load | 5.3–5.5 s | 8.6–8.7 s |
+| rendered-surface contact steps | 1.4–1.5 s | 2.5–3.1 s |
+| final-pass occlusion | 1.4 s | 1.7–1.9 s |
+| splitting | 0.3–0.5 s | 0.6–0.7 s |
+
+The splitting adds a tenth where it added two thirds, because the fine
+surface's edges are already short. What is left: the male has a small notch
+behind the ankle, where MHR's leg meets MakeHuman's foot, visible untextured
+and close up, and 21 of his vertices (10 of the neutral's) lie more than a centimetre from
+the MakeHuman surface they take their UVs and weights from.
+
 ## Faster, to the same numbers
 
 None of this changes what is computed. The final meshes for a pose hash the

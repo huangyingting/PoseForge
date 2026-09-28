@@ -306,7 +306,11 @@ export function buildHumanTemplate(bytes, { skipMeshes = [] } = {}) {
     if (zones.length) submeshes.splice(proxy, 1, ...zones);
   }
 
-  return { submeshes, joints, order, height, jointByBone: byBone(joints) };
+  // Where the clothes are cut, on a body that is drawn over another's skeleton
+  // and wears them where that one does (see `measureCutHeights` in
+  // garments.js). In unit stature, like everything else here.
+  const cutHeights = json.meshes[0]?.extras?.cutHeights ?? null;
+  return { submeshes, joints, order, height, jointByBone: byBone(joints), cutHeights };
 }
 
 /**

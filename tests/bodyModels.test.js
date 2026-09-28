@@ -8,7 +8,8 @@ import {
   bodyModel,
   modelFiles,
 } from "../src/core/bodyModels.js";
-import { buildHumanTemplate } from "../src/core/humanMesh.js";
+import { buildHumanTemplate, featureRelief } from "../src/core/humanMesh.js";
+import { measureCutHeights } from "../src/core/garments.js";
 import { readCards } from "../src/core/hairCards.js";
 import { validateScene } from "../src/core/scene.js";
 
@@ -28,6 +29,9 @@ test("the default model is the original pair of scans, and neutral wears the fem
     mesh: "male-african",
     atlas: "male-african",
   });
+  // A body that stands for another wears that one's skin.
+  assert.deepEqual(modelFiles("male", "fine"), { mesh: "male-fine", atlas: "male" });
+  assert.deepEqual(modelFiles("neutral", "fine"), { mesh: "neutral-fine", atlas: "female" });
   // Anything unknown is the default rather than a file that is not there.
   for (const odd of [undefined, null, "", "elf", "constructor", "__proto__"])
     assert.equal(bodyModel(odd), DEFAULT_BODY_MODEL, String(odd));
@@ -54,17 +58,21 @@ test("every body type in every model has a scan, an atlas and its hair, and noth
   assert.deepEqual(new Set(readdirSync(new URL("hair/", MODELS))), hair);
 });
 
+const loadTemplate = (mesh) => {
+  const bytes = readFileSync(new URL(`realistic-${mesh}.glb`, MODELS));
+  return buildHumanTemplate(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+};
+
 test("every scan parses into the same rig and topology, and every atlas is one the renderers can read", () => {
   const shapes = new Set();
   for (const model of BODY_MODEL_NAMES)
     for (const bodyType of BODY_TYPES) {
       const { mesh, atlas } = modelFiles(bodyType, model);
-      const bytes = readFileSync(new URL(`realistic-${mesh}.glb`, MODELS));
-      const template = buildHumanTemplate(
-        bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
-      );
+      const template = loadTemplate(mesh);
       const primary = template.submeshes.find((part) => part.primary);
       assert.ok(primary?.uvs, mesh);
+      // A finer body is checked against the body it stands for, below.
+      if (BODY_MODELS[model].standsFor) continue;
       // Triangles rather than vertices: the exporter splits vertices along
       // seams wherever the normals differ, so their count moves with the
       // shape. The eyes are split into white, iris and pupil by where they
@@ -87,12 +95,44 @@ test("every scan parses into the same rig and topology, and every atlas is one t
   assert.equal(shapes.size, 1, "one topology and one rig for every scan");
 });
 
+test("a body that stands for another has its skeleton, its eyes and its clothes' cut, and a denser skin", () => {
+  for (const model of BODY_MODEL_NAMES) {
+    const { standsFor } = BODY_MODELS[model];
+    if (!standsFor) continue;
+    assert.ok(Object.hasOwn(BODY_MODELS, standsFor) && !BODY_MODELS[standsFor].standsFor, model);
+    for (const bodyType of BODY_TYPES) {
+      const fine = loadTemplate(modelFiles(bodyType, model).mesh);
+      const base = loadTemplate(modelFiles(bodyType, standsFor).mesh);
+      // Exactly: everything fitted to a joint of the one - clothes, hair,
+      // hand shapes - is fitted to the other's.
+      assert.deepEqual(
+        fine.joints.map((joint) => [joint.name, [...joint.rest]]),
+        base.joints.map((joint) => [joint.name, [...joint.rest]]),
+        `${model} ${bodyType}`,
+      );
+      const [skin, ...eyes] = fine.submeshes;
+      const [baseSkin, ...baseEyes] = base.submeshes;
+      assert.ok(skin.primary && skin.uvs, `${model} ${bodyType}`);
+      assert.deepEqual(
+        eyes.map((part) => [part.name, [...part.indices], [...part.positions]]),
+        baseEyes.map((part) => [part.name, [...part.indices], [...part.positions]]),
+        `${model} ${bodyType}`,
+      );
+      assert.ok(skin.indices.length >= 5 * baseSkin.indices.length, `${model} ${bodyType}`);
+      // Cut where the body it stands for is, not where its own surface says.
+      assert.equal(base.cutHeights, null);
+      assert.deepEqual(fine.cutHeights, measureCutHeights(featureRelief(base, { bodyType })), `${model} ${bodyType}`);
+    }
+  }
+});
+
 test("the generator's spec names exactly the bodies the registry loads", () => {
   const bodies = JSON.parse(
     readFileSync(new URL("../scripts/models/bodies.json", import.meta.url), "utf8"),
   );
   const meshes = new Set();
-  for (const model of BODY_MODEL_NAMES)
+  // A body that stands for another is not MakeHuman's, and not made from it.
+  for (const model of BODY_MODEL_NAMES.filter((name) => !BODY_MODELS[name].standsFor))
     for (const bodyType of BODY_TYPES) {
       const { mesh, atlas } = modelFiles(bodyType, model);
       meshes.add(mesh);
