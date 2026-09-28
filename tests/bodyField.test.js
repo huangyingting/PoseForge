@@ -36,6 +36,27 @@ test("a compiled field is the body's distance and gradient to the last bit", () 
   }
 });
 
+test("the volumes a compiled field skips are the ones that cannot move it, on the skin as well as off it", () => {
+  // The skip is decided against the running distance, so it is at its closest
+  // to being wrong on the surface, where the running distance is near zero and
+  // many volumes are within a blend of it. Points on every volume's own skin,
+  // and just inside and outside it, sit exactly there.
+  for (const bodyType of ["female", "male"]) {
+    const all = posedVolumes(bodyType);
+    const field = bodyField(all);
+    for (const { a, b, ra, rb } of all) {
+      for (let i = 0; i < 40; i += 1) {
+        const t = random();
+        const n = [random() - 0.5, random() - 0.5, random() - 0.5];
+        const length = Math.hypot(...n) || 1;
+        const r = (ra + (rb - ra) * t) * (0.9 + random() * 0.2);
+        const p = [0, 1, 2].map((axis) => a[axis] + (b[axis] - a[axis]) * t + (n[axis] / length) * r);
+        assert.ok(Object.is(field(...p), bodyDistance(p, all)), `${bodyType} at ${p}`);
+      }
+    }
+  }
+});
+
 test("occlusion shared out in runs is the occlusion of the whole mesh", () => {
   const volumes = [...posedVolumes("female"), ...posedVolumes("male").map((v) => ({ ...v, a: [v.a[0] + 0.3, v.a[1], v.a[2]], b: [v.b[0] + 0.3, v.b[1], v.b[2]] }))];
   // More vertices than a run holds, so the pieces have to be put back in place.

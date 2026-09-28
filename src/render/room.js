@@ -370,6 +370,20 @@ const plaster = () => surface("plaster", plasterTile);
 const wood = () => surface("wood", woodTile);
 const linen = () => surface("linen", weaveTile);
 const kilim = () => surface("kilim", () => weaveTile({ size: 128, threads: 8, slub: 0.5, strength: 3, seed: 0x6b696c6d }));
+const floorboards = (setting) => cached(`floor-${setting}`, () => floorTexture(LOOKS[setting].floor));
+const rugPattern = (setting) => cached(`rug-${setting}`, () => rugTexture(LOOKS[setting].rug));
+const artwork = (look) => cached(`art-${look.art.join()}`, () => artTexture(look.art));
+const sky = () => cached("sky", skyTexture);
+const pool = () => cached("glow", glowTexture);
+
+/**
+ * What a room in `setting` is drawn with, one texture to a step, for making
+ * ahead of the room itself: together they take the best part of a second,
+ * the floor's million texels alone a third of it.
+ */
+export function roomTextures(setting) {
+  return [() => floorboards(setting), plaster, wood, linen, kilim, () => rugPattern(setting), () => artwork(LOOKS[setting]), sky, pool];
+}
 
 /**
  * A material over a surface: the colour given, divided by the surface's own
@@ -528,7 +542,7 @@ function glow(width, height) {
   const node = new Mesh(
     new PlaneGeometry(width, height),
     new MeshBasicMaterial({
-      map: cached("glow", glowTexture),
+      map: pool(),
       transparent: true,
       opacity: 0.32,
       blending: AdditiveBlending,
@@ -626,7 +640,7 @@ function framedArt(look, width = 0.8, height = 1.0) {
   mount.position.z = 0.008;
   const picture = mesh(
     new PlaneGeometry(width - 2 * t - 0.12, height - 2 * t - 0.12),
-    standard(0xffffff, { map: cached(`art-${look.art.join()}`, () => artTexture(look.art)), roughness: 0.85 }),
+    standard(0xffffff, { map: artwork(look), roughness: 0.85 }),
     { cast: false }
   );
   picture.position.z = 0.01;
@@ -667,13 +681,10 @@ function bookcase(look) {
 /** A window: the sky beyond, a painted frame and glazing bars, and a sill. */
 function windowUnit(look, width = 1.3, height = 1.5) {
   const group = new Group();
-  const sky = new Mesh(
-    new PlaneGeometry(width, height),
-    new MeshBasicMaterial({ map: cached("sky", skyTexture), toneMapped: false })
-  );
-  sky.userData.outline = false;
-  sky.position.z = 0.002;
-  group.add(sky);
+  const view = new Mesh(new PlaneGeometry(width, height), new MeshBasicMaterial({ map: sky(), toneMapped: false }));
+  view.userData.outline = false;
+  view.position.z = 0.002;
+  group.add(view);
   const paint = standard(look.trim, { roughness: 0.4 });
   const t = 0.06;
   group.add(box([width + 2 * t, t, 0.06], paint, [0, height / 2 + t / 2, 0.03]));
@@ -781,7 +792,7 @@ export function buildRoom(layout) {
   room.userData.walls = [];
 
   const width = 2 * half[0];
-  const boards = cached(`floor-${setting}`, () => floorTexture(look.floor));
+  const boards = floorboards(setting);
   // A vertex every ten centimetres, which is what the corners' shade needs to
   // fall off smoothly, and the boards in metres rather than stretched.
   const floorGeometry = tiled(
@@ -825,7 +836,7 @@ export function buildRoom(layout) {
   const rug = mesh(
     rugGeometry,
     standard(0xffffff, {
-      map: cached(`rug-${setting}`, () => rugTexture(look.rug)),
+      map: rugPattern(setting),
       normalMap: weave.normal,
       normalScale: new Vector2(0.8, 0.8),
       roughness: 0.97,
@@ -930,15 +941,6 @@ export function buildRoom(layout) {
 }
 
 /**
- * Make a setting's textures before its first room is wanted - while the first
- * scene is still being solved - so that room costs no more than its meshes.
- */
-export function prepareRoom(setting) {
-  const layout = roomLayout(setting, { min: [-1, 0, -1], max: [1, 1.8, 1] });
-  if (layout) disposeRoom(buildRoom(layout));
-}
-
-/**
  * Hide the walls the camera is behind, and everything on them.
  *
  * A wall's own plane would cull itself - it faces into the room - but what
@@ -958,15 +960,18 @@ export function updateRoom(room, camera) {
   return changed;
 }
 
-/** Release the geometry and materials a room owns; the textures are shared. */
-export function disposeRoom(room) {
+/**
+ * Release the geometry and materials a room owns; the textures are shared.
+ * `release` is handed each material, as `disposeProps` hands them.
+ */
+export function disposeRoom(room, release = (material) => material.dispose()) {
   if (!room) return;
   const seen = new Set();
   room.traverse((node) => {
     if (!node.isMesh) return;
     if (!seen.has(node.geometry)) node.geometry.dispose();
     seen.add(node.geometry);
-    if (!seen.has(node.material)) node.material.dispose();
+    if (!seen.has(node.material)) release(node.material);
     seen.add(node.material);
   });
 }

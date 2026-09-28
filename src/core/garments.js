@@ -782,18 +782,23 @@ function refine(body, field, veto, rounds = 4) {
 
   for (let round = 0; round < rounds; round += 1) {
     const split = new Map();
+    // Whether an edge splits is decided afresh each time it is met rather than
+    // remembered, because it reads only its two ends, and neither end moves:
+    // both triangles on an edge get the same answer, and the answer is almost
+    // always no. Only the midpoints are remembered, so the second triangle on a
+    // split edge shares the first one's. Remembering every edge of the whole
+    // body in the map was most of what a garment cost to cut.
     const splitAt = (a, b) => {
-      const key = a < b ? a * 4194304 + b : b * 4194304 + a;
-      let m = split.get(key);
-      if (m !== undefined) return m;
       const length = Math.hypot(
         positions[a * 3] - positions[b * 3],
         positions[a * 3 + 1] - positions[b * 3 + 1],
         positions[a * 3 + 2] - positions[b * 3 + 2]
       );
       const crosses = f[a] > 0 !== f[b] > 0;
-      m = length > FINE_EDGE && (crosses || Math.abs(f[a]) + Math.abs(f[b]) < length) ? midpoint(a, b) : -1;
-      split.set(key, m);
+      if (!(length > FINE_EDGE && (crosses || Math.abs(f[a]) + Math.abs(f[b]) < length))) return -1;
+      const key = a < b ? a * 4194304 + b : b * 4194304 + a;
+      let m = split.get(key);
+      if (m === undefined) split.set(key, (m = midpoint(a, b)));
       return m;
     };
     const next = [];
@@ -802,6 +807,11 @@ function refine(body, field, veto, rounds = 4) {
     for (let t = 0; t < triangles.length; t += 3) {
       const tri = [triangles[t], triangles[t + 1], triangles[t + 2]];
       const mids = [splitAt(tri[0], tri[1]), splitAt(tri[1], tri[2]), splitAt(tri[2], tri[0])];
+      if (mids[0] < 0 && mids[1] < 0 && mids[2] < 0) {
+        next.push(tri[0], tri[1], tri[2]);
+        nextSource.push(source[t / 3]);
+        continue;
+      }
       const count = mids.filter((m) => m >= 0).length;
       const out = [];
       if (count === 0) out.push(tri);

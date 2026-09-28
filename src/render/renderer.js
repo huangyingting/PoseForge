@@ -33,6 +33,8 @@ import {
   DoubleSide,
   Group,
   HemisphereLight,
+  ImageBitmapLoader,
+  ImageLoader,
   LinearFilter,
   LinearMipmapLinearFilter,
   Mesh,
@@ -48,14 +50,14 @@ import {
   Scene,
   ShaderChunk,
   SRGBColorSpace,
-  TextureLoader,
+  Texture,
   Vector2,
   Vector3,
   WebGLRenderer,
   ZeroFactor,
 } from "three";
 import { buildProps, disposeProps } from "./props.js";
-import { buildRoom, disposeRoom, prepareRoom, roomLayout, paintWall, SETTINGS, updateRoom } from "./room.js";
+import { buildRoom, disposeRoom, roomLayout, roomTextures, paintWall, SETTINGS, updateRoom } from "./room.js";
 import { modelFiles } from "../core/bodyModels.js";
 import { IRIS_UV } from "../core/humanMesh.js";
 import { LACE_REPEAT, LACE_SIZE, lacePattern } from "../core/lace.js";
@@ -105,8 +107,36 @@ const atlasUrl = (bodyType, model) => {
   return String(new URL(`../../assets/models/skin-${atlas}.png`, import.meta.url));
 };
 const atlases = new Map();
-const loader = new TextureLoader();
 const textureListeners = new Set();
+
+/**
+ * A picture from the assets as a texture, decoded off the main thread where
+ * the browser can. An <img> is decoded where WebGL first uploads it, which for
+ * a pair's two 2048-square skin atlases held their first picture for most of a
+ * second. Decoded as WebGL is told to take it for an sRGB texture - alpha not
+ * premultiplied, colour not converted - so the pixels are the same.
+ * `userData.loaded` settles with the texture once it has its picture.
+ */
+let bitmaps = null;
+function picture(url) {
+  const texture = new Texture();
+  texture.colorSpace = SRGBColorSpace;
+  texture.anisotropy = 8;
+  texture.userData.loaded = new Promise((resolve) => {
+    const settled = () => textureListeners.forEach(notify => notify());
+    const arrived = (image) => {
+      texture.image = image;
+      texture.needsUpdate = true;
+      settled();
+      resolve(texture);
+    };
+    if (typeof createImageBitmap === "function") {
+      bitmaps ??= new ImageBitmapLoader().setOptions({ premultiplyAlpha: "none", colorSpaceConversion: "none" });
+      bitmaps.load(url, arrived, undefined, settled);
+    } else new ImageLoader().load(url, arrived, undefined, settled);
+  });
+  return texture;
+}
 
 /**
  * The atlas for a body type and model (see `core/bodyModels.js`), loaded once
@@ -119,14 +149,11 @@ const textureListeners = new Set();
 function skinAtlas(bodyType, model) {
   const url = atlasUrl(bodyType, model);
   if (!atlases.has(url)) {
-    const texture = loader.load(url, () => textureListeners.forEach(notify => notify()), undefined,
-      () => textureListeners.forEach(notify => notify()));
-    texture.colorSpace = SRGBColorSpace;
+    const texture = picture(url);
     // The atlas is authored with the glTF convention - v down from the top
     // left - which is what the GLB's own TEXCOORD_0 expects and the opposite of
     // three's default.
     texture.flipY = false;
-    texture.anisotropy = 8;
     atlases.set(url, texture);
   }
   return atlases.get(url);
@@ -593,7 +620,20 @@ function eyeTexture() {
   const veins = spokes(23);
   const limbus = IRIS_UV;
   const pupil = limbus * 0.34;
-  const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  // Each texel's colour is mixed in place: an array made for every step of a
+  // quarter of a million texels took the best part of a second.
+  const colour = new Float64Array(3);
+  const iris = new Float64Array(3);
+  const set = (c, r, g, b) => {
+    c[0] = r;
+    c[1] = g;
+    c[2] = b;
+  };
+  const mix = (c, r, g, b, t) => {
+    c[0] += (r - c[0]) * t;
+    c[1] += (g - c[1]) * t;
+    c[2] += (b - c[2]) * t;
+  };
   const smooth = (e0, e1, x) => {
     const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
     return t * t * (3 - 2 * t);
@@ -607,23 +647,26 @@ function eyeTexture() {
       const angle = Math.atan2(dv, du);
       // The white: bone rather than paper, warming and a little pink towards
       // the corners, with a few faint vessels running in from them.
-      let colour = mix([0.88, 0.85, 0.81], [0.86, 0.72, 0.66], 0.55 * smooth(0.22, 0.5, r));
+      set(colour, 0.88, 0.85, 0.81);
+      mix(colour, 0.86, 0.72, 0.66, 0.55 * smooth(0.22, 0.5, r));
       const vessel = Math.max(0, 1 - Math.abs(veins(angle + wander(r * 9) * 0.25) - 0.5) * 22);
-      colour = mix(colour, [0.72, 0.36, 0.32], 0.35 * vessel * smooth(0.24, 0.46, r));
+      mix(colour, 0.72, 0.36, 0.32, 0.35 * vessel * smooth(0.24, 0.46, r));
       // The iris, in over a soft rim.
       const inIris = 1 - smooth(limbus - 0.004, limbus + 0.01, r);
       if (inIris > 0) {
         const t = r / limbus;
         const streak = 0.55 * fine(angle + wander(t * 3) * 0.08) + 0.45 * coarse(angle);
-        let iris = mix([0.36, 0.23, 0.11], [0.2, 0.12, 0.065], smooth(0.35, 0.95, t));
-        iris = iris.map((v) => v * (0.72 + 0.56 * streak));
+        set(iris, 0.36, 0.23, 0.11);
+        mix(iris, 0.2, 0.12, 0.065, smooth(0.35, 0.95, t));
+        const fibres = 0.72 + 0.56 * streak;
+        for (let k = 0; k < 3; k += 1) iris[k] *= fibres;
         // The collarette: a lighter ring a third of the way out.
-        iris = mix(iris, [0.45, 0.3, 0.15], 0.35 * Math.exp(-(((t - 0.52) / 0.07) ** 2)));
+        mix(iris, 0.45, 0.3, 0.15, 0.35 * Math.exp(-(((t - 0.52) / 0.07) ** 2)));
         // And the dark ring at the rim that tells the eye where the iris ends.
-        iris = mix(iris, [0.07, 0.05, 0.04], 0.75 * smooth(0.8, 1, t));
-        colour = mix(colour, iris, inIris);
+        mix(iris, 0.07, 0.05, 0.04, 0.75 * smooth(0.8, 1, t));
+        mix(colour, iris[0], iris[1], iris[2], inIris);
       }
-      colour = mix(colour, [0.018, 0.016, 0.015], 1 - smooth(pupil - 0.004, pupil + 0.004, r));
+      mix(colour, 0.018, 0.016, 0.015, 1 - smooth(pupil - 0.004, pupil + 0.004, r));
       const o = (y * n + x) * 4;
       for (let k = 0; k < 3; k += 1) data[o + k] = Math.round(Math.min(1, colour[k]) * 255);
       data[o + 3] = 255;
@@ -711,12 +754,8 @@ function hairMaterial(colour) {
 const cardTextures = new Map();
 function cardTexture(name) {
   if (!cardTextures.has(name)) {
-    const url = String(new URL(`../../assets/models/hair/${name}.png`, import.meta.url));
-    const texture = loader.load(url, () => textureListeners.forEach(notify => notify()), undefined,
-      () => textureListeners.forEach(notify => notify()));
-    texture.colorSpace = SRGBColorSpace;
+    const texture = picture(String(new URL(`../../assets/models/hair/${name}.png`, import.meta.url)));
     texture.flipY = false;
-    texture.anisotropy = 8;
     cardTextures.set(name, texture);
   }
   return cardTextures.get(name);
@@ -743,7 +782,7 @@ function cardTexture(name) {
  * as in front; the cards are wound to face out of the head (see `cardSubmesh`),
  * so the side three turns the normal round for is the inside.
  */
-function cardMaterial(colour, cards) {
+function cardMaterial(colour, cards, strands = cardTexture(cards.texture)) {
   const material = hairMaterial(colour);
   // The strands themselves, from the grey of the picture of them: a card is
   // a flat sheet and its highlight was one smooth band down it - the room's
@@ -757,7 +796,7 @@ function cardMaterial(colour, cards) {
   // which where a trim folds under - the inside of a bob's fringe, beside the
   // cheek - are sheared to nothing, and it came out a ribbon of chrome there.
   material.anisotropy = 0;
-  material.bumpMap = cardTexture(cards.texture);
+  material.bumpMap = strands;
   material.bumpScale = 1.2;
   material.roughness = 0.55;
   material.envMapIntensity = 0.4;
@@ -767,7 +806,7 @@ function cardMaterial(colour, cards) {
   // untouched by the texture's dark, and by the occlusion - frosted every
   // strip seen edge-on, which on short hair is most of the sides of the head.
   material.sheen = 0;
-  return cutOut(material, cards, "poseforge-hair-cards");
+  return cutOut(material, cards, "poseforge-hair-cards", strands);
 }
 
 /**
@@ -794,9 +833,9 @@ function keepAlpha(material) {
 
 /** `material` over a card texture, cut out: shared with the clay view, where
  *  the cards are still strips of strands and not solid sheets. */
-function cutOut(material, cards, key) {
+function cutOut(material, cards, key, strands = cardTexture(cards.texture)) {
   material.color.multiplyScalar(cards.gain);
-  material.map = cardTexture(cards.texture);
+  material.map = strands;
   material.alphaTest = 0.5;
   material.alphaToCoverage = true;
   keepAlpha(material);
@@ -1385,11 +1424,96 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
 
   const focus = new Vector3(0, 0.9, 0);
 
+  // The materials the last scene was drawn with, let go of only once the next
+  // frame has drawn the new one. Disposing a material releases its shader, and
+  // three deletes a shader the moment no material holds it - so disposing the
+  // old scene before building the new one compiled every shader in the picture
+  // again on every scene, including the final pass that replaces the draft's
+  // identical figures seconds later: 3.2 seconds of main thread under
+  // SwiftShader. Held for one more frame, the new materials find their shaders
+  // still there and share them.
+  const retired = new Set();
+  const retire = (material) => retired.add(material);
+  function releaseRetired() {
+    for (const material of retired) material.dispose();
+    retired.clear();
+  }
+
+  /**
+   * What the first picture will be drawn with, made before it is wanted.
+   *
+   * The first picture used to wait on all of it. Its shaders - a score of them,
+   * most of them physical materials patched here - are compiled the first time
+   * they draw, which under SwiftShader held the page for 2.4 seconds after the
+   * figures arrived, and the room's, eyes' and cloth's textures took 1.4 more.
+   * The solve before it takes seconds and leaves the page idle, so all of it is
+   * done then, a step to an idle callback: the environment, a room at the size
+   * of an ordinary scene's, a bed, and one of each of a figure's materials on a
+   * triangle - over empty textures where the real ones are pictures, since what
+   * a shader is compiled for is whether a material has a map, not what is in it.
+   * Compiled against the scene, they are the programs the first scene's own
+   * materials will ask for, and they hold them until it has drawn (see
+   * `retired`). A scene that arrives first simply compiles what is left.
+   */
+  let rehearsal = null;
+  const idle = globalThis.requestIdleCallback ?? ((step) => setTimeout(step, 0));
+  function rehearse() {
+    releaseRehearsal((material) => material.dispose());
+    const group = (rehearsal = new Group());
+    const layout = roomLayout(setting, { min: [-1, 0, -1], max: [1, 1.8, 1] });
+    const steps = [
+      () => (scene.environment = environmentFor(renderer, layout ? setting : "studio", false)),
+      ...(layout ? roomTextures(setting) : []),
+      () => layout && group.add(buildRoom(layout)),
+      () => group.add(buildProps([{ kind: "bed", size: [1.6, 0.5, 2], center: [0, 0.25, 0] }], { ground: !layout })),
+    ];
+    if (displayMode === "natural") {
+      const geometry = toGeometry({
+        positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]),
+        normals: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
+        indices: new Uint32Array([0, 1, 2]),
+        uvs: new Float32Array(6),
+        garment: true,
+      });
+      const blank = new Texture();
+      steps.push(
+        ...[
+          () => skinMaterial(tinted(SKIN[0]), blank),
+          () => eyeMaterial(null, true),
+          () => mouthMaterial([1, 1, 1]),
+          () => cardMaterial([0, 0, 0], { gain: 1 }, blank),
+          () => garmentMaterial({ finish: "cotton", colour: [0, 0, 0], uvs: true }),
+        ].map((material) => () => group.add(new Mesh(geometry, material()))),
+        // The creases and the rib every garment's shader is given as it compiles.
+        ribTexture,
+        foldTexture
+      );
+    }
+    steps.push(() => renderer.compile(group, camera, scene));
+    const next = () => {
+      if (rehearsal !== group) return;
+      steps.shift()();
+      if (steps.length) idle(next);
+    };
+    idle(next);
+  }
+  function releaseRehearsal(release) {
+    if (!rehearsal) return;
+    for (const node of rehearsal.children) {
+      if (node.name === "room") disposeRoom(node, release);
+      else if (node.name === "props") disposeProps(node, release);
+      else release(node.material);
+    }
+    // The figure's materials all sit on the one triangle.
+    rehearsal.children.find((node) => node.isMesh)?.geometry.dispose();
+    rehearsal = null;
+  }
+
   /** Clear the figures without touching the lights or the camera. */
   function clearBodies() {
     for (const child of [...bodies.children]) {
       child.geometry.dispose();
-      child.material.dispose();
+      retire(child.material);
       bodies.remove(child);
     }
   }
@@ -1428,7 +1552,7 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
     if (key === roomKey) return;
     if (room) {
       scene.remove(room);
-      disposeRoom(room);
+      disposeRoom(room, retire);
     }
     room = layout ? buildRoom(layout) : null;
     roomKey = key;
@@ -1443,9 +1567,10 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
   function setScene({ meshes, props, shell }) {
     lastPayload = { meshes, props, shell };
     shadowsStale = true;
+    releaseRehearsal(retire);
     clearBodies();
     if (propGroup) {
-      disposeProps(propGroup);
+      disposeProps(propGroup, retire);
       scene.remove(propGroup);
     }
     // A car is a room of its own: its cabin in a bedroom would be neither.
@@ -1661,11 +1786,16 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
     if (shadowsStale) renderer.shadowMap.needsUpdate = true;
     shadowsStale = false;
     renderer.render(scene, camera);
+    releaseRetired();
   }
 
+  let disposed = false;
   function dispose() {
+    disposed = true;
     textureListeners.delete(changed);
     clearBodies();
+    releaseRehearsal(retire);
+    releaseRetired();
     if (propGroup) disposeProps(propGroup);
     disposeRoom(room);
     for (const map of environments.get(renderer)?.values() ?? []) map.dispose();
@@ -1686,9 +1816,24 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
     setSetting(name) {
       setting = SETTINGS.includes(name) ? name : "studio";
       if (lastPayload) setScene(lastPayload);
-      else (globalThis.requestIdleCallback ?? setTimeout)(() => prepareRoom(setting));
+      else rehearse();
     },
     frame,
+    /**
+     * Start fetching the skin of a scene that is still being solved, and hand
+     * each atlas to the GPU as it arrives. Each is a few megabytes; asked for
+     * when the figures arrived, the first picture of them was drawn without
+     * it, and uploaded by the first frame to draw with it, the pair of them
+     * held that frame for a fifth of a second.
+     */
+    expect(actors = []) {
+      if (displayMode !== "natural") return;
+      for (const actor of actors) {
+        skinAtlas(actor.bodyType, actor.model).userData.loaded.then((atlas) =>
+          idle(() => disposed || renderer.initTexture(atlas))
+        );
+      }
+    },
     setView,
     orbit,
     getOrbit,

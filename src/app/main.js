@@ -237,6 +237,7 @@ function solve(scene, { frame = false, tour: tourAfter = false } = {}) {
   $("panel").setAttribute("aria-busy", "true");
   status(t("Shaping your study…"), true);
   worker.postMessage({ id: request, scene });
+  view?.expect(scene.actors);
 }
 function cancelPositionLoad() {
   positionRequest += 1;

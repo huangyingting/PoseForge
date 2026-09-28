@@ -470,11 +470,14 @@ export function buildProps(props, { ground = true, shell = [] } = {}) {
   return group;
 }
 
-/** Release the geometry and materials a prop group owns. */
-export function disposeProps(group) {
+/**
+ * Release the geometry and materials a prop group owns. `release` is handed
+ * each material, for a caller that wants to let go of them later than now.
+ */
+export function disposeProps(group, release = (material) => material.dispose()) {
   group.traverse((node) => {
     if (!node.isMesh && !node.isLineSegments) return;
     node.geometry.dispose();
-    for (const material of [].concat(node.material)) material.dispose();
+    for (const material of [].concat(node.material)) release(material);
   });
 }

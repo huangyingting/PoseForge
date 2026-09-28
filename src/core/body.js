@@ -1726,7 +1726,10 @@ export function bodyNormal(p, volumes, h = 1e-3) {
 }
 
 // One volume's terms in a `bodyField`, in this order.
-const FIELD_STRIDE = 14;
+const FIELD_STRIDE = 18;
+// How far inside the proven bound a volume has to be before `bodyField` will
+// skip it: 0.1 micron, a hundred million times the rounding in one distance.
+const FIELD_SLACK = 1e-7;
 
 /**
  * `bodyDistance` against one fixed set of volumes, for asking it at many
@@ -1739,6 +1742,18 @@ const FIELD_STRIDE = 14;
  * array. What is left is `roundConeDistance` and `smoothMin` term for term, in
  * the same order, so the answer is `bodyDistance`'s to the last bit.
  *
+ * Most of those terms are also proving that an ankle is far from an ear, and
+ * those are skipped without changing a bit. A round cone lies inside the ball
+ * round its midpoint of radius half its length plus its larger radius, so its
+ * distance is at least the distance to that ball. When that is more than the
+ * running distance plus the volume's blend, `smoothMin` weighs the volume at
+ * exactly zero - `h` comes out 1, and `di * 0 + d * 1 - blend * 0` is `d` - so
+ * leaving it out is the same fold. The first volume is always taken, because it
+ * is not blended but assigned, and a cone whose one sphere swallows the other
+ * never is, because the analytic form is not a distance there. Measured over
+ * the female scan's 47k vertices against her 150 volumes: a third of the time.
+ * A second, tighter test against the axis segment cost more than it saved.
+ *
  * The volumes are read once, now. A field made before they move does not
  * follow them.
  */
@@ -1750,11 +1765,23 @@ export function bodyField(volumes) {
     const baz = b[2] - a[2];
     const l2 = bax * bax + bay * bay + baz * baz;
     const rr = ra - rb;
-    terms.set([a[0], a[1], a[2], bax, bay, baz, l2, ra, rb, rr, l2 - rr * rr, 1 / l2, Math.sign(rr) * rr * rr, blend], i * FIELD_STRIDE);
+    const bounded = l2 < 1e-12 || l2 - rr * rr > 0;
+    const reach = bounded ? Math.sqrt(l2) / 2 + Math.max(ra, rb) + Math.max(blend, 0) + FIELD_SLACK : Infinity;
+    terms.set([
+      a[0], a[1], a[2], bax, bay, baz, l2, ra, rb, rr, l2 - rr * rr, 1 / l2, Math.sign(rr) * rr * rr, blend,
+      a[0] + bax / 2, a[1] + bay / 2, a[2] + baz / 2, reach,
+    ], i * FIELD_STRIDE);
   });
   return (px, py, pz) => {
     let d = Infinity;
     for (let o = 0; o < terms.length; o += FIELD_STRIDE) {
+      // Infinite while `d` is, so the first volume always falls through.
+      const clear = d + terms[o + 17];
+      if (clear < 0) continue;
+      const mx = px - terms[o + 14];
+      const my = py - terms[o + 15];
+      const mz = pz - terms[o + 16];
+      if (mx * mx + my * my + mz * mz > clear * clear) continue;
       const pax = px - terms[o];
       const pay = py - terms[o + 1];
       const paz = pz - terms[o + 2];
