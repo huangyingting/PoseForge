@@ -38,7 +38,7 @@ export const HEAD_TO_TOE_LAYOUT = {
           rotation: 0,
         },
         neck: {
-          flexion: -5.643060399013939,
+          flexion: -3,
           abduction: 0,
           rotation: 0,
         },
@@ -183,7 +183,7 @@ export const HEAD_TO_TOE_LAYOUT = {
           rotation: -39.66064855627024,
         },
         elbow_l: {
-          flexion: 87.50659179667271,
+          flexion: 88.30659179667271,
           abduction: 0,
           rotation: 52.033793371612354,
         },
@@ -203,7 +203,7 @@ export const HEAD_TO_TOE_LAYOUT = {
           rotation: -39.66050809307427,
         },
         elbow_r: {
-          flexion: 87.50659179667234,
+          flexion: 88.30659179667234,
           abduction: 0,
           rotation: 52.03363868050769,
         },
@@ -213,12 +213,12 @@ export const HEAD_TO_TOE_LAYOUT = {
           rotation: 15,
         },
         hip_l: {
-          flexion: 10.67225883840179,
+          flexion: 8.67225883840179,
           abduction: 40,
           rotation: 0,
         },
         knee_l: {
-          flexion: 8,
+          flexion: 7,
           abduction: 0,
           rotation: 0,
         },
@@ -233,12 +233,12 @@ export const HEAD_TO_TOE_LAYOUT = {
           rotation: 0,
         },
         hip_r: {
-          flexion: 10.67226256229393,
+          flexion: 8.67226256229393,
           abduction: 40,
           rotation: 0,
         },
         knee_r: {
-          flexion: 8,
+          flexion: 7,
           abduction: 0,
           rotation: 0,
         },
@@ -254,8 +254,8 @@ export const HEAD_TO_TOE_LAYOUT = {
         },
       },
       placement: {
-        position: [0, 0.3442044448852539, 0.14999999999999997],
-        rotation: [100.00000000000001, 0, 180],
+        position: [0, 0.3362044448852539, 0.14999999999999997],
+        rotation: [100.7, 0, 180],
         mode: "guided",
       },
       stature: 1.78,

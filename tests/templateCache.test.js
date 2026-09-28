@@ -34,7 +34,7 @@ test("concurrent default/explicit requests share one body and one template promi
     bodyType: "female",
     bust: 1,
     build: 1,
-    hair: "medium",
+    hair: "crop",
     wearing: ["shorts", "top", "top"],
     outfit: "black",
     stature: 1.85,

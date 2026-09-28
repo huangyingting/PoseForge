@@ -37,7 +37,7 @@ export const RECLINING_PAIR_LAYOUT = {
           rotation: 0,
         },
         neck: {
-          flexion: -5.643060399013939,
+          flexion: -3,
           abduction: 0,
           rotation: 0,
         },

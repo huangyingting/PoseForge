@@ -827,7 +827,7 @@ const terms = {
   neutral: "中性",
   // hair
   none: "无",
-  crop: "平头",
+  crop: "短碎发",
   short: "短发",
   pixie: "精灵短发",
   undercut: "削边",

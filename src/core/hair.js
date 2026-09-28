@@ -306,14 +306,12 @@ export const FACE_TRIMS = {
 /**
  * What each body type wears unless it is told otherwise.
  *
- * Medium rather than long for the female default. `long` reaches 258mm below
- * the hairline, which is mid-back, and at that length the fall is a flat sheet
- * either side of the face for its whole drop - there is nothing for the lock
- * ridges to break up because the silhouette is a straight line. Shoulder length
- * is both the commoner haircut and the one the shell models honestly: it ends
- * where the shoulder is, so the ragged tips have something to end *against*.
+ * A crop for the female default: short, with a fringe that stops above the
+ * brows. The longer cuts MakeHuman has for her - both bobs and the pixie - are
+ * swept across the face and hang over one eye, and a face with an eye behind
+ * hair is one whose expression reads by half.
  */
-export const DEFAULT_HAIR = { female: "medium", male: "short", neutral: "short" };
+export const DEFAULT_HAIR = { female: "crop", male: "short", neutral: "short" };
 
 /**
  * Hair colour.
