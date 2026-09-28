@@ -557,6 +557,13 @@ iris and a pupil. It is the mesh that makes the picture read as a person; it is
 never asked a geometric question. If it fails to load the viewport falls back
 to drawing the field and says so.
 
+Its triangles are cut for a body at rest, and posed they show as corners along
+an outline. So the final pass splits each edge that stands more than 0.2 mm off
+the curve its normals describe: a clothed pair goes from about 132k triangles
+to about 223k. Skin under cloth is left as the cloth was cut to fit, and the
+solver never sees the new vertices. See
+[the meshing notes](docs/meshing.md#finer-than-the-scan).
+
 There are twelve of them — female, male and neutral in each of the four models
 in `src/core/bodyModels.js` — all made by MakeHuman on one rig and one
 topology, with 2048px skin photographs. `node scripts/models/make-bodies.mjs`

@@ -8,10 +8,12 @@
  * volumes, so the vertices can be cut into runs, shaded anywhere, and put back
  * together as exactly the numbers one thread would have written.
  *
- * Helpers are started on first use and kept. A run is handed out only when a
- * helper is free, so a scene given up for a newer one has its remaining runs
- * dropped rather than shaded. Where there are no helpers to be had - no nested
- * workers, or a script that will not load - the runs are shaded here instead.
+ * Helpers are started on first use and kept. Each holds the run it is shading
+ * and the next, and no more, so it goes straight on while the body worker is
+ * busy - cutting finer triangles, say - and a scene given up for a newer one
+ * has its remaining runs dropped rather than shaded. Where there are no
+ * helpers to be had - no nested workers, or a script that will not load - the
+ * runs are shaded here instead.
  */
 import { fieldOcclusion } from "../render/meshBuilder.js";
 
@@ -20,9 +22,10 @@ import { fieldOcclusion } from "../render/meshBuilder.js";
 const RUN = 16_384;
 // Leave a core for the page and one for this worker's next request.
 const HELPERS = Math.max(1, Math.min(6, (globalThis.navigator?.hardwareConcurrency ?? 2) - 2));
+// Runs a helper holds at once: the one it is on and the one after.
+const DEPTH = 2;
 
 let helpers = null;
-const idle = [];
 const queue = [];
 
 function start() {
@@ -32,31 +35,27 @@ function start() {
   try {
     for (let i = 0; i < HELPERS; i += 1) {
       const helper = new Worker(new URL("./occlusionWorker.js", import.meta.url), { type: "module" });
+      // In the order they were sent, which is the order they come back.
+      helper.tasks = [];
       helper.onmessage = ({ data }) => {
-        const { task } = helper;
-        helper.task = null;
-        idle.push(helper);
-        task.done(data.occlusion);
+        helper.tasks.shift().done(data.occlusion);
         pump();
       };
       // A helper that fails is retired, and what it held is shaded here.
       helper.onerror = (event) => {
         event.preventDefault?.();
-        const { task } = helper;
-        helper.task = null;
+        const held = helper.tasks.splice(0);
         helper.terminate();
         helpers.splice(helpers.indexOf(helper), 1);
-        if (task) task.done(shadeHere(task));
+        for (const task of held) task.done(shadeHere(task));
         if (!helpers.length) while (queue.length) finish(queue.shift());
         pump();
       };
       helpers.push(helper);
-      idle.push(helper);
     }
   } catch {
     for (const helper of helpers) helper.terminate();
     helpers = [];
-    idle.length = 0;
   }
   return helpers;
 }
@@ -75,14 +74,18 @@ const shadeHere = (task) => {
 const finish = (task) => task.done(task.stale() ? null : shadeHere(task));
 
 function pump() {
-  while (idle.length && queue.length) {
+  while (queue.length) {
+    // The helper with least in hand, so the first round goes one each.
+    let helper = null;
+    for (const candidate of helpers)
+      if (candidate.tasks.length < DEPTH && (!helper || candidate.tasks.length < helper.tasks.length)) helper = candidate;
+    if (!helper) return;
     const task = queue.shift();
     if (task.stale()) {
       task.done(null);
       continue;
     }
-    const helper = idle.pop();
-    helper.task = task;
+    helper.tasks.push(task);
     const sent = message(task);
     helper.postMessage(sent, [sent.positions.buffer, sent.normals.buffer]);
   }

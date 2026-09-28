@@ -9,8 +9,10 @@
  * transfers rather than copies.
  *
  * It answers twice after contact validation. The draft omits final occlusion;
- * the final pass shades the same triangles rather than changing the pose,
- * sharing that shading out among helper workers (see `occlusionPool.js`).
+ * the final pass shades the same pose rather than changing it, sharing that
+ * shading out among helper workers (see `occlusionPool.js`), and while they
+ * work it splits the triangles finer wherever the scan's facets would show
+ * (see `core/tessellate.js`).
  * Contact trials and the gap between passes yield so a newer request can
  * cancel work on a scene that is no longer selected. Raw scans, shaped bodies
  * and dressed templates are cached independently of the current pose.
@@ -29,6 +31,7 @@ import { createTemplateCache } from "./templateCache.js";
 import { modelFiles } from "../core/bodyModels.js";
 import { buildBodyMesh } from "../render/meshBuilder.js";
 import { occludeParts } from "./occlusionPool.js";
+import { spread, tessellate } from "../core/tessellate.js";
 
 // 30mm draws in around a sixth of the time of the final pass and still reads as
 // the same two people in the same pose; 12mm is where the blends between limbs
@@ -151,6 +154,10 @@ const yieldToQueue = () => new Promise((resolve) => setTimeout(resolve, 0));
  * cached template and are the same arrays every time, so transferring them
  * would detach the template and every later pose would come back empty. They
  * are copied.
+ *
+ * `scan`, the template's own submesh for a part, is kept for `tessellate` and
+ * not sent. The eyes and the hair cards have none: an eye is a small sphere
+ * already finely cut, and a card is a flat strip.
  */
 function bodyParts(actor, template, resolution) {
   if (!template) {
@@ -168,7 +175,7 @@ function bodyParts(actor, template, resolution) {
     ];
   }
 
-  return skinHumanMesh(template, actor.skeleton, actor.evaluated, undefined, actor.hands, actor.hang).map((part) => ({
+  return skinHumanMesh(template, actor.skeleton, actor.evaluated, undefined, actor.hands, actor.hang).map((part, index) => ({
     name: part.name,
     primary: part.primary,
     colour: part.colour ?? null,
@@ -186,6 +193,7 @@ function bodyParts(actor, template, resolution) {
     // only because the field has no socket in it to shade them with. Everything
     // else gets it from the field on the final pass, not on the earlier draft.
     occlusion: part.occlusion ? part.occlusion.slice() : null,
+    scan: part.occlusion || part.cards ? null : template.submeshes[index],
   }));
 }
 
@@ -214,10 +222,31 @@ async function meshActors(actors, { occlusion, resolution }, transfers, loaded, 
   if (occlusion) {
     const scene = actors.flatMap((actor) => actor.volumes);
     const unshaded = meshed.flat().filter((part) => !part.occlusion);
-    const shaded = await occludeParts(unshaded, scene, FINAL, stale);
+    const shading = occludeParts(unshaded, scene, FINAL, stale);
+    // This worker only hands out runs while the helpers shade, so the finer
+    // triangles are cut in the meantime - a part at a time, so the runs keep
+    // coming between them.
+    const finer = new Map();
+    for (const part of meshed.flat()) {
+      if (!part.scan) continue;
+      finer.set(part, tessellate(part, part.scan.positions, { held: part.scan.beneath, bridge: part.garment }));
+      await yieldToQueue();
+      if (stale()) return null;
+    }
+    const shaded = await shading;
     if (!shaded) return null;
     unshaded.forEach((part, i) => (part.occlusion = shaded[i]));
+    for (const [part, { positions, normals, indices, parents }] of finer)
+      Object.assign(part, {
+        positions,
+        normals,
+        indices,
+        uvs: spread(part.uvs, parents, 2),
+        trim: spread(part.trim, parents),
+        occlusion: spread(part.occlusion, parents),
+      });
   }
+  for (const part of meshed.flat()) delete part.scan;
 
   return actors.map((actor, index) => {
     const parts = meshed[index];

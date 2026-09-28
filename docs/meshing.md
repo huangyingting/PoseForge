@@ -235,6 +235,54 @@ refract, they read as mottled facets rather than as an iris.
 The eyes also carry their own baked occlusion rather than the field's, since the
 field has no eye socket in it to shade them with.
 
+## Finer than the scan
+
+The scans are cut for a body at rest, and sparingly where it is smooth: across
+a shoulder, a breast or a buttock the edges run past two centimetres and up to
+nearly six. Shading hides that, because the normals are interpolated, but the
+outline cannot, and nor can the shadow's edge. Close up, a kneecap drawn
+against the floor is a run of straight chords with a corner between each.
+Posing makes it worse by bending edges that were straight in the scan.
+
+So the final pass splits them (`src/core/tessellate.js`). Each posed edge is
+held against the curve its ends' normals say it follows, the PN-triangle cubic
+(Vlachos et al., 2001). Where the curve's midpoint stands more than 0.2 mm off
+the chord, the edge is split there and the triangles either side into two,
+three or four, and the halves are tried again once. 0.2 mm is a tenth of a
+pixel with the pair framed, and about half of one at the closest the camera
+comes.
+
+- **The edge in space decides.** Both triangles on an edge split alike, so
+  nothing cracks. A UV seam draws one edge twice, from two sets of vertex
+  copies. The copies are matched by where they are in the scan, and they share
+  one midpoint, each with its own UV.
+- **Creases are followed along their line.** The sole of a foot meeting its
+  side, the lips, a garment's face meeting its hem wall: the midpoint follows
+  the line the two sides meet in, square to both normals.
+- **Skin under cloth is left alone.** Each garment was cut from the skin's
+  chords, and a stocking stands barely a millimetre off them. Rounding the skin
+  there would push it through. The cloth over it is rounded instead, where it
+  bulges and never into a hollow, which is also what cloth does.
+- **It is drawing only.** The solver, the contacts and the occlusion all work
+  on the scan's own vertices. A new vertex takes the mean of its ends' normals,
+  UVs, trim and occlusion, so only the shape between the old vertices changes.
+
+On kneeling missionary the pair goes from 132,232 triangles to 222,820:
+
+| part | scan | drawn |
+|---|---|---|
+| female skin | 21,900 | 48,772 |
+| male skin | 21,736 | 53,002 |
+| clothing, per piece | 12,336–31,423 | 21,356–38,361 |
+
+Cutting them takes about a quarter of a second for the first scene and a
+tenth after, done while the helpers shade, and the final pass comes back about
+a quarter of a second later on four cores. The draft is not split. Clearance from cloth to skin is unchanged for the bra, the tops and
+most of the briefs. Over the legs, stockings stand at least 0.6 mm off the
+skin where they stood 0.8. Two vertices at a man's toes dip 0.1 mm into it.
+Where the pose already presses a thigh into the briefs, the rounder cloth runs
+up to 1.5 mm further in, on the same few vertices.
+
 ## Faster, to the same numbers
 
 None of this changes what is computed. The final meshes for a pose hash the
@@ -260,9 +308,10 @@ parts.
   and each vertex reads only its own position and normal and the volumes, so
   `src/workers/occlusionPool.js` cuts the vertices into runs of 16,384 and has
   helper workers shade them - the cores less two, from one to six, so two on
-  four cores - and puts back exactly what one thread would have written. A run is
-  handed out only when a helper is free, so a scene given up for a newer one
-  stops soon. Without nested workers the runs are shaded in the body worker.
+  four cores - and puts back exactly what one thread would have written. Each
+  helper holds the run it is on and the next, so it goes straight on while the
+  body worker is busy, and a scene given up for a newer one stops soon. Without
+  nested workers the runs are shaded in the body worker.
 - **The shadow map is drawn when it changes.** The key light's map is 2048px
   square and holds every triangle of both figures, and it is the same from any
   camera. An orbit or a tour redraws the figures but not the map. It is drawn

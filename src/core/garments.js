@@ -984,12 +984,17 @@ function lift(scan, field, veto, colour, name, { bulge, layer = 1, finish = "cot
   // its source skin triangle - which, since `refine`, means any of the scan's
   // triangles that some piece of it is not well inside.
   const hides = new Uint8Array(scan.indices.length / 3).fill(OPAQUE.has(finish) ? 1 : 0);
+  // And, for `tessellate`, the scan's vertices with any of the garment over
+  // them - see `withGarments`.
+  const beneath = new Uint8Array(scan.positions.length / 3);
   const tris = [];
   for (let i = 0; i < body.indices.length; i += 3) {
     const tri = [body.indices[i], body.indices[i + 1], body.indices[i + 2]];
     const inside = tri.filter((v) => f[v] > 0);
     if (!tri.every((v) => f[v] > LIFT * 0.5)) hides[body.source[i / 3]] = 0;
     if (!inside.length) continue;
+    const source = body.source[i / 3] * 3;
+    for (let k = 0; k < 3; k += 1) beneath[scan.indices[source + k]] = 1;
     if (inside.length === 3) {
       tris.push(keepVertex(tri[0]), keepVertex(tri[1]), keepVertex(tri[2]));
       continue;
@@ -1180,6 +1185,7 @@ function lift(scan, field, veto, colour, name, { bulge, layer = 1, finish = "cot
     garment: true,
     finish,
     coveredTriangles,
+    beneath,
     colour,
     trimColour: trim ? trimColour : null,
     trim: trim ? Float32Array.from(trims) : null,
@@ -1871,9 +1877,16 @@ export function withGarments(template, { bodyType = "neutral", wearing, colour =
   for (let i = 0; i < body.indices.length; i += 3) {
     if (!hidden.has(i / 3)) visibleIndices.push(body.indices[i], body.indices[i + 1], body.indices[i + 2]);
   }
+  // Where skin and cloth are layered they were built on the same flat
+  // triangles, the cloth a lift above them, and they stay that way: `beneath`
+  // keeps `tessellate` from rounding the skin there, which would push it
+  // through anything cut from the chords - a stocking stands off by barely a
+  // millimetre. The cloth is rounded instead, and it is the outside.
+  const beneath = new Uint8Array(body.positions.length / 3);
+  for (const piece of added) piece.beneath.forEach((under, v) => under && (beneath[v] = 1));
   const submeshes = template.submeshes.filter(
     (submesh) => !(covered && submesh.name === "pelvis-anatomy")
-  ).map(submesh => submesh === body ? { ...body, indices: Uint32Array.from(visibleIndices) } : submesh);
-  const garments = added.map(({ coveredTriangles, ...piece }) => piece);
+  ).map(submesh => submesh === body ? { ...body, indices: Uint32Array.from(visibleIndices), beneath } : submesh);
+  const garments = added.map(({ coveredTriangles, beneath, ...piece }) => piece);
   return { ...template, submeshes: [...submeshes, ...garments] };
 }
