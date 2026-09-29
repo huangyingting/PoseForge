@@ -15,7 +15,7 @@ import { buildStudio, toast, showRegion, openExport } from "./studioUI.js";
 import { bindCameraInput } from "./cameraInput.js";
 import { createCameraTour } from "./cameraTour.js";
 import { bindWorkspaceLayout } from "./workspaceLayout.js";
-import { createPositionService } from "./positionService.js";
+import { createPositionClient } from "./positionClient.js";
 import {
   isPositionOverride,
   positionOverrideId,
@@ -108,7 +108,7 @@ let storageWarned = false;
 let exporting = false;
 let positionRequest = 0;
 let shouldTour = false;
-const positions = createPositionService();
+const positions = createPositionClient();
 
 // A position that loads is toured once round, unless the reader has asked
 // for less motion or turned tours off; either way the choice is theirs.
@@ -382,7 +382,7 @@ function loadPositions() {
   positionsReady ??= positions
     .positions()
     .then((list) => {
-      registerPositions(list);
+      registerPositions(list, { checked: true });
       studio?.refresh();
       return list.length;
     })

@@ -35,9 +35,13 @@ export const STARTERS = Object.freeze(
 const stock = () => (positions.length ? [...STARTERS, ...positions] : STARTERS);
 const findStock = (id) => positionIndex.get(id) ?? STARTERS.find((p) => p.id === id);
 
-/** Register the built-in interaction positions (replacing any earlier set). */
-export function registerPositions(list) {
-  positions = list.map((input) => {
+/**
+ * Built-in interaction positions as they are registered: each checked as any
+ * preset is, and source-linked. The position worker runs this over the
+ * positions it assembles, so the page need not (see `positionClient.js`).
+ */
+export function checkPositions(list) {
+  return list.map((input) => {
     const position = checkPreset(input);
     if (
       !isBuiltInPosition(position) ||
@@ -48,8 +52,16 @@ export function registerPositions(list) {
     const inputWarnings = Array.isArray(input.inputWarnings)
       ? input.inputWarnings.filter((message) => typeof message === "string")
       : [];
-    return Object.freeze({ ...position, inputWarnings });
+    return { ...position, inputWarnings };
   });
+}
+
+/**
+ * Register the built-in interaction positions (replacing any earlier set). A
+ * list `checkPositions` has already made is `checked`, and not checked again.
+ */
+export function registerPositions(list, { checked = false } = {}) {
+  positions = (checked ? list : checkPositions(list)).map((position) => Object.freeze(position));
   positionIndex = new Map(positions.map((p) => [p.id, p]));
   positionSourceIndex = new Map(
     positions.map((position) => [position.source.recordId, position]),

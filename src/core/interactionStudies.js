@@ -254,7 +254,8 @@ export function interactionPositions(studies, entries = []) {
         ...(record.aliases ?? []),
       ],
       source: { dataset: "SexPoses", recordId: record.sourceId, annotationHash: record.annotationHash },
-      scene: { ...structuredClone(record.scene), title },
+      // `checkPreset` reads the study's scene and returns its own copy.
+      scene: { ...record.scene, title },
     });
     out.push({ ...preset, inputWarnings: warnings });
   }
