@@ -28,6 +28,10 @@ export const LIBRARY_KEY = "poseforge.library.v1";
 let positions = [];
 let positionIndex = new Map();
 let positionSourceIndex = new Map();
+// How often the positions have been registered, and how many libraries have
+// been made: see `revision`.
+let registrations = 0;
+let libraries = 0;
 /** The starter studies, in the reader's language. */
 export const STARTERS = Object.freeze(
   BUILTIN_PRESETS.map((preset) => Object.freeze(localizePreset(preset))),
@@ -66,12 +70,15 @@ export function registerPositions(list, { checked = false } = {}) {
   positionSourceIndex = new Map(
     positions.map((position) => [position.source.recordId, position]),
   );
+  registrations += 1;
 }
 export const positionCount = () => positions.length;
 export const DRAFT_KEY = "poseforge.workspace.v1";
 
 /** Commit to storage before replacing memory: a failed write loses no saved work. */
 export function createLibrary(storage, idFactory = () => newId()) {
+  const instance = (libraries += 1);
+  let changes = 0;
   let saved = [];
   let favorites = [];
   let loadError = "";
@@ -124,6 +131,7 @@ export function createLibrary(storage, idFactory = () => newId()) {
     }
     saved = nextSaved;
     favorites = nextFavorites;
+    changes += 1;
   };
   function freshId(used) {
     for (let i = 0; i < 10; i++) {
@@ -151,6 +159,8 @@ export function createLibrary(storage, idFactory = () => newId()) {
     get error() {
       return loadError;
     },
+    /** The same only while what this library lists is the same. */
+    revision: () => `${registrations}.${instance}.${changes}`,
     all: () => structuredClone([...stock(), ...saved.map(materialize)]),
     get: (id) =>
       structuredClone(
@@ -315,6 +325,7 @@ export function createLibrary(storage, idFactory = () => newId()) {
       saved = [];
       favorites = [];
       loadError = "";
+      changes += 1;
     },
   };
 }

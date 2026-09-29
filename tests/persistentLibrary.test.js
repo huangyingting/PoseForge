@@ -83,6 +83,34 @@ test("serialized writes and failed transactions do not publish or lose saved wor
   assert.equal(library.saved().length, 1);
 });
 
+test("the revision moves when what the library lists does, and only then", async () => {
+  const db = backend(),
+    library = await createPersistentLibrary(storage(), {
+      backend: db,
+      idFactory,
+    });
+  const first = library.revision();
+  library.index();
+  library.saved();
+  assert.equal(library.revision(), first);
+  // Not while the write is pending: until it lands the library lists as before.
+  const saving = library.save(example());
+  assert.equal(library.revision(), first);
+  const saved = await saving;
+  const second = library.revision();
+  assert.notEqual(second, first);
+  await library.favorite(saved.id);
+  assert.notEqual(library.revision(), second);
+  const third = library.revision();
+  db.fail = true;
+  await assert.rejects(library.remove(saved.id), /quota/);
+  assert.equal(library.revision(), third);
+  const plain = createLibrary(storage(), idFactory);
+  const before = plain.revision();
+  plain.save(example());
+  assert.notEqual(plain.revision(), before);
+});
+
 test("concurrent tabs reject stale writes rather than overwriting another library", async () => {
   const disk = storage(),
     db = backend();

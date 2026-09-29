@@ -205,6 +205,7 @@ export async function createPersistentLibrary(
     mode: "IndexedDB",
     notice,
     close: () => database.close(),
+    revision: () => state.revision(),
     all: () => state.all(),
     index: () => state.index(),
     get: (id) => state.get(id),

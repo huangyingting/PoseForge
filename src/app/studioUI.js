@@ -119,6 +119,18 @@ export function buildStudio(
   let disposed = false;
   const loadSourceEntries = positionService.sources;
   let loadingPosition = null;
+  // The cards `refresh` last listed, and the library's revision it listed.
+  let listed = { revision: null, cards: [] };
+  // Each card's drawing of its pose as authored, while the library lists the
+  // same: drawing them was most of what a page of cards cost to list again.
+  let diagrams = { revision: null, drawn: new Map() };
+  function authoredDiagram(preset) {
+    if (diagrams.revision !== listed.revision)
+      diagrams = { revision: listed.revision, drawn: new Map() };
+    if (!diagrams.drawn.has(preset.id))
+      diagrams.drawn.set(preset.id, poseDiagram(authoredPreview(preset.scene)));
+    return diagrams.drawn.get(preset.id).cloneNode(true);
+  }
   const count = element("span");
   count.setAttribute("aria-live", "polite");
   const search = element("input", {
@@ -456,6 +468,7 @@ export function buildStudio(
     observer?.disconnect();
     starts.clear();
     root.dataset.collection = "positions";
+    listed = { revision: library.revision(), cards: [] };
     const all = library.index();
     categoryLabel.textContent = t("Category");
     search.placeholder =
@@ -581,7 +594,7 @@ export function buildStudio(
       const picture = element(
         "span",
         { className: "preset-preview", title: t("Authored pose preview") },
-        [poseDiagram(authoredPreview(preset.scene))],
+        [authoredDiagram(preset)],
       );
       const previewNote = element("span", {
         className: "preset-note",
@@ -665,15 +678,14 @@ export function buildStudio(
           "aria-label",
           t("Position details {record}", { record: preset.source.recordId }),
         );
-      list.append(
-        element(
-          "article",
-          {
-            className: `preset-card${isSelected ? " selected" : ""}`,
-          },
-          [choose, favorite, ...(details ? [details] : [])],
-        ),
+      const card = element(
+        "article",
+        {
+          className: `preset-card${isSelected ? " selected" : ""}`,
+        },
+        [choose, favorite, ...(details ? [details] : [])],
       );
+      list.append(card);
       const start = () =>
         previewCleanups.push(
           previews.subscribe(playable.scene, (result) => {
@@ -706,6 +718,12 @@ export function buildStudio(
         starts.set(choose, start);
         observer.observe(choose);
       } else start();
+      listed.cards.push({
+        card,
+        choose,
+        ids: [preset.id, playable.id],
+        busy: preset.source ? preset.id : null,
+      });
     }
     if (!filtered.length)
       list.append(
@@ -742,6 +760,31 @@ export function buildStudio(
       list
         .querySelector(`[data-preset="${focusedPreset}"]`)
         ?.focus({ preventScroll: true });
+  }
+
+  /**
+   * Show the selection, and the position loading, on the cards already
+   * listed: drawing the page of them again for it held every click on a card
+   * for a third of a second. They are drawn again only if the library has
+   * changed since.
+   */
+  function mark() {
+    if (listed.revision !== library.revision()) return refresh();
+    for (const { card, choose, ids, busy } of listed.cards) {
+      const isSelected = ids.includes(selected);
+      card.classList.toggle("selected", isSelected);
+      choose.setAttribute("aria-pressed", String(isSelected));
+      choose.setAttribute(
+        "aria-busy",
+        String(Boolean(busy) && busy === loadingPosition),
+      );
+      // A selected card's diagram is started whether or not it is in view.
+      if (isSelected && starts.has(choose)) {
+        observer.unobserve(choose);
+        starts.get(choose)();
+        starts.delete(choose);
+      }
+    }
   }
 
   function renderPositionBrowser(entries) {
@@ -1336,7 +1379,7 @@ export function buildStudio(
     openPositionSave,
     setPositionLoading(id) {
       loadingPosition = id;
-      refresh();
+      mark();
     },
     focusSearch() {
       showRegion("library");
@@ -1356,7 +1399,7 @@ export function buildStudio(
     setSelected(id) {
       const changed = selected !== id;
       selected = id;
-      refresh();
+      mark();
       // A card chosen from the list is already in view, and the reader's search
       // and page are theirs to keep - an edit re-selects the same card too. Only
       // a selection made from elsewhere (a link, an undo, the details sheet) is
