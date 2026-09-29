@@ -104,10 +104,16 @@ test("a first visit opens in a bedroom, each setting is its own room, and the ch
   // Up in the top corner the three-quarter view looks at a wall, or in the
   // studio at the backdrop.
   const seen = {};
-  for (const name of ["bedroom", "living", "studio"]) {
+  const look = async () => ({ hash: await pixels(page), corner: await colourAt(page, 0.2, 0.08) });
+  await page.waitForTimeout(400);
+  seen.bedroom = await look();
+  for (const name of ["living", "studio"]) {
+    const before = await pixels(page);
     await setting.selectOption(name);
+    // The old room stays up until the new one's pictures have been made.
+    await expect.poll(() => pixels(page)).not.toBe(before);
     await page.waitForTimeout(400);
-    seen[name] = { hash: await pixels(page), corner: await colourAt(page, 0.2, 0.08) };
+    seen[name] = await look();
   }
   expect(new Set(Object.values(seen).map((entry) => entry.hash)).size).toBe(3);
   for (const room of ["bedroom", "living"])

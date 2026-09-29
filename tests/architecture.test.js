@@ -91,6 +91,12 @@ test("the geometric core depends on nothing", () => {
     join(root, "src/render/meshBuilder.js"),
     join(root, "src/render/fabric.js"),
     join(root, "src/render/surfaces.js"),
+    // The tile worker's pictures, which would have it load three for nothing.
+    join(root, "src/render/roomTiles.js"),
+    join(root, "src/render/figureTiles.js"),
+    join(root, "src/render/tileMakers.js"),
+    join(root, "src/render/tiles.js"),
+    join(root, "src/workers/tileWorker.js"),
   ];
   assert.ok(free.length > 15, `only found ${free.length} files to check`);
 
