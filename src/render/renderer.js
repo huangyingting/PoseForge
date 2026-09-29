@@ -1213,6 +1213,7 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
   bodies.name = "bodies";
   scene.add(bodies);
   let propGroup = null;
+  let propKey = null;
   let displayMode = 'natural';
   let lastPayload = null;
   let setting = "studio";
@@ -1369,22 +1370,30 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
     shadowsStale = true;
     releaseRehearsal(retire);
     clearBodies();
-    if (propGroup) {
-      disposeProps(propGroup, retire);
-      scene.remove(propGroup);
-    }
     // A car is a room of its own: its cabin in a bedroom would be neither.
     const layout = shell?.length ? null : roomLayout(setting, sceneBounds(meshes, props), props);
     placeRoom(layout);
-    // The room's floor takes the shadows the studio's ground would.
-    propGroup = buildProps(props, { shell, ground: !room });
-    if (room) {
-      // A wall to lean on is the room's own wall, so it is painted to match.
-      propGroup.traverse((node) => {
-        if (node.isMesh && node.name === "wall") paintWall(node, setting);
-      });
+    // The props there are, when they are the same ones: a draft and the final
+    // pass over it have the same, and so has an edit that moves the figures
+    // and not the bed. Building them again was a fifth of what putting a scene
+    // in took, before they were handed to the GPU again.
+    const key = JSON.stringify([props ?? [], shell ?? [], room ? setting : null]);
+    if (key !== propKey) {
+      if (propGroup) {
+        disposeProps(propGroup, retire);
+        scene.remove(propGroup);
+      }
+      // The room's floor takes the shadows the studio's ground would.
+      propGroup = buildProps(props, { shell, ground: !room });
+      propKey = key;
+      if (room) {
+        // A wall to lean on is the room's own wall, so it is painted to match.
+        propGroup.traverse((node) => {
+          if (node.isMesh && node.name === "wall") paintWall(node, setting);
+        });
+      }
+      scene.add(propGroup);
     }
-    scene.add(propGroup);
 
     meshes.forEach((mesh, index) => {
       // An actor arrives as several parts because it is several materials - the
