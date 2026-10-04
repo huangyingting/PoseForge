@@ -208,8 +208,8 @@ export const CHAIR_LAP_LAYOUT = {
           rotation: 0,
         },
         wrist_r: {
-          flexion: -6,
-          abduction: 0,
+          flexion: 0,
+          abduction: -6,
           rotation: 0,
         },
         hip_l: {
@@ -445,9 +445,9 @@ export const CHAIR_LAP_LAYOUT = {
               rotation: 0,
             },
             wrist_l: {
-              flexion: 0.27980725605718154,
-              abduction: 1.042588940634253,
-              rotation: -0.28719944872843145,
+              flexion: -1.04,
+              abduction: 0.28,
+              rotation: -0.29,
             },
             clavicle_r: {
               flexion: 0,
@@ -465,9 +465,9 @@ export const CHAIR_LAP_LAYOUT = {
               rotation: 0,
             },
             wrist_r: {
-              flexion: -5.685781154372892,
-              abduction: 1.0060231299044415,
-              rotation: -0.33416299868659444,
+              flexion: -1.01,
+              abduction: -5.68,
+              rotation: -0.23,
             },
             hip_l: {
               flexion: 65,

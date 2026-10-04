@@ -41,8 +41,8 @@
   "file": "catalog/sexposes-v1.json",
   "generated": {
     "file": "catalog/generated-studies-v1.json",
-    "bytes": 655257,
-    "sha256": "ded357c7a908a6ac6ff7ef5deff27abaa40909a35f7eb5b632df1cdf664a7eb0",
+    "bytes": 655197,
+    "sha256": "64e86dcc25f6e8de2cdb4d73ccdcac3c76abbecd1c55aa3970b01b920f7c59d7",
     "scenes": 203
   },
   "semantics": "Source metadata plus generated individual posture studies. Generated studies keep participants separate and are not reconstructions of source relationships."

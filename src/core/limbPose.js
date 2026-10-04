@@ -79,11 +79,20 @@ function spineChain(flexion) {
 }
 
 /**
- * A hand bearing weight, in the idiom `all_fours` established: the forearm
- * rolls so the wrist hinge lies across the body, then the wrist extends so the
- * palm lies flat. Roll alone leaves the palm standing on its edge.
+ * A hand bearing weight, in the idiom `all_fours` established: the wrist
+ * extends so the palm lies flat under a forearm leant over it, and leans a
+ * little towards the thumb so the fingers point ahead rather than in. The
+ * forearm's own twist is nearly the one it hangs with - a hand hangs palm in,
+ * thumb forward, and a hand on the floor ahead of the shoulder is the same hand
+ * swung up and bent back.
  */
-const PLANTED_HAND = { elbowRotation: -75, wrist: 75 };
+const PLANTED_HAND = { elbowRotation: 5, wrist: { flexion: -75, abduction: 8 } };
+
+/**
+ * A forearm flat on the bed with the palm down beside it. The palm faces in
+ * while the forearm hangs, so lying flat takes the whole of its twist.
+ */
+const PRONE_FOREARM = { elbowRotation: 85, wrist: { flexion: -10 } };
 
 /**
  * Arm shapes.
@@ -146,7 +155,7 @@ export const ARM_POSES = {
     joints: {
       ...shoulders({ flexion: -26, abduction: 26 }),
       ...both("elbow", { flexion: 34, rotation: PLANTED_HAND.elbowRotation }),
-      ...both("wrist", { flexion: PLANTED_HAND.wrist }),
+      ...both("wrist", PLANTED_HAND.wrist),
     },
   },
 
@@ -156,7 +165,7 @@ export const ARM_POSES = {
     joints: {
       ...shoulders({ flexion: 74, abduction: 14 }),
       ...both("elbow", { flexion: 8, rotation: PLANTED_HAND.elbowRotation }),
-      ...both("wrist", { flexion: PLANTED_HAND.wrist }),
+      ...both("wrist", PLANTED_HAND.wrist),
     },
   },
 
@@ -165,8 +174,8 @@ export const ARM_POSES = {
     weightSafe: false,
     joints: {
       ...shoulders({ flexion: 88, abduction: 14 }),
-      ...both("elbow", { flexion: 84 }),
-      ...both("wrist", { flexion: 10 }),
+      ...both("elbow", { flexion: 84, rotation: PRONE_FOREARM.elbowRotation }),
+      ...both("wrist", PRONE_FOREARM.wrist),
     },
   },
 

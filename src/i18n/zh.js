@@ -927,6 +927,17 @@ const messages = {
     "左手是以手背先碰到对方的，因此改为平贴而非托握。",
   "the right hand arrived back first, so it lies flat rather than cupped.":
     "右手是以手背先碰到对方的，因此改为平贴而非托握。",
+  "the left hand arrived back first, so it lies flat rather than gripping.":
+    "左手是以手背先碰到对方的，因此改为平贴而非抓握。",
+  "the right hand arrived back first, so it lies flat rather than gripping.":
+    "右手是以手背先碰到对方的，因此改为平贴而非抓握。",
+  "the left hand's fingers were in what it rests on, so it lies open.":
+    "左手弯曲的手指陷进了所搭之处，因此改为张开平放。",
+  "the right hand's fingers were in what it rests on, so it lies open.":
+    "右手弯曲的手指陷进了所搭之处，因此改为张开平放。",
+  "turned the left palm onto what the hand is on.": "将左手掌心转向所接触之处。",
+  "turned the right palm onto what the hand is on.": "将右手掌心转向所接触之处。",
+  "stepped back from a partner it was pressed into.": "原本与对方身体相嵌，已后退一步。",
   "adjusted seated support against the rendered seat and floor while preserving foot placement.":
     "在保持双脚位置的同时，依据渲染后的座面和地面调整了坐姿支撑。",
   "adjusted kneeling support against the rendered surface while preserving foot frames and contacted hands.":
@@ -1264,6 +1275,7 @@ const patterns = [
   [/^Duplicate source position: (.+)\.$/, (m) => `重复的来源体位：${m[1]}。`],
   [/^Unknown position variant: (.+)\.$/, (m) => `未知的体位变体：${m[1]}。`],
   [/^Unknown source position: (.+)\.$/, (m) => `未知的来源体位：${m[1]}。`],
+  [/^moved a free arm out of (.+)\.$/, (m, api) => `将一只空闲的手臂从${subject(m[1], api)}身上移开。`],
   [
     /^(.+): source fingerprint or participant count does not match\.$/,
     (m) => `${m[1]}：来源指纹或参与者人数不匹配。`,

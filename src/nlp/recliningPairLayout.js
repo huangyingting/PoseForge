@@ -32,12 +32,12 @@ export const RECLINING_PAIR_LAYOUT = {
           rotation: 0,
         },
         spine03: {
-          flexion: 0,
+          flexion: 1,
           abduction: 0,
           rotation: 0,
         },
         neck: {
-          flexion: -3,
+          flexion: -4.5,
           abduction: 0,
           rotation: 0,
         },
@@ -52,18 +52,18 @@ export const RECLINING_PAIR_LAYOUT = {
           rotation: 0,
         },
         shoulder_l: {
-          flexion: -30,
-          abduction: 130,
-          rotation: 0,
+          flexion: -14,
+          abduction: 12,
+          rotation: -75,
         },
         elbow_l: {
-          flexion: 16,
+          flexion: 20,
           abduction: 0,
-          rotation: 0,
+          rotation: -18.12,
         },
         wrist_l: {
-          flexion: 0,
-          abduction: 0,
+          flexion: 3.13,
+          abduction: -0.31,
           rotation: 0,
         },
         clavicle_r: {
@@ -72,18 +72,18 @@ export const RECLINING_PAIR_LAYOUT = {
           rotation: 0,
         },
         shoulder_r: {
-          flexion: -30,
-          abduction: 130,
-          rotation: 0,
+          flexion: -14,
+          abduction: 12,
+          rotation: -75,
         },
         elbow_r: {
-          flexion: 16,
+          flexion: 20,
           abduction: 0,
-          rotation: 0,
+          rotation: -18.12,
         },
         wrist_r: {
-          flexion: 0,
-          abduction: 0,
+          flexion: 3.13,
+          abduction: -0.31,
           rotation: 0,
         },
         hip_l: {
@@ -178,14 +178,14 @@ export const RECLINING_PAIR_LAYOUT = {
           rotation: 4.797916439633092,
         },
         elbow_l: {
-          flexion: 90.00000000000004,
+          flexion: 90,
           abduction: 0,
-          rotation: -75,
+          rotation: 61.56,
         },
         wrist_l: {
-          flexion: 0,
-          abduction: 0,
-          rotation: 0,
+          flexion: 0.31,
+          abduction: 0.63,
+          rotation: 1.88,
         },
         clavicle_r: {
           flexion: -20,
@@ -198,14 +198,14 @@ export const RECLINING_PAIR_LAYOUT = {
           rotation: 4.797916439633092,
         },
         elbow_r: {
-          flexion: 90.00000000000004,
+          flexion: 90,
           abduction: 0,
-          rotation: -75,
+          rotation: 61.56,
         },
         wrist_r: {
-          flexion: 0,
-          abduction: 0,
-          rotation: 0,
+          flexion: 0.31,
+          abduction: 0.63,
+          rotation: 1.88,
         },
         hip_l: {
           flexion: 24.026185123159635,
@@ -249,8 +249,8 @@ export const RECLINING_PAIR_LAYOUT = {
         },
       },
       hands: {
-        l: "relaxed",
-        r: "relaxed",
+        l: "brace",
+        r: "brace",
       },
       stature: 1.78,
       bust: 0,

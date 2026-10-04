@@ -597,16 +597,15 @@ export function buildBodyVolumes(skeleton, { bust, anatomy = true } = {}) {
     // between them carries breadth, and the radius carries thickness. Three
     // independent numbers, which is what a flattened shape needs.
     //
-    // Which local axis carries the breadth is not a free choice, and getting it
-    // wrong is invisible until something bears weight on the hand. The rig's
-    // wrist `flexion` channel rotates about the bone's local x, so x has to be
-    // the axis through the knuckles for flexion to bend the palm towards the
-    // forearm. Built the other way round - breadth along z, as this first was -
-    // flexion becomes sideways deviation instead, and no combination of joint
-    // angles can lay the palm flat: `all_fours` rendered with both hands
-    // standing on edge like a chop, thumbs out sideways. The foot uses the same
-    // convention, breadth across x, which is what makes ankle flexion plantar-
-    // flex rather than waggle.
+    // Which local axis carries the breadth is not a free choice. It has to be
+    // the one the drawn hand has: every body model hangs its hands palm to the
+    // thigh, thumb forward, so at rest the knuckles run along z and the palm
+    // faces along x. Built across x instead - as this once was, matching the
+    // foot - the paddle stood at right angles to the hand drawn over it: a
+    // pose that laid the paddle flat on the floor stood the drawn hand on its
+    // edge, and every check that read the paddle passed a hand that looked
+    // broken. The wrist's axes follow the same hand (see `wristAxes`), so
+    // flexion still bends the palm towards the forearm.
     //
     // Stacking flattened pills down the hand instead - which is what this was
     // first - renders as a string of visibly separate pads, because
@@ -626,27 +625,26 @@ export function buildBodyVolumes(skeleton, { bust, anatomy = true } = {}) {
       cone(
         `hand_${suffix}`,
         group,
-        [rail * 0.012, 0.042, 0],
+        [0, 0.042, rail * 0.012],
         0.0100,
-        [rail * 0.009, -0.040, 0],
+        [0, -0.040, rail * 0.009],
         0.0090,
         0.012,
         { soft: true }
       );
     }
-    // The thumb leaves the radial side - lateral, so +x on the left, which is
-    // the side `sign` already names - low on the palm where its joint is, and
-    // angled a little palmar so it opposes the fingers rather than lying in
-    // line with them. Palmar is -z: that is what makes the palm face the floor
-    // in `all_fours` rather than the ceiling, and since the rest of the hand is
-    // symmetric about z the thumb is the only thing that says which side is
-    // which.
+    // The thumb leaves the radial side - forward at rest, +z - low on the palm
+    // where its joint is, and angled a little palmar so it opposes the fingers
+    // rather than lying in line with them. Palmar faces the midline at rest,
+    // -x on the left and +x on the right; since the rest of the hand is
+    // symmetric about x, the thumb is the only thing that says which side is
+    // the palm.
     cone(
       `hand_${suffix}`,
       group,
-      [sign * 0.016, 0.010, -0.004],
+      [-sign * 0.004, 0.010, 0.016],
       0.0108,
-      [sign * 0.026, -0.012, -0.012],
+      [-sign * 0.012, -0.012, 0.026],
       0.0096,
       0.012,
       { soft: true }

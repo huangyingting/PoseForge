@@ -115,13 +115,8 @@ test("contact types preserve history and saved exports while unresolved edits ke
     "data-measurement",
     "rendered",
   );
-  const gap = Number(
-    await row.locator(".contact-result").getAttribute("data-gap"),
-  );
-  expect(gap).toBeGreaterThan(0.004);
-  await expect(row.locator(".contact-result.warning")).toContainText(
-    "Movement limited",
-  );
+  // The palm turned flat onto the forearm bears on it as closely as it rests.
+  await expect(row.locator(".contact-result")).toContainText("Close contact");
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await ready(page);
   await expect(row.getByLabel("Contact type")).toHaveValue("rest");
@@ -129,6 +124,20 @@ test("contact types preserve history and saved exports while unresolved edits ke
   await page.getByRole("button", { name: "Redo", exact: true }).click();
   await ready(page);
   await expect(row.getByLabel("Contact type")).toHaveValue("support");
+  // Braced on the partner's back instead, the arm is stopped short of it.
+  await row.getByLabel("Second body part", { exact: true }).selectOption("back");
+  await ready(page);
+  await expect(row.locator(".contact-result")).toHaveAttribute(
+    "data-measurement",
+    "rendered",
+  );
+  const gap = Number(
+    await row.locator(".contact-result").getAttribute("data-gap"),
+  );
+  expect(gap).toBeGreaterThan(0.004);
+  await expect(row.locator(".contact-result.warning")).toContainText(
+    "Movement limited",
+  );
   await page.locator("#save-preset").click();
   await page.getByLabel("Preset name").fill("Support contact study");
   await page
@@ -152,7 +161,7 @@ test("contact types preserve history and saved exports while unresolved edits ke
       fromActor: 0,
       toActor: 1,
       from: "hand.r",
-      to: "forearm.l",
+      to: "back",
       strength: 1,
       type: "support",
     },

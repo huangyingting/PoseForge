@@ -14,8 +14,10 @@ import {
   createActor,
   refresh,
   measureContactTargets,
+  armDepth,
 } from "../src/core/solver.js";
 import { captureSolvedPose, placementFromRoot } from "../src/core/placement.js";
+import { turnPalms } from "../src/core/palmPose.js";
 import { landmarkPoint } from "../src/core/landmarks.js";
 import { detectContacts, detectPropContacts, penetrationReport, contactKey } from "../src/core/collision.js";
 import { resolveLandmark } from "../src/core/landmarks.js";
@@ -127,7 +129,7 @@ function soloFixed(input, surface, props = propsFor(surface).props) {
     relationship: { contactMode: "custom" },
     contacts: [],
   });
-  const solved = solveScene(scene);
+  const solved = solveScene(scene, { palms: false });
   const fixed = applyDetails(applyOverride({ ...scene.actors[0], ...captureSolvedPose(solved.actors[0]) }, solved.actors[0], override), details, props);
   if (!tilt) return fixed;
   // Tip the body forward about its pelvis (the override re-aims the thighs), then rest it back down.
@@ -199,8 +201,16 @@ function declaredKeys(actors, contacts) {
 /**
  * Fit the moving actor's rigid placement so its anchors meet their targets
  * without the bodies passing through each other or the props.
+ *
+ * The walk goes down from steps of 16 cm, or from `walk.first`. Each round
+ * takes the first step that lowers the cost, or with `walk.steepest` tries them
+ * all and takes the one that lowers it most. Each is a different way down the
+ * same slope: a long first step can lift a partner clear for a little less
+ * cost, onto a ledge with no way back down to the closer placement below, and
+ * a walk that finds a way out of one dead end can walk into another.
  */
-function fitPlacement(specs, moving, anchors, props, { free = ["x", "z"], yawRange = 0, pitchRange = 0, pivotPoint = null, floorY = null, keep = false, clear = 0, ignore = null } = {}) {
+function fitPlacement(specs, moving, anchors, props, { free = ["x", "z"], yawRange = 0, pitchRange = 0, pivotPoint = null, floorY = null, keep = false, clear = 0, ignore = null, walk = {} } = {}) {
+  const { steepest = false, first = 0.16 } = walk;
   const others = specs.map((s, i) => (i === moving ? null : liveActor(s, i)));
   const base = specs[moving];
   const declared = new Set();
@@ -238,12 +248,13 @@ function fitPlacement(specs, moving, anchors, props, { free = ["x", "z"], yawRan
   // A pitch range is ± degrees, or [min, max] to let the actor tip one way only.
   const [pitchMin, pitchMax] = Array.isArray(pitchRange) ? pitchRange : [-pitchRange, pitchRange];
   const keys = [...free, ...(yawRange ? ["yaw"] : []), ...(pitchMin || pitchMax ? ["pitch"] : [])];
-  for (const step of [0.16, 0.08, 0.04, 0.02, 0.01, 0.005]) {
+  for (const step of [0.16, 0.08, 0.04, 0.02, 0.01, 0.005].filter((s) => s <= first)) {
     let improved = true;
     let rounds = 0;
     while (improved && rounds < 30) {
       improved = false;
       rounds += 1;
+      let move = null;
       for (const key of keys) {
         const delta = key === "yaw" || key === "pitch" ? step * 60 : step;
         for (const sign of [1, -1]) {
@@ -251,12 +262,19 @@ function fitPlacement(specs, moving, anchors, props, { free = ["x", "z"], yawRan
           if (key === "yaw" && Math.abs(trial.yaw) > yawRange) continue;
           if (key === "pitch" && (trial.pitch < pitchMin || trial.pitch > pitchMax)) continue;
           const result = evaluate(trial);
-          if (result.cost < best.cost - 1e-9) {
-            best = result;
-            Object.assign(params, trial);
-            improved = true;
-          }
+          if (result.cost >= (move ?? best).cost - 1e-9) continue;
+          move = { ...result, trial };
+          if (steepest) continue;
+          best = move;
+          Object.assign(params, trial);
+          improved = true;
+          move = null;
         }
+      }
+      if (move) {
+        best = move;
+        Object.assign(params, move.trial);
+        improved = true;
       }
     }
   }
@@ -402,7 +420,7 @@ function applyPlace(spec, index, move, specs, props) {
   return out;
 }
 
-function runFit(specs, step, props) {
+function runFit(specs, step, props, walk = {}) {
   const first = step.anchors[0];
   const all = specs.map((s, i) => liveActor(s, i));
   const from = landmarkPoint(all[first.fromActor], first.from, first.fromSide ?? null);
@@ -418,6 +436,7 @@ function runFit(specs, step, props) {
     floorY: step.floor ?? null,
     keep: step.keep ?? false,
     ignore: step.ignore ?? null,
+    walk,
   });
 }
 
@@ -436,8 +455,9 @@ function runFit(specs, step, props) {
  *
  * An actor given as an array is a list of candidates; the one whose fit costs
  * least is kept (for instance standing or kneeling in front of a bed edge).
+ * `walk` says how each placement is fitted (see fitPlacement).
  */
-export function compose(input) {
+export function compose(input, walk = {}) {
   const hasThird = input.thirdIndex != null;
   const plan = hasThird ? { ...input, actors: input.actors.slice(0, input.thirdIndex) } : input;
   const { props } = propsFor(plan.surface);
@@ -459,13 +479,13 @@ export function compose(input) {
       relationship: plan.relationship,
       contacts: plan.contacts ?? [],
     });
-    const solved = solveScene(scene);
+    const solved = solveScene(scene, { palms: false });
     specs = scene.actors.map((a, i) =>
       applyDetails(applyOverride({ ...a, ...captureSolvedPose(solved.actors[i]) }, solved.actors[i], plan.actors[i].override), plan.actors[i].details, props)
     );
     for (const move of plan.place ?? []) specs[move.index] = applyPlace(specs[move.index], move.index, move, specs, props);
     // Refine from where the solver put them; snapping would start inside the partner.
-    for (const step of plan.fit ?? []) specs[step.moving] = runFit(specs, withIgnore({ snap: false, ...step }), props).spec;
+    for (const step of plan.fit ?? []) specs[step.moving] = runFit(specs, withIgnore({ snap: false, ...step }), props, walk).spec;
   } else {
     const options = plan.actors.map((entry, i) =>
       (Array.isArray(entry) ? entry : [entry]).map((spec) => {
@@ -484,7 +504,7 @@ export function compose(input) {
         const trial = specs.slice();
         trial[step.moving] = candidate;
         for (const move of placeFor(step.moving)) trial[step.moving] = applyPlace(trial[step.moving], step.moving, move, trial, props);
-        const fitted = runFit(trial, withIgnore(step), props);
+        const fitted = runFit(trial, withIgnore(step), props, walk);
         const cost = fitted.cost + (candidate.prefer ?? 0);
         if (!best || cost < best.cost) best = { ...fitted, cost, k };
       }
@@ -500,7 +520,7 @@ export function compose(input) {
     const trial = [...specs, third];
     trial[input.thirdIndex] = applyPlace(third, input.thirdIndex, input.thirdPlace, trial, props);
     const step = { ...input.thirdFit, anchors: input.thirdFit.anchors.map((a) => ({ ...a })) };
-    trial[input.thirdIndex] = fitPlacement(trial, input.thirdIndex, step.anchors, props, { free: step.free, keep: step.keep }).spec;
+    trial[input.thirdIndex] = fitPlacement(trial, input.thirdIndex, step.anchors, props, { free: step.free, keep: step.keep, walk }).spec;
     specs = trial;
   }
 
@@ -518,7 +538,7 @@ export function compose(input) {
       relationship: { arrangement: plan.relationship?.arrangement ?? "face_to_face", contactMode: "custom" },
       contacts: limbContacts,
     });
-    const solved = solveScene(scene);
+    const solved = solveScene(scene, { palms: false });
     const before = specs;
     specs = scene.actors.map((a, i) => ({ ...a, ...captureSolvedPose(solved.actors[i]) }));
     // A reach that would have to pass through the floor or furniture is not made: that limb
@@ -556,11 +576,73 @@ export function compose(input) {
     }
     input.limbContacts = kept;
   }
+  specs = facePalms(specs, plan.surface, [...(input.contacts ?? []), ...(input.limbContacts ?? [])]);
+  // Hands are left to the viewer to read from the final contacts and postures;
+  // a shape captured mid-composition belongs to contacts that may since have been dropped.
   return specs.map((spec) => {
-    const { prefer, soloSurface, ...clean } = spec;
+    const { prefer, soloSurface, hands, ...clean } = spec;
     return clean;
   });
 }
+
+/**
+ * Turn every hand that leans on something, touches a body or lies on the bed
+ * to face it - see `turnPalms` - with the whole arm free, since the composed
+ * joints are all fixed and the viewer would otherwise keep whatever twist the
+ * arm was solved with. Again from where that leaves them, while it turns any:
+ * a hand turned part of the way often goes further from there, and one turned
+ * can free the arm beside it.
+ *
+ * Each turn may leave the hand's middle up to a palm's width from where it
+ * was, and from where that leaves it the next goes as far again: a hand held
+ * four centimetres from a partner's thigh came out of three passes eight away
+ * and no longer on it. A turn that takes a hand further from what it holds
+ * than it was at first, past what a palm laid on it sits off it, is not kept.
+ */
+function facePalms(specs, surface, contacts) {
+  let first = null;
+  for (let pass = 0; pass < 3; pass++) {
+    const { scene } = validateScene({
+      actors: specs.map(({ prefer, soloSurface, override, tilt, details, ...spec }) => spec),
+      support: { surface },
+      relationship: { contactMode: "custom" },
+      contacts,
+    });
+    const solved = solveScene(scene, { palms: false });
+    first ??= measureContactTargets(solved);
+    const turned = turnPalms(solved, { depth: armDepth(solved.actors, solved.props, solved.surface.ground) });
+    if (!turned.length) break;
+    // The turned arm is written into the solved figure's own joints before it
+    // is refreshed to be measured: refreshing a fixed figure puts back the
+    // joints it was given, and every turn was undone before it was kept.
+    const arms = turned.map(({ actor, side }) => {
+      const body = solved.actors[actor];
+      const arm = Object.fromEntries(ARM_BONES.map((bone) => [`${bone}_${side}`, { ...body.pose.joints[`${bone}_${side}`] }]));
+      body.spec = { ...body.spec, joints: { ...body.spec.joints, ...arm } };
+      return arm;
+    });
+    for (const index of new Set(turned.map((turn) => turn.actor))) refresh(solved.actors[index]);
+    const now = measureContactTargets(solved);
+    const out = specs.slice();
+    let kept = 0;
+    for (const [k, { actor, side }] of turned.entries()) {
+      const holds = (contact, end) =>
+        contact[`${end}Actor`] === actor && (contact[end] === "hand" || contact[end] === "hands") && (contact[`${end}Side`] ?? side) === side;
+      const off = solved.contacts.some(
+        (contact, i) => (holds(contact, "from") || holds(contact, "to")) && now[i] > Math.max(first[i] ?? 0, HAND_ON) + 0.01
+      );
+      if (off) continue;
+      out[actor] = { ...out[actor], joints: { ...out[actor].joints, ...arms[k] } };
+      kept += 1;
+    }
+    specs = out;
+    if (!kept) break;
+  }
+  return specs;
+}
+
+/** How far from its contact's target a hand laid on it sits: a palm's thickness inside the target's standoff. */
+const HAND_ON = 0.03;
 
 /** Measure the final fixed scene exactly as the viewer will solve it. */
 export function measure(scene) {

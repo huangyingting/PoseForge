@@ -5,6 +5,7 @@ import { LIMB_CHAINS } from "./ik.js";
 import { resolveLandmark } from "./landmarks.js";
 import { quatRotate } from "./math.js";
 import { captureEndFrame, solveEndFrames } from "./supportFrames.js";
+import { palmNormal, turnPalm } from "./palmPose.js";
 
 const arms = [LIMB_CHAINS.armL, LIMB_CHAINS.armR];
 const armBones = new Set(arms.flatMap((c) => [c.root, c.mid, c.end, c.tip]));
@@ -123,6 +124,7 @@ export function* forearmSupportPoses(actor, report, frame) {
         .measurement,
   );
   const base = structuredClone(actor.pose);
+  const palms = arms.map((chain) => palmNormal(actor, chain.tip.slice(-1)));
   const wrists = arms.map((chain) =>
     actor.evaluated.positions[actor.skeleton.boneIndex(chain.end)].slice(),
   );
@@ -135,15 +137,17 @@ export function* forearmSupportPoses(actor, report, frame) {
       0,
     ),
   );
-  for (const [gain, spread, flexion] of [
-    [2, 0.01, 50],
-    [1, 0.01, 50],
-    [1, 0.025, 50],
-    [1, 0.04, 50],
-    [2, 0.025, 50],
-    [1, 0.01, 60],
-    [1, 0.025, 60],
-    [2, 0.04, 50],
+  // The palms lie flat beside the forearms, and a wrist bent back a few
+  // degrees lifts the fingers off the surface the forearm is lowered onto.
+  for (const [gain, spread, extension] of [
+    [2, 0.01, 6],
+    [1, 0.01, 6],
+    [1, 0.025, 6],
+    [1, 0.04, 6],
+    [2, 0.025, 8],
+    [1, 0.01, 10],
+    [1, 0.025, 10],
+    [2, 0.04, 8],
   ]) {
     const trial = { ...actor, pose: structuredClone(base) };
     trial.pose.root.position[1] += 0.002 + (seat.penetration || -seat.gap);
@@ -169,12 +173,15 @@ export function* forearmSupportPoses(actor, report, frame) {
       ),
     }));
     solveEndFrames(trial, targets);
-    for (const chain of arms) {
+    arms.forEach((chain, i) => {
+      // An arm lowered on a new line leaves the hand where it was only as
+      // far as the wrist bends; the forearm's twist takes up the rest.
+      turnPalm(trial, chain.tip.slice(-1), palms[i], { sweep: false });
       trial.pose.joints[chain.end] = trial.skeleton.clampAngles(chain.end, {
         ...trial.pose.joints[chain.end],
-        flexion,
+        flexion: trial.pose.joints[chain.end].flexion - extension,
       });
-    }
+    });
     refresh(trial);
     yield forearmFramePreserved(trial, frame) ? trial.pose : null;
   }

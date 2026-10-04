@@ -64,6 +64,24 @@ const limbAxes = (side) => ({
   rotation: [0, -side, 0],
 });
 
+/**
+ * The wrist's own axes, because the hand is not drawn the way the arm's axes
+ * would have it. Every body model hangs its hands palm to the thigh at rest,
+ * thumb forward - the palm faces the midline, along x, and the knuckles run
+ * front to back, along z. Flexion has to turn about the knuckles, so it is the
+ * z axis here, with positive bringing the palm towards the forearm, and the
+ * hand's sideways bend is about x, positive towards the thumb. On the arm's
+ * axes the two were the other way round: what was called flexion swung the
+ * fingers sideways through the palm's own plane, to 75 degrees, and a palm
+ * could be bent towards the forearm only by the 35 that was meant for leaning
+ * the hand towards the little finger - so no hand could be laid flat.
+ */
+const wristAxes = (side) => ({
+  flexion: [0, 0, -side],
+  abduction: [-1, 0, 0],
+  rotation: [0, -side, 0],
+});
+
 /** Knee and ankle flex the opposite way to the hip. */
 const kneeAxes = (side) => ({
   flexion: [1, 0, 0],
@@ -98,7 +116,11 @@ const ROM = {
   clavicle: { flexion: [-20, 20], abduction: [-12, 28], rotation: [-10, 10] },
   shoulder: { flexion: [-60, 170], abduction: [-35, 165], rotation: [-85, 85] },
   elbow: { flexion: [0, 148], abduction: [-5, 5], rotation: [-80, 85] },
-  wrist: { flexion: [-70, 75], abduction: [-25, 35], rotation: [-15, 15] },
+  // Negative flexion is extension, the back of the hand towards the forearm;
+  // a hand bearing weight goes past the 70 or so a wrist reaches on its own.
+  // Abduction leans the hand towards the thumb, which goes less far than the
+  // lean towards the little finger.
+  wrist: { flexion: [-85, 80], abduction: [-35, 25], rotation: [-15, 15] },
   hip: { flexion: [-25, 135], abduction: [-25, 70], rotation: [-45, 45] },
   knee: { flexion: [0, 150], abduction: [-4, 4], rotation: [-12, 12] },
   // Ankle and toe read negative as *dorsiflexion* - toes towards the shin -
@@ -161,7 +183,7 @@ function boneTable(shoulderScale, hipScale) {
         offset: [0, -P.forearm, 0],
         kind: "wrist",
         side: s,
-        axes: limbAxes(s),
+        axes: wristAxes(s),
       },
       {
         name: `hand_${name}`,
@@ -169,7 +191,7 @@ function boneTable(shoulderScale, hipScale) {
         offset: [0, -P.hand * 0.55, 0],
         kind: "wrist",
         side: s,
-        axes: limbAxes(s),
+        axes: wristAxes(s),
         tip: true,
       },
     ];

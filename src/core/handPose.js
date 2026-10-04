@@ -128,8 +128,22 @@ export const HAND_SHAPE_NAMES = Object.keys(HAND_SHAPES);
  * hang, arrives that way - and then the same curl closes on nothing and hangs
  * off her back as a claw. A hand lying on its back lets its fingers lie along
  * her. Not quite `open`: fingers held straight on a rounded back run into it.
+ *
+ * A grip that arrived back first is a fist beside a hip, closed on air. Some
+ * arms cannot turn a palm onto what they hold - a forearm already across the
+ * partner, an elbow already in the body - and laid along it the hand at least
+ * reads as an arm resting there.
  */
-export const BACK_FIRST = { cup: "lay" };
+export const BACK_FIRST = { cup: "lay", grip: "lay" };
+
+/**
+ * What a resting hand becomes when its curled fingers are in what it is on.
+ *
+ * `cup` closes round a back or a thigh. On a forearm the fingers reach past it
+ * into the wrist and the hand beside it, and no move of the arm gets them out
+ * while the palm still faces it. Held open they lie along it.
+ */
+export const FINGERS_IN = { cup: "open" };
 
 /**
  * Per-finger multipliers on the shape's flexion.
@@ -189,8 +203,10 @@ export function handShapes(actor, contacts = []) {
 
   // A support with no side is a posture saying "the hands hold this up" without
   // saying which - `forearms_and_knees` and its kin - so it applies to both.
+  // A hand beside a forearm that bears weight lies palm down on what the
+  // forearm is on, and lies flat there: curled, its fingertips are in it.
   for (const support of actor.posture?.supports || []) {
-    if (support.landmark === "hand" || support.landmark === "hands") put(support.side, "brace");
+    if (["hand", "hands", "forearm"].includes(support.landmark)) put(support.side, "brace");
   }
 
   for (const contact of contacts) {
@@ -240,6 +256,16 @@ function asked(hands) {
 export function backFirstShape(actor, side, facing) {
   if (!(facing < -0.3) || side in asked(actor.spec?.hands)) return null;
   return BACK_FIRST[actor.hands?.[side]] ?? null;
+}
+
+/**
+ * The shape a resting hand takes when its fingers are in what it is on - see
+ * `FINGERS_IN` - or null to keep the one it has. A shape the actor asked for
+ * stays.
+ */
+export function fingersInShape(actor, side) {
+  if (side in asked(actor.spec?.hands)) return null;
+  return FINGERS_IN[actor.hands?.[side]] ?? null;
 }
 
 /**

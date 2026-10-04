@@ -321,13 +321,12 @@ export const POSTURES = {
     ],
     joints: {
       ...legs({ flexion: 82, abduction: 10 }, { flexion: 92 }, { flexion: 50 }, { flexion: 38 }),
-      // A hand bearing weight is pronated and extended, and it needs both: the
-      // forearm rolls so the wrist hinge lies across the body, then the wrist
-      // extends so the palm lies flat while the forearm stays vertical. Roll
-      // alone cannot do it - in this posture the forearm is near vertical, so
-      // rolling about it sweeps the palm around the horizontal and never down.
-      // Without these the palms stood on edge with the thumbs out sideways.
-      ...arms({ flexion: 78, abduction: 12 }, { flexion: 10, rotation: -75 }, { flexion: 75 }),
+      // A hand bearing weight is extended, and the forearm leans over it. A
+      // hand hangs palm in, thumb forward; swung up to the floor ahead of the
+      // shoulder it faces back, and bending the wrist back lays it flat with
+      // the fingers ahead. The wrist leans a little towards the thumb so they
+      // point ahead rather than in.
+      ...arms({ flexion: 78, abduction: 12 }, { flexion: 10, rotation: 5 }, { flexion: -75, abduction: 8 }),
       ...spine({ flexion: -2 }, { flexion: 26 }, { flexion: 14 }),
     },
   },
@@ -345,7 +344,9 @@ export const POSTURES = {
     ],
     joints: {
       ...legs({ flexion: 88, abduction: 12 }, { flexion: 48 }, { flexion: 50 }, { flexion: 38 }),
-      ...arms({ flexion: 92, abduction: 16 }, { flexion: 72 }, { flexion: 16 }),
+      // The forearms lie flat with the palms down, which takes the forearm's
+      // whole twist: it hangs palm in.
+      ...arms({ flexion: 92, abduction: 16 }, { flexion: 72, rotation: 85 }, { flexion: -16 }),
       ...spine({ flexion: -4 }, { flexion: 34 }, { flexion: 16 }),
     },
   },

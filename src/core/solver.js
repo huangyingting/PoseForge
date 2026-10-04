@@ -32,6 +32,7 @@ import {
   lowestPoint,
   penetrationReport,
   rigidCorrection,
+  volumeCompression,
 } from "./collision.js";
 import { LIMB_CHAINS, solveAim, solveTwoBoneIK } from "./ik.js";
 import { landmarkPoint, landmarkSurface, resolveLandmark } from "./landmarks.js";
@@ -62,6 +63,7 @@ import {
 } from "./poseLibrary.js";
 import { Skeleton, evaluatePose } from "./skeleton.js";
 import { handShapes } from "./handPose.js";
+import { restingHands, turnPalms } from "./palmPose.js";
 import { faceExpression } from "./expressions.js";
 import { rootFromPlacement, isFixedPlacement } from "./placement.js";
 import { LIMB_LANDMARKS, limbFirstContact } from "./contactOrientation.js";
@@ -1060,6 +1062,49 @@ function limbIntoPartner(actor, group, partner) {
   return worst;
 }
 
+/**
+ * How deep each arm is in its own trunk, in a partner, in the furniture or
+ * under the floor, as its pose now stands: past what the flesh gives, the
+ * measure the scene's own overlap report takes. The floor is no prop, and an
+ * elbow swung out to lay a palm flat went through it unseen - a figure lying
+ * on its front with both forearms fourteen centimetres under the boards.
+ */
+export function armDepth(actors, props, ground = -Infinity) {
+  // Each body as its pose stands now, not as its `volumes` last saw it: a turn
+  // being tried has moved an arm, and one tried and undone has moved it back,
+  // and neither is the caller's to refresh. Refreshing here instead left the
+  // last arm tried in `volumes` after it was undone, and an untouched figure
+  // was reported elbow-deep in its partner.
+  const posed = (actor) =>
+    poseVolumes(actor.skeleton, actor.evaluated, actor.localVolumes, actor.index, gravityHang(actor.skeleton, actor.evaluated, actor.localVolumes));
+  return (index, side) => {
+    const bodies = actors.map(posed);
+    const own = bodies[index];
+    const group = own.find((volume) => volume.bone === `hand_${side}`)?.group;
+    const limb = own.filter((volume) => volume.group === group);
+    const arm = limb.filter((volume) => !volume.bone.startsWith("hand_"));
+    let worst = 0;
+    const deeper = (hit, allowance = 0) => {
+      if (hit && hit.depth - allowance > worst) worst = hit.depth - allowance;
+    };
+    // A forearm round a partner's neck lies in the flesh of the shoulder as a
+    // hand on it does. Held to its bare outline instead, the twist that turned
+    // the palm onto the shoulder was refused for the few millimetres the
+    // forearm moved with it.
+    for (const volume of limb) {
+      const give = (other) => Math.max(volumeCompression(volume), volumeCompression(other));
+      for (const other of own)
+        if (isBulk(other.group) && !selfCollisionExempt(volume, other) && !selfCollisionExempt(other, volume))
+          deeper(capsuleContact(volume, other), give(other));
+      for (const [k, partner] of bodies.entries())
+        if (k !== index) for (const other of partner) deeper(capsuleContact(volume, other), give(other));
+    }
+    for (const hit of detectPropContacts([{ id: actors[index].id, volumes: arm }], props)) deeper(hit);
+    for (const volume of arm) deeper({ depth: ground - Math.min(volume.a[1] - volume.ra, volume.b[1] - volume.rb) });
+    return worst;
+  };
+}
+
 function solveContactIK(actor, contact, targetActor) {
   const resolved = resolveLandmark(contact.from, contact.fromSide ?? null);
   if (!resolved) return null;
@@ -1294,10 +1339,12 @@ function splitLandmark(reference) {
  * @param {object} scene interpreted description (see `sceneSchema` in scene.js)
  * @param {object} [options]
  * @param {number} [options.iterations]
+ * @param {boolean} [options.palms] turn the palms to what the hands are on;
+ *   a caller that goes on to move the figures can leave it to the end
  * @returns {object} solved scene with actors, props, and a quality report
  */
 export function solveScene(scene, options = {}) {
-  const { iterations = 45, collisionGain = 0.55, maxStep = 0.05 } = options;
+  const { iterations = 45, collisionGain = 0.55, maxStep = 0.05, palms = true } = options;
 
   const surface = resolveSurface(scene.support?.surface);
   const surfaceY = surface.height;
@@ -1400,9 +1447,26 @@ export function solveScene(scene, options = {}) {
       const from = actors[driven.fromActor];
       const to = actors[driven.toActor];
       if (!from || !to) continue;
-      const report = LIMB_LANDMARKS.has(splitLandmark(driven.from).base)
+      let report = LIMB_LANDMARKS.has(splitLandmark(driven.from).base)
         ? solveContactIK(from, driven, to)
         : solveBodyContact(actors, contact, relaxation);
+      // Two hands that hold each other both reach. One that cannot get to the
+      // other where it hangs is met by it, unless that hand is holding its
+      // figure up: a pair standing side by side hold hands between them, not
+      // with one arm stretched out to the other's thigh.
+      if (report?.unreachable && splitLandmark(driven.from).base === "hand" && splitLandmark(driven.to).base === "hand") {
+        const back = {
+          ...driven,
+          from: driven.to,
+          fromSide: driven.toSide,
+          fromActor: driven.toActor,
+          to: driven.from,
+          toSide: driven.fromSide,
+          toActor: driven.fromActor,
+        };
+        const bone = resolveLandmark(back.from, back.fromSide)?.bone;
+        if (bone && !to.loadBearing.has(bone)) report = solveContactIK(to, back, from) ?? report;
+      }
       if (report) contactReports.push({ ...report, contact });
     }
 
@@ -1537,6 +1601,22 @@ export function solveScene(scene, options = {}) {
       })
       .filter(Boolean);
   }
+  // Face each palm the way its hand is used - onto what it leans on, into the
+  // body it holds - with whatever twist and wrist the scene leaves free. Last,
+  // because every stage above moves an arm for where its hand goes and none
+  // for which way it is turned.
+  const freeChannel = (actor, bone, channel) =>
+    actor.spec?.jointMode !== "fixed" || actor.spec.joints?.[bone]?.[channel] == null;
+  const turnedPalms = palms
+    ? turnPalms({ actors, contacts, surface, props }, { free: freeChannel, depth: armDepth(actors, props, surface.ground) })
+    : [];
+  if (turnedPalms.length) {
+    for (const turn of turnedPalms) (actors[turn.actor].palmInset ??= {})[turn.side] = turn.inset;
+    for (const index of new Set(turnedPalms.map((turn) => turn.actor))) refresh(actors[index]);
+    bodies = actors.map((actor) => ({ id: actor.id, volumes: actor.volumes }));
+    finalContacts = detectContacts(bodies, { declared: declaredKeys, selfCollision: true });
+    finalProps = detectPropContacts(bodies, props);
+  }
   // Reports must describe the returned pose, including the ground/collision
   // adjustments after the last IK step, and use the same target definition
   // whether or not the best snapshot was restored.
@@ -1554,7 +1634,7 @@ export function solveScene(scene, options = {}) {
   // place that holds both - see `handShapes` for why the declarations are a
   // better source for it than the solved geometry.
   for (const actor of actors) {
-    actor.hands = handShapes(actor, contacts);
+    actor.hands = restingHands(actor, handShapes(actor, contacts), surface, props);
     // And the face, from the same declarations: a mouth on a partner kisses.
     actor.face = faceExpression(actor, contacts);
     // A clamp displacement describes one correction, not the final support
@@ -1838,15 +1918,17 @@ function restoreActor(actor, snapshot) {
  *
  * Deliberately the same measure the body or limb contact stage drives, so the score ranks
  * iterates by how well they met the contacts rather than by a quantity nothing
- * was ever trying to minimise.
+ * was ever trying to minimise. A palm turned flat onto what it holds sits
+ * nearer by the `palmInset` it was turned through, and is measured there.
  */
 function measureContact(actors, contact) {
   const driven = limbFirstContact(contact, actors);
   if (LIMB_LANDMARKS.has(driven.from)) {
     const actor = actors[driven.fromActor], target = actors[driven.toActor];
     const current = landmarkPoint(actor, driven.from, driven.fromSide ?? null);
+    const inset = driven.from === "hand" ? actor.palmInset?.[driven.fromSide] ?? 0 : 0;
     const surface = current && landmarkSurface(target, driven.to, current, {
-      offset: actor.skeleton.stature * 0.018,
+      offset: actor.skeleton.stature * 0.018 - inset,
       defaultSide: driven.toSide ?? null,
     });
     return surface ? { contact, distance: v3dist(current, surface.point) } : null;
@@ -2019,12 +2101,21 @@ function resolveLimbContacts(actors, contacts, { gain, maxStep, skip }) {
     }
   };
 
+  // A trunk or a head is moved by no stage for what an arm does to it: half of
+  // an arm pressed into a chest was all that was ever undone each pass, and a
+  // partner's forearm on the shoulder pressing it back in held it there. A leg
+  // keeps its half: pushed the whole way off a trunk it went into the bench.
+  const stays = (actorIndex, boneName) =>
+    !chainForBone(boneName) && !actors[actorIndex]?.loadBearing.has(boneName);
+  const arm = (boneName) => chainForBone(boneName)?.startsWith("arm");
   for (const contact of contacts) {
     if (contact.depth <= 0) continue;
     if (handled?.has(contact)) continue;
     const half = v3mul(contact.normal, contact.depth * 0.5);
-    accumulate(contact.bodyA, contact.volumeA.bone, v3mul(half, -1), contact.pointA);
-    accumulate(contact.bodyB, contact.volumeB.bone, half, contact.pointB);
+    const a = arm(contact.volumeA.bone) && stays(contact.bodyB, contact.volumeB.bone) ? 2 : 1;
+    const b = arm(contact.volumeB.bone) && stays(contact.bodyA, contact.volumeA.bone) ? 2 : 1;
+    accumulate(contact.bodyA, contact.volumeA.bone, v3mul(half, -a), contact.pointA);
+    accumulate(contact.bodyB, contact.volumeB.bone, v3mul(half, b), contact.pointB);
   }
 
   for (const entry of corrections.values()) {

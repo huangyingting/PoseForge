@@ -440,18 +440,18 @@ export const SPOONING_LAYOUT = {
           rotation: 0,
         },
         shoulder_l: {
-          flexion: 10.18899471,
-          abduction: 10.71098418,
-          rotation: 18.83705095,
+          flexion: 18.77,
+          abduction: 12.19,
+          rotation: 17.75,
         },
         elbow_l: {
-          flexion: 90.51135697,
+          flexion: 78.37,
           abduction: 0,
-          rotation: 0,
+          rotation: -20.87,
         },
         wrist_l: {
-          flexion: 0,
-          abduction: 0,
+          flexion: 48.56,
+          abduction: 0.19,
           rotation: 0,
         },
         clavicle_r: {

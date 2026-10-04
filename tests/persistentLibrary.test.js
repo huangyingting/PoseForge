@@ -167,8 +167,11 @@ test("a 1283-entry import is atomic and its lightweight index cannot mutate stor
       ),
   );
   const index = library.index();
-  index[0].scene.actors[0].posture = "bad";
+  assert.throws(() => {
+    index[0].scene.actors[0].posture = "bad";
+  }, TypeError);
   assert.notEqual(library.get(index[0].id).scene.actors[0].posture, "bad");
+  assert.notEqual(library.index()[0].scene.actors[0].posture, "bad");
   assert.equal(library.index()[0].scene.actors[0].joints, undefined);
   entries[1000].scene = {};
   await assert.rejects(

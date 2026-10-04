@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
+import { isDeepStrictEqual } from "node:util";
 import { BUILTIN_PRESETS, checkScene } from "../src/core/catalog.js";
 import {
   buildHumanTemplate,
@@ -31,8 +32,10 @@ import {
   quatFromAxisAngle,
   quatMultiply,
   quatRotate,
+  v3dot,
 } from "../src/core/math.js";
 import { captureSolvedPose } from "../src/core/placement.js";
+import { palmAims, palmNormal } from "../src/core/palmPose.js";
 
 const templates = new Map(
   ["male", "female"].map((type) => [
@@ -63,6 +66,15 @@ const forScene = (solved) =>
   solved.actors.map((actor) => templates.get(actor.bodyType));
 const poses = (solved) =>
   structuredClone(solved.actors.map((actor) => actor.pose));
+/** A pose without the shoulders and elbows, which a free arm swings by. */
+const beyondFreeArms = (pose) => ({
+  root: pose.root,
+  joints: Object.fromEntries(
+    Object.entries(pose.joints).filter(
+      ([name]) => !/^(shoulder|elbow)_/.test(name),
+    ),
+  ),
+});
 
 test("body-model reports are remeasured consistently on the returned pose", () => {
   const solved = solveScene(checkScene(base()));
@@ -293,7 +305,8 @@ test("coupled hand-to-back reaches clear complete arms without worsening unrelat
 test("resting hands that reach a back back first lie flat against it without new collisions", () => {
   const solved = solveScene(checkScene(standingPair()));
   assert.deepEqual(solved.actors[1].hands, { l: "cup", r: "cup" });
-  refineSurfaceContacts(solved, forScene(solved));
+  // Left the way they arrived: by default their palms are turned onto it.
+  refineSurfaceContacts(solved, forScene(solved), { maxPalmSteps: 0 });
   assert.deepEqual(solved.actors[1].hands, { l: "lay", r: "lay" });
   for (const side of ["left", "right"])
     assert.ok(
@@ -306,6 +319,59 @@ test("resting hands that reach a back back first lie flat against it without new
     solved.quality.figureSurfaces.every((pair) => pair.intersects === false),
   );
   assert.equal(solved.quality.maxBodyDepth, 0);
+});
+
+test("palms that reached a back the wrong way round are turned onto it once the arms are clear", () => {
+  const solved = solveScene(checkScene(standingPair()));
+  refineSurfaceContacts(solved, forScene(solved));
+  for (const side of ["left", "right"])
+    assert.ok(
+      solved.quality.adjustments.includes(
+        `Figure B: turned the ${side} palm onto what the hand is on.`,
+      ),
+    );
+  for (const { actor, side, aim } of palmAims(solved).filter(
+    (aim) => aim.actor === 1,
+  ))
+    assert.ok(
+      v3dot(palmNormal(solved.actors[actor], side), aim) > Math.cos(Math.PI / 6),
+      side,
+    );
+  // Facing the back, they keep the curl that closes on it.
+  assert.deepEqual(solved.actors[1].hands, { l: "cup", r: "cup" });
+  assert.ok(solved.quality.surfaceRefinement.palmSteps > 0);
+  assert.ok(solved.quality.surfaceRefinement.palmSteps <= 8);
+  assert.equal(solved.quality.unmetContacts, 0);
+  assert.ok(
+    solved.quality.figureSurfaces.every((pair) => pair.intersects === false),
+  );
+  assert.equal(solved.quality.maxBodyDepth, 0);
+  assert.ok(solved.quality.limbIntersections.every((hit) => !hit));
+});
+
+test("a hand whose curled fingers are in the forearm it rests on opens and is lifted clear", () => {
+  const solved = solveScene(checkScene(base()));
+  assert.equal(solved.actors[0].hands.r, "cup");
+  refineSurfaceContacts(solved, forScene(solved), { maxPalmSteps: 0 });
+  assert.equal(solved.actors[0].hands.r, "open");
+  assert.ok(
+    solved.quality.adjustments.includes(
+      "Figure A: the right hand's fingers were in what it rests on, so it lies open.",
+    ),
+  );
+  assert.equal(solved.quality.unmetContacts, 0);
+  assert.ok(solved.quality.limbIntersections.every((hit) => !hit));
+  const [aim] = palmAims(solved);
+  assert.ok(
+    v3dot(palmNormal(solved.actors[0], "r"), aim.aim) > Math.cos(Math.PI / 6),
+  );
+
+  // A shape the actor asked for is theirs and stays.
+  const scene = base();
+  scene.actors[0].hands = { r: "cup" };
+  const asked = solveScene(checkScene(scene));
+  refineSurfaceContacts(asked, forScene(asked), { maxPalmSteps: 0 });
+  assert.equal(asked.actors[0].hands.r, "cup");
 });
 
 test("standing body contacts close with complete figure clearance and preserved support and wrist frames", () => {
@@ -349,7 +415,9 @@ test("standing body contacts close with complete figure clearance and preserved 
   assert.equal(query.figures(0, 1).facing, true);
   assert.ok(solved.quality.surfaceRefinement.bodySteps > 0);
   assert.ok(solved.quality.surfaceRefinement.steps <= 32);
-  assert.deepEqual(solved.actors[0].pose, before[0]);
+  // The figure held keeps its stance; only a free arm its partner stood into
+  // swings clear.
+  assert.deepEqual(beyondFreeArms(solved.actors[0].pose), beyondFreeArms(before[0]));
   assert.ok(
     Math.hypot(
       ...actor.pose.root.position.map(
@@ -566,8 +634,25 @@ test("body trials respect pinned and authored placement, missing surfaces and ex
       constraint === "missing" ? [null, bodies[1]] : bodies,
       constraint === "zero budget" ? { maxSteps: 0 } : {},
     );
-    assert.deepEqual(poses(solved), before, constraint);
-    assert.equal(solved.quality.surfaceRefinement.bodySteps, 0, constraint);
+    if (["missing", "zero budget"].includes(constraint)) {
+      assert.deepEqual(poses(solved), before, constraint);
+      assert.equal(solved.quality.surfaceRefinement.bodySteps, 0, constraint);
+    } else {
+      // The constrained figure is not stepped; the other may still swing a
+      // free arm out of it.
+      assert.deepEqual(poses(solved)[1], before[1], constraint);
+      assert.deepEqual(
+        beyondFreeArms(poses(solved)[0]),
+        beyondFreeArms(before[0]),
+        constraint,
+      );
+      assert.ok(
+        solved.quality.adjustments.every(
+          (adjustment) => !adjustment.startsWith(`${actor.label ?? actor.id}:`),
+        ),
+        constraint,
+      );
+    }
     if (constraint === "missing")
       assert.equal(solved.quality.figureSurfaces[0].intersects, null);
   }
@@ -579,7 +664,11 @@ test("canceling a compound hand candidate restores the rig and unpublished quali
     quality = structuredClone(solved.quality),
     steps = surfaceContactSteps(solved, forScene(solved));
   assert.deepEqual(steps.next().value, { steps: 0 });
-  assert.deepEqual(steps.next().value, { steps: 1 });
+  // The reach's turns of the palm are tried before its compound twist and
+  // wrist bend, and each yields whether it is kept or not.
+  let step = 0;
+  while (isDeepStrictEqual(poses(solved), before) && step < 6)
+    assert.deepEqual(steps.next().value, { steps: ++step });
   assert.notDeepEqual(
     poses(solved),
     before,
@@ -622,7 +711,9 @@ test("hand-to-body candidates obey the shared work budget and preserve authored 
 });
 
 test("rendered hand-to-forearm distance closes without added collisions or source-template mutations", () => {
-  const solved = solveScene(checkScene(base())),
+  // The hand as the coarse solve leaves it, before its palm is turned onto
+  // the forearm: a hand turned there already has no gap left to close.
+  const solved = solveScene(checkScene(base()), { palms: false }),
     bodies = forScene(solved);
   const beforePose = poses(solved),
     before = measureSceneSafety(solved);
@@ -725,12 +816,17 @@ test("coarse overlaps are reconciled only with clear complete limb meshes; missi
   scene.actors[1].bodyType = "female";
   const solved = solveScene(checkScene(scene)),
     bodies = forScene(solved);
+  const coarse = new Map(
+    measureSceneSafety(solved).violations.map((v) => [v.key, v.depth]),
+  );
   const floorHeights = solved.actors.map((actor) =>
     ["ankle_l", "ankle_r", "knee_l", "knee_r"].map(
       (name) => actor.evaluated.positions[actor.skeleton.boneIndex(name)][1],
     ),
   );
-  refineSurfaceContacts(solved, bodies);
+  // The palm turned onto the forearm takes the arm out of the coarse overlap
+  // this fixture is for.
+  refineSurfaceContacts(solved, bodies, { maxPalmSteps: 0 });
   assert.ok(
     solved.quality.contactDetail[0].surfaceGap <= SURFACE_CONTACT_TOLERANCE,
   );
@@ -739,7 +835,21 @@ test("coarse overlaps are reconciled only with clear complete limb meshes; missi
     "fixture must exercise the coarse/drawn discrepancy",
   );
   assert.ok(solved.quality.verifiedProxyContacts > 0);
-  assert.equal(solved.quality.maxDepth, 0);
+  // Every overlap between the two figures is excused by their drawn
+  // surfaces. What may remain is a figure's own - an arm against its side -
+  // which no contact speaks for, no deeper than the coarse solve left it.
+  for (const violation of solved.quality.violations) {
+    const [a, b] = violation.key.split("|").map((end) => end.split(":")[0]);
+    assert.equal(a, b, violation.key);
+    assert.ok(
+      violation.depth <= (coarse.get(violation.key) ?? 0) + 1e-8,
+      violation.key,
+    );
+  }
+  assert.ok(
+    solved.quality.maxDepth <=
+      Math.max(0, ...solved.quality.violations.map((v) => v.depth)),
+  );
   assert.ok(solved.quality.limbIntersections.every((hit) => !hit));
   solved.actors.forEach((actor, i) =>
     ["ankle_l", "ankle_r", "knee_l", "knee_r"].forEach((name, j) =>

@@ -20,6 +20,7 @@ import {
   FOREARM_WRIST_LIMIT,
 } from "../src/core/forearmSupports.js";
 import { solvedPreview } from "../src/core/posePreview.js";
+import { palmNormal } from "../src/core/palmPose.js";
 import { quatFromAxisAngle, quatMultiply } from "../src/core/math.js";
 
 const raw = new Map(),
@@ -93,9 +94,13 @@ test("the floor-rest reference grounds pelvis and forearms without driving hands
   const frame = frameFor(solved, query),
     before = measureRenderedSupports(solved, query)[0];
   assert.ok(before.gap > 0.09);
-  // The unrefined hands start well through the floor: about 19mm, fingertips
-  // first.
-  assert.ok(query.lowest(0) < -0.015);
+  // The unrefined hands already lie palm down beside the forearms, clear of
+  // the floor the pelvis has yet to reach.
+  assert.ok(query.lowest(0) >= 0);
+  for (const side of ["l", "r"]) {
+    assert.equal(actor.hands[side], "brace");
+    assert.ok(palmNormal(actor, side)[1] < -0.99);
+  }
   refineSurfaceContacts(solved, bodies);
   grounded(solved, query);
   assert.ok(forearmFramePreserved(actor, frame));
@@ -106,6 +111,10 @@ test("the floor-rest reference grounds pelvis and forearms without driving hands
     assert.ok(
       query.support(0, { landmark: "hand", side }, solved.surface)
         .penetration === 0,
+    );
+    assert.ok(
+      palmNormal(actor, side)[1] < -0.97,
+      "the lowered hands still lie on their palms",
     );
     assert.ok(
       query.support(0, { landmark: "foot", side }, solved.surface).gap > 0.08,

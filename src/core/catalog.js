@@ -308,13 +308,17 @@ export function serializeCatalog(presets) {
   );
 }
 
-export function searchCatalog(
-  presets,
-  { query = "", category = "all", scope = "all", favorites = [] } = {},
-) {
-  const words = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
-  const listed = presets.filter((preset) => {
-    const haystack = [
+/**
+ * Everything a search matches a preset on, lower-cased once. Presets are not
+ * edited in place - an edit is a new preset - so the text is kept for as long
+ * as the preset is, and a keystroke in the search box reads 1,300 of them
+ * rather than joining and lower-casing each one's description again.
+ */
+const haystacks = new WeakMap();
+function haystackOf(preset) {
+  let haystack = haystacks.get(preset);
+  if (haystack === undefined) {
+    haystack = [
       preset.title,
       preset.description,
       preset.category,
@@ -325,7 +329,18 @@ export function searchCatalog(
     ]
       .join(" ")
       .toLocaleLowerCase();
-    return (
+    haystacks.set(preset, haystack);
+  }
+  return haystack;
+}
+
+export function searchCatalog(
+  presets,
+  { query = "", category = "all", scope = "all", favorites = [] } = {},
+) {
+  const words = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  const listed = presets.filter(
+    (preset) =>
       (category === "all" || preset.category === category) &&
       (scope !== "positions" || preset.id.startsWith("builtin.")) &&
       (scope !== "named" ||
@@ -333,9 +348,8 @@ export function searchCatalog(
         preset.id.startsWith("builtin.position.")) &&
       (scope !== "saved" || preset.id.startsWith("user.")) &&
       (scope !== "favorites" || favorites.includes(preset.id)) &&
-      words.every((word) => haystack.includes(word))
-    );
-  });
+      (!words.length || words.every((word) => haystackOf(preset).includes(word))),
+  );
   // Position IDs are names, and a name is often part of others' names and
   // descriptions ("squat" of "deep-squat"): a search for an ID lists that
   // position first.

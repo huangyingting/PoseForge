@@ -56,19 +56,19 @@ export const TABLE_SUPPORT_LAYOUT = {
           rotation: 0,
         },
         shoulder_l: {
-          flexion: 111.723,
-          abduction: 61.72,
-          rotation: 60.108,
+          flexion: 111.95,
+          abduction: 60.31,
+          rotation: 60.15,
         },
         elbow_l: {
-          flexion: 125.389,
+          flexion: 125.54,
           abduction: 0,
-          rotation: 0,
+          rotation: 50.44,
         },
         wrist_l: {
-          flexion: -48.857,
-          abduction: 31.991,
-          rotation: 14.878,
+          flexion: -0.37,
+          abduction: -24.31,
+          rotation: -13.23,
         },
         clavicle_r: {
           flexion: 0,
@@ -76,19 +76,19 @@ export const TABLE_SUPPORT_LAYOUT = {
           rotation: 0,
         },
         shoulder_r: {
-          flexion: 111.739,
-          abduction: 61.715,
-          rotation: 60.115,
+          flexion: 111.97,
+          abduction: 60.3,
+          rotation: 60.16,
         },
         elbow_r: {
-          flexion: 125.375,
+          flexion: 125.53,
           abduction: 0,
-          rotation: 0,
+          rotation: 49.94,
         },
         wrist_r: {
-          flexion: -48.577,
-          abduction: 31.911,
-          rotation: 15,
+          flexion: -0.37,
+          abduction: -24.81,
+          rotation: -12.66,
         },
         hip_l: {
           flexion: 75.58828320770454,
@@ -194,8 +194,8 @@ export const TABLE_SUPPORT_LAYOUT = {
           rotation: 0,
         },
         wrist_l: {
-          flexion: -6,
-          abduction: 0,
+          flexion: 0,
+          abduction: -6,
           rotation: 0,
         },
         clavicle_r: {
@@ -214,8 +214,8 @@ export const TABLE_SUPPORT_LAYOUT = {
           rotation: 0,
         },
         wrist_r: {
-          flexion: -6,
-          abduction: 0,
+          flexion: 0,
+          abduction: -6,
           rotation: 0,
         },
         hip_l: {

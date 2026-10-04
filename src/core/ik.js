@@ -8,7 +8,9 @@
  *
  * The angle composition is q = Rx(sf*flexion) * Rz(sa*abduction) * Ry(sr*rotation),
  * an intrinsic X-Z-Y Euler sequence whose per-channel signs come from the
- * bone's anatomical axes. `anglesFromQuaternion` is its exact inverse.
+ * bone's anatomical axes. `anglesFromQuaternion` is its exact inverse. The
+ * wrist flexes about z and deviates about x instead (see `wristAxes` in
+ * skeleton.js), which is the same sequence seen a quarter turn about y.
  */
 
 import {
@@ -32,8 +34,21 @@ import {
 } from "./math.js";
 import { evaluatePose } from "./skeleton.js";
 
-/** Per-channel sign of a bone's anatomical axes. */
+/** A quarter turn about y: takes z to x and x to -z. */
+const QUARTER_Y = [0, Math.SQRT1_2, 0, Math.SQRT1_2];
+const QUARTER_Y_INVERSE = [0, -Math.SQRT1_2, 0, Math.SQRT1_2];
+
+/** Whether a bone flexes about z - the wrist - rather than about x. */
+const flexesAboutZ = (bone) => bone.axes.flexion[2] !== 0;
+
+/** Per-channel sign of a bone's anatomical axes, in the frame its sequence is X-Z-Y in. */
 function channelSigns(bone) {
+  if (flexesAboutZ(bone))
+    return {
+      flexion: bone.axes.flexion[2] || 1,
+      abduction: -bone.axes.abduction[0] || 1,
+      rotation: bone.axes.rotation[1] || 1,
+    };
   return {
     flexion: bone.axes.flexion[0] || 1,
     abduction: bone.axes.abduction[2] || 1,
@@ -68,7 +83,7 @@ function matrixFromQuat(q) {
 export function anglesFromQuaternion(skeleton, boneName, q) {
   const bone = skeleton.bone(boneName);
   const signs = channelSigns(bone);
-  const m = matrixFromQuat(q);
+  const m = matrixFromQuat(flexesAboutZ(bone) ? quatMultiply(quatMultiply(QUARTER_Y, q), QUARTER_Y_INVERSE) : q);
   // m = Rx(a) Rz(b) Ry(c); see the derivation in the module header.
   const m01 = m[1];
   const m00 = m[0];

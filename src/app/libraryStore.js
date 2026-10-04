@@ -38,6 +38,11 @@ export const STARTERS = Object.freeze(
 );
 const stock = () => (positions.length ? [...STARTERS, ...positions] : STARTERS);
 const findStock = (id) => positionIndex.get(id) ?? STARTERS.find((p) => p.id === id);
+const freeze = (value) => {
+  for (const child of Object.values(value))
+    if (child && typeof child === "object") freeze(child);
+  return Object.freeze(value);
+};
 
 /**
  * Built-in interaction positions as they are registered: each checked as any
@@ -155,6 +160,44 @@ export function createLibrary(storage, idFactory = () => newId()) {
       ? checkPositionOverride(preset, position)
       : preset;
   };
+  // What the list shows of each preset, and whether it has been checked in 3D.
+  const listing = () => {
+    const authoredSources = new Set(
+      saved
+        .filter(isPositionOverride)
+        .filter((override) => {
+          const position = positionSourceIndex.get(override.source.recordId);
+          return positionOverrideMatches(override, position);
+        })
+        .map((preset) => preset.source.recordId),
+    );
+    return [...stock(), ...saved.map(materialize)].map((p) => ({
+      id: p.id,
+      title: p.title,
+      description: p.description,
+      category: p.category,
+      ...(p.position
+        ? {
+            position: { ...p.position },
+          }
+        : {}),
+      tags: [...p.tags],
+      ...(p.source ? { source: { ...p.source } } : {}),
+      scene: { actors: p.scene.actors.map((a) => ({ posture: a.posture })) },
+      status:
+        p.id.startsWith("builtin.position.") &&
+        authoredSources.has(p.source?.recordId)
+          ? "authored-3d"
+          : isPositionOverride(p)
+            ? "authored-3d"
+            : p.id.startsWith("builtin.position.")
+              ? "interaction-3d"
+        : p.id.startsWith("builtin.")
+          ? "verified-3d"
+          : "needs-adjustment",
+    }));
+  };
+  let indexed = null;
   return {
     get error() {
       return loadError;
@@ -180,41 +223,15 @@ export function createLibrary(storage, idFactory = () => newId()) {
           : preset,
       );
     },
+    // The entries are made once for each revision, and frozen, so that a search
+    // typed into the list reads the same objects each time - and the words it
+    // looks for in them, which `searchCatalog` keeps for each, are not made
+    // again for every key.
     index() {
-      const authoredSources = new Set(
-        saved
-          .filter(isPositionOverride)
-          .filter((override) => {
-            const position = positionSourceIndex.get(override.source.recordId);
-            return positionOverrideMatches(override, position);
-          })
-          .map((preset) => preset.source.recordId),
-      );
-      return [...stock(), ...saved.map(materialize)].map((p) => ({
-        id: p.id,
-        title: p.title,
-        description: p.description,
-        category: p.category,
-        ...(p.position
-          ? {
-              position: { ...p.position },
-            }
-          : {}),
-        tags: [...p.tags],
-        ...(p.source ? { source: { ...p.source } } : {}),
-        scene: { actors: p.scene.actors.map((a) => ({ posture: a.posture })) },
-        status:
-          p.id.startsWith("builtin.position.") &&
-          authoredSources.has(p.source?.recordId)
-            ? "authored-3d"
-            : isPositionOverride(p)
-              ? "authored-3d"
-              : p.id.startsWith("builtin.position.")
-                ? "interaction-3d"
-          : p.id.startsWith("builtin.")
-            ? "verified-3d"
-            : "needs-adjustment",
-      }));
+      const revision = `${registrations}.${instance}.${changes}`;
+      if (indexed?.revision !== revision)
+        indexed = { revision, entries: listing().map(freeze) };
+      return [...indexed.entries];
     },
     saved: () => structuredClone(saved.map(materialize)),
     favorites: () => [...favorites],

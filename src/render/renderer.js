@@ -23,6 +23,7 @@
 import {
   AddEquation,
   BackSide,
+  Box3,
   BoxGeometry,
   BufferAttribute,
   BufferGeometry,
@@ -49,6 +50,7 @@ import {
   RepeatWrapping,
   Scene,
   ShaderChunk,
+  Sphere,
   SRGBColorSpace,
   Texture,
   Vector2,
@@ -999,6 +1001,31 @@ function laceTexture() {
   return laceTile;
 }
 
+/**
+ * The box round a mesher result's points, read once for each. The room is
+ * laid out round the scene's box, the geometry is culled by its sphere and the
+ * camera framed on its box, and each of them read every point of every figure
+ * for itself - four passes over a quarter of a million points where one does.
+ */
+const boxes = new WeakMap();
+function boxOf(positions) {
+  let box = boxes.get(positions);
+  if (box) return box;
+  let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+  for (let i = 0; i < positions.length; i += 3) {
+    const x = positions[i], y = positions[i + 1], z = positions[i + 2];
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (y < y0) y0 = y;
+    if (y > y1) y1 = y;
+    if (z < z0) z0 = z;
+    if (z > z1) z1 = z;
+  }
+  box = new Box3(new Vector3(x0, y0, z0), new Vector3(x1, y1, z1));
+  boxes.set(positions, box);
+  return box;
+}
+
 /** Turn a mesher result into a three.js geometry. */
 function toGeometry(mesh) {
   const geometry = new BufferGeometry();
@@ -1018,7 +1045,17 @@ function toGeometry(mesh) {
   // The scan brings its own; the field does not, and a body drawn from the
   // field is drawn untextured rather than drawn with somebody else's chart.
   if (mesh.uvs) geometry.setAttribute("uv", new BufferAttribute(mesh.uvs, 2));
-  geometry.computeBoundingSphere();
+  // The sphere `computeBoundingSphere` would make - centred on the box, out
+  // to the farthest point - from the box already read.
+  const p = mesh.positions;
+  geometry.boundingBox = boxOf(p).clone();
+  const center = geometry.boundingBox.getCenter(new Vector3());
+  let far = 0;
+  for (let i = 0; i < p.length; i += 3) {
+    const dx = center.x - p[i], dy = center.y - p[i + 1], dz = center.z - p[i + 2];
+    far = Math.max(far, dx * dx + dy * dy + dz * dz);
+  }
+  geometry.boundingSphere = new Sphere(center, Math.sqrt(far));
   return geometry;
 }
 
@@ -1333,8 +1370,10 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
     };
     for (const mesh of meshes) {
       for (const part of mesh.parts ?? [mesh]) {
-        const p = part.positions;
-        for (let i = 0; i < p.length; i += 3) add(p[i], p[i + 1], p[i + 2]);
+        const box = boxOf(part.positions);
+        if (box.isEmpty()) continue;
+        add(box.min.x, box.min.y, box.min.z);
+        add(box.max.x, box.max.y, box.max.z);
       }
     }
     for (const prop of props ?? []) {
@@ -1474,7 +1513,8 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
     const box = { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] };
     bodies.traverse((node) => {
       if (!node.isMesh) return;
-      node.geometry.computeBoundingBox();
+      // Made with the geometry, which does not move after.
+      if (!node.geometry.boundingBox) node.geometry.computeBoundingBox();
       const b = node.geometry.boundingBox;
       for (const axis of [0, 1, 2]) {
         box.min[axis] = Math.min(box.min[axis], b.min.getComponent(axis));

@@ -23,10 +23,35 @@ const round = (value, places) => Math.round(value * 10 ** places) / 10 ** places
 /** Classification fields that decide the composed scene; the image id and confidence do not. */
 const planKey = ({ id, confidence, ...rest }) => JSON.stringify(Object.entries(rest).sort(([a], [b]) => a.localeCompare(b)));
 
-/** Compose one classification into a checked, rounded scene. */
+/**
+ * The ways each placement is fitted (see `fitPlacement`), in the order they
+ * are tried: the quick walk, the slower steepest one, and the quick one from
+ * shorter first steps.
+ */
+const WALKS = [{}, { steepest: true }, { first: 0.08 }];
+
+/**
+ * Compose one classification into a checked, rounded scene. A scene that
+ * fails its checks is fitted again by the next walk, then laid out again by its
+ * plan's `retry` if it has one, and the first that passes is kept; if none
+ * does, the first.
+ */
 export function composeStudy(cls) {
-  const plan = planFor(cls);
-  const specs = compose(plan);
+  let first = null;
+  for (const retry of [false, true]) {
+    for (const walk of WALKS) {
+      const plan = planFor(cls);
+      if (retry && !plan.retry) return first;
+      const result = composeOnce(cls, retry ? plan.retry : plan, walk);
+      if (result.passed) return result;
+      first ??= result;
+    }
+  }
+  return first;
+}
+
+function composeOnce(cls, plan, walk) {
+  const specs = compose(plan, walk);
   const letters = new Map(Object.entries(plan.roles ?? { a: 0 }).map(([role, index]) => [index, role.toUpperCase()]));
   if (plan.thirdIndex != null) letters.set(plan.thirdIndex, "C");
   const actors = specs.map((spec, i) => {

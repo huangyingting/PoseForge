@@ -49,12 +49,17 @@ const variations = [
   },
 ];
 
-test("only an inferred cupped hand that arrived back first changes shape", () => {
+test("only an inferred cupped or gripping hand that arrived back first changes shape", () => {
   const actor = { hands: { l: "cup", r: "grip" }, spec: {} };
   assert.equal(backFirstShape(actor, "l", -0.8), "lay");
   assert.equal(backFirstShape(actor, "l", 0.2), null, "palm roughly first");
   assert.equal(backFirstShape(actor, "l", Number.NaN), null);
-  assert.equal(backFirstShape(actor, "r", -0.8), null, "a grip is not a rest");
+  assert.equal(backFirstShape(actor, "r", -0.8), "lay", "a grip closed on air");
+  assert.equal(
+    backFirstShape({ ...actor, hands: { l: "brace", r: "grip" } }, "l", -0.8),
+    null,
+    "a hand bearing weight stays braced",
+  );
   for (const hands of ["cup", { l: "cup" }])
     assert.equal(
       backFirstShape({ ...actor, spec: { hands } }, "l", -0.8),

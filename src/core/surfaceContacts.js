@@ -5,15 +5,19 @@ import {
   landmarkSurface,
   resolveLandmark,
 } from "./landmarks.js";
-import { backFirstShape } from "./handPose.js";
+import { backFirstShape, fingersInShape } from "./handPose.js";
+import { palmAims, palmNormal, turnPalm, turnPalms } from "./palmPose.js";
 import { LIMB_CHAINS, solveTwoBoneIK } from "./ik.js";
 import { CHANNELS } from "./skeleton.js";
 import { clamp, quatRotate, v3dot, v3sub } from "./math.js";
 import {
   standingContactPoses,
   standingFramePreserved,
+  standingStepAllowed,
+  standingStepBack,
 } from "./standingContacts.js";
 import {
+  armDepth,
   chainForBone,
   refresh,
   measureSceneSafety,
@@ -56,6 +60,8 @@ import {
 } from "./levelSeatedSupports.js";
 
 export const SURFACE_CONTACT_TOLERANCE = 0.004;
+/** How far, in radians, a palm may face off what its hand is on and be left. */
+const PALM_TOLERANCE = (30 * Math.PI) / 180;
 const vDistanceSq = (a, b) =>
   a.reduce((sum, value, k) => sum + (value - b[k]) ** 2, 0);
 const topologyCache = new WeakMap();
@@ -629,19 +635,27 @@ function handBodyReach(actor, targetActor, contact, chain) {
   return {
     point: surface.point,
     pole: quatRotate(actor.pose.root.quaternion, [chain.side, 0, 1]),
+    aim: surface.normal.map((value) => -value),
     twist: -outward * 75,
   };
 }
 
 /**
- * Resting hands that reached what they touch back first, and the shape each
- * takes instead - see `backFirstShape`. The palm faces along the hand bone's
+ * Resting and gripping hands that reached what they touch back first, and the
+ * shape each takes instead - see `backFirstShape`. The palm faces along the hand bone's
  * x axis, away from it on the left hand and along it on the right, where the
  * rig mirrors; every bundled body model is drawn that way round. What the hand
  * touches lies towards the other end of the contact's closest pair of points.
  */
 function backFirstHands(solved, measurements) {
   const turns = [];
+  const read = new Set();
+  const put = (actor, side, facing) => {
+    read.add(`${actor.index}.${side}`);
+    const shape = backFirstShape(actor, side, facing);
+    if (shape && !turns.some((turn) => turn.actor === actor && turn.side === side))
+      turns.push({ actor, side, shape });
+  };
   solved.contacts.forEach((contact, i) => {
     const gap = measurements[i];
     if (contact.strength <= 0 || !gap || gap.intersects || !(gap.distance > 1e-4))
@@ -655,14 +669,22 @@ function backFirstHands(solved, measurements) {
         end === "from" ? v3sub(gap.to, gap.from) : v3sub(gap.from, gap.to);
       const matrix =
         actor.evaluated.matrices[actor.skeleton.boneIndex(landmark.bone)];
-      const facing =
+      put(
+        actor,
+        side,
         ((side === "r" ? 1 : -1) * v3dot(matrix.slice(0, 3), toward)) /
-        gap.distance;
-      const shape = backFirstShape(actor, side, facing);
-      if (shape && !turns.some((turn) => turn.actor === actor && turn.side === side))
-        turns.push({ actor, side, shape });
+          gap.distance,
+      );
     }
   });
+  // A hand already on or in what it touches leaves no gap to read a direction
+  // from. The surface it is on gives one: the palm should face into it.
+  for (const { actor, side, aim, kind } of palmAims(solved)) {
+    if ((kind !== "grip" && kind !== "rest") || read.has(`${actor}.${side}`))
+      continue;
+    const body = solved.actors[actor];
+    put(body, side, v3dot(palmNormal(body, side), aim));
+  }
   return turns;
 }
 
@@ -679,9 +701,11 @@ export function* surfaceContactSteps(
     maxForearmSteps = 8,
     maxLevelSeatingSteps = 8,
     maxGuidedPoseSteps = 1,
+    maxPalmSteps = 8,
   } = {},
 ) {
   const originalPoses = solved.actors.map(clonePose);
+  const originalHands = solved.actors.map((actor) => actor.hands);
   let completed = false;
   try {
     yield { steps: 0 };
@@ -777,9 +801,25 @@ export function* surfaceContactSteps(
     let currentSafety = initialSafety;
     let bestScore = score(measurements, solved.contacts);
     const reasons = new Map();
+    // A hand reaching round a body tries half a dozen arms before it is moved
+    // at all; a hand on a knee is moved at once. The short ones go first, so a
+    // reach that ends out of range cannot spend the budget they needed.
+    const reaching = (contact) => {
+      const driven = limbFirstContact(contact, solved.actors);
+      const target = resolveLandmark(driven.to, driven.toSide);
+      return driven.from === "hand" && !!target && !target.side &&
+        target.bone.startsWith("spine")
+        ? 1
+        : 0;
+    };
+    const order = solved.contacts
+      .map((contact, i) => ({ i, cost: reaching(contact) }))
+      .sort((a, b) => a.cost - b.cost)
+      .map(({ i }) => i);
     for (let pass = 0; pass < maxPasses && steps < maxSteps; pass++) {
       let improved = false;
-      for (let i = 0; i < solved.contacts.length && steps < maxSteps; i++) {
+      for (const i of order) {
+        if (steps >= maxSteps) break;
         const authoredContact = solved.contacts[i];
         const contact = limbFirstContact(authoredContact, solved.actors);
         // Reports and scoring retain authored direction; motion uses the free
@@ -873,43 +913,55 @@ export function* surfaceContactSteps(
           return true;
         };
         const targetActor = solved.actors[contact.toActor];
-        const bodyTarget = !chainForBone(
-          resolveLandmark(contact.to, contact.toSide)?.bone ?? "",
-        );
+        const side = chain.end.slice(-1);
         const reach =
           measured.intersects &&
           handBodyReach(actor, targetActor, contact, chain);
         if (reach) {
           const original = clonePose(actor);
-          for (const [twist, flexion, abduction] of [
-            [reach.twist, 45, 24],
-            [-reach.twist, 45, 24],
-            [reach.twist, 0, 24],
-            [reach.twist, 45, 0],
+          let kept = original;
+          // The palm turned onto the body where the hand reaches, by the
+          // forearm's twist and the wrist, and brought back to the point after
+          // each turn, since turning the wrist swings the palm about it. A hand
+          // on a back the arm has come round bends towards it at the wrist: a
+          // straight one lays the forearm along the back, through the flank it
+          // has to pass. So the bend is set first and the rest turned to it,
+          // and only last is the wrist left to find its own. Where no turn of
+          // the palm gets the forearm past the partner's arm, the forearm is
+          // twisted the way the arm comes round and the hand reaches back
+          // first, bent back and leant towards the thumb, and is laid once the
+          // contacts have been met - see `backFirstHands`.
+          for (const { flexion, twist, wrist } of [
+            { flexion: 45 },
+            { flexion: null },
+            { twist: reach.twist, wrist: { flexion: -24, abduction: 15 } },
+            { twist: -reach.twist, wrist: { flexion: -24, abduction: 15 } },
+            { twist: reach.twist, wrist: { flexion: -24, abduction: 0 } },
+            { twist: reach.twist, wrist: { flexion: 0, abduction: 15 } },
           ]) {
             if (steps >= maxSteps) break;
             steps++;
             actor.pose = clonePose({ pose: original });
-            actor.pose.joints[chain.mid] = actor.skeleton.clampAngles(
-              chain.mid,
-              {
-                ...actor.pose.joints[chain.mid],
-                rotation: twist,
-              },
-            );
-            actor.pose.joints[chain.end] = actor.skeleton.clampAngles(
-              chain.end,
-              {
-                ...actor.pose.joints[chain.end],
-                flexion,
-                abduction,
-              },
-            );
+            if (wrist) {
+              actor.pose.joints[chain.mid] = actor.skeleton.clampAngles(
+                chain.mid,
+                { ...actor.pose.joints[chain.mid], rotation: twist },
+              );
+              actor.pose.joints[chain.end] = actor.skeleton.clampAngles(
+                chain.end,
+                { ...actor.pose.joints[chain.end], ...wrist },
+              );
+            } else if (flexion != null)
+              actor.pose.joints[chain.end] = actor.skeleton.clampAngles(
+                chain.end,
+                { ...actor.pose.joints[chain.end], flexion },
+              );
             refresh(actor);
-            // Turning the palm changes its offset from the wrist. Reaching
-            // with that offset keeps the intended hand anchor, not just the
-            // wrist, near the surface while the forearm takes another route.
-            for (let repeat = 0; repeat < 3; repeat++) {
+            const may = (bone, channel) =>
+              bone === chain.end
+                ? flexion == null || channel !== "flexion"
+                : bone === chain.mid && channel === "rotation";
+            for (let repeat = 0; repeat < (wrist ? 3 : 4); repeat++) {
               const hand = landmarkPoint(actor, contact.from, contact.fromSide);
               const end =
                 actor.evaluated.positions[actor.skeleton.boneIndex(chain.end)];
@@ -923,14 +975,23 @@ export function* surfaceContactSteps(
                 { evaluated: actor.evaluated, pole: reach.pole, weight: 1 },
               );
               refresh(actor);
+              if (wrist || repeat === 3) continue;
+              turnPalm(actor, side, reach.aim, { free: may });
+              refresh(actor);
             }
             const accepted = acceptCandidate();
-            if (!accepted) {
-              actor.pose = clonePose({ pose: original });
+            if (accepted) kept = clonePose(actor);
+            else {
+              actor.pose = clonePose({ pose: kept });
               refresh(actor);
             }
             yield { steps };
-            if (accepted) break;
+            if (
+              accepted &&
+              !measurements[i].intersects &&
+              measurements[i].distance <= SURFACE_CONTACT_TOLERANCE
+            )
+              break;
           }
           measured = motionMeasurement();
           if (
@@ -939,58 +1000,92 @@ export function* surfaceContactSteps(
           )
             continue;
         }
-        const saved = clonePose(actor);
-        const end =
-          actor.evaluated.positions[actor.skeleton.boneIndex(chain.end)];
-        const gain = measured.intersects
-          ? 0
-          : Math.min(0.025, measured.distance - 0.0015) / measured.distance;
-        const delta = measured.intersects
-          ? measured.normal.map((v) => v * 0.003)
-          : measured.to.map((v, k) => (v - measured.from[k]) * gain);
-        // A crossing triangle supplies a normal axis, not a signed penetration
-        // depth. Either side may free the moving limb, and a dressed upper arm
-        // can be thicker than the old 24 mm search. Try both sides, bounded at
-        // 96 mm before the contact-weight blend. Every candidate still has to
-        // pass the full safety and new-intersection checks above.
-        for (const factor of measured.intersects
-          ? [1, -1, 2, -2, 4, -4, 8, -8, 16, -16, 24, -24, 32, -32]
-          : [1, 0.5, 0.25]) {
-          if (steps >= maxSteps) break;
-          steps++;
-          const target = end.map((v, k) => v + delta[k] * factor);
-          const result = solveTwoBoneIK(
-            actor.skeleton,
-            actor.pose,
-            chain,
-            target,
-            {
-              evaluated: actor.evaluated,
-              weight: contact.strength ?? 1,
-              // A small rendered correction must not reset an elbow that has
-              // already found a clear route around the other figure.
-              ...(bodyTarget
-                ? {
-                    pole: v3sub(
-                      actor.evaluated.positions[
-                        actor.skeleton.boneIndex(chain.mid)
-                      ],
-                      actor.evaluated.positions[
-                        actor.skeleton.boneIndex(chain.root)
-                      ],
-                    ),
-                  }
-                : {}),
-            },
-          );
+        const moveLimb = (measured) => {
+          const saved = clonePose(actor);
+          const end =
+            actor.evaluated.positions[actor.skeleton.boneIndex(chain.end)];
+          const gain = measured.intersects
+            ? 0
+            : Math.min(0.025, measured.distance - 0.0015) / measured.distance;
+          const delta = measured.intersects
+            ? measured.normal.map((v) => v * 0.003)
+            : measured.to.map((v, k) => (v - measured.from[k]) * gain);
+          // A crossing triangle supplies a normal axis, not a signed penetration
+          // depth. Either side may free the moving limb, and a dressed upper arm
+          // can be thicker than the old 24 mm search. Try both sides, bounded at
+          // 96 mm before the contact-weight blend. Every candidate still has to
+          // pass the full safety and new-intersection checks above.
+          for (const factor of measured.intersects
+            ? [1, -1, 2, -2, 4, -4, 8, -8, 16, -16, 24, -24, 32, -32]
+            : [1, 0.5, 0.25]) {
+            if (steps >= maxSteps) break;
+            steps++;
+            const target = end.map((v, k) => v + delta[k] * factor);
+            const result = solveTwoBoneIK(
+              actor.skeleton,
+              actor.pose,
+              chain,
+              target,
+              {
+                evaluated: actor.evaluated,
+                weight: contact.strength ?? 1,
+                // A small rendered correction must not reset an elbow that has
+                // already found a clear route around the other figure, nor
+                // swing one about the arm and the palm with it off the knee
+                // it holds.
+                pole: v3sub(
+                  actor.evaluated.positions[
+                    actor.skeleton.boneIndex(chain.mid)
+                  ],
+                  actor.evaluated.positions[
+                    actor.skeleton.boneIndex(chain.root)
+                  ],
+                ),
+              },
+            );
+            refresh(actor);
+            if (acceptCandidate()) return true;
+            actor.pose = clonePose({ pose: saved });
+            refresh(actor);
+            reasons.set(
+              i,
+              result.unreachable ? "out_of_reach" : "movement_limited",
+            );
+          }
+          return false;
+        };
+        // A resting hand whose curled fingers are in what it is on is moved
+        // out with them open first, and keeps them open only if that frees it.
+        const opened =
+          measured.intersects &&
+          contact.from === "hand" &&
+          fingersInShape(actor, side);
+        let moved = false;
+        if (opened) {
+          const kept = actor.hands;
+          actor.hands = { ...kept, [side]: opened };
           refresh(actor);
-          if (acceptCandidate()) break;
-          actor.pose = clonePose({ pose: saved });
-          refresh(actor);
-          reasons.set(
-            i,
-            result.unreachable ? "out_of_reach" : "movement_limited",
-          );
+          moved = moveLimb(measured);
+          if (moved)
+            adjustments.push(
+              `${actor.label ?? actor.id}: the ${side === "l" ? "left" : "right"} hand's fingers were in what it rests on, so it lies open.`,
+            );
+          else {
+            actor.hands = kept;
+            refresh(actor);
+          }
+        }
+        // A limb freed from a crossing lands wherever the step that freed it
+        // put it, often a centimetre off; it is brought in at once, while its
+        // way back is still the one just measured.
+        if ((moved || moveLimb(measured)) && measured.intersects) {
+          const freed = motionMeasurement();
+          if (
+            freed &&
+            !freed.intersects &&
+            freed.distance > SURFACE_CONTACT_TOLERANCE
+          )
+            moveLimb(freed);
         }
         // A small turn of a free wrist can meet a surface without pushing the
         // whole palm through the collision envelope. Respect authored wrist
@@ -1072,11 +1167,288 @@ export function* surfaceContactSteps(
       if (!improved) break;
     }
     let bodySteps = 0;
+    // A hand that holds nothing, hanging where the partner has come to stand.
+    // The coarse figures keep its capsule clear, but the drawn hand is wider
+    // than that - a spread thumb, a thigh in shorts - and can sit inside the
+    // other body. Its arm swings back or out, a little at a time, keeping its
+    // bend. This moves a figure beyond the limbs that reach, so it spends the
+    // body budget, and only between figures a contact is still working on.
+    const engaged = (a, b) =>
+      solved.contacts.some(
+        (contact, k) =>
+          contact.strength > 0 &&
+          !["fixed_channels", "load_bearing"].includes(reasons.get(k)) &&
+          ((contact.fromActor === a && contact.toActor === b) ||
+            (contact.fromActor === b && contact.toActor === a)),
+      );
+    for (const actor of solved.actors) {
+      if (actor.mobility <= 0) continue;
+      for (const name of ["armL", "armR"]) {
+        const chain = LIMB_CHAINS[name];
+        const bones = [chain.root, chain.mid, chain.end, chain.tip];
+        if (
+          bones.some(
+            (bone) => actor.loadBearing.has(bone) || actor.spec?.joints?.[bone],
+          ) ||
+          solved.contacts.some(
+            (contact) =>
+              contact.strength > 0 &&
+              ["from", "to"].some(
+                (end) =>
+                  contact[`${end}Actor`] === actor.index &&
+                  chainForBone(
+                    resolveLandmark(contact[end], contact[`${end}Side`])
+                      ?.bone ?? "",
+                  ) === name,
+              ),
+          )
+        )
+          continue;
+        for (const partner of solved.actors) {
+          if (partner === actor || !engaged(actor.index, partner.index))
+            continue;
+          const group = {
+            fromActor: actor.index,
+            toActor: partner.index,
+            fromBones: new Set(bones),
+            toBones: new Set(partner.skeleton.bones.map((bone) => bone.name)),
+          };
+          const crossing = query.limbs(group, true);
+          if (!crossing?.intersects) continue;
+          const original = clonePose(actor);
+          const baseline = measureSurfaceSafety(solved, query);
+          const violations = new Map(
+            baseline.violations.map((value) => [value.key, value.depth]),
+          );
+          const end =
+            actor.evaluated.positions[actor.skeleton.boneIndex(chain.end)];
+          const pole = v3sub(
+            actor.evaluated.positions[actor.skeleton.boneIndex(chain.mid)],
+            actor.evaluated.positions[actor.skeleton.boneIndex(chain.root)],
+          );
+          const flat = (vector) => {
+            const length = Math.hypot(vector[0], vector[2]);
+            return length > 1e-6
+              ? [vector[0] / length, 0, vector[2] / length]
+              : [0, 0, 0];
+          };
+          const away = flat(
+            v3sub(actor.pose.root.position, partner.pose.root.position),
+          );
+          const outward = flat(
+            v3sub(
+              end,
+              actor.evaluated.positions[actor.skeleton.boneIndex("pelvis")],
+            ),
+          );
+          const both = flat(away.map((value, axis) => value + outward[axis]));
+          for (const [direction, shift] of [
+            [away, 0.02],
+            [outward, 0.02],
+            [both, 0.03],
+            [away, 0.04],
+            [outward, 0.04],
+            [both, 0.06],
+          ]) {
+            if (steps >= maxSteps || bodySteps >= maxBodySteps) break;
+            steps++;
+            bodySteps++;
+            solveTwoBoneIK(
+              actor.skeleton,
+              actor.pose,
+              chain,
+              end.map((value, axis) => value + direction[axis] * shift),
+              { evaluated: actor.evaluated, pole, weight: 1 },
+            );
+            refresh(actor);
+            const candidate = solved.contacts.map(query);
+            const safety = measureSurfaceSafety(solved, query);
+            const accepted =
+              !query.limbs(group, true)?.intersects &&
+              candidate.every(
+                (value, k) =>
+                  !measurements[k] ||
+                  (value &&
+                    (!value.intersects || measurements[k].intersects) &&
+                    (value.intersects ||
+                      value.distance <=
+                        Math.max(
+                          measurements[k].distance,
+                          SURFACE_CONTACT_TOLERANCE,
+                        ) +
+                          1e-7)),
+              ) &&
+              [
+                "maxDepth",
+                "maxSelfDepth",
+                "maxBodyDepth",
+                "propPenetration",
+                "totalDepth",
+              ].every((key) => safety[key] <= baseline[key] + 1e-8) &&
+              safety.violations.every(
+                (value) =>
+                  value.depth <= (violations.get(value.key) ?? 0) + 1e-8,
+              );
+            if (accepted) {
+              measurements = candidate;
+              bestScore = score(candidate, solved.contacts);
+              adjustments.push(
+                `${actor.label ?? actor.id}: moved a free arm out of ${partner.label ?? partner.id}.`,
+              );
+            } else {
+              actor.pose = clonePose({ pose: original });
+              refresh(actor);
+            }
+            yield { steps };
+            if (accepted) break;
+          }
+        }
+      }
+    }
     let bodyBaseline;
     const bodyFrames = solved.actors.map((actor) => ({
       root: [...actor.pose.root.position],
       evaluated: actor.evaluated,
     }));
+    // Whether the stance a standing figure has just been given keeps its feet
+    // and hands, meets its contacts better and goes no deeper into anything;
+    // kept if so.
+    const acceptStance = (
+      actor,
+      i,
+      change,
+      { give = () => 0, crossed = [] } = {},
+    ) => {
+      const candidate = solved.contacts.map(query),
+        candidateScore = score(candidate, solved.contacts);
+      const contactsSafe = candidate.every(
+        (value, k) =>
+          solved.contacts[k].strength <= 0 ||
+          (value &&
+            !value.intersects &&
+            measurements[k] &&
+            (measurements[k].intersects ||
+              value.distance <=
+                Math.max(measurements[k].distance, SURFACE_CONTACT_TOLERANCE) +
+                  give(k) +
+                  1e-7)),
+      );
+      if (
+        !standingFramePreserved(actor, bodyFrames[actor.index]) ||
+        !contactsSafe ||
+        !improves(
+          candidate,
+          candidateScore,
+          measurements,
+          bestScore,
+          solved.contacts,
+        ) ||
+        !measureFigureSurfaces(solved, query).every(
+          (pair, k) => pair.intersects === false || crossed[k],
+        )
+      )
+        return false;
+      const safety = measureSurfaceSafety(solved, query, {
+        wholeFigures: true,
+      });
+      const violations = new Map(
+        bodyBaseline.violations.map((value) => [value.key, value.depth]),
+      );
+      const balanced = safety.balance.every(
+        (value, k) =>
+          (!bodyBaseline.balance[k].supported || value.supported) &&
+          (value.offset ?? Infinity) <=
+            (bodyBaseline.balance[k].offset ?? Infinity) + 1e-6,
+      );
+      if (
+        !balanced ||
+        ![
+          "maxDepth",
+          "maxSelfDepth",
+          "maxBodyDepth",
+          "propPenetration",
+          "totalDepth",
+        ].every((key) => safety[key] <= bodyBaseline[key] + 1e-8) ||
+        !safety.violations.every(
+          (value) => value.depth <= (violations.get(value.key) ?? 0) + 1e-8,
+        )
+      )
+        return false;
+      measurements = candidate;
+      bestScore = candidateScore;
+      reasons.delete(i);
+      adjustments.push(`${actor.label ?? actor.id}: ${change}.`);
+      return true;
+    };
+    // Two standing figures the coarse solve left chest just inside chest -
+    // its capsules count as touching anywhere within a few millimetres, and
+    // the drawn bodies are not the capsules. The one leaning in steps back by
+    // a millimetre or two, its hands kept where they hold the other.
+    for (const [i, contact] of solved.contacts.entries()) {
+      const actor = solved.actors[contact.fromActor],
+        partner = solved.actors[contact.toActor];
+      if (
+        steps >= maxSteps ||
+        bodySteps >= maxBodySteps ||
+        solved.surface.id !== "floor" ||
+        contact.strength <= 0 ||
+        !partner ||
+        partner === actor ||
+        !standingStepAllowed(actor) ||
+        !measurements[i]?.intersects ||
+        !resolveLandmark(contact.from, contact.fromSide)?.bone.startsWith(
+          "spine",
+        ) ||
+        chainForBone(resolveLandmark(contact.to, contact.toSide)?.bone ?? "")
+      )
+        continue;
+      const away = actor.pose.root.position.map((value, axis) =>
+        axis === 1 ? 0 : value - partner.pose.root.position[axis],
+      );
+      const length = Math.hypot(...away);
+      if (length < 1e-6) continue;
+      const original = clonePose(actor);
+      // Whatever else of the two bodies touches opens by as much as the
+      // step, for the stance below to close again; and where the drawn
+      // figures cross besides, at the feet, say, stepping back is no worse.
+      const together = (k) =>
+        solved.contacts[k].fromActor === contact.fromActor &&
+        solved.contacts[k].toActor === contact.toActor &&
+        !limbGroup(solved.contacts[k], solved.actors);
+      const crossed = measureFigureSurfaces(solved, query).map(
+        (pair) => pair.intersects !== false,
+      );
+      for (const distance of [0.0015, 0.003]) {
+        if (steps >= maxSteps || bodySteps >= maxBodySteps) break;
+        steps++;
+        bodySteps++;
+        bodyBaseline ??= measureSurfaceSafety(solved, query, {
+          wholeFigures: true,
+        });
+        const pose = standingStepBack(
+          actor,
+          away.map((value) => value / length),
+          distance,
+        );
+        let accepted = false;
+        if (pose) {
+          actor.pose = pose;
+          refresh(actor);
+          accepted = acceptStance(
+            actor,
+            i,
+            "stepped back from a partner it was pressed into",
+            { give: (k) => (together(k) ? distance : 0), crossed },
+          );
+        }
+        if (!accepted) {
+          actor.pose = clonePose({ pose: original });
+          refresh(actor);
+        }
+        yield { steps };
+        if (accepted) break;
+      }
+    }
     for (
       let i = 0;
       i < solved.contacts.length &&
@@ -1129,71 +1501,11 @@ export function* surfaceContactSteps(
         if (trial.value) {
           actor.pose = trial.value;
           refresh(actor);
-          const candidate = solved.contacts.map(query),
-            candidateScore = score(candidate, solved.contacts);
-          const contactsSafe = candidate.every(
-            (value, k) =>
-              solved.contacts[k].strength <= 0 ||
-              (value &&
-                !value.intersects &&
-                measurements[k] &&
-                (measurements[k].intersects ||
-                  value.distance <=
-                    Math.max(
-                      measurements[k].distance,
-                      SURFACE_CONTACT_TOLERANCE,
-                    ) +
-                      1e-7)),
+          accepted = acceptStance(
+            actor,
+            i,
+            "adjusted the standing stance to improve body contacts while preserving hand placement",
           );
-          if (
-            standingFramePreserved(actor, bodyFrames[contact.fromActor]) &&
-            contactsSafe &&
-            improves(
-              candidate,
-              candidateScore,
-              measurements,
-              bestScore,
-              solved.contacts,
-            ) &&
-            measureFigureSurfaces(solved, query).every(
-              (pair) => pair.intersects === false,
-            )
-          ) {
-            const safety = measureSurfaceSafety(solved, query, {
-              wholeFigures: true,
-            });
-            const violations = new Map(
-              bodyBaseline.violations.map((value) => [value.key, value.depth]),
-            );
-            const balanced = safety.balance.every(
-              (value, k) =>
-                (!bodyBaseline.balance[k].supported || value.supported) &&
-                (value.offset ?? Infinity) <=
-                  (bodyBaseline.balance[k].offset ?? Infinity) + 1e-6,
-            );
-            if (
-              balanced &&
-              [
-                "maxDepth",
-                "maxSelfDepth",
-                "maxBodyDepth",
-                "propPenetration",
-                "totalDepth",
-              ].every((key) => safety[key] <= bodyBaseline[key] + 1e-8) &&
-              safety.violations.every(
-                (value) =>
-                  value.depth <= (violations.get(value.key) ?? 0) + 1e-8,
-              )
-            ) {
-              accepted = true;
-              measurements = candidate;
-              bestScore = candidateScore;
-              reasons.delete(i);
-              adjustments.push(
-                `${actor.label ?? actor.id}: adjusted the standing stance to improve body contacts while preserving hand placement.`,
-              );
-            }
-          }
         }
         if (!accepted) {
           actor.pose = clonePose({ pose: original });
@@ -1430,8 +1742,201 @@ export function* surfaceContactSteps(
     }
     // Always query the final state again: another contact may move the same arm.
     measurements = solved.contacts.map(query);
-    // Last of all, because it needs each arm where it finally is: a resting
-    // hand that arrived back first lies flat rather than closing on nothing.
+    // A palm still turned off what its hand is on. A hand that reached a back
+    // while the partner's arm was still in the way could only come at it the
+    // wrong way round, and the arm has since been swung clear. It is turned as
+    // the solver turns palms, the arm brought round to keep the hand on its
+    // spot, and failing that with the arm left where it is: moved for the
+    // turn, a forearm under the partner's arm went into it. Turned about the
+    // forearm and the wrist alone, the hand swings into what it was on or off
+    // it, and is brought back out along the way it now faces until nothing
+    // crosses, then closed onto it. A turn is kept only if the palm ends facing
+    // closer to it, nothing met comes apart, nothing is crossed that was not
+    // and no clearance is worse. The
+    // palms have a budget of their own: a hand that reached round a body and
+    // ended out of range has often spent all of the shared one by now.
+    let palmSafety = null,
+      palmSteps = 0;
+    const palmDepth = armDepth(solved.actors, solved.props, solved.surface.ground);
+    for (const aim of palmAims(solved)) {
+      const actor = solved.actors[aim.actor];
+      const { side } = aim;
+      const chainKey = side === "l" ? "armL" : "armR";
+      const chain = LIMB_CHAINS[chainKey];
+      // Measured against where the hand now is: brought back onto its spot it
+      // may have come down where the surface faces another way.
+      const off = () => {
+        const now = palmAims(solved).find(
+          (value) => value.actor === aim.actor && value.side === side,
+        );
+        return now
+          ? Math.acos(clamp(v3dot(palmNormal(actor, side), now.aim), -1, 1))
+          : Math.PI;
+      };
+      const was = Math.acos(
+        clamp(v3dot(palmNormal(actor, side), aim.aim), -1, 1),
+      );
+      if (
+        was <= PALM_TOLERANCE ||
+        actor.mobility <= 0 ||
+        actor.spec?.joints?.[chain.end] ||
+        [chain.root, chain.mid, chain.end].some((bone) =>
+          actor.loadBearing.has(bone),
+        )
+      )
+        continue;
+      const held = solved.contacts
+        .map((contact) => limbFirstContact(contact, solved.actors))
+        .filter(
+          (contact) =>
+            contact.strength > 0 &&
+            contact.fromActor === aim.actor &&
+            chainForBone(
+              resolveLandmark(contact.from, contact.fromSide)?.bone ?? "",
+            ) === chainKey,
+        );
+      const crossed = () => held.some((contact) => query(contact)?.intersects);
+      const at = (bone) =>
+        actor.evaluated.positions[actor.skeleton.boneIndex(bone)];
+      const shift = (pose, move) => {
+        actor.pose = clonePose({ pose });
+        refresh(actor);
+        solveTwoBoneIK(
+          actor.skeleton,
+          actor.pose,
+          chain,
+          at(chain.end).map((value, k) => value + move[k]),
+          {
+            evaluated: actor.evaluated,
+            pole: v3sub(at(chain.mid), at(chain.root)),
+          },
+        );
+        refresh(actor);
+      };
+      const original = clonePose(actor);
+      // The drawn figure against the furniture, which the clearances above
+      // read only as capsules: a hand turned on a sofa's arm can go into it.
+      const props = () =>
+        solved.props.map(
+          (prop) => query.prop(aim.actor, prop)?.intersects ?? null,
+        );
+      let propsWere = null;
+      for (const inPlace of [false, true]) {
+        if (maxSteps <= 0 || palmSteps >= maxPalmSteps) break;
+        palmSteps++;
+        palmSafety ??= measureSurfaceSafety(solved, query);
+        propsWere ??= props();
+        const [turn] = turnPalms(solved, {
+          aims: [aim],
+          free: (_, bone, channel) =>
+            !(inPlace && bone === chain.root) &&
+            (actor.spec?.jointMode !== "fixed" ||
+              actor.spec.joints?.[bone]?.[channel] == null),
+          depth: inPlace ? null : palmDepth,
+        });
+        refresh(actor);
+        if (turn && crossed()) {
+          // Out in 8 mm steps to the first clear, then halved down to a
+          // millimetre between that and the last that crossed.
+          const turned = clonePose(actor);
+          const out = (distance) => {
+            shift(
+              turned,
+              aim.aim.map((v) => -v * distance),
+            );
+            return !crossed();
+          };
+          let inside = 0,
+            clear = null;
+          for (let distance = 0.008; distance < 0.065; distance += 0.008) {
+            if (out(distance)) {
+              clear = distance;
+              break;
+            }
+            inside = distance;
+          }
+          if (clear != null) {
+            for (let k = 0; k < 3; k++) {
+              const middle = (inside + clear) / 2;
+              if (out(middle)) clear = middle;
+              else inside = middle;
+            }
+            out(clear);
+          }
+        }
+        for (let repeat = 0; turn && repeat < 3; repeat++) {
+          const open = held
+            .map(query)
+            .find(
+              (value) =>
+                value &&
+                !value.intersects &&
+                value.distance > SURFACE_CONTACT_TOLERANCE,
+            );
+          if (!open) break;
+          const kept = clonePose(actor);
+          const gain =
+            Math.min(0.025, open.distance - 0.0015) / open.distance;
+          shift(
+            kept,
+            open.to.map((value, k) => (value - open.from[k]) * gain),
+          );
+          if (crossed()) {
+            actor.pose = kept;
+            refresh(actor);
+            break;
+          }
+        }
+        const candidate = turn ? solved.contacts.map(query) : null;
+        const safety = turn ? measureSurfaceSafety(solved, query) : null;
+        yield { steps, palmSteps };
+        if (
+          !turn ||
+          off() >= was ||
+          candidate.some((value, k) => {
+            const was = measurements[k];
+            if (!was || was.intersects) return false;
+            return (
+              !value ||
+              value.intersects ||
+              value.distance >
+                Math.max(was.distance, SURFACE_CONTACT_TOLERANCE) + 1e-7
+            );
+          }) ||
+          [
+            "maxDepth",
+            "maxSelfDepth",
+            "maxBodyDepth",
+            "propPenetration",
+            "totalDepth",
+          ].some((key) => safety[key] > palmSafety[key] + 1e-8) ||
+          safety.violations.some(
+            (value) =>
+              value.depth >
+              (palmSafety.violations.find((was) => was.key === value.key)
+                ?.depth ?? 0) +
+                1e-8,
+          ) ||
+          safety.limbIntersections.some(
+            (hit, k) => hit && !palmSafety.limbIntersections[k],
+          ) ||
+          props().some((hit, k) => hit !== false && propsWere[k] === false)
+        ) {
+          actor.pose = clonePose({ pose: original });
+          refresh(actor);
+          continue;
+        }
+        measurements = candidate;
+        palmSafety = safety;
+        adjustments.push(
+          `${actor.label ?? actor.id}: turned the ${side === "l" ? "left" : "right"} palm onto what the hand is on.`,
+        );
+        break;
+      }
+    }
+    // Last of all, because it needs each arm where it finally is: a resting or
+    // gripping hand that arrived back first lies flat rather than closing on
+    // nothing.
     // Its fingers straighten towards the partner, so the new shape is kept only
     // if nothing it touches is crossed, nothing met comes apart and no
     // clearance is worse than it was.
@@ -1466,7 +1971,7 @@ export function* surfaceContactSteps(
       measurements = candidate;
       handSafety = after;
       adjustments.push(
-        `${actor.label ?? actor.id}: the ${side === "l" ? "left" : "right"} hand arrived back first, so it lies flat rather than cupped.`,
+        `${actor.label ?? actor.id}: the ${side === "l" ? "left" : "right"} hand arrived back first, so it lies flat rather than ${kept[side] === "grip" ? "gripping" : "cupped"}.`,
       );
     }
     const targetDistances = measureContactTargets(solved);
@@ -1611,6 +2116,7 @@ export function* surfaceContactSteps(
           steps,
           guidedPoseSteps,
           bodySteps,
+          palmSteps,
           ...supportSteps,
           before,
           after: measurements.map((value) => value?.distance ?? null),
@@ -1623,6 +2129,7 @@ export function* surfaceContactSteps(
     if (!completed)
       solved.actors.forEach((actor, i) => {
         actor.pose = originalPoses[i];
+        actor.hands = originalHands[i];
         refresh(actor);
       });
   }

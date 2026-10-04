@@ -1028,6 +1028,69 @@ const addRotated = (p, m, d) => [
 ];
 
 /**
+ * How far each forearm is turned about its own length, for the skin to share
+ * out along it.
+ *
+ * Turning the palm over is the radius rolling round the ulna: the wrist end of
+ * the forearm turns with the hand and the elbow end hardly at all. The rig puts
+ * the whole turn in the elbow's one rotation, and skinned rigidly to it the
+ * point of the elbow swung round with the hand - into the bed under a figure
+ * propped palm down on its forearms - and the skin above it wrung where it met
+ * the upper arm. Each forearm vertex instead takes the share of the turn that
+ * its distance from the elbow to the wrist gives it.
+ *
+ * Keyed by the model joint skinned to our elbow. An elbow that is not turned
+ * is left out, so its skin is exactly the rigid one.
+ */
+function forearmTwists(template, skeleton, evaluated, align) {
+  const twists = new Map();
+  const H = skeleton.stature;
+  for (const side of ["l", "r"]) {
+    const elbow = template.jointByBone.get(`elbow_${side}`);
+    const wrist = template.jointByBone.get(`wrist_${side}`);
+    const bone = skeleton.boneIndex(`elbow_${side}`);
+    const q = evaluated.quaternions?.[bone];
+    if (!elbow || !wrist || !q) continue;
+    // The part of the elbow's rotation about the forearm's own axis, local y.
+    let angle = 2 * Math.atan2(q[1], q[3]);
+    if (angle > Math.PI) angle -= 2 * Math.PI;
+    else if (angle < -Math.PI) angle += 2 * Math.PI;
+    if (Math.abs(angle) < 1e-9) continue;
+    const m = evaluated.matrices[bone];
+    // Bind space to the elbow's frame, and the elbow's frame to the world.
+    const a = mat4Multiply(align[elbow.index], elbow.inverseBind);
+    const b = withTranslation(rotationOf(m), [m[12] / H, m[13] / H, m[14] / H]);
+    // The model's own forearm, from its elbow to its wrist, runs down local y.
+    const length = -(a[1] * wrist.rest[12] + a[5] * wrist.rest[13] + a[9] * wrist.rest[14] + a[13]);
+    if (!(length > 1e-6)) continue;
+    twists.set(elbow.index, { a, b, length, angle });
+  }
+  return twists;
+}
+
+/**
+ * The skinning matrix of a turned forearm at a bind-space point: the elbow's
+ * own, with the turn the point has not reached taken back off. Written into
+ * `out`, which is returned.
+ */
+function twistedAt({ a, b, length, angle }, px, py, pz, out) {
+  const along = -(a[1] * px + a[5] * py + a[9] * pz + a[13]) / length;
+  const back = -(1 - Math.min(1, Math.max(0, along))) * angle;
+  const c = Math.cos(back),
+    s = Math.sin(back);
+  for (let col = 0; col < 4; col += 1) {
+    // A turn of `back` about local y, applied after `a`.
+    const x = c * a[col * 4] + s * a[col * 4 + 2],
+      y = a[col * 4 + 1],
+      z = -s * a[col * 4] + c * a[col * 4 + 2],
+      w = a[col * 4 + 3];
+    for (let row = 0; row < 4; row += 1)
+      out[col * 4 + row] = b[row] * x + b[4 + row] * y + b[8 + row] * z + b[12 + row] * w;
+  }
+  return out;
+}
+
+/**
  * Skin the template onto a posed skeleton.
  *
  * `hang` is the gravity correction from `gravityHang`, and it applies to the
@@ -1045,6 +1108,8 @@ export function skinHumanMesh(template, skeleton, evaluated, align = bindCorrect
 
   // Pre-multiply each joint's skinning matrix once, rather than per vertex.
   const skinning = world.map((m, i) => mat4Multiply(m, template.joints[i].inverseBind));
+  const twists = forearmTwists(template, skeleton, evaluated, align);
+  const twisted = new Array(16);
 
   return template.submeshes.map((submesh) => {
     const count = submesh.positions.length / 3;
@@ -1062,7 +1127,9 @@ export function skinHumanMesh(template, skeleton, evaluated, align = bindCorrect
       for (let k = 0; k < 4; k += 1) {
         const weight = submesh.weights[v * 4 + k];
         if (weight <= 0) continue;
-        const m = skinning[submesh.joints[v * 4 + k]];
+        const joint = submesh.joints[v * 4 + k];
+        const twist = twists.get(joint);
+        const m = twist ? twistedAt(twist, px, py, pz, twisted) : skinning[joint];
         if (!m) continue;
         total += weight;
         ox += weight * (m[0] * px + m[4] * py + m[8] * pz + m[12]);

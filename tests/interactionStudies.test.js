@@ -14,6 +14,7 @@ import { TEMPLATES } from "../scripts/interaction-templates.mjs";
 import { mirrorSpec } from "../scripts/interaction-composer.mjs";
 import { serializeCatalog, parseCatalog } from "../src/core/catalog.js";
 import { solveScene } from "../src/core/solver.js";
+import { palmAims, palmNormal } from "../src/core/palmPose.js";
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url));
 const indexBytes = read("public/catalog/sexposes-v1.json");
@@ -91,6 +92,24 @@ test("the offline composer reproduces the committed scenes", () => {
     assert.deepEqual(study.scene.actors, record.scene.actors, id);
     assert.equal(study.passed, record.checks.passed, id);
   }
+});
+
+test("baked hands face what they lean on, hold or lie on", () => {
+  const facing = (solved, { actor, side, aim }) =>
+    palmNormal(solved.actors[actor], side).reduce((sum, v, i) => sum + v * aim[i], 0) > Math.cos((30 * Math.PI) / 180);
+  let turned = 0;
+  let hands = 0;
+  for (const record of pack.studies.filter((_, i) => i % 20 === 0)) {
+    const solved = solveScene(record.scene);
+    for (const aim of palmAims(solved)) {
+      hands += 1;
+      if (facing(solved, aim)) turned += 1;
+    }
+  }
+  assert.ok(turned / hands > 0.85, `${turned} of ${hands} hands face what they are on`);
+  // Lying on the forearms, the palms are flat on the bed, not turned up.
+  const turtle = solveScene(pack.studies.find((s) => s.sourceId === "turtle").scene);
+  for (const aim of palmAims(turtle).filter((a) => a.kind === "forearm")) assert.ok(facing(turtle, aim), `turtle ${aim.side}`);
 });
 
 test("mirroring a pose twice is exact and swaps left and right", () => {

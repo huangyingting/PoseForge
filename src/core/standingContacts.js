@@ -47,6 +47,83 @@ export function standingFramePreserved(actor, baseline) {
   });
 }
 
+/**
+ * Bring a limb's end back to `position` with the orientation it had in
+ * `evaluation`, after the body above it has moved; whether it got there.
+ */
+function holdEnd(trial, evaluation, chain, position) {
+  const index = trial.skeleton.boneIndex(chain.end),
+    old = evaluation.matrices[index];
+  solveTwoBoneIK(trial.skeleton, trial.pose, chain, position, {
+    evaluated: trial.evaluated,
+    pole: v3sub(
+      evaluation.positions[trial.skeleton.boneIndex(chain.mid)],
+      evaluation.positions[trial.skeleton.boneIndex(chain.root)],
+    ),
+  });
+  refresh(trial);
+  const parent =
+    trial.evaluated.matrices[trial.skeleton.bone(chain.end).parentIndex];
+  const local = mat4Multiply(mat4InvertRigid(parent), old);
+  trial.pose.joints[chain.end] = trial.skeleton.clampAngles(
+    chain.end,
+    anglesFromQuaternion(
+      trial.skeleton,
+      chain.end,
+      orientationFromAxes(local.slice(4, 7), local.slice(8, 11)),
+    ),
+  );
+  refresh(trial);
+  const actual = trial.evaluated.matrices[index];
+  return (
+    Math.hypot(...position.map((value, axis) => value - actual[12 + axis])) <=
+      0.0005 &&
+    actual
+      .slice(0, 12)
+      .every((value, axis) => Math.abs(value - old[axis]) <= 0.0005)
+  );
+}
+
+/**
+ * Whether a figure may step at all: free to move, on its own feet, and with no
+ * hand or foot whose angle was set by hand.
+ */
+export function standingStepAllowed(actor) {
+  return (
+    actor.mobility > 0 &&
+    !actor.carried &&
+    actor.posture.supports.length > 0 &&
+    actor.posture.supports.every((support) => support.landmark === "foot") &&
+    ![...legs, ...arms].some((chain) => actor.spec?.joints?.[chain.end])
+  );
+}
+
+/**
+ * The figure stepped back along `away` by `distance`, feet and all, with its
+ * hands left where they are - a body pressed a millimetre into the one it
+ * holds, eased off it. Null where it may not step or an arm cannot keep its
+ * hand.
+ */
+export function standingStepBack(actor, away, distance) {
+  if (!standingStepAllowed(actor)) return null;
+  const evaluation = actor.evaluated;
+  const trial = { ...actor, pose: structuredClone(actor.pose) };
+  trial.pose.root.position = actor.pose.root.position.map(
+    (value, axis) => value + away[axis] * distance,
+  );
+  refresh(trial);
+  return arms.every((chain) =>
+    holdEnd(
+      trial,
+      evaluation,
+      chain,
+      evaluation.positions[trial.skeleton.boneIndex(chain.end)],
+    ),
+  )
+    ? trial.pose
+    : null;
+}
+
 /** Each yielded pose is independent of the actor and all preceding candidates.
  * Null candidates failed reach/frame constraints but still consume work. */
 export function* standingContactPoses(actor, lower, upper) {
@@ -71,38 +148,8 @@ export function* standingContactPoses(actor, lower, upper) {
   const away = v3normalize(move.map((value) => -value));
   const lateral = v3normalize([pelvis[0], 0, pelvis[2]]);
 
-  function endFrame(trial, chain, position) {
-    const index = trial.skeleton.boneIndex(chain.end),
-      old = evaluation.matrices[index];
-    solveTwoBoneIK(trial.skeleton, trial.pose, chain, position, {
-      evaluated: trial.evaluated,
-      pole: v3sub(
-        evaluation.positions[trial.skeleton.boneIndex(chain.mid)],
-        evaluation.positions[trial.skeleton.boneIndex(chain.root)],
-      ),
-    });
-    refresh(trial);
-    const parent =
-      trial.evaluated.matrices[trial.skeleton.bone(chain.end).parentIndex];
-    const local = mat4Multiply(mat4InvertRigid(parent), old);
-    trial.pose.joints[chain.end] = trial.skeleton.clampAngles(
-      chain.end,
-      anglesFromQuaternion(
-        trial.skeleton,
-        chain.end,
-        orientationFromAxes(local.slice(4, 7), local.slice(8, 11)),
-      ),
-    );
-    refresh(trial);
-    const actual = trial.evaluated.matrices[index];
-    return (
-      Math.hypot(...position.map((value, axis) => value - actual[12 + axis])) <=
-        0.0005 &&
-      actual
-        .slice(0, 12)
-        .every((value, axis) => Math.abs(value - old[axis]) <= 0.0005)
-    );
-  }
+  const endFrame = (trial, chain, position) =>
+    holdEnd(trial, evaluation, chain, position);
 
   for (const factor of [0.7, 0.5, 0.3]) {
     for (const compensation of [2, 1.5, 1]) {
