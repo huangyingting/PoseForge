@@ -106,7 +106,7 @@ test("baked hands face what they lean on, hold or lie on", () => {
       if (facing(solved, aim)) turned += 1;
     }
   }
-  assert.ok(turned / hands > 0.85, `${turned} of ${hands} hands face what they are on`);
+  assert.ok(turned / hands > 0.95, `${turned} of ${hands} hands face what they are on`);
   // Lying on the forearms, the palms are flat on the bed, not turned up.
   const turtle = solveScene(pack.studies.find((s) => s.sourceId === "turtle").scene);
   for (const aim of palmAims(turtle).filter((a) => a.kind === "forearm")) assert.ok(facing(turtle, aim), `turtle ${aim.side}`);

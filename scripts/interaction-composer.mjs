@@ -18,6 +18,7 @@ import {
 } from "../src/core/solver.js";
 import { captureSolvedPose, placementFromRoot } from "../src/core/placement.js";
 import { turnPalms } from "../src/core/palmPose.js";
+import { gravityHang, poseVolumes } from "../src/core/body.js";
 import { landmarkPoint } from "../src/core/landmarks.js";
 import { detectContacts, detectPropContacts, penetrationReport, contactKey } from "../src/core/collision.js";
 import { resolveLandmark } from "../src/core/landmarks.js";
@@ -576,7 +577,9 @@ export function compose(input, walk = {}) {
     }
     input.limbContacts = kept;
   }
-  specs = facePalms(specs, plan.surface, [...(input.contacts ?? []), ...(input.limbContacts ?? [])]);
+  const checked = (candidate) =>
+    evaluate(input, measure(sceneFor(input, candidate.map(({ prefer, soloSurface, override, tilt, details, ...spec }) => spec)).scene)).pass;
+  specs = facePalms(specs, plan.surface, [...(input.contacts ?? []), ...(input.limbContacts ?? [])], checked);
   // Hands are left to the viewer to read from the final contacts and postures;
   // a shape captured mid-composition belongs to contacts that may since have been dropped.
   return specs.map((spec) => {
@@ -597,10 +600,17 @@ export function compose(input, walk = {}) {
  * was, and from where that leaves it the next goes as far again: a hand held
  * four centimetres from a partner's thigh came out of three passes eight away
  * and no longer on it. A turn that takes a hand further from what it holds
- * than it was at first, past what a palm laid on it sits off it, is not kept.
+ * than it was at first, past what a palm laid on it sits off it, or that
+ * leaves a contact it was on unmet, is not kept; nor is one that costs the
+ * scene a check it met, which `checked(specs)` says.
  */
-function facePalms(specs, surface, contacts) {
+function facePalms(specs, surface, contacts, checked = () => true) {
   let first = null;
+  // Whether the scene met its checks before any hand was turned, asked only once a turn costs it one.
+  const start = specs;
+  let held = null;
+  // How much nearer what it holds each kept hand's middle was brought, all passes together.
+  const insets = new Map();
   for (let pass = 0; pass < 3; pass++) {
     const { scene } = validateScene({
       actors: specs.map(({ prefer, soloSurface, override, tilt, details, ...spec }) => spec),
@@ -610,7 +620,36 @@ function facePalms(specs, surface, contacts) {
     });
     const solved = solveScene(scene, { palms: false });
     first ??= measureContactTargets(solved);
-    const turned = turnPalms(solved, { depth: armDepth(solved.actors, solved.props, solved.surface.ground) });
+    // Whether the hand at a contact has come off it: further from it than it
+    // was at first, past what a palm laid on it sits off it, or off it as the
+    // viewer measures it where it was on. A palm turned flat onto what it
+    // holds sits nearer it than the edge or the fingers that were on it, by the
+    // `inset` it was turned through, and is measured there as well as where
+    // its middle is: measured only from its middle, a hand laid flat on a thigh
+    // read as three centimetres off it, and was put back on its edge. The
+    // viewer measures from its middle, and a palm brought flat a hand's length
+    // up a hip it gripped by its fingers is on the waist.
+    const away = (i, plain, flat) => {
+      const near = [plain, flat].filter((d) => d != null);
+      return (near.length > 0 && Math.min(...near) > Math.max(first[i] ?? 0, HAND_ON) + 0.01) || (plain > UNMET && !(first[i] > UNMET));
+    };
+    // Measured on the bodies as they now stand, not as their `volumes` last
+    // saw them: a partner's arm turned before this hand moves the shoulder it
+    // holds, and measured on the shoulder as it was, a grip was turned onto it
+    // and then found eight centimetres off it.
+    const holds = (actor, side, inset) => {
+      const body = solved.actors[actor];
+      const stale = solved.actors.map((a) => a.volumes);
+      for (const a of solved.actors)
+        a.volumes = poseVolumes(a.skeleton, a.evaluated, a.localVolumes, a.index, gravityHang(a.skeleton, a.evaluated, a.localVolumes));
+      const plain = measureContactTargets(solved);
+      (body.palmInset ??= {})[side] = (insets.get(`${actor}.${side}`) ?? 0) + inset;
+      const flat = measureContactTargets(solved);
+      delete body.palmInset[side];
+      solved.actors.forEach((a, k) => (a.volumes = stale[k]));
+      return !solved.contacts.some((contact, i) => holdsWith(contact, actor, side) && away(i, plain[i], flat[i]));
+    };
+    const turned = turnPalms(solved, { depth: armDepth(solved.actors, solved.props, solved.surface.ground), holds, thorough: true });
     if (!turned.length) break;
     // The turned arm is written into the solved figure's own joints before it
     // is refreshed to be measured: refreshing a fixed figure puts back the
@@ -622,27 +661,51 @@ function facePalms(specs, surface, contacts) {
       return arm;
     });
     for (const index of new Set(turned.map((turn) => turn.actor))) refresh(solved.actors[index]);
-    const now = measureContactTargets(solved);
-    const out = specs.slice();
-    let kept = 0;
-    for (const [k, { actor, side }] of turned.entries()) {
-      const holds = (contact, end) =>
-        contact[`${end}Actor`] === actor && (contact[end] === "hand" || contact[end] === "hands") && (contact[`${end}Side`] ?? side) === side;
-      const off = solved.contacts.some(
-        (contact, i) => (holds(contact, "from") || holds(contact, "to")) && now[i] > Math.max(first[i] ?? 0, HAND_ON) + 0.01
-      );
-      if (off) continue;
-      out[actor] = { ...out[actor], joints: { ...out[actor].joints, ...arms[k] } };
-      kept += 1;
+    // Each hand measured again with every turn made: one turned can move what
+    // another holds.
+    const plain = measureContactTargets(solved);
+    for (const [key, inset] of insets) {
+      const [actor, side] = key.split(".");
+      (solved.actors[actor].palmInset ??= {})[side] = inset;
     }
-    specs = out;
-    if (!kept) break;
+    for (const { actor, side, inset } of turned) (solved.actors[actor].palmInset ??= {})[side] = (insets.get(`${actor}.${side}`) ?? 0) + inset;
+    const flat = measureContactTargets(solved);
+    const on = [];
+    for (const [k, { actor, side }] of turned.entries())
+      if (!solved.contacts.some((contact, i) => holdsWith(contact, actor, side) && away(i, plain[i], flat[i]))) on.push({ actor, side, arm: arms[k] });
+    const wearing = (base, turns) => {
+      const out = base.slice();
+      for (const { actor, arm } of turns) out[actor] = { ...out[actor], joints: { ...out[actor].joints, ...arm } };
+      return out;
+    };
+    // A scene that met its checks still meets them: a hand laid flat a hand's
+    // breadth from the groin it is by, or an elbow swung into the partner past
+    // what the scene allows, is put back, and the turns beside it are tried
+    // one at a time.
+    let kept = on;
+    if (on.length && !checked(wearing(specs, on)) && (held ??= checked(start))) {
+      kept = [];
+      for (const turn of on) if (checked(wearing(specs, [...kept, turn]))) kept.push(turn);
+    }
+    for (const { actor, side } of kept) insets.set(`${actor}.${side}`, solved.actors[actor].palmInset[side]);
+    specs = wearing(specs, kept);
+    if (!kept.length) break;
   }
   return specs;
 }
 
+/** Whether `contact` is held by the hand on `side` of the actor at `actor`, at either end. */
+function holdsWith(contact, actor, side) {
+  const by = (end) =>
+    contact[`${end}Actor`] === actor && (contact[end] === "hand" || contact[end] === "hands") && (contact[`${end}Side`] ?? side) === side;
+  return by("from") || by("to");
+}
+
 /** How far from its contact's target a hand laid on it sits: a palm's thickness inside the target's standoff. */
 const HAND_ON = 0.03;
+
+/** How far from its target a contact may be, measured as the viewer measures it, before it is unmet. */
+const UNMET = 0.08;
 
 /** Measure the final fixed scene exactly as the viewer will solve it. */
 export function measure(scene) {
@@ -744,7 +807,7 @@ export function evaluate(plan, m, { maxBody = 0.045, maxProp = 0.035 } = {}) {
     if (f.lowest < -0.03) failures.push(`actor ${i} below floor`);
   });
   const reach = m.distances.map((d) => (d == null ? null : d));
-  const unmet = reach.filter((d) => d != null && d > 0.08).length;
+  const unmet = reach.filter((d) => d != null && d > UNMET).length;
   if (unmet > Math.max(1, Math.floor(reach.length / 2))) failures.push(`${unmet} contacts unmet`);
   return { pass: failures.length === 0, failures };
 }

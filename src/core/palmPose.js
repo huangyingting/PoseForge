@@ -19,7 +19,7 @@
  */
 import { LIMB_CHAINS, solveTwoBoneIK } from "./ik.js";
 import { landmarkPoint, landmarkSurface, resolveLandmark } from "./landmarks.js";
-import { quatRotate, v3add, v3dot, v3len, v3normalize, v3sub } from "./math.js";
+import { quatRotate, v3add, v3cross, v3dot, v3len, v3normalize, v3sub } from "./math.js";
 import { propTopAt } from "./propShapes.js";
 import { evaluatePose } from "./skeleton.js";
 
@@ -293,6 +293,22 @@ function handFace(actor, side, dir) {
 const SWIVELS = [0, -35, 35, -70, 70];
 
 /**
+ * Those between and past them, where there is time for them and those leave
+ * the hand off: an arm reaching a partner's hip that a 35-degree swing puts in
+ * its own chest, and a 70-degree one in the partner's knee, often has a way
+ * between or past them.
+ */
+const THOROUGH_SWIVELS = [-20, 20, -50, 50, -90, 90];
+
+/**
+ * How far along what it is on a hand is moved, nearest first, when it cannot
+ * be turned to face it where it is: a hand on a thigh by the knee turned flat
+ * puts its fingers in the knee, and an inch up the thigh lies flat on it. A
+ * millimetre moved costs what a millimetre missed does.
+ */
+const SLIDES = [0.025, 0.045];
+
+/**
  * How deep a turned arm may go into anything past what flesh gives, when it
  * was clear before: less than the scene's own check lets through.
  */
@@ -317,6 +333,13 @@ const REACHES = [
   [1, 0.012],
 ];
 
+/** The reaches tried for a hand moved along what it is on, of the many more tried where it was. */
+const SLIDE_REACHES = [
+  [1, 0],
+  [0.5, 0],
+  [1, 0.008],
+];
+
 /** How far off what it was on a hand turned where it is may come to lie. */
 const SLIDE = 0.015;
 
@@ -333,12 +356,17 @@ const SLIDE = 0.015;
  * over it to get there. `depth(actor, side)`, when given, says how deep that
  * arm is in its own trunk, a partner or the furniture as it now stands; a turn
  * that takes it deeper than it was, or than `CLEAR`, is not made - a swung
- * elbow that lays the palm flat is no use buried in a partner's hip. Mutates
- * the actors' poses and `evaluated`; the caller refreshes anything derived
- * from them. Returns the hands turned, each with the `inset` its middle was
- * brought nearer what it is on.
+ * elbow that lays the palm flat is no use buried in a partner's hip.
+ * `holds(actor, side, inset)`, when given, says whether the hand is still on
+ * what it holds as it now stands, its middle `inset` nearer it; a turn that
+ * takes it off is not made either. `thorough` - for the offline composer, not
+ * a scene being edited - swings the elbow of a hand those leave off through
+ * `THOROUGH_SWIVELS` too, and moves one that still cannot face what it is on
+ * along it by `SLIDES`. Mutates the actors' poses and `evaluated`; the caller
+ * refreshes anything derived from them. Returns the hands turned, each with
+ * the `inset` its middle was brought nearer what it is on.
  */
-export function turnPalms(solved, { free = () => true, aims = palmAims(solved), depth = null } = {}) {
+export function turnPalms(solved, { free = () => true, aims = palmAims(solved), depth = null, holds = null, thorough = false } = {}) {
   const turned = [];
   for (const { actor: index, side, aim, kind, fingers, hold = null } of aims) {
     const actor = solved.actors[index];
@@ -370,43 +398,66 @@ export function turnPalms(solved, { free = () => true, aims = palmAims(solved), 
     const at = (bone) => actor.evaluated.positions[skeleton.boneIndex(bone)];
     const point = landmarkPoint(actor, "hand", side);
     const face = handFace(actor, side, keep);
+    // How much nearer what it is on the hand's middle now sits: a palm laid on
+    // a shoulder is thinner across than the edge that was on it.
+    const inset = () => (movable ? v3dot(v3sub(landmarkPoint(actor, "hand", side), point), keep) : 0);
     const shoulder = at(chain.root);
     const axis = v3normalize(v3sub(at(chain.end), shoulder));
     const bend = v3sub(at(chain.mid), v3add(shoulder, axis.map((v) => v * v3dot(v3sub(at(chain.mid), shoulder), axis))));
     let best = null;
     let turnedOnce = false;
-    swivels: for (const swivel of movable && v3len(bend) > 1e-4 ? SWIVELS : [0]) {
-      // The pole the elbow bends towards, swung about the shoulder-wrist line.
-      const t = (swivel * Math.PI) / 180;
-      const u = v3normalize(bend),
-        w = [axis[1] * u[2] - axis[2] * u[1], axis[2] * u[0] - axis[0] * u[2], axis[0] * u[1] - axis[1] * u[0]];
-      const pole = movable ? v3add(u.map((v) => v * Math.cos(t)), w.map((v) => v * Math.sin(t))) : null;
-      for (const [reach, lift] of movable && depth ? REACHES : [[1, 0]]) {
-        if (turnedOnce) restore(saved);
-        turnedOnce = true;
-        // Back onto what the hand was on, measured to the face it now presents.
-        const target = () => v3add(point, keep.map((v) => v * (reach * (face - handFace(actor, side, keep)) - lift)));
-        let after = null,
-          miss = 0;
-        for (let pass = 0; pass < PASSES; pass += 1) {
-          if (pole && (pass > 0 || swivel !== 0 || reach !== 1 || lift > 0)) {
-            const wrist = at(chain.end);
-            const step = v3sub(target(), landmarkPoint(actor, "hand", side));
-            actor.evaluated = solveTwoBoneIK(skeleton, actor.pose, chain, v3add(wrist, step), { evaluated: actor.evaluated, pole }).evaluated;
+    // Each swivel, with the hand brought back onto what it was on as far along
+    // it as `slide` says, keeping the best that is clear.
+    const search = (swivels, reaches, slide = [0, 0, 0]) => {
+      const slid = v3len(slide);
+      for (const swivel of movable && v3len(bend) > 1e-4 ? swivels : [0]) {
+        // The pole the elbow bends towards, swung about the shoulder-wrist line.
+        const t = (swivel * Math.PI) / 180;
+        const u = v3normalize(bend),
+          w = [axis[1] * u[2] - axis[2] * u[1], axis[2] * u[0] - axis[0] * u[2], axis[0] * u[1] - axis[1] * u[0]];
+        const pole = movable ? v3add(u.map((v) => v * Math.cos(t)), w.map((v) => v * Math.sin(t))) : null;
+        for (const [reach, lift] of movable && depth ? reaches : [[1, 0]]) {
+          if (turnedOnce) restore(saved);
+          turnedOnce = true;
+          // Back onto what the hand was on, measured to the face it now presents.
+          const target = () => v3add(v3add(point, slide), keep.map((v) => v * (reach * (face - handFace(actor, side, keep)) - lift)));
+          let after = null,
+            miss = 0;
+          for (let pass = 0; pass < PASSES; pass += 1) {
+            if (pole && (pass > 0 || swivel !== 0 || reach !== 1 || lift > 0 || slid > 0)) {
+              const wrist = at(chain.end);
+              const step = v3sub(target(), landmarkPoint(actor, "hand", side));
+              actor.evaluated = solveTwoBoneIK(skeleton, actor.pose, chain, v3add(wrist, step), { evaluated: actor.evaluated, pole }).evaluated;
+            }
+            after = turnPalm(actor, side, aim, { free: may, fingers, twist, sweep: pass === 0 });
+            if (after == null || !movable) break;
+            miss = v3len(v3sub(target(), landmarkPoint(actor, "hand", side)));
+            if (miss < 0.002) break;
           }
-          after = turnPalm(actor, side, aim, { free: may, fingers, twist, sweep: pass === 0 });
-          if (after == null || !movable) break;
-          miss = v3len(v3sub(target(), landmarkPoint(actor, "hand", side)));
-          if (miss < 0.002) break;
+          if (after == null) return;
+          if (depth && depth(index, side) > allowed + 1e-4) continue;
+          if (holds && !holds(index, side, inset())) continue;
+          // A degree of palm for each millimetre off the spot, or short of it,
+          // and the elbow kept where it was unless swinging it buys a flatter hand.
+          const short = (1 - reach) * Math.abs(face - handFace(actor, side, keep)) + lift;
+          const score = after + (miss + short + slid) * 1000 + 8 * (swivel / 70) ** 2;
+          if (!best || score < best.score) best = { score, after, joints: snapshot() };
+          break;
         }
-        if (after == null) break swivels;
-        if (depth && depth(index, side) > allowed + 1e-4) continue;
-        // A degree of palm for each millimetre off the spot, or short of it,
-        // and the elbow kept where it was unless swinging it buys a flatter hand.
-        const short = (1 - reach) * Math.abs(face - handFace(actor, side, keep)) + lift;
-        const score = after + (miss + short) * 1000 + 8 * (swivel / 70) ** 2;
-        if (!best || score < best.score) best = { score, after, joints: snapshot() };
-        break;
+      }
+    };
+    search(SWIVELS, REACHES);
+    if (thorough && movable && (!best || best.after > TOLERANCE)) search(THOROUGH_SWIVELS, REACHES);
+    // Moved along what it is on - either way across the hand's aim, and either
+    // way along it - when it cannot face it where it is.
+    if (thorough && movable && depth && (!best || best.after > TOLERANCE)) {
+      const across = v3normalize(v3cross(keep, Math.abs(keep[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0]));
+      const along = v3cross(keep, across);
+      for (const distance of SLIDES) {
+        for (const dir of [across, along])
+          for (const sign of [1, -1])
+            search(SWIVELS, SLIDE_REACHES, dir.map((v) => v * sign * distance));
+        if (best && best.after <= TOLERANCE) break;
       }
     }
     // Arms round a partner with theirs over them have nowhere to go: brought
@@ -418,7 +469,7 @@ export function turnPalms(solved, { free = () => true, aims = palmAims(solved), 
       restore(saved);
       const after = turnPalm(actor, side, aim, { free: may, fingers, twist });
       const off = v3dot(v3sub(v3add(landmarkPoint(actor, "hand", side), keep.map((v) => v * handFace(actor, side, keep))), v3add(point, keep.map((v) => v * face))), keep);
-      if (after != null && Math.abs(off) <= SLIDE && depth(index, side) <= allowed + 1e-4)
+      if (after != null && Math.abs(off) <= SLIDE && depth(index, side) <= allowed + 1e-4 && (!holds || holds(index, side, inset())))
         best = { score: after, after, joints: snapshot() };
     }
     // A turn that cannot do better than the hand already did is not made.
@@ -427,10 +478,7 @@ export function turnPalms(solved, { free = () => true, aims = palmAims(solved), 
       continue;
     }
     restore(best.joints);
-    // How much nearer what it is on the hand's middle now sits: a palm laid on
-    // a shoulder is thinner across than the edge that was on it.
-    const inset = movable ? v3dot(v3sub(landmarkPoint(actor, "hand", side), point), keep) : 0;
-    turned.push({ actor: index, side, kind, before, after: best.after, inset });
+    turned.push({ actor: index, side, kind, before, after: best.after, inset: inset() });
   }
   return turned;
 }
