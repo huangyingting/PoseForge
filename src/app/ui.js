@@ -216,6 +216,13 @@ const EXPRESSION_LABELS = {
   smirk: t("Smirk"),
 };
 
+/** What a setting's dress code puts the figures in, said under its switch. */
+const DRESS_HINTS = {
+  beach: t("Swimwear on the beach, in place of the clothes below."),
+  pool: t("Swimwear by the pool, in place of the clothes below."),
+  fashion: t("Lingerie and boxer briefs for the shoot, in place of the clothes below."),
+};
+
 /** Each garment's name on the control, in the reader's language. */
 const PIECE_LABELS = Object.fromEntries(
   Object.entries(GARMENT_LABELS).map(([name, label]) => [name, t(`clothing|${label}`)]),
@@ -242,7 +249,7 @@ const sameItems = (a, b) =>
  * Build the panel.
  *
  * @param {HTMLElement} root
- * @param {{onText: Function, onScene: Function, onHistory: Function}} handlers
+ * @param {{onText: Function, onScene: Function, onHistory: Function, onDress: Function}} handlers
  */
 export function buildPanel(root, handlers) {
   root.replaceChildren();
@@ -743,12 +750,28 @@ export function buildPanel(root, handlers) {
       const outfit = picker(t("Colour"), Object.keys(GARMENT_COLOURS), {
         blank: t("— black —"),
       });
+      // The setting's clothes, where it has a dress code: one switch for every
+      // figure, kept by the page rather than the scene, and while it is on
+      // the figure's own clothes are kept but not worn.
+      const suited = el("input", { type: "checkbox" });
+      const suitedHint = el("p", { className: "hint" });
+      const suitedField = el("div", { className: "field dress-code", hidden: true }, [
+        el("div", { className: "toggles" }, [
+          el("label", { className: "toggle" }, [
+            suited,
+            el("span", { textContent: t("Dress for the setting") }),
+          ]),
+        ]),
+        suitedHint,
+      ]);
+      suited.addEventListener("change", () => handlers.onDress?.(suited.checked));
       const look = group(t("Appearance"));
       look.body.append(
         model.field,
         skinField,
         hair.field,
         expression.field,
+        suitedField,
         dress.field,
         top.field,
         bottom.field,
@@ -933,6 +956,9 @@ export function buildPanel(root, handlers) {
         bottom,
         extras,
         outfit,
+        suited,
+        suitedHint,
+        suitedField,
         handL,
         handR,
         footL,
@@ -946,7 +972,29 @@ export function buildPanel(root, handlers) {
     }
   }
 
+  /** The setting's dress code, if it has one, and whether the figures wear it. */
+  let dressCode = { code: null, on: true };
+  function showDressCode() {
+    const dressed = dressCode.code != null && dressCode.on;
+    for (const control of actorControls) {
+      control.suitedField.hidden = dressCode.code == null;
+      control.suited.checked = dressCode.on;
+      control.suitedHint.textContent = DRESS_HINTS[dressCode.code] ?? "";
+      for (const { select } of [control.dress, control.top, control.bottom, control.outfit])
+        select.disabled = dressed;
+      for (const box of control.extras.boxes.values()) box.disabled = dressed;
+    }
+  }
+
   return {
+    /**
+     * Show the setting's dress code, `code` (a key of `DRESS_CODES`, or null
+     * for a setting without one), and whether it is worn.
+     */
+    setDressCode({ code, on }) {
+      dressCode = { code, on };
+      showDressCode();
+    },
     setSolvedActors(actors, { complete = true } = {}) {
       completedActors = complete ? actors : null;
       try {
@@ -1129,6 +1177,7 @@ export function buildPanel(root, handlers) {
         control.title.textContent =
           actor.label ?? t("Partner {letter}", { letter: String.fromCharCode(65 + index) });
       });
+      showDressCode();
       syncing = false;
       addFigure.disabled = scene.actors.length >= 4;
     },

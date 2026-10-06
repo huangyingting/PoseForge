@@ -1,6 +1,7 @@
 import "@fontsource-variable/manrope";
 import { createRenderer, SKIN } from "../render/renderer.js";
 import { SETTINGS } from "../render/room.js";
+import { DRESS_CODES } from "../core/dressCodes.js";
 import { exportPNG, exportSVG, download } from "../render/exporters.js";
 import { parseDescription } from "../nlp/parser.js";
 import {
@@ -109,6 +110,24 @@ let exporting = false;
 let positionRequest = 0;
 let shouldTour = false;
 const positions = createPositionClient();
+
+// Whether the figures wear what the setting asks for, where it asks for
+// anything (see `dressCodes.js`), and what they were last shaped in. A way of
+// seeing, like the setting: kept in this browser, and not written into scenes.
+const DRESS_KEY = "poseforge.dress.v1";
+let dressing = (() => {
+  try {
+    return storage.getItem(DRESS_KEY) !== "off";
+  } catch {
+    return true;
+  }
+})();
+let shapedDress = null;
+/** The setting, if it has a dress code. */
+const settingCode = () =>
+  Object.hasOwn(DRESS_CODES, $("setting").value) ? $("setting").value : null;
+/** The dress code the figures are shaped in: the setting's, unless turned off. */
+const dressCode = () => (dressing ? settingCode() : null);
 
 // A position that loads is toured once round, unless the reader has asked
 // for less motion or turned tours off; either way the choice is theirs.
@@ -236,7 +255,8 @@ function solve(scene, { frame = false, tour: tourAfter = false } = {}) {
   $("position-save").disabled = true;
   $("panel").setAttribute("aria-busy", "true");
   status(t("Shaping your study…"), true);
-  worker.postMessage({ id: request, scene });
+  shapedDress = dressCode();
+  worker.postMessage({ id: request, scene, dress: shapedDress });
   view?.expect(scene.actors);
 }
 function cancelPositionLoad() {
@@ -375,6 +395,15 @@ const panel = buildPanel($("panel"), {
   onScene: edit,
   onText: textScene,
   onHistory: travel,
+  onDress(on) {
+    dressing = on;
+    try {
+      storage.setItem(DRESS_KEY, on ? "on" : "off");
+    } catch {
+      // A preference; an unavailable store keeps it for this visit.
+    }
+    redress();
+  },
 });
 let positionsReady = null;
 /** Download the built-in positions once; a failure can be retried. */
@@ -670,6 +699,10 @@ const SETTING_KEY = "poseforge.setting.v1";
 const SETTING_NAMES = {
   bedroom: t("setting|Bedroom"),
   living: t("setting|Living room"),
+  hotel: t("setting|Hotel suite"),
+  beach: t("setting|Beach"),
+  pool: t("setting|Poolside"),
+  fashion: t("setting|Fashion shoot"),
   studio: t("setting|Studio"),
 };
 $("setting").replaceChildren(
@@ -685,6 +718,15 @@ $("setting").value = (() => {
   return SETTINGS[0];
 })();
 view?.setSetting($("setting").value);
+/**
+ * Show the setting's dress code on the panel, and shape the figures again if
+ * what they should be wearing is not what they were shaped in.
+ */
+function redress() {
+  panel.setDressCode({ code: settingCode(), on: dressing });
+  if (current && dressCode() !== shapedDress) solve(current.scene);
+}
+redress();
 $("setting").onchange = () => {
   view?.setSetting($("setting").value);
   try {
@@ -692,6 +734,7 @@ $("setting").onchange = () => {
   } catch {
     // The room still changes for this visit.
   }
+  redress();
   draw();
 };
 $("save-preset").onclick = () => {

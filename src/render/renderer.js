@@ -32,6 +32,7 @@ import {
   DataTexture,
   DirectionalLight,
   DoubleSide,
+  Fog,
   Group,
   HemisphereLight,
   ImageBitmapLoader,
@@ -60,6 +61,7 @@ import {
 } from "three";
 import { buildProps, disposeProps } from "./props.js";
 import { buildRoom, disposeRoom, roomLayout, roomReady, roomTextures, paintWall, SETTINGS, updateRoom } from "./room.js";
+import { HAZE, SKY_GAIN } from "./places.js";
 import { modelFiles } from "../core/bodyModels.js";
 import { IRIS_UV } from "../core/humanMesh.js";
 import { LACE_REPEAT, LACE_SIZE, lacePattern } from "../core/lace.js";
@@ -1098,10 +1100,77 @@ function buildLights(scene) {
   // now, and does it with direction: a hemisphere light is the same grey from
   // every side of the sky, where a room is bright at its window and dark in
   // its corners.
-  scene.add(new HemisphereLight(0xf0f4ff, 0x9b9583, 0.3));
+  const sky = new HemisphereLight(0xf0f4ff, 0x9b9583, 0.3);
+  scene.add(sky);
 
-  return { key, fill, rim };
+  return { key, fill, rim, sky };
 }
+
+/**
+ * How each setting is lit: the key's colour and strength and where it comes
+ * from, off the figures; the fill's, the rim's, and the sky's and ground's;
+ * which environment (see `ENVIRONMENTS`) the scene gives back and how much of
+ * it; the exposure; the background; and the haze, out of doors.
+ *
+ * The studio and the day rooms are the light the figures were made under. The
+ * beach and the pool are a sun lower than noon and warm, with the blue of the
+ * sky in the shadows. The fashion studio is a big soft key and a hard rim in
+ * the dark. The hotel at night is lamplight, warm and low, and little else.
+ */
+const DAYLIGHT = {
+  key: [0xfff5e9, 2.1],
+  from: [2.4, 3.2, 2.0],
+  fill: [0xe5eeff, 1.25],
+  rim: [0xffffff, 1.1],
+  sky: [0xf0f4ff, 0x9b9583, 0.3],
+  environment: "room",
+  intensity: 0.7,
+  exposure: 0.85,
+  background: 0xf1f3ef,
+};
+const OUTDOORS = {
+  key: [0xffefd9, 2.9],
+  from: [3.2, 2.6, 1.7],
+  fill: [0xcfe0ff, 0.55],
+  rim: [0xfff4e6, 1.2],
+  sky: [0xbcd6f5, 0xd9c6a3, 0.45],
+  environment: "beach",
+  intensity: 0.8,
+  exposure: 0.8,
+  background: HAZE,
+  fog: [16, 52],
+};
+const LIGHTING = {
+  studio: { ...DAYLIGHT, environment: "studio" },
+  room: DAYLIGHT,
+  hotel: {
+    key: [0xffc98f, 1.5],
+    from: [2.4, 1.9, 1.3],
+    fill: [0x8ea2d6, 0.35],
+    rim: [0xffb871, 0.9],
+    sky: [0x36405a, 0x2a2018, 0.15],
+    environment: "night",
+    intensity: 0.9,
+    exposure: 0.95,
+    background: 0x1c1e23,
+  },
+  beach: OUTDOORS,
+  pool: { ...OUTDOORS, environment: "pool" },
+  fashion: {
+    key: [0xffffff, 2.4],
+    from: [2.6, 2.4, 1.6],
+    fill: [0xf2f4ff, 0.6],
+    rim: [0xffffff, 1.8],
+    sky: [0xffffff, 0x3a3a3a, 0.12],
+    environment: "fashion",
+    intensity: 0.75,
+    exposure: 0.9,
+    background: 0x19191b,
+  },
+};
+
+/** The lighting for a setting; any room without its own has the day rooms'. */
+const lightingFor = (setting) => LIGHTING[setting] ?? LIGHTING.room;
 
 /**
  * The light the room itself gives back, as an environment map.
@@ -1150,6 +1219,54 @@ const ENVIRONMENTS = {
       { at: [0, 5.9, 0], size: [3, 3], colour: [2.2, 2.2, 2.2], ceiling: true },
     ],
   },
+  // Out of doors: haze all round, the sky overhead, the sun where the key
+  // is, sand underfoot and the sea to the north.
+  beach: {
+    walls: [1.15, 1.25, 1.35],
+    floor: [0.62, 0.52, 0.38],
+    ceiling: [0.42, 0.62, 1.05],
+    panels: [
+      { at: [4.6, 3.8, 2.4], size: [1.6, 1.6], colour: [40, 36, 30], face: true },
+      { at: [0, 0.02, -3], size: [12, 6], colour: [0.1, 0.24, 0.32], floor: true },
+    ],
+  },
+  // The same sky over pale stone, the pool and the sea beyond it.
+  pool: {
+    walls: [1.15, 1.25, 1.35],
+    floor: [0.72, 0.66, 0.57],
+    ceiling: [0.42, 0.62, 1.05],
+    panels: [
+      { at: [4.6, 3.8, 2.4], size: [1.6, 1.6], colour: [40, 36, 30], face: true },
+      { at: [0, 0.02, -3.5], size: [12, 5], colour: [0.12, 0.32, 0.4], floor: true },
+      { at: [0, 2.2, 5.9], size: [10, 3.4], colour: [1.3, 1.25, 1.18] },
+    ],
+  },
+  // A dark studio: the key's octabox, the strip behind to one side, the
+  // white of the V-flat and the grey of the paper.
+  fashion: {
+    walls: [0.025, 0.025, 0.025],
+    floor: [0.05, 0.05, 0.05],
+    ceiling: [0.02, 0.02, 0.02],
+    panels: [
+      { at: [4.4, 3.4, 3.2], size: [2.6, 2.6], colour: [9, 9, 9], face: true },
+      { at: [-5.9, 2, -2.4], size: [0.8, 3], colour: [6.5, 6.5, 6.8] },
+      { at: [-4.2, 1.3, 4.2], size: [2.4, 2.6], colour: [0.6, 0.6, 0.6], face: true },
+      { at: [0, 1.6, -5.9], size: [6, 3.2], colour: [0.22, 0.21, 0.2] },
+    ],
+  },
+  // The room after dark: the city faint through the window, the lamps, and
+  // the walls only what the lamps put on them.
+  night: {
+    walls: [0.06, 0.045, 0.035],
+    floor: [0.03, 0.02, 0.014],
+    ceiling: [0.045, 0.038, 0.03],
+    panels: [
+      { at: [-0.8, 1.9, -5.9], size: [3, 2.4], colour: [0.3, 0.36, 0.55] },
+      { at: [5.9, 1.5, -3], size: [0.7, 0.6], colour: [4.2, 2.8, 1.3] },
+      { at: [-5.9, 1.1, 1], size: [0.5, 0.45], colour: [3.6, 2.4, 1.1] },
+      { at: [2.5, 1.8, 5.9], size: [6, 2.6], colour: [0.22, 0.17, 0.12] },
+    ],
+  },
 };
 
 /** The environment's own little room, lit by `look`, its window on `window`'s wall. */
@@ -1184,14 +1301,18 @@ function environmentScene(look, turn = 0) {
 
 const environments = new Map();
 
-/** The environment for a setting, made once per renderer and kept. */
-function environmentFor(renderer, setting, windowWest) {
-  const key = `${setting === "studio" ? "studio" : "room"}${windowWest ? "-west" : ""}`;
+/**
+ * One of `ENVIRONMENTS`, made once per renderer and kept. A room's window -
+ * and so its own - is on the west when a wall to lean on took the north.
+ */
+function environmentFor(renderer, name, windowWest) {
+  const turned = windowWest && (name === "room" || name === "night");
+  const key = `${name}${turned ? "-west" : ""}`;
   if (!environments.has(renderer)) environments.set(renderer, new Map());
   const made = environments.get(renderer);
   if (!made.has(key)) {
     const pmrem = new PMREMGenerator(renderer);
-    const scene = environmentScene(ENVIRONMENTS[setting === "studio" ? "studio" : "room"], windowWest ? Math.PI / 2 : 0);
+    const scene = environmentScene(ENVIRONMENTS[name], turned ? Math.PI / 2 : 0);
     made.set(key, pmrem.fromScene(scene, 0.03, 0.1, 30, { position: new Vector3(0, 1, 0) }).texture);
     pmrem.dispose();
     scene.traverse((node) => {
@@ -1239,8 +1360,8 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
   canvas.addEventListener("webglcontextrestored", () => (shadowsStale = true));
 
   const scene = new Scene();
-  scene.background = alpha ? null : new Color(0xf1f3ef);
-  scene.environmentIntensity = 0.7;
+  scene.background = alpha ? null : new Color(DAYLIGHT.background);
+  scene.environmentIntensity = DAYLIGHT.intensity;
   const lights = buildLights(scene);
 
   const camera = new PerspectiveCamera(38, 1, 0.05, 60);
@@ -1258,6 +1379,39 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
   let roomKey = null;
 
   const focus = new Vector3(0, 0.9, 0);
+  let keyFrom = new Vector3(...DAYLIGHT.from);
+
+  /**
+   * Light the scene as `name` is lit (see `LIGHTING`): "studio" for the plain
+   * backdrop and for a car, whatever the setting.
+   */
+  function light(name, windowWest = false) {
+    const look = lightingFor(name);
+    const { key, fill, rim, sky } = lights;
+    key.color.set(look.key[0]);
+    key.intensity = look.key[1];
+    keyFrom = new Vector3(...look.from);
+    key.position.copy(focus).add(keyFrom);
+    fill.color.set(look.fill[0]);
+    fill.intensity = look.fill[1];
+    rim.color.set(look.rim[0]);
+    rim.intensity = look.rim[1];
+    sky.color.set(look.sky[0]);
+    sky.groundColor.set(look.sky[1]);
+    sky.intensity = look.sky[2];
+    scene.environment = environmentFor(renderer, look.environment, windowWest);
+    scene.environmentIntensity = look.intensity;
+    renderer.toneMappingExposure = look.exposure;
+    if (!alpha) scene.background = new Color(look.background);
+    // The haze is the sky's own colour at the horizon (see `places.js`), and
+    // only out of doors: a fog's on or off is in every shader, so it is kept
+    // the one Fog while it is wanted.
+    if (!look.fog) scene.fog = null;
+    else {
+      scene.fog ??= new Fog(new Color(HAZE).multiplyScalar(SKY_GAIN));
+      [scene.fog.near, scene.fog.far] = look.fog;
+    }
+  }
 
   // The materials the last scene was drawn with, let go of only once the next
   // frame has drawn the new one. Disposing a material releases its shader, and
@@ -1297,7 +1451,7 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
     const group = (rehearsal = new Group());
     const layout = roomLayout(setting, { min: [-1, 0, -1], max: [1, 1.8, 1] });
     const steps = [
-      () => (scene.environment = environmentFor(renderer, layout ? setting : "studio", false)),
+      () => light(layout ? setting : "studio"),
       ...(layout ? roomTextures(setting) : []),
       () => layout && group.add(buildRoom(layout)),
       () => group.add(buildProps([{ kind: "bed", size: [1.6, 0.5, 2], center: [0, 0.25, 0] }], { ground: !layout })),
@@ -1387,7 +1541,7 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
 
   /** Keep the room there is when it is laid out the same, and build it when not. */
   function placeRoom(layout) {
-    scene.environment = environmentFor(renderer, layout ? setting : "studio", !!layout?.wall);
+    light(layout ? setting : "studio", !!layout?.wall);
     const key = layout ? JSON.stringify(layout) : null;
     if (key === roomKey) return;
     if (room) {
@@ -1539,7 +1693,7 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
     camera.lookAt(focus);
 
     lights.key.target.position.copy(focus);
-    lights.key.position.copy(focus).add(new Vector3(2.4, 3.2, 2.0));
+    lights.key.position.copy(focus).add(keyFrom);
     lights.key.target.updateMatrixWorld();
     shadowsStale = true;
   }

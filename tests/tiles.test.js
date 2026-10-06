@@ -54,6 +54,10 @@ const REQUESTS = [
   ["eye", 0.16],
   ["skin"],
   ["sky"],
+  ["towel", [[0.17, 0.48, 0.64], [0.95, 0.93, 0.89], [0.89, 0.64, 0.23]]],
+  ["caustic"],
+  ["foam"],
+  ["night"],
 ];
 
 test("a tile from the worker is byte for byte the one the page would have made", async () => {

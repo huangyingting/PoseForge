@@ -94,6 +94,7 @@ test("the geometric core depends on nothing", () => {
     // The tile worker's pictures, which would have it load three for nothing.
     join(root, "src/render/roomTiles.js"),
     join(root, "src/render/figureTiles.js"),
+    join(root, "src/render/placeTiles.js"),
     join(root, "src/render/tileMakers.js"),
     join(root, "src/render/tiles.js"),
     join(root, "src/workers/tileWorker.js"),
@@ -118,6 +119,8 @@ test("three.js is confined to the drawing layer", () => {
     "src/render/renderer.js",
     "src/render/props.js",
     "src/render/room.js",
+    "src/render/roomKit.js",
+    "src/render/places.js",
     "src/render/exporters.js",
   ]);
   for (const file of [...sources("src")]) {

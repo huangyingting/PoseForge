@@ -29,35 +29,62 @@ import {
   BoxGeometry,
   Color,
   CylinderGeometry,
-  DataTexture,
   DoubleSide,
-  Float32BufferAttribute,
   Group,
   LatheGeometry,
-  LinearFilter,
-  LinearMipmapLinearFilter,
   Mesh,
   MeshBasicMaterial,
   MeshPhysicalMaterial,
-  MeshStandardMaterial,
   PlaneGeometry,
-  RepeatWrapping,
   SphereGeometry,
-  SRGBColorSpace,
   Vector2,
   Vector3,
 } from "three";
 import { ROUGHNESS_SPAN } from "./fabric.js";
 import { seeded } from "./roomTiles.js";
-import { tiles } from "./tiles.js";
+import {
+  board,
+  boards,
+  box,
+  channels,
+  clothFinish,
+  corner,
+  finished,
+  grainedBox,
+  laid,
+  LINEN_TILE,
+  linen,
+  made,
+  mesh,
+  picture,
+  plaster,
+  PLASTER_TILE,
+  shaded,
+  standard,
+  steps,
+  surface,
+  tiled,
+  wood,
+  WOOD_TILE,
+  woodFinish,
+} from "./roomKit.js";
+import { PLACES } from "./places.js";
 
-/** The looks a scene can be set in; "studio" is the plain backdrop. */
-export const SETTINGS = ["bedroom", "living", "studio"];
+export { clothFinish, WOOD_TILE, woodFinish };
+
+/**
+ * The looks a scene can be set in: the rooms here, the places that are not
+ * rooms (see `places.js`), and "studio", the plain backdrop, last.
+ */
+export const SETTINGS = ["bedroom", "living", "hotel", "beach", "pool", "fashion", "studio"];
 
 /**
  * What each room is made of. Colours are sRGB, as a designer would give them;
  * the materials convert. The walls are kept pale and unsaturated so the skin
  * in front of them is still the warmest, most saturated thing in the picture.
+ *
+ * `plan` is which room's furniture plan a room borrows, and `night` lights its
+ * lamps for a room seen after dark, with the city beyond its window.
  */
 const LOOKS = {
   bedroom: {
@@ -82,6 +109,21 @@ const LOOKS = {
     accent: 0xa7683f,
     art: [0x3f5663, 0xd0b48a, 0xe9e3d6, 0xa35d3f],
   },
+  // A suite at night: dark walnut, a deep blue rug with a gold border, heavy
+  // curtains, and the lamps the only light but the city's.
+  hotel: {
+    wall: 0xb9ab98,
+    trim: 0x3a2f27,
+    floor: { base: [0.34, 0.22, 0.14], spread: 0.08 },
+    rug: { field: 0x26344a, border: 0xa88a52, line: 0xd9c9a3 },
+    curtain: 0x6a2430,
+    wood: 0x3e2a1e,
+    shade: 0xf7e2bc,
+    accent: 0xa98653,
+    art: [0x2b2e36, 0xb08f5a, 0x7a2e38, 0xd6c8ae],
+    plan: "bedroom",
+    night: true,
+  },
 };
 
 /** The height of the walls: a little over the 2.4 m the pole and wall props stand. */
@@ -91,87 +133,13 @@ const WALL_HEIGHT = 2.6;
 const MARGIN = 1.15;
 const MIN_HALF = [2.5, 2.5];
 
-/* ------------------------------------------------------------------ */
-/* Textures                                                            */
-/* ------------------------------------------------------------------ */
-
-function texture(data, size, { repeat = true, colour = true } = {}) {
-  const map = new DataTexture(data, size[0], size[1]);
-  if (colour) map.colorSpace = SRGBColorSpace;
-  map.wrapS = map.wrapT = repeat ? RepeatWrapping : map.wrapS;
-  map.magFilter = LinearFilter;
-  map.minFilter = LinearMipmapLinearFilter;
-  map.generateMipmaps = true;
-  map.anisotropy = 8;
-  map.needsUpdate = true;
-  return map;
-}
-
-const channels = (hex) => {
-  const c = new Color(hex);
-  return [c.r, c.g, c.b].map((v) => new Color().setRGB(v, v, v).convertLinearToSRGB().r);
-};
-
 /** One tile of the floorboards, in metres: eight rows of planks 18 cm wide. */
 export const FLOOR_TILE = 1.44;
 
-/* ------------------------------------------------------------------ */
-/* Surfaces                                                            */
-/* ------------------------------------------------------------------ */
-
-/** How much wall, board, curtain and rug one tile of each covers, in metres. */
-const PLASTER_TILE = 0.4;
-export const WOOD_TILE = 0.6;
-const LINEN_TILE = 0.025;
+/** How much of a rug one tile of its weave covers, in metres. */
 const KILIM_TILE = 0.06;
 const KILIM = { size: 128, threads: 8, slub: 0.5, strength: 3, seed: 0x6b696c6d };
 
-/** A tile from `fabric.js` or `surfaces.js`, as the textures three reads. */
-function surface(tile) {
-  const square = (data) => texture(data, [tile.size, tile.size], { colour: false });
-  return {
-    normal: square(tile.normal),
-    map: tile.map ? square(tile.map) : null,
-    mean: tile.mean ?? 1,
-    roughness: tile.roughness ? square(tile.roughness.data) : null,
-    factor: tile.roughness?.factor ?? 1,
-  };
-}
-
-/** The floorboards' tile (see `roomTiles.js`) as the textures three reads. */
-function boards(tile) {
-  const square = (data, options) => texture(data, [tile.size, tile.size], options);
-  return {
-    map: square(tile.map),
-    normal: square(tile.normal, { colour: false }),
-    roughness: square(tile.roughness.data, { colour: false }),
-    factor: tile.roughness.factor,
-  };
-}
-
-/** A picture drawn once across what it is on, not tiled. */
-const picture = (tile) => texture(tile.data, [tile.width, tile.height], { repeat: false });
-
-const textures = new Map();
-/**
- * A texture made of a tile: `request` names the tile (see `tiles.js`) and
- * `wrap` makes the texture of it. Made once for each tile and shared; `ready`
- * has the tile made ahead, on the worker.
- */
-function made(request, wrap) {
-  const get = (...args) => {
-    const [name, ...rest] = request(...args);
-    const key = `${name}${JSON.stringify(rest)}`;
-    if (!textures.has(key)) textures.set(key, wrap(tiles.take(name, ...rest)));
-    return textures.get(key);
-  };
-  get.ready = (...args) => tiles.prepare(...request(...args));
-  return get;
-}
-
-const plaster = made(() => ["plaster"], surface);
-const wood = made(() => ["wood"], surface);
-const linen = made(() => ["weave"], surface);
 const kilim = made(() => ["weave", KILIM], surface);
 const floorboards = made((setting) => ["floor", LOOKS[setting].floor], boards);
 const rugPattern = made((setting) => {
@@ -180,141 +148,33 @@ const rugPattern = made((setting) => {
 }, picture);
 const artwork = made((look) => ["art", look.art.map(channels), look.art[0]], picture);
 const sky = made(() => ["sky"], picture);
+const city = made(() => ["night"], picture);
 const pool = made(() => ["glow"], picture);
 
 /**
- * What a room in `setting` is drawn with, one texture to a step, for making
- * ahead of the room itself: together they take the best part of a second,
+ * What a scene in `setting` is drawn with, one texture to a step, for making
+ * ahead of the room itself: together a room's take the best part of a second,
  * the floor's million texels alone a third of it. The tiles are all asked for
  * at once, and made on the worker; each step's `ready` settles once its own
  * has come, and the step makes the texture of it.
  */
 export function roomTextures(setting) {
+  if (PLACES[setting]) return PLACES[setting].textures();
   const look = LOOKS[setting];
-  return [[floorboards, setting], [plaster], [wood], [linen], [kilim], [rugPattern, setting], [artwork, look], [sky], [pool]].map(
-    ([get, ...args]) => Object.assign(() => get(...args), { ready: get.ready(...args) }),
-  );
+  return steps([
+    [floorboards, setting], [plaster], [wood], [linen], [kilim], [rugPattern, setting], [artwork, look],
+    [look.night ? city : sky], [pool],
+  ]);
 }
 
-/** Once every tile of a room in `setting` - the studio has none - has been made. */
+/** Once every tile of a scene in `setting` - the studio has none - has been made. */
 export function roomReady(setting) {
-  return Promise.all(LOOKS[setting] ? roomTextures(setting).map((step) => step.ready) : []);
+  return Promise.all(LOOKS[setting] || PLACES[setting] ? roomTextures(setting).map((step) => step.ready) : []);
 }
-
-/**
- * A material over a surface: the colour given, divided by the surface's own
- * average so that from across the room it is still that colour, and the
- * roughness likewise.
- */
-function finished(colour, look, { roughness = 0.8, normalScale = 1, ...options } = {}) {
-  return standard(new Color(colour).multiplyScalar(1 / look.mean), {
-    map: look.map,
-    normalMap: look.normal,
-    normalScale: new Vector2(normalScale, normalScale),
-    roughness: look.roughness ? (roughness * ROUGHNESS_SPAN) / look.factor : roughness,
-    roughnessMap: look.roughness,
-    ...options,
-  });
-}
-
-/** A plane's UVs in tiles of `tile` metres, so one texture does for any size of it. */
-function tiled(geometry, width, height, tile) {
-  const uv = geometry.attributes.uv;
-  for (let i = 0; i < uv.count; i += 1) uv.setXY(i, (uv.getX(i) * width) / tile, (uv.getY(i) * height) / tile);
-  return geometry;
-}
-
-/**
- * A box with its UVs in tiles of `tile` metres face by face, and the grain -
- * which runs along `u` - down each face's longer side, the way a board's does.
- * Each face starts somewhere else in the tile, so two boards side by side are
- * not the same board twice.
- */
-function grainedBox(size, tile, segments = [1, 1, 1]) {
-  const [w, h, d] = size;
-  const [sw, sh, sd] = segments;
-  const geometry = new BoxGeometry(w, h, d, sw, sh, sd);
-  // Three's faces in order, +x, -x, +y, -y, +z, -z: each one's extent across
-  // and down, and the segments it is cut into each way.
-  const faces = [[d, h, sd, sh], [d, h, sd, sh], [w, d, sw, sd], [w, d, sw, sd], [w, h, sw, sh], [w, h, sw, sh]];
-  const uv = geometry.attributes.uv;
-  let start = 0;
-  faces.forEach(([du, dv, gu, gv], f) => {
-    const shift = (f * 0.37 + w * 7.3 + h * 3.1 + d * 5.7) % 1;
-    const end = start + (gu + 1) * (gv + 1);
-    for (let k = start; k < end; k += 1) {
-      const u = (uv.getX(k) * du) / tile;
-      const v = (uv.getY(k) * dv) / tile;
-      if (dv > du) uv.setXY(k, v, u + shift);
-      else uv.setXY(k, u, v + shift);
-    }
-    start = end;
-  });
-  return geometry;
-}
-
-/**
- * The light a corner gets, as a colour on the vertices: `shade` of each
- * vertex's own x and y.
- *
- * A room is darker where its walls meet each other and the floor, because each
- * hides half the room from the other. It is the thing about indoor light that
- * most says indoors, and the one three's lights, which see no walls, do not
- * do: without it the walls met the floor like sheets of card stood on a board.
- */
-function shaded(geometry, shade) {
-  const position = geometry.attributes.position;
-  const colour = new Float32Array(position.count * 3);
-  for (let i = 0; i < position.count; i += 1) colour.fill(shade(position.getX(i), position.getY(i)), i * 3, i * 3 + 3);
-  geometry.setAttribute("color", new Float32BufferAttribute(colour, 3));
-  return geometry;
-}
-
-/** How dark a corner is `d` metres out from it, with `depth` of shade in it at most. */
-const corner = (d, depth, reach) => 1 - depth * Math.exp(-Math.max(0, d) / reach);
 
 /* ------------------------------------------------------------------ */
 /* Pieces                                                              */
 /* ------------------------------------------------------------------ */
-
-function standard(colour, options = {}) {
-  return new MeshStandardMaterial({ color: new Color(colour), roughness: 0.8, metalness: 0, ...options });
-}
-
-function mesh(geometry, material, { cast = true, receive = true } = {}) {
-  const node = new Mesh(geometry, material);
-  node.castShadow = cast;
-  node.receiveShadow = receive;
-  // Line art is of the figures and what they touch, not the room.
-  node.userData.outline = false;
-  return node;
-}
-
-function box(size, colour, at, options) {
-  const node = mesh(new BoxGeometry(...size), typeof colour === "object" ? colour : standard(colour, options));
-  node.position.set(...at);
-  return node;
-}
-
-/** A box of wood, its grain along it; `material` is one of `woodFinish`'s. */
-function board(size, material, at) {
-  const node = mesh(grainedBox(size, WOOD_TILE), material);
-  node.position.set(...at);
-  return node;
-}
-
-/** Wood in a colour, figured, with its pores duller than its face. */
-export function woodFinish(colour, roughness = 0.55) {
-  return finished(colour, wood(), { roughness });
-}
-
-/**
- * Woven cloth in a colour, for what is upholstered or made up: the curtains'
- * linen, on geometry whose UVs are in tiles of however fine a weave it is.
- */
-export function clothFinish(colour, options) {
-  return finished(colour, linen(), { roughness: 0.95, normalScale: 0.8, ...options });
-}
 
 /**
  * A curtain: a sheet of linen hung in folds, deeper at the top where it is
@@ -342,11 +202,11 @@ function curtain(width, height, colour, seed = 1) {
   return mesh(geometry, finished(colour, linen(), { roughness: 0.95, side: DoubleSide, normalScale: 0.8 }), { cast: false });
 }
 
-/** A lamp shade that glows from inside, open top and bottom. */
-function shade(top, bottom, height, colour) {
-  const material = standard(colour, {
+/** A lamp shade that glows from inside, open top and bottom - brighter at night, with nothing else lit. */
+function shade(top, bottom, height, look) {
+  const material = standard(look.shade, {
     emissive: new Color(0xffd9a0),
-    emissiveIntensity: 0.9,
+    emissiveIntensity: look.night ? 2.2 : 0.9,
     roughness: 0.9,
     side: DoubleSide,
   });
@@ -354,13 +214,13 @@ function shade(top, bottom, height, colour) {
 }
 
 /** The pool of light a lamp leaves on the wall behind it. */
-function glow(width, height) {
+function glow(width, height, look) {
   const node = new Mesh(
     new PlaneGeometry(width, height),
     new MeshBasicMaterial({
       map: pool(),
       transparent: true,
-      opacity: 0.32,
+      opacity: look.night ? 0.6 : 0.32,
       blending: AdditiveBlending,
       depthWrite: false,
       toneMapped: false,
@@ -378,7 +238,7 @@ function floorLamp(look) {
   base.position.y = 0.0125;
   const pole = mesh(new CylinderGeometry(0.011, 0.011, 1.42, 12), metal);
   pole.position.y = 0.73;
-  const top = shade(0.16, 0.22, 0.3, look.shade);
+  const top = shade(0.16, 0.22, 0.3, look);
   top.position.y = 1.52;
   group.add(base, pole, top);
   return group;
@@ -393,7 +253,7 @@ function tableLamp(look) {
     ),
     standard(look.accent, { roughness: 0.35 })
   );
-  const top = shade(0.1, 0.15, 0.2, look.shade);
+  const top = shade(0.1, 0.15, 0.2, look);
   top.position.y = 0.36;
   group.add(body, top);
   return group;
@@ -494,10 +354,10 @@ function bookcase(look) {
   return group;
 }
 
-/** A window: the sky beyond, a painted frame and glazing bars, and a sill. */
+/** A window: the sky beyond - or the city, after dark - a painted frame and glazing bars, and a sill. */
 function windowUnit(look, width = 1.3, height = 1.5) {
   const group = new Group();
-  const view = new Mesh(new PlaneGeometry(width, height), new MeshBasicMaterial({ map: sky(), toneMapped: false }));
+  const view = new Mesh(new PlaneGeometry(width, height), new MeshBasicMaterial({ map: look.night ? city() : sky(), toneMapped: false }));
   view.userData.outline = false;
   view.position.z = 0.002;
   group.add(view);
@@ -544,7 +404,7 @@ function wallFrames(half) {
  * @returns {object|null} null for the studio, which is no room at all
  */
 export function roomLayout(setting, bounds, props = []) {
-  if (!LOOKS[setting]) return null;
+  if (!LOOKS[setting] && !PLACES[setting]) return null;
   const reach = (axis) => Math.max(Math.abs(bounds.min[axis]), Math.abs(bounds.max[axis])) + MARGIN;
   const step = (value, least, by = 0.5) => Math.max(least, Math.ceil(value / by - 1e-9) * by);
   const half = [step(reach(0), MIN_HALF[0]), step(reach(2), MIN_HALF[1])];
@@ -581,14 +441,14 @@ export function roomLayout(setting, bounds, props = []) {
  * @param {string} setting
  */
 export function paintWall(node, setting) {
-  const look = LOOKS[setting];
+  const look = LOOKS[setting] ?? PLACES[setting];
   if (!look) return;
   node.geometry.computeBoundingBox();
   const size = node.geometry.boundingBox.getSize(new Vector3()).toArray();
   node.geometry.dispose();
   node.geometry = shaded(grainedBox(size, PLASTER_TILE, [1, Math.ceil(size[1] / 0.1), 1]), (x, y) => corner(y + size[1] / 2, 0.25, 0.2));
   node.material.dispose();
-  node.material = finished(look.wall, plaster(), { roughness: 0.92, normalScale: 0.7, vertexColors: true });
+  node.material = finished(look.wall, plaster(), { roughness: 0.92, normalScale: look.plaster ?? 0.7, vertexColors: true });
 }
 
 /**
@@ -599,7 +459,9 @@ export function paintWall(node, setting) {
  */
 export function buildRoom(layout) {
   const { setting, half, north } = layout;
+  if (PLACES[setting]) return PLACES[setting].build(layout);
   const look = LOOKS[setting];
+  const plan = look.plan ?? setting;
   const south = half[1];
   const depth = south - north;
   const middleZ = (north + south) / 2;
@@ -638,29 +500,7 @@ export function buildRoom(layout) {
   floor.name = "room-floor";
   room.add(floor);
 
-  // Flat: 3 mm is enough to catch the light as a thing of its own without
-  // lifting anybody lying on it off the floor they were solved on. Its pattern
-  // is drawn once across it and its weave tiled over that, from a second set
-  // of UVs in metres.
-  const rugGeometry = new BoxGeometry(layout.rug.size[0], 0.003, layout.rug.size[1]);
-  const inMetres = rugGeometry.attributes.uv.clone();
-  for (let i = 0; i < inMetres.count; i += 1)
-    inMetres.setXY(i, (inMetres.getX(i) * layout.rug.size[0]) / KILIM_TILE, (inMetres.getY(i) * layout.rug.size[1]) / KILIM_TILE);
-  rugGeometry.setAttribute("uv1", inMetres);
-  const weave = kilim();
-  weave.normal.channel = 1;
-  const rug = mesh(
-    rugGeometry,
-    standard(0xffffff, {
-      map: rugPattern(setting),
-      normalMap: weave.normal,
-      normalScale: new Vector2(0.8, 0.8),
-      roughness: 0.97,
-    }),
-    { cast: false }
-  );
-  rug.position.set(layout.rug.at[0], 0.0015, layout.rug.at[1]);
-  room.add(rug);
+  room.add(laid(layout.rug.size, layout.rug.at, rugPattern(setting), kilim(), KILIM_TILE));
 
   const paint = finished(look.wall, plaster(), { roughness: 0.92, normalScale: 0.7, vertexColors: true });
   const trim = standard(look.trim, { roughness: 0.5 });
@@ -722,7 +562,7 @@ export function buildRoom(layout) {
   };
   const lamp = (name, u) => {
     place(name, floorLamp(look), u, 0, 0.35);
-    place(name, glow(1.4, 1.6), u, 1.5, 0.01);
+    place(name, glow(1.4, 1.6, look), u, 1.5, 0.01);
   };
 
   // What the three-quarter view looks at is the north and the west walls, so
@@ -730,10 +570,12 @@ export function buildRoom(layout) {
   // middle, and what would have stood in front of it goes round the corner.
   if (!layout.wall) {
     hangWindow("north", -width * 0.1);
-    if (setting === "bedroom") {
+    if (plan === "bedroom") {
       lamp("north", width / 2 - 0.35);
       place("west", framedArt(look), depth * 0.12, 1.55, 0.002);
       place("west", nightstand(look), depth * 0.12 + 0.35, 0, 0.22);
+      // After dark the bedside lamp lights the wall over it too.
+      if (look.night) place("west", glow(0.9, 1, look), depth * 0.12 + 0.27, 0.95, 0.01);
       place("east", framedArt(look, 0.6, 0.75), 0, 1.45, 0.002);
       place("east", plant(look, 1.05), depth / 2 - 0.4, 0, 0.35);
     } else {
@@ -746,8 +588,8 @@ export function buildRoom(layout) {
   } else {
     hangWindow("west", 0);
     lamp("north", width / 2 - 0.35);
-    place("north", plant(look, setting === "bedroom" ? 1.05 : 1.25), -width / 2 + 0.55, 0, 0.4);
-    if (setting === "bedroom") {
+    place("north", plant(look, plan === "bedroom" ? 1.05 : 1.25), -width / 2 + 0.55, 0, 0.4);
+    if (plan === "bedroom") {
       place("east", framedArt(look, 0.6, 0.75), 0, 1.45, 0.002);
     } else {
       place("east", bookcase(look), 0, 0, 0.18);

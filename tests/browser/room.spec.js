@@ -98,25 +98,32 @@ test("a first visit opens in a bedroom, each setting is its own room, and the ch
   expect(await setting.locator("option").allTextContents()).toEqual([
     "Bedroom",
     "Living room",
+    "Hotel suite",
+    "Beach",
+    "Poolside",
+    "Fashion shoot",
     "Studio",
   ]);
 
-  // Up in the top corner the three-quarter view looks at a wall, or in the
-  // studio at the backdrop.
+  // Up in the top corner the three-quarter view looks at a wall, at the sky
+  // or into the dark of a shoot, or in the studio at the backdrop.
   const seen = {};
   const look = async () => ({ hash: await pixels(page), corner: await colourAt(page, 0.2, 0.08) });
   await page.waitForTimeout(400);
   seen.bedroom = await look();
-  for (const name of ["living", "studio"]) {
+  const places = ["living", "hotel", "beach", "pool", "fashion", "studio"];
+  for (const name of places) {
     const before = await pixels(page);
     await setting.selectOption(name);
-    // The old room stays up until the new one's pictures have been made.
+    // The old room stays up until the new one's pictures have been made, and
+    // the figures dress for the beach, the pool and the shoot.
     await expect.poll(() => pixels(page)).not.toBe(before);
+    await ready(page);
     await page.waitForTimeout(400);
     seen[name] = await look();
   }
-  expect(new Set(Object.values(seen).map((entry) => entry.hash)).size).toBe(3);
-  for (const room of ["bedroom", "living"])
+  expect(new Set(Object.values(seen).map((entry) => entry.hash)).size).toBe(places.length + 1);
+  for (const room of ["bedroom", ...places.slice(0, -1)])
     expect(seen[room].corner, `${room} against the studio`).not.toEqual(seen.studio.corner);
 
   await setting.selectOption("living");
@@ -124,6 +131,57 @@ test("a first visit opens in a bedroom, each setting is its own room, and the ch
   await ready(page);
   await expect(setting).toHaveValue("living");
   expect(await page.evaluate(() => localStorage.getItem("poseforge.setting.v1"))).toBe("living");
+});
+
+test("on the beach the figures are dressed for it, until that is turned off", async ({ page }) => {
+  await page.goto("/?preset=builtin.position.kneeling-missionary");
+  await ready(page);
+  await page.getByRole("button", { name: "Figures", exact: true }).click();
+  await page.getByText("Appearance", { exact: true }).first().click();
+  const suited = page.getByLabel("Dress for the setting").first();
+  const outfit = page.getByLabel("Outfit", { exact: true }).first();
+  // A bedroom has no dress code to keep.
+  await expect(suited).toBeHidden();
+  await expect(outfit).toBeEnabled();
+  await page.getByLabel("Setting", { exact: true }).selectOption("beach");
+  await ready(page);
+  await expect(suited).toBeVisible();
+  await expect(suited).toBeChecked();
+  await expect(outfit).toBeDisabled();
+  await page.waitForTimeout(400);
+  const dressed = await pixels(page);
+  await suited.uncheck();
+  await ready(page);
+  await expect(outfit).toBeEnabled();
+  await page.waitForTimeout(400);
+  expect(await pixels(page)).not.toBe(dressed);
+  expect(await page.evaluate(() => localStorage.getItem("poseforge.dress.v1"))).toBe("off");
+  // The figures' own clothes are the scene's still: the beach's were a way of
+  // seeing it, not an edit.
+  await expect(page.locator("#scene-badge")).not.toHaveText("Unsaved changes");
+});
+
+test("on a phone the camera bar, with its longest setting, stays on the screen", async ({
+  page,
+}) => {
+  await page.goto("/?preset=builtin.position.kneeling-missionary");
+  await ready(page);
+  await page.getByLabel("Setting", { exact: true }).selectOption("fashion");
+  for (const width of [390, 360, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    const bar = await page
+      .locator(".stage-toolbar")
+      .evaluate((node) => node.getBoundingClientRect().toJSON());
+    expect(bar.left, `${width}`).toBeGreaterThanOrEqual(0);
+    expect(bar.right, `${width}`).toBeLessThanOrEqual(width);
+    for (const name of ["Tour", "Zoom in"])
+      await expect(
+        page.getByRole("button", { name, exact: true }),
+      ).toBeInViewport({ ratio: 1 });
+    await expect(page.getByLabel("Material", { exact: true })).toBeInViewport({
+      ratio: 1,
+    });
+  }
 });
 
 test("the room is in the picture but not in the cut-out", async ({ page }) => {
@@ -148,7 +206,7 @@ test("the setting reads in Chinese, and fits the phone toolbar", async ({ page }
   await expect(page.locator("#status")).toContainText("就绪", { timeout: 60_000 });
   const setting = page.getByLabel("布景", { exact: true });
   await expect(setting).toBeVisible();
-  expect(await setting.locator("option").allTextContents()).toEqual(["卧室", "客厅", "摄影棚"]);
+  expect(await setting.locator("option").allTextContents()).toEqual(["卧室", "客厅", "酒店套房", "海滩", "泳池边", "时装摄影", "摄影棚"]);
   const box = await setting.boundingBox();
   expect(box.x).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(390);

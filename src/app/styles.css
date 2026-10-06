@@ -1034,8 +1034,29 @@ p {
     padding-left: 0;
     border-left: 0;
   }
+  /* The row under the views is the tour, the zoom and both lists, which only
+     fit a phone a little closer together. */
+  .tour-control button {
+    padding-inline: 6px;
+  }
+  .material-control select {
+    padding-inline: 3px;
+  }
   .stage-top {
     max-width: calc(100% - 40px);
+  }
+}
+/* Narrower still, the lists take a row of their own. */
+@container stage (max-width: 380px) {
+  .stage-toolbar {
+    grid-template-columns: auto auto;
+  }
+  .material-control {
+    grid-column: 1 / -1;
+    justify-content: center;
+    margin-left: 0;
+    padding-left: 0;
+    border-left: 0;
   }
 }
 .viewport-error {
@@ -1327,6 +1348,9 @@ summary {
   color: var(--muted);
   line-height: 1.6;
   margin-top: 10px;
+}
+.dress-code .hint {
+  margin-top: 4px;
 }
 .buttons {
   display: flex;

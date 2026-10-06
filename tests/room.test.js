@@ -20,7 +20,7 @@ function pieces(room) {
 }
 
 test("a room stands clear of the scene, and nothing in it stands in anything else", () => {
-  for (const setting of ["bedroom", "living"])
+  for (const setting of ["bedroom", "living", "hotel"])
     for (const [bounds, props] of [
       [pair, []],
       [wide, SURFACES.bed.props],
@@ -46,6 +46,37 @@ test("a room stands clear of the scene, and nothing in it stands in anything els
       assert.ok(at[1] + size[1] / 2 <= layout.half[1] - 0.69);
       disposeRoom(room);
     }
+});
+
+test("a place out of doors or on a shoot stands clear of the scene, and is built of few draws", () => {
+  for (const setting of ["beach", "pool", "fashion"])
+    for (const [bounds, props] of [
+      [pair, []],
+      [wide, SURFACES.bed.props],
+      [pair, SURFACES.wall.props],
+    ]) {
+      const layout = roomLayout(setting, bounds, props);
+      const room = buildRoom(layout);
+      room.updateMatrixWorld(true);
+      const scene = new Box3(new Vector3(...bounds.min), new Vector3(...bounds.max));
+      for (const prop of props) scene.expandByPoint(new Vector3(...prop.center.map((c, k) => c + prop.size[k] / 2)));
+      // What stands about, on its four sides of the clear ground.
+      assert.deepEqual(room.userData.walls.map((side) => side.name), ["side-north", "side-south", "side-west", "side-east"]);
+      const standing = room.userData.walls.flatMap((side) => side.children);
+      assert.ok(standing.length >= 3, `${setting}: ${standing.length} pieces`);
+      for (const piece of standing)
+        assert.ok(!new Box3().setFromObject(piece).intersectsBox(scene), `${setting}: a piece in the scene`);
+      // The whole place is a few dozen draws, as a room is.
+      let draws = 0;
+      room.traverse((node) => (draws += node.isMesh ? 1 : 0));
+      assert.ok(draws <= 60, `${setting}: ${draws} meshes`);
+      disposeRoom(room);
+    }
+});
+
+test("every setting but the studio is somewhere, and the studio is last", () => {
+  assert.deepEqual(SETTINGS, ["bedroom", "living", "hotel", "beach", "pool", "fashion", "studio"]);
+  for (const setting of SETTINGS.slice(0, -1)) assert.ok(roomLayout(setting, pair), setting);
 });
 
 test("a wall to lean on is the room's north wall", () => {
@@ -85,4 +116,12 @@ test("the walls between the camera and the scene are hidden, with what stands ag
   assert.equal(updateRoom(room, { position: new Vector3(4, 2, 5) }), true);
   assert.equal(updateRoom(null, { position: new Vector3(4, 2, 5) }), false);
   disposeRoom(room);
+  // A place's sides go as a room's walls do.
+  const beach = buildRoom(roomLayout("beach", pair));
+  updateRoom(beach, { position: new Vector3(4, 2, 5) });
+  assert.deepEqual(
+    Object.fromEntries(beach.userData.walls.map((side) => [side.name, side.visible])),
+    { "side-north": true, "side-south": false, "side-west": true, "side-east": false },
+  );
+  disposeRoom(beach);
 });

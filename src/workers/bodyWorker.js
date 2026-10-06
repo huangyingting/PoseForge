@@ -28,6 +28,7 @@ import { supportProps } from "../core/supports.js";
 import { solvedPreview } from '../core/posePreview.js';
 import { skinHumanMesh } from "../core/humanMesh.js";
 import { inMouth } from "../core/faces.js";
+import { dressFigures } from "../core/dressCodes.js";
 import { createTemplateCache } from "./templateCache.js";
 import { createTemplatePool } from "./templatePool.js";
 import { modelUrl, modelWarnings, scanned } from "./scans.js";
@@ -131,17 +132,27 @@ function bodyParts(actor, template, resolution) {
   }));
 }
 
-function templatesFor(actors) {
+/**
+ * Each actor's template, in its own clothes or, if the setting has a dress code
+ * (`dress`, see `dressCodes.js`), in the setting's. The template's key has the
+ * clothes in it, so a figure dressed for the beach and the same figure in its
+ * own clothes are both kept.
+ */
+function templatesFor(actors, dress) {
+  const dressed = dressFigures(
+    dress,
+    actors.map((actor) => ({ bodyType: actor.skeleton.bodyType, wearing: actor.spec?.wearing }))
+  );
   return Promise.all(
-    actors.map((actor) =>
+    actors.map((actor, index) =>
       humanTemplate({
         bodyType: actor.skeleton.bodyType,
         model: actor.spec?.model,
         bust: actor.spec?.bust,
         build: actor.skeleton.build,
         hair: actor.spec?.hair,
-        wearing: actor.spec?.wearing,
-        outfit: actor.spec?.outfit,
+        wearing: dressed[index]?.wearing ?? actor.spec?.wearing,
+        outfit: dressed[index]?.outfit ?? actor.spec?.outfit,
         expression: actor.face,
       })
     )
@@ -267,7 +278,7 @@ function summarise(solved) {
 }
 
 self.onmessage = async (event) => {
-  const { id, text, scene: given, resolution } = event.data;
+  const { id, text, scene: given, resolution, dress = null } = event.data;
   current = id;
 
   try {
@@ -293,7 +304,7 @@ self.onmessage = async (event) => {
 
     const solved = solveScene(parsed.scene);
     const solvedAt = performance.now();
-    const loaded = await templatesFor(solved.actors);
+    const loaded = await templatesFor(solved.actors, dress);
     if (current !== id) return;
     const loadedAt = performance.now();
     for (const step of surfaceContactSteps(solved, loaded)) {
