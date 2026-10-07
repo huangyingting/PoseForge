@@ -154,7 +154,8 @@ test("side saddle on a sofa, B sits across the hips of A lying along it, facing 
 });
 
 test("standing with a foot up on a bench, B's hands go where the record puts them", () => {
-  const targets = (patch) => compose("raised-dancer", patch).scene.contacts.filter((c) => c.from.startsWith("hand.")).map((c) => c.to);
+  // B's (the second figure's): A's free hand may be laid on B where it fell.
+  const targets = (patch) => compose("raised-dancer", patch).scene.contacts.filter((c) => c.from.startsWith("hand.") && c.fromActor === 1).map((c) => c.to);
   assert.deepEqual(targets({}), ["hip.r", "hip.l"]);
   assert.deepEqual(targets({ b_hands: "shoulders" }), ["shoulder.r", "shoulder.l"]);
   assert.deepEqual(targets({ b_hands: "embrace" }), ["back", "back"]);

@@ -253,6 +253,22 @@ newly crosses, no met contact comes apart and none of the depth measures
 worsens; otherwise the cup stays. A shape the figure asked for in `hands` is
 never changed. Each change is reported as a pose note.
 
+### Fingers that close only as far as what they hold
+
+A hand shape is one curl, and what a hand holds is not one size: the `grip` that
+closes round a shoulder drove the fingers on into a thigh, a hip or a waist, by
+four to ten centimetres. Last of all, every hand that is not braced closes into
+its shape from open (`fitFingers` in `fingerFit.js`), and stops at the last of
+`CLOSURES` (1, 0.8, … 0) at which its fingers cross nothing drawn: the partners,
+its own body beyond the arm, the furniture and the floor. The four fingers close
+together and the thumb on its own, since one finger left straight among curled
+ones reads as pointing. Fingers clear at the full curl keep it, so a hand round a
+shoulder, or in the air, is drawn as before. `fingerFlexion` blends the shape's
+row with `open` by the `closure` written into `actor.hands`.
+
+The scene is measured again after each hand. A contact that was met and no
+longer is - the fingers were what met it - gives the hand its curl back.
+
 ## Readouts
 
 `basis: "rendered"` means `surfaceGap` is the distance between the selected

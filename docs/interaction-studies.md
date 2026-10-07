@@ -217,6 +217,51 @@ placed by that reach, so an arm detail on a hand that holds on does nothing.
 Every detail a record lists was checked to change its scene, by composing the
 record without it.
 
+The hands that hold nothing are placed last, after every contact is closed. A
+hand that the record puts down on what the figure is on (`b_hands` `surface` or
+`behind`, the `arms_planted` and `arms_braced_behind` details, or a template's
+planted arm shape) is planted by `plantHands`. So is a hand the posture is drawn
+leaning on (`hands` among its supports) when `leansOn` finds it on nothing, with
+no floor, furniture or partner within `ON_IT` of its palm. Rings of points
+around the place in front of, beside or behind the shoulder are tried in turn. A
+point counts if the floor or a furniture top is under it, the arm reaches it
+without locking straight (`STRAIGHT`), and it is clear of both bodies. The palm
+is laid on that point facing down, with the fingers running away from the body.
+Where the figure is over its partner and the floor is out of reach, the palm
+goes on the partner under the shoulder instead, as a `rest` contact. Any other
+free hand, and a posture's hand that could not be planted, is laid by
+`restFreeHands` on the nearest thing it can lie on. That may be the partner (as a
+`rest` contact), the top of its own thigh or knee, the outer side of its trunk,
+the furniture or the floor. The nearest is tried first, and up to
+`REST_TRIES` in all, since one the arm can reach only through something gives
+way to the next. A hand the picture placed moves at most `REST_REACH`; one it
+did not place moves up to `PARTNER_REACH`. An arm put round or out towards the
+partner (`arms_around`, or the `arms_forward` and `arm_forward_*` details) goes
+on to the partner, up to `PARTNER_REACH`, when it falls short of them. A
+figure lying down, its trunk nearer level than upright, does not hold an arm
+up over nothing. The arm swings down about the shoulder on to the floor or the
+furniture under it, out to the side and towards the feet if it was raised over
+the shoulder. A hand held out past the edge of the furniture is drawn back on
+to its top. The hand lies on its palm, or else on its back. A place
+on the partner counts only if it is within the region its contact name is
+measured on (`region` in `surfaceContacts.js`), so the contact reads the same
+gap when the scene is viewed. The arm is kept only when it goes no further into
+anyone than it was, or than `TOUCH_SLACK` for a hand laid on a partner, lies no
+lower than the floor, and the scene still meets its checks. A hand laid on a
+partner, or fallen, that does not fit is tried again with its elbow out to the
+side before the next place is tried. Otherwise the hand stays where the pose put it.
+
+Some hands are left as the pose put them. A tied figure's hands (`bound`: one
+in `cuffs`, or tied by its template to a pole or hogtied) are neither planted
+nor laid anywhere. An arm shape from the template that puts the hands somewhere
+of its own (`PLACED_ARMS`: on the forearms, round the partner, over the head)
+is not planted either, unless the record's details draw over that arm. B's
+hands on the surface do not plant an arm that B's details draw another way,
+such as put forward or behind the head. A posture that leans
+on its hands does not plant an arm that the record's details draw, such as
+forearms down. These shapes are what tell such pictures apart from their
+neighbours.
+
 `scripts/scene-distance.mjs` measures how different two scenes look, in the
 bodies' own terms: the major joints of each figure (the spine and the neck each
 counted as one bend), where each partner is and how they are turned relative to

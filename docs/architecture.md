@@ -61,6 +61,7 @@ src/core/          no dependencies, runs in plain Node
   skeleton.js      articulated rig, anthropometric scaling, range-of-motion clamping
   landmarks.js     "chest", "hand.left" → bone + offset
   handPose.js      the hands' shapes, read off the contacts; a back-first rest lies flat
+  fingerFit.js     fingers close into their shape only as far as what they hold
   ik.js            two-bone analytic IK with pole hints, aim, blending
   body.js          round cones, the SDF, smooth union, normals
   collision.js     broad/narrow phase, compression budgets, rigid correction

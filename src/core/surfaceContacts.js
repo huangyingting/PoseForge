@@ -6,6 +6,7 @@ import {
   resolveLandmark,
 } from "./landmarks.js";
 import { backFirstShape, fingersInShape } from "./handPose.js";
+import { fitFingers } from "./fingerFit.js";
 import { palmAims, palmNormal, turnPalm, turnPalms } from "./palmPose.js";
 import { LIMB_CHAINS, solveTwoBoneIK } from "./ik.js";
 import { CHANNELS } from "./skeleton.js";
@@ -66,7 +67,8 @@ const vDistanceSq = (a, b) =>
   a.reduce((sum, value, k) => sum + (value - b[k]) ** 2, 0);
 const topologyCache = new WeakMap();
 
-function region(actor, name, side) {
+/** What of a body a contact on `name` is measured against: the skin of `bones` within `radius` of `anchor`. */
+export function region(actor, name, side) {
   const landmark = resolveLandmark(name, side);
   if (!landmark) return null;
   let bones = [...landmark.bones],
@@ -328,6 +330,20 @@ export function createSurfaceContactQuery(actors, templates) {
       tree(fromActor, "", null, true),
       tree(toActor, "", null, true),
       crossingsOnly,
+    );
+  // The drawn figure, or all of it but the bones in `without`.
+  query.figure = (index, without = null) =>
+    tree(
+      index,
+      "",
+      null,
+      without
+        ? new Set(
+            actors[index].skeleton.bones
+              .map((bone) => bone.name)
+              .filter((name) => !without.has(name)),
+          )
+        : true,
     );
   query.support = (index, support, surface) =>
     measureSurfaceSupport(
@@ -1972,6 +1988,31 @@ export function* surfaceContactSteps(
       handSafety = after;
       adjustments.push(
         `${actor.label ?? actor.id}: the ${side === "l" ? "left" : "right"} hand arrived back first, so it lies flat rather than ${kept[side] === "grip" ? "gripping" : "cupped"}.`,
+      );
+    }
+    // Then, with every hand in its shape and where it will stay, the fingers
+    // close only as far as what they hold - see `fitFingers`. A hand whose
+    // fingers were what met a contact, and no longer meet it, keeps its curl.
+    for (const { actor, side, closure } of fitFingers(
+      solved,
+      templates,
+      query.figure,
+    )) {
+      const kept = actor.hands;
+      actor.hands = { ...kept, closure: { ...kept.closure, [side]: closure } };
+      refresh(actor);
+      const candidate = solved.contacts.map(query);
+      yield { steps };
+      const met = (value) =>
+        value && !value.intersects && value.distance <= SURFACE_CONTACT_TOLERANCE;
+      if (candidate.some((value, k) => met(measurements[k]) && !met(value))) {
+        actor.hands = kept;
+        refresh(actor);
+        continue;
+      }
+      measurements = candidate;
+      adjustments.push(
+        `${actor.label ?? actor.id}: the ${side === "l" ? "left" : "right"} hand's fingers close only as far as what they hold.`,
       );
     }
     const targetDistances = measureContactTargets(solved);

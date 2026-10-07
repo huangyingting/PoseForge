@@ -17,13 +17,15 @@ import {
   armDepth,
 } from "../src/core/solver.js";
 import { captureSolvedPose, placementFromRoot } from "../src/core/placement.js";
-import { turnPalms } from "../src/core/palmPose.js";
-import { gravityHang, poseVolumes } from "../src/core/body.js";
-import { landmarkPoint } from "../src/core/landmarks.js";
+import { turnPalm, turnPalms, palmNormal } from "../src/core/palmPose.js";
+import { bodyDistance, bodyNormal, gravityHang, poseVolumes } from "../src/core/body.js";
+import { landmarkPoint, landmarkSurface } from "../src/core/landmarks.js";
 import { detectContacts, detectPropContacts, penetrationReport, contactKey } from "../src/core/collision.js";
 import { resolveLandmark } from "../src/core/landmarks.js";
 import { resolveSurface } from "../src/core/poseLibrary.js";
-import { withBounds } from "../src/core/propShapes.js";
+import { propDistance, propTopAt, withBounds } from "../src/core/propShapes.js";
+import { LIMB_CHAINS, solveTwoBoneIK } from "../src/core/ik.js";
+import { region } from "../src/core/surfaceContacts.js";
 import { quatFromAxisAngle, quatMultiply, quatNormalize, quatRotate } from "../src/core/math.js";
 import { checkScene } from "../src/core/catalog.js";
 
@@ -36,6 +38,8 @@ const unit = (a) => {
   const l = len(a) || 1;
   return [a[0] / l, a[1] / l, a[2] / l];
 };
+/** The way `a` runs over the floor, or nothing when it runs straight up or down. */
+const level = (a) => (Math.hypot(a[0], a[2]) > 1e-3 ? unit([a[0], 0, a[2]]) : [0, 0, 0]);
 
 export function propsFor(surfaceName) {
   const surface = resolveSurface(surfaceName);
@@ -579,6 +583,8 @@ export function compose(input, walk = {}) {
   }
   const checked = (candidate) =>
     evaluate(input, measure(sceneFor(input, candidate.map(({ prefer, soloSurface, override, tilt, details, ...spec }) => spec)).scene)).pass;
+  const planted = plantHands(input, specs, chosen, plan.surface, checked);
+  specs = restFreeHands(input, planted.specs, chosen, plan.surface, checked, planted);
   specs = facePalms(specs, plan.surface, [...(input.contacts ?? []), ...(input.limbContacts ?? [])], checked);
   // Hands are left to the viewer to read from the final contacts and postures;
   // a shape captured mid-composition belongs to contacts that may since have been dropped.
@@ -692,6 +698,467 @@ function facePalms(specs, surface, contacts, checked = () => true) {
     if (!kept.length) break;
   }
   return specs;
+}
+
+/** How far a free hand is moved to lie on what is beside it; any further and it stays where the pose put it. */
+const REST_REACH = 0.15;
+/** How far, for an arm its source picture did not place (no arm detail). */
+const PARTNER_REACH = 0.25;
+/** Nearer than this to where it would lie, a hand is on it already and is not moved. */
+const REST_SLACK = 0.02;
+/** How far above a floor or a seat the middle of a palm lying on it is. */
+const PALM_OVER = 0.03;
+/** How far an arm laid on or put down beside a partner may be into them: flesh pressed on flesh. */
+const TOUCH_SLACK = 0.025;
+/** What of a partner a free hand may come to rest on: not the head, the neck, the hands or the feet. */
+const REST_ON = [
+  "hip.l", "hip.r", "buttocks", "waist", "lowerBack", "abdomen", "back", "ribs.l", "ribs.r", "chest", "upperBack",
+  "shoulder.l", "shoulder.r", "upperArm.l", "upperArm.r", "forearm.l", "forearm.r",
+  "thigh.l", "thigh.r", "knee.l", "knee.r", "shin.l", "shin.r",
+];
+/** What of its own body: the trunk and the legs above the ankle. */
+const OWN_REST = new Set(["pelvis", "spine01", "spine02", "spine03", "hip_l", "hip_r", "knee_l", "knee_r"]);
+
+/** Whether `contact` names the hand on `side` of actor `actor` at either end, however the hand is written. */
+function handIn(contact, actor, side) {
+  return ["from", "to"].some((end) => {
+    if (contact[`${end}Actor`] !== actor) return false;
+    const [base, word] = contact[end].split(".");
+    const at = { left: "l", right: "r" }[word] ?? word ?? contact[`${end}Side`];
+    return (base === "hand" || base === "hands") && (at == null || at === side);
+  });
+}
+
+/** Nearer than this to the floor, the furniture or a partner, the middle of a palm is on it. */
+const ON_IT = 0.06;
+
+/**
+ * Whether the figure's posture leans on the hand or forearm on `side`, and the
+ * hand is on something to lean on. A posture that is drawn bent forward on its
+ * hands, but held upright enough that they are a forearm off the floor, does
+ * not: they are free hands, braced on nothing.
+ */
+function leansOn(actors, index, side, props, floor) {
+  const actor = actors[index];
+  const supports = actor.posture.supports.filter((s) => ["hand", "hands", "forearm"].includes(s.landmark) && (!s.side || s.side === side));
+  if (!supports.length) return false;
+  if (supports.some((s) => s.landmark === "forearm")) return true;
+  const hand = landmarkPoint(actor, "hand", side);
+  const gaps = [
+    floor == null ? Infinity : hand[1] - floor,
+    ...props.map((prop) => propDistance(prop, hand).distance),
+    ...actors.filter((_, k) => k !== index).map((other) => bodyDistance(hand, other.volumes)),
+  ];
+  return Math.min(...gaps) < ON_IT;
+}
+
+/** How far one arm is into the partners, its own body, the furniture, and how low it goes. */
+function armClash(actors, index, side, props) {
+  const actor = actors[index];
+  const arm = new Set(ARM_BONES.concat("hand").map((bone) => `${bone}_${side}`));
+  const volumes = actor.volumes.filter((v) => arm.has(v.bone));
+  // Below the shoulder: the upper arm meets the chest at the armpit whatever the arm does.
+  const lower = volumes.filter((v) => v.bone !== `shoulder_${side}`);
+  const deepest = (a, b) => Math.max(0, ...detectContacts([{ id: "arm", volumes: a }, { id: "other", volumes: b }], { selfCollision: false }).map((c) => c.depth));
+  return {
+    partner: Math.max(0, ...actors.filter((_, k) => k !== index).map((other) => deepest(volumes, other.volumes))),
+    own: deepest(lower, actor.volumes.filter((v) => !arm.has(v.bone))),
+    prop: Math.max(0, ...detectPropContacts([{ id: "arm", volumes }], props).map((c) => c.depth)),
+    low: lowest({ volumes }),
+  };
+}
+
+/**
+ * Whether `point` is on what a contact on `name` - "shoulder.l", "waist" - is
+ * measured against when the scene is drawn: near the landmark, not only
+ * anywhere on a bone beside it, where a hand put on the shoulder by the upper
+ * arm's far end is drawn a forearm's length off it.
+ */
+function onRegion(partner, name, point) {
+  const [base, side] = name.split(".");
+  const measured = region(partner, base, side);
+  return !!measured && len(sub(point, measured.anchor)) <= 0.8 * measured.radius;
+}
+
+/** Of an arm's full length, how far from its shoulder a hand is put: a little short of locked. */
+const STRAIGHT = 0.97;
+
+/** Where an arm's shoulder is, and how far from it the middle of its palm is with the arm straight. */
+function armSpan(actor, side) {
+  const chain = side === "l" ? LIMB_CHAINS.armL : LIMB_CHAINS.armR;
+  const at = (bone) => actor.evaluated.positions[actor.skeleton.boneIndex(bone)];
+  const shoulder = at(chain.root);
+  const length = len(sub(at(chain.mid), shoulder)) + len(sub(at(chain.end), at(chain.mid))) + len(sub(landmarkPoint(actor, "hand", side), at(chain.end)));
+  return { shoulder, length };
+}
+
+/** Whether a figure lies rather than stands, sits or kneels: its trunk nearer level than upright. */
+function lying(actor) {
+  return Math.abs(unit(sub(landmarkPoint(actor, "neck"), landmarkPoint(actor, "pelvis")))[1]) < 0.5;
+}
+
+/**
+ * Where a free hand would lie: on the partner, on its own trunk, thigh or
+ * knee, on the furniture or on the floor, nearest first - none when nothing is
+ * within `reach` (`PARTNER_REACH`, unless the source drew the arm somewhere),
+ * and only the nearest when the hand is on it already. With `fall`, for a
+ * figure lying down, what is under the hand counts however far down it is: an
+ * arm held up off the bed by nothing falls on to it.
+ */
+function restFor(actors, index, side, props, floor, reach, { fall = false } = {}) {
+  const actor = actors[index];
+  const hand = landmarkPoint(actor, "hand", side);
+  const offset = actor.skeleton.stature * 0.018;
+  const options = [];
+  const { shoulder, length } = armSpan(actor, side);
+  // No straighter than an arm is put, unless it is already.
+  const span = Math.max(STRAIGHT * length, len(sub(hand, shoulder)));
+  const reaches = (point) => len(sub(point, shoulder)) <= span;
+  actors.forEach((partner, k) => {
+    if (k === index) return;
+    for (const name of REST_ON) {
+      let surface = landmarkSurface(partner, name, hand, { offset });
+      // Beyond the arm, the same part where the arm, pointed at it, does reach.
+      if (surface && !reaches(surface.point)) surface = landmarkSurface(partner, name, add(shoulder, unit(sub(surface.point, shoulder)).map((v) => v * span)), { offset });
+      if (surface && reaches(surface.point) && onRegion(partner, name, surface.point)) options.push({ target: surface.point, contact: { from: `hand.${side}`, to: name, fromActor: index, toActor: k, type: "rest", strength: 0.8 } });
+    }
+  });
+  // On its own body only where it would lie on it, not hang under it, and on
+  // the outside of it, not between the legs.
+  const own = actor.volumes.filter((v) => OWN_REST.has(v.bone));
+  const d = bodyDistance(hand, own);
+  const n = bodyNormal(hand, own);
+  const outward = unit(sub(shoulder, actor.evaluated.positions[actor.skeleton.boneIndex(`shoulder_${side === "l" ? "r" : "l"}`)]));
+  if (n[1] > 0.5 || (n[1] > -0.3 && dot(n, outward) > 0.3)) options.push({ target: add(hand, n.map((v) => v * (offset - d))), aim: n.map((v) => -v) });
+  // Or on the top of its own thigh or knee, on that side, as a hand with nothing else to lie on is put.
+  for (const name of [`thigh.${side}`, `knee.${side}`]) {
+    const surface = landmarkSurface(actor, name, add(landmarkPoint(actor, name), [0, 0.3, 0]), { offset });
+    if (surface && surface.normal[1] >= 0.5 && /^(hip|knee)_/.test(surface.volume.bone)) options.push({ target: surface.point, aim: surface.normal.map((v) => -v) });
+  }
+  for (const prop of props) {
+    const { distance, normal } = propDistance(prop, hand);
+    if (normal[1] > 0.5) options.push({ target: add(hand, normal.map((v) => v * (PALM_OVER - distance))), aim: normal.map((v) => -v) });
+  }
+  if (floor != null) options.push({ target: [hand[0], floor + PALM_OVER, hand[2]], aim: [0, -1, 0], fall });
+  // Or swung down about the shoulder, as far out as it is, on to the floor or
+  // the furniture under it - an arm held up over the shoulder out to its side
+  // and towards its feet, as a lying figure's arm falls.
+  const out = level(sub(hand, shoulder));
+  const arm = len(sub(hand, shoulder));
+  const ways = fall && out.some(Boolean) ? [{ way: out, at: hand }] : [];
+  if (fall && hand[1] - shoulder[1] > arm / 2) {
+    const way = level(add(outward, level(sub(landmarkPoint(actor, "pelvis"), landmarkPoint(actor, "neck"))).map((v) => v * 0.7)));
+    ways.push({ way, at: add(shoulder, way.map((v) => v * arm)), swing: true });
+  }
+  for (const { way, at, swing } of ways)
+    for (const top of [floor, ...props.map((prop) => propTopAt(prop, at[0], at[2]))]) {
+      const drop = top == null ? NaN : top + PALM_OVER - shoulder[1];
+      if (!(top + PALM_OVER < hand[1] && Math.abs(drop) < arm)) continue;
+      const target = add(shoulder, [way[0] * Math.sqrt(arm ** 2 - drop ** 2), drop, way[2] * Math.sqrt(arm ** 2 - drop ** 2)]);
+      // On the top it was measured off, not over an edge of it.
+      if (top !== floor && !props.some((prop) => Math.abs((propTopAt(prop, target[0], target[2]) ?? Infinity) - top) < 0.02)) continue;
+      options.push({ target, aim: [0, -1, 0], fall, swing });
+    }
+  // Or, held out past the edge of the furniture, drawn back on to its top.
+  if (fall && out.some(Boolean))
+    for (const prop of props) {
+      if (propTopAt(prop, hand[0], hand[2]) != null) continue;
+      const back = [0.05, 0.1, 0.15, 0.2].find((step) => propTopAt(prop, hand[0] - out[0] * step, hand[2] - out[2] * step) != null);
+      const top = back && propTopAt(prop, hand[0] - out[0] * (back + 0.04), hand[2] - out[2] * (back + 0.04));
+      if (top != null && top + PALM_OVER < hand[1]) options.push({ target: [hand[0] - out[0] * (back + 0.04), top + PALM_OVER, hand[2] - out[2] * (back + 0.04)], aim: [0, -1, 0], fall });
+    }
+  const near = options
+    .map((option) => ({ ...option, move: len(sub(option.target, hand)) }))
+    .filter((option) => (option.move <= reach || option.swing || (fall && option.target[1] < hand[1] && Math.hypot(option.target[0] - hand[0], option.target[2] - hand[2]) <= reach)) && reaches(option.target))
+    .sort((a, b) => a.move - b.move);
+  if (near.length && near[0].move < REST_SLACK) return near[0].contact ? [near[0]] : [];
+  return near;
+}
+
+/** Arm shapes put round the partner, whose hands go on to them where they fall short. */
+const REACHING_ARMS = new Set(["arms_around"]);
+
+/** How many of the places a free hand would lie are tried, the nearest first, before it is left where it is. */
+const REST_TRIES = 4;
+
+/**
+ * Lay each free hand on what is beside it. A hand that holds nothing and that
+ * its posture does not lean on was left wherever its arm was posed: a hand's
+ * breadth over the bed, off a partner's thigh, in the side it hangs by, which
+ * reads as a hand held stiffly in the air, or as one in the body. Within
+ * `REST_REACH` of the partner, the top of its own thigh or knee, its own
+ * trunk, the furniture or the floor - `PARTNER_REACH`, for an arm the source
+ * did not draw anywhere in particular - its arm is bent until it lies on the
+ * nearest of them it reaches, as a hand at rest does. One laid on a partner
+ * rests there as a `rest` contact, so the viewer cups it and the palm is
+ * turned onto them like any other hand that touches; one laid on anything
+ * else has its palm turned onto it here. A figure lying down (`lying`) has an
+ * arm held up over nothing fall: swung down about the shoulder on to the floor
+ * or the furniture under it - out to the side and towards the feet if it was
+ * up over the shoulder - or drawn back on to the top it is held out past, the
+ * hand on its palm, or else on its back.
+ *
+ * A reach that takes the arm into the partner, the body it is on or the
+ * furniture further than it already was, or under the floor, is not made, nor
+ * one the scene's checks will not have (`checked`). One on the partner, or
+ * fallen, is tried again with the elbow out to the side, as an arm laid on
+ * something bends; then the next nearest is tried, up to `REST_TRIES` of
+ * them. A hand `plantHands` put down stays
+ * down; one it was to put down and could not reaches as far as an arm the
+ * source did not draw. A tied figure's (`bound`) stay where they are.
+ */
+function restFreeHands(input, specs, chosen, surfaceName, checked, { sought = new Set(), planted = new Set() } = {}) {
+  const { surface, props } = propsFor(surfaceName);
+  // Off the furniture a raised surface's ground is not a floor anything can lie on.
+  const floor = surface.ground <= 1e-3 ? surface.ground : null;
+  const held = [...(input.contacts ?? []), ...(input.limbContacts ?? [])];
+  const specOf = (index) => {
+    const entry = input.actors[index];
+    return Array.isArray(entry) ? entry[chosen[index] ?? 0] : entry;
+  };
+  const drawn = (index, side) => Object.keys(specOf(index)?.details ?? {}).some((bone) => bone === `shoulder_${side}` || bone === `elbow_${side}`);
+  const reaching = (index, side) => REACHING_ARMS.has(specOf(index)?.arms) || (input.reach ?? []).some((reach) => reach.index === index && (!reach.side || reach.side === side));
+  const wearing = (base, rests) => {
+    const out = base.slice();
+    for (const { actor, arm } of rests) out[actor] = { ...out[actor], joints: { ...out[actor].joints, ...arm } };
+    return out;
+  };
+  let out = specs;
+  const rests = [];
+  const bound = new Set(input.bound ?? []);
+  for (let index = 0; index < specs.length; index += 1)
+    for (const side of ["l", "r"]) {
+      if (bound.has(index) || planted.has(`${index}.${side}`) || held.some((contact) => handIn(contact, index, side))) continue;
+      const actors = out.map((spec, k) => liveActor(spec, k));
+      const actor = actors[index];
+      if (leansOn(actors, index, side, props, floor)) continue;
+      let options = restFor(actors, index, side, props, floor, drawn(index, side) && !sought.has(`${index}.${side}`) ? REST_REACH : PARTNER_REACH, { fall: lying(actor) });
+      // An arm put out towards the partner and short of them goes on to them, as far as an arm the source did not place.
+      if (reaching(index, side) && !sought.has(`${index}.${side}`)) {
+        const onto = restFor(actors, index, side, props, floor, PARTNER_REACH).filter((option) => option.contact);
+        if (onto.length) options = onto;
+      }
+      if (options.length && options[0].move < REST_SLACK) {
+        rests.push({ actor: index, arm: {}, contact: options[0].contact });
+        continue;
+      }
+      const chain = side === "l" ? LIMB_CHAINS.armL : LIMB_CHAINS.armR;
+      const { skeleton } = actor;
+      const was = armClash(actors, index, side, props);
+      // The nearest a hand can lie on: one an arm cannot reach, or reaches only through something, gives way to the next.
+      const tried = [];
+      // A lying figure's hand fallen on to the floor or the bed lies on its palm, or else on its back;
+      // that and a hand laid on the partner are tried again with the elbow out to the side.
+      const outward = unit(sub(landmarkPoint(actor, "shoulder", side), landmarkPoint(actor, "shoulder", side === "l" ? "r" : "l")));
+      for (const rest of options.flatMap((option) => (option.fall ? [option, { ...option, aim: [0, 1, 0] }, { ...option, elbow: outward }] : option.contact ? [option, { ...option, elbow: outward }] : [option]))) {
+        const again = tried.some((target) => len(sub(target, rest.target)) < 0.02);
+        if (again && !rest.fall && !rest.elbow) continue;
+        if (!again && tried.length >= REST_TRIES) break;
+        if (!again) tried.push(rest.target);
+        const pose = { root: actor.pose.root, joints: structuredClone(actor.pose.joints) };
+        const body = { skeleton, pose, evaluated: actor.evaluated, localVolumes: actor.localVolumes };
+        // Laid on anything but a partner - whose contact turns it at view - the palm is turned onto it here.
+        const turn = !rest.contact && rest.aim;
+        const fingers = turn && level(sub(rest.target, landmarkPoint(actor, "pelvis")));
+        // The wrist is what the chain ends at; the palm's middle is a little past it, and turns with the arm.
+        for (let pass = 0; pass < 4; pass += 1) {
+          const at = (bone) => body.evaluated.positions[skeleton.boneIndex(bone)];
+          const hand = landmarkPoint(body, "hand", side);
+          const pole = rest.elbow ?? sub(at(chain.mid), add(at(chain.root), at(chain.end)).map((v) => v / 2));
+          body.evaluated = solveTwoBoneIK(skeleton, pose, chain, add(rest.target, sub(at(chain.end), hand)), { pole, evaluated: body.evaluated }).evaluated;
+          if (turn && pass < 3) turnPalm(body, side, rest.aim, { fingers, sweep: pass === 0 });
+        }
+        const arm = { [chain.root]: pose.joints[chain.root], [chain.mid]: pose.joints[chain.mid], ...(turn ? { [chain.end]: pose.joints[chain.end] } : {}) };
+        const moved = wearing(out, [{ actor: index, arm }]);
+        const after = moved.map((spec, k) => (k === index ? liveActor(spec, k) : actors[k]));
+        if (len(sub(landmarkPoint(after[index], "hand", side), rest.target)) > 0.03) continue;
+        const now = armClash(after, index, side, props);
+        if (rest.fall && dot(palmNormal(after[index], side), rest.aim) < 0.8) continue;
+        if (now.partner > Math.max(was.partner, rest.contact ? TOUCH_SLACK : 0.015) || now.own > Math.max(was.own, 0.015) || now.prop > Math.max(was.prop, 0.01)) continue;
+        // A hand fallen flat on the floor may sink its thumb a little into it.
+        if (floor != null && now.low < Math.min(was.low, floor - (rest.fall ? 0.01 : 0.005))) continue;
+        out = moved;
+        rests.push({ actor: index, arm, contact: rest.contact });
+        break;
+      }
+    }
+  if (!rests.length) return specs;
+  // A scene that met its checks still meets them, or the hands are laid one at a time.
+  let kept = rests;
+  if (!checked(out) && checked(specs)) {
+    kept = [];
+    for (const rest of rests) if (checked(wearing(specs, [...kept, rest]))) kept.push(rest);
+  }
+  input.limbContacts = [...(input.limbContacts ?? []), ...kept.filter((rest) => rest.contact).map((rest) => rest.contact)];
+  return wearing(specs, kept);
+}
+
+/** Arm shapes whose hands are on what the figure is on, and where: in front of or under it, or behind it. */
+const PLANTED_ARMS = { arms_planted: "down", arms_on_prop: "down", arms_braced_behind: "behind" };
+/** Arm shapes that put the hands somewhere of their own, which are not put down: on the forearms, round the partner, over the head. */
+const PLACED_ARMS = new Set(["arms_forearms", "arms_around", "arms_overhead"]);
+/** How far from where a planted hand would rather be it may go to find somewhere it reaches and fits. */
+const PLANT_RINGS = [0, 0.06, 0.12, 0.18, 0.26, 0.34];
+
+/**
+ * Put down on the bed, the floor or the seat the hands the source picture
+ * puts there. A record whose partner props themselves on their hands, or
+ * leans back on them, says so - `plan.plant`, and the arm shapes that say it
+ * (`PLANTED_ARMS`) - but the shape is a set of angles, and a set of angles
+ * puts a hand where it puts it: of the hands the library said were planted,
+ * five in six hung in the air, a hand's length or more over the floor, with
+ * the brace's spread fingers on nothing.
+ *
+ * So the arm is bent and swung, by IK, until the middle of the palm is on the
+ * highest thing under the shoulder it can reach - or, braced behind, the one
+ * nearest the hips - beside the shoulder (in front of it for a figure upright,
+ * under it for one face down), or behind the hips, or as near there as it
+ * reaches without the arm going into the partner, its own body or the
+ * furniture; and the palm is turned flat onto it, the fingers away from the
+ * body. Where what the figure is on is out of its reach - a figure kneeling
+ * up over a partner who lies on the bed - the palm goes on the partner under
+ * the shoulder instead, on the top of them, as a `rest` contact. A hand its
+ * posture already stands on, or that holds something, is
+ * left alone; so is one with nowhere it reaches, and one the scene's checks
+ * will not have it put down (`checked`). So are a tied figure's (`bound`), an
+ * arm the template draws somewhere of its own (`PLACED_ARMS`) and the record's
+ * details do not draw over, and, where it is only the posture that leans on
+ * the hands, an arm the record's details draw.
+ * Returns the specs and the hands put down, or that should have been.
+ */
+function plantHands(input, specs, chosen, surfaceName, checked) {
+  const { surface, props } = propsFor(surfaceName);
+  const floor = surface.ground <= 1e-3 ? surface.ground : null;
+  // What can be leant on: the furniture, not a car's shell.
+  const tops = (surface.props ?? []).map(withBounds);
+  const held = [...(input.contacts ?? []), ...(input.limbContacts ?? [])];
+  const specOf = (index) => {
+    const entry = input.actors[index];
+    return Array.isArray(entry) ? entry[chosen[index] ?? 0] : entry;
+  };
+  const wanted = new Map();
+  const bound = new Set(input.bound ?? []);
+  // The record's details draw an arm over the shape the template gave it.
+  const drawn = (index, side) => Object.keys(specOf(index)?.details ?? {}).some((bone) => bone === `shoulder_${side}` || bone === `elbow_${side}`);
+  // An arm the template draws somewhere of its own - on the forearms, round the partner, over the head - keeps it.
+  const placed = (index, side) => PLACED_ARMS.has(specOf(index)?.arms) && !drawn(index, side);
+  for (const { index, side, where } of input.plant ?? []) for (const s of side ? [side] : ["l", "r"]) if (!placed(index, s)) wanted.set(`${index}.${s}`, { index, side: s, where });
+  // And the hands a posture is drawn leaning on, where they are on nothing, but for an arm the record draws another way.
+  const posed = specs.map((spec, k) => liveActor(spec, k));
+  specs.forEach((_, index) => {
+    const where = PLANTED_ARMS[specOf(index)?.arms];
+    for (const side of ["l", "r"]) {
+      if (wanted.has(`${index}.${side}`)) continue;
+      if (where) wanted.set(`${index}.${side}`, { index, side, where });
+      else if (!placed(index, side) && !drawn(index, side) && posed[index].posture.supports.some((s) => ["hand", "hands"].includes(s.landmark) && (!s.side || s.side === side)) && !leansOn(posed, index, side, props, floor))
+        wanted.set(`${index}.${side}`, { index, side, where: "down" });
+    }
+  });
+  const wearing = (base, plants) => {
+    const out = base.slice();
+    for (const { actor, arm } of plants) out[actor] = { ...out[actor], joints: { ...out[actor].joints, ...arm } };
+    return out;
+  };
+  let out = specs;
+  const plants = [];
+  const sought = new Set();
+  for (const { index, side, where } of wanted.values()) {
+    if (index >= specs.length || bound.has(index) || held.some((contact) => handIn(contact, index, side))) continue;
+    const actors = out.map((spec, k) => liveActor(spec, k));
+    const actor = actors[index];
+    if (leansOn(actors, index, side, props, floor)) continue;
+    sought.add(`${index}.${side}`);
+    const chain = side === "l" ? LIMB_CHAINS.armL : LIMB_CHAINS.armR;
+    const { skeleton } = actor;
+    const at = (bone, evaluated = actor.evaluated) => evaluated.positions[skeleton.boneIndex(bone)];
+    const { shoulder, length } = armSpan(actor, side);
+    const front = level(sub(landmarkPoint(actor, "chest"), landmarkPoint(actor, "upperBack")));
+    const outward = level(sub(shoulder, at(`shoulder_${side === "l" ? "r" : "l"}`)));
+    const pelvis = landmarkPoint(actor, "pelvis");
+    const base = add(add(shoulder, front.map((v) => v * (where === "behind" ? -0.22 : 0.12))), outward.map((v) => v * 0.1));
+    const limit = where === "behind" ? pelvis[1] + 0.15 : shoulder[1] - 0.1;
+    const under = (x, z) => {
+      let top = floor != null && floor <= limit ? floor : null;
+      for (const prop of tops) {
+        const t = propTopAt(prop, x, z);
+        if (t != null && t <= limit && (top == null || t > top)) top = t;
+      }
+      return top;
+    };
+    const trunk = actor.volumes.filter((v) => !/^(clavicle|shoulder|elbow|wrist|hand)_/.test(v.bone));
+    const offset = skeleton.stature * 0.018;
+    const reaches = (target) => {
+      const reach = len(sub(target, shoulder));
+      return reach <= STRAIGHT * length && reach >= 0.45 * length;
+    };
+    const clear = (target, skip) => bodyDistance(target, trunk) >= 0.04 && actors.every((other, k) => k === index || k === skip || bodyDistance(target, other.volumes) >= 0.04);
+    const down = [];
+    const onto = [];
+    for (const r of PLANT_RINGS)
+      for (let k = 0; k < (r ? 8 : 1); k += 1) {
+        const x = base[0] + r * Math.cos((k * Math.PI) / 4);
+        const z = base[2] + r * Math.sin((k * Math.PI) / 4);
+        const top = under(x, z);
+        const target = top == null ? null : [x, top + PALM_OVER, z];
+        if (target && reaches(target) && clear(target)) down.push({ target, aim: [0, -1, 0] });
+        // Or the partner under the shoulder, where what the figure is on is beyond its reach.
+        actors.forEach((partner, p) => {
+          if (p === index) return;
+          let y = limit;
+          let d = bodyDistance([x, y, z], partner.volumes);
+          if (d <= 0) return;
+          while (d > 0.002 && y > (top ?? 0)) {
+            y -= Math.max(d * 0.9, 0.004);
+            d = bodyDistance([x, y, z], partner.volumes);
+          }
+          if (d > 0.002 || bodyNormal([x, y, z], partner.volumes)[1] < 0.5) return;
+          const touch = [x, y, z];
+          let best = null;
+          for (const name of REST_ON) {
+            const surface = landmarkSurface(partner, name, touch, { offset });
+            if (!surface || surface.normal[1] < 0.5) continue;
+            // Of the names the place answers to - a thigh's top is the hip's too - the one it is nearest the middle of.
+            const off = len(sub(surface.point, touch));
+            const score = off + 0.1 * len(sub(surface.point, surface.anchor));
+            if (off <= offset + 0.03 && onRegion(partner, name, surface.point) && (!best || score < best.score)) best = { ...surface, name, score };
+          }
+          if (!best || !reaches(best.point) || !clear(best.point, p)) return;
+          onto.push({ target: best.point, aim: best.normal.map((v) => -v), contact: { from: `hand.${side}`, to: best.name, fromActor: index, toActor: p, type: "rest", strength: 0.8 } });
+        });
+      }
+    const was = armClash(actors, index, side, props);
+    for (const { target, aim, contact } of [...down, ...onto]) {
+      const pose = { root: actor.pose.root, joints: structuredClone(actor.pose.joints) };
+      const body = { skeleton, pose, evaluated: actor.evaluated, localVolumes: actor.localVolumes };
+      // The fingers run away from the body, as a hand leant on spreads them.
+      const fingers = level(sub(target, pelvis));
+      for (let pass = 0; pass < 4; pass += 1) {
+        const hand = landmarkPoint(body, "hand", side);
+        const pole = sub(at(chain.mid, body.evaluated), add(at(chain.root, body.evaluated), at(chain.end, body.evaluated)).map((v) => v / 2));
+        body.evaluated = solveTwoBoneIK(skeleton, pose, chain, add(target, sub(at(chain.end, body.evaluated), hand)), { pole, evaluated: body.evaluated }).evaluated;
+        if (pass < 3) turnPalm(body, side, aim, { fingers, sweep: pass === 0 });
+      }
+      if (len(sub(landmarkPoint(body, "hand", side), target)) > 0.03 || dot(palmNormal(body, side), aim) < 0.8) continue;
+      const arm = Object.fromEntries([chain.root, chain.mid, chain.end].map((bone) => [bone, pose.joints[bone]]));
+      const moved = wearing(out, [{ actor: index, arm }]);
+      const after = moved.map((spec, k) => (k === index ? liveActor(spec, k) : actors[k]));
+      const now = armClash(after, index, side, props);
+      if (now.partner > Math.max(was.partner, TOUCH_SLACK) || now.own > Math.max(was.own, 0.015) || now.prop > Math.max(was.prop, 0.01)) continue;
+      if (floor != null && now.low < Math.min(was.low, floor - 0.005)) continue;
+      out = moved;
+      plants.push({ actor: index, side, arm, contact });
+      break;
+    }
+  }
+  if (!plants.length) return { specs, sought, planted: new Set() };
+  // A scene that met its checks still meets them, or the hands are put down one at a time.
+  let kept = plants;
+  if (!checked(out) && checked(specs)) {
+    kept = [];
+    for (const plant of plants) if (checked(wearing(specs, [...kept, plant]))) kept.push(plant);
+  }
+  input.limbContacts = [...(input.limbContacts ?? []), ...kept.filter((plant) => plant.contact).map((plant) => plant.contact)];
+  return { specs: wearing(specs, kept), sought, planted: new Set(kept.map((plant) => `${plant.actor}.${plant.side}`)) };
 }
 
 /** Whether `contact` is held by the hand on `side` of the actor at `actor`, at either end. */

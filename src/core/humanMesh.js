@@ -930,7 +930,9 @@ function mat4TransformUnit(m, d) {
  * doing. A joint with no curl axis, or a hand with no shape asked for, composes
  * exactly as before.
  *
- * @param {{l: string, r: string}} [hands] shape names from `HAND_SHAPES`
+ * @param {{l: string, r: string, closure?: object}} [hands] shape names from
+ *   `HAND_SHAPES`, and how far each finger of each side has closed into its
+ *   shape where `fitFingers` has stopped it on what it holds
  */
 export function poseJoints(template, skeleton, evaluated, align, hands = REST_HANDS) {
   const H = skeleton.stature;
@@ -972,7 +974,7 @@ function curled(joint, hands) {
   if (!joint.curl) return joint.localRest;
   const shape = hands?.[joint.side] ?? "relaxed";
   if (shape === "brace" && joint.brace) return joint.brace;
-  const degrees = fingerFlexion(shape, joint.finger, joint.segment);
+  const degrees = fingerFlexion(shape, joint.finger, joint.segment, hands?.closure?.[joint.side]?.[joint.finger]);
   const fan = joint.splay ? fingerSplay(shape, joint.finger) : 0;
   if (!degrees && !fan) return joint.localRest;
   let bend = mat4Compose([0, 0, 0], quatFromAxisAngle(joint.curl, (degrees * Math.PI) / 180));

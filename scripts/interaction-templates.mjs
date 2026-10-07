@@ -738,7 +738,9 @@ function edgePlan(cls, surface, aPosture, { legs, lean = null, oral = false }) {
     // A raised leg goes up past the partner's arm, over the shoulder; wrapped,
     // the knees bend tight to bring the heels in behind the partner's hips.
     const lift = legs === "one_raised" ? { override: { hip_l: { flexion: 100, abduction: 34, rotation: 0 } } } : legs === "wrapped" ? { override: both("knee", { flexion: 120 }) } : {};
-    a = figure(cls.a_body, "supine", { ...legShape, ...lift, soloSurface: "floor", arms: "arms_overhead" });
+    // The hands on the seat beside the hips: held up beside the head, slouched with the head against
+    // the backrest, they are up in the air, and hung by the sides they are in the partner's way.
+    a = figure(cls.a_body, "supine", { ...legShape, ...lift, soloSurface: "floor", arms: "arms_braced_behind" });
     const standingB = has(cls, /partner standing/);
     aPlace = slouchedPlace(0, standingB, SEATS[surface]);
     const squats = [stance(45, 30, 70), stance(65, 35, 100), stance(80, 40, 115)].map((joints, i) => figure(cls.b_body, "standing", { soloSurface: "floor", ...joints, prefer: (standingB ? 0 : 0.04) + i * 0.001 }));
@@ -3140,6 +3142,7 @@ export const TEMPLATES = {
           surface: "pole",
           mode: "fit",
           roles: { a: 0, b: 1 },
+          bound: [0],
           actors: [
             figure(cls.a_body, "standing", { soloSurface: "floor", override: { ...DETAILS.arms_back, ...both("elbow", { flexion: 40 }), ...(cls.lean === "forward" ? { neck: { flexion: -25 }, head: { flexion: -15 } } : {}) } }),
             stanceCandidates(cls.b_body),
@@ -3792,13 +3795,59 @@ function withDetails(plan, cls) {
 }
 
 /**
+ * The hands a record puts down on what the figure is on: B's, where it says
+ * B's hands are on the surface or braced behind - but not an arm B's details
+ * draw some other way, put forward, round the partner, behind the head - and
+ * any role's whose arm details plant them. The composer puts them there
+ * (`plantHands`).
+ */
+const PLANTED_DETAILS = { arms_planted: "down", arms_braced_behind: "behind" };
+const PLANTED_HANDS = { surface: "down", behind: "behind" };
+const rolesOf = (plan) => ({ ...(plan.roles ?? { a: 0, ...(plan.actors.length > 1 ? { b: 1 } : {}) }), ...(plan.thirdIndex != null ? { c: plan.thirdIndex } : {}) });
+function withPlants(plan, cls) {
+  const roles = rolesOf(plan);
+  const plant = [];
+  const drawn = (cls.b_pose ?? []).filter((name) => !PLANTED_DETAILS[name]);
+  const sides = ["l", "r"].filter((side) => !armPosed(drawn, side));
+  if (PLANTED_HANDS[cls.b_hands] && roles.b != null && sides.length) plant.push({ index: roles.b, where: PLANTED_HANDS[cls.b_hands], ...(sides.length === 1 ? { side: sides[0] } : {}) });
+  for (const [role, index] of Object.entries(roles))
+    for (const name of cls[`${role}_pose`] ?? []) if (PLANTED_DETAILS[name] && !plant.some((p) => p.index === index)) plant.push({ index, where: PLANTED_DETAILS[name] });
+  return plant.length ? { ...plan, plant } : plan;
+}
+
+/**
+ * The hands a record reaches towards the partner with: arms put forward or
+ * round them. A hand the reach leaves short of the partner is laid on them
+ * (`restFreeHands`), not left in the air where the arm was put.
+ */
+const REACHING_DETAILS = { arms_forward: null, arms_around: null, arm_forward_l: "l", arm_forward_r: "r" };
+function withReaches(plan, cls) {
+  const reach = [];
+  for (const [role, index] of Object.entries(rolesOf(plan)))
+    for (const name of cls[`${role}_pose`] ?? []) if (name in REACHING_DETAILS) reach.push({ index, ...(REACHING_DETAILS[name] ? { side: REACHING_DETAILS[name] } : {}) });
+  return reach.length ? { ...plan, reach } : plan;
+}
+
+/**
+ * The figures whose hands are tied - in cuffs, or as the template ties them
+ * (`bound`) - which stay where the arms were put: nothing puts them down or
+ * lays them on anything.
+ */
+function withBound(plan, cls) {
+  const bound = new Set(plan.bound ?? []);
+  for (const [role, index] of Object.entries(rolesOf(plan))) if ((cls[`${role}_wear`] ?? []).includes("cuffs")) bound.add(index);
+  return bound.size ? { ...plan, bound: [...bound] } : plan;
+}
+
+/**
  * Plan for any classification record, including solo and three-person scenes,
  * with its details laid on. A plan may carry a `retry`: the same scene laid out
  * another way, for when the first fails its checks.
  */
 export function planFor(cls) {
   const plan = basePlan(cls);
-  return plan.retry ? { ...withDetails(plan, cls), retry: withDetails(plan.retry, cls) } : withDetails(plan, cls);
+  const laid = (p) => withBound(withReaches(withPlants(withDetails(p, cls), cls), cls), cls);
+  return plan.retry ? { ...laid(plan), retry: laid(plan.retry) } : laid(plan);
 }
 
 function basePlan(cls) {
@@ -3824,7 +3873,7 @@ function basePlan(cls) {
     // buttocks and the arms back along the body to the ankles.
     if (posture === "prone" && has(cls, /hogtie/)) {
       const joints = { ...both("shoulder", { flexion: -30, abduction: 4 }), ...both("elbow", { flexion: 10 }), ...both("hip", { flexion: -5, abduction: 10, rotation: 0 }), ...both("knee", { flexion: 135 }) };
-      return { surface: lying(cls, "floor"), mode: "fit", roles: { a: 0 }, actors: [figure(cls.a_body, posture, { joints })], fit: [], contacts: [], checks: [] };
+      return { surface: lying(cls, "floor"), mode: "fit", roles: { a: 0 }, bound: [0], actors: [figure(cls.a_body, posture, { joints })], fit: [], contacts: [], checks: [] };
     }
     // Curled up on the side, the knees drawn up to the chest.
     if (posture === "side_lying" && has(cls, /curled/)) {

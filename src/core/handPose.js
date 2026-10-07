@@ -271,11 +271,24 @@ export function fingersInShape(actor, side) {
 /**
  * Flexion in degrees for one phalanx.
  *
+ * `closure` is how far the finger has closed into the shape: 1 is the shape's
+ * own row, 0 the `open` hand. A hand closes on what it holds until its fingers
+ * meet it, and no further - see `fitFingers` - so a grip round a thigh wider
+ * than its curl stops on the skin instead of going on into it.
+ *
  * @param {string} shape a key of `HAND_SHAPES`
  * @param {string} finger `index` | `middle` | `ring` | `pinky` | `thumb`
  * @param {number} segment 1, 2 or 3, proximal to distal
+ * @param {number} [closure] 0 to 1
  */
-export function fingerFlexion(shape, finger, segment) {
+export function fingerFlexion(shape, finger, segment, closure = 1) {
+  const full = shapeFlexion(shape, finger, segment);
+  if (!(closure < 1)) return full;
+  const open = shapeFlexion("open", finger, segment);
+  return open + (full - open) * Math.max(0, closure);
+}
+
+function shapeFlexion(shape, finger, segment) {
   const table = HAND_SHAPES[shape] ?? HAND_SHAPES.relaxed;
   const named = table[finger];
   if (named) return named[segment - 1] ?? 0;
