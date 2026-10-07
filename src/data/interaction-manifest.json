@@ -2,16 +2,16 @@
   "format": "poseforge.interaction-manifest",
   "version": 1,
   "file": "catalog/interaction-studies-v1.json",
-  "bytes": 4304494,
-  "sha256": "039348abdd8e047d34e526cc3c697b2d6c901f969187c6b0547b8250c9d5314e",
+  "bytes": 4304520,
+  "sha256": "54e79e8a9d7d069811834cb57a92f85da66f0b27ed303a32cecc9d2242ffa241",
   "records": 1283,
   "distinctScenes": 1283,
   "participants": 2544,
   "passedChecks": 1283,
   "templates": {
     "cowgirl": {
-      "records": 56,
-      "passed": 56
+      "records": 60,
+      "passed": 60
     },
     "doggy": {
       "records": 30,
@@ -54,12 +54,12 @@
       "passed": 15
     },
     "lap_facing": {
-      "records": 95,
-      "passed": 95
+      "records": 96,
+      "passed": 96
     },
     "lap_reverse": {
-      "records": 78,
-      "passed": 78
+      "records": 77,
+      "passed": 77
     },
     "missionary": {
       "records": 62,
@@ -78,12 +78,12 @@
       "passed": 9
     },
     "prone_on_top": {
-      "records": 13,
-      "passed": 13
+      "records": 14,
+      "passed": 14
     },
     "prone_rear": {
-      "records": 62,
-      "passed": 62
+      "records": 61,
+      "passed": 61
     },
     "rear_oral": {
       "records": 17,
@@ -94,8 +94,8 @@
       "passed": 29
     },
     "reverse_cowgirl": {
-      "records": 61,
-      "passed": 61
+      "records": 57,
+      "passed": 57
     },
     "scissors": {
       "records": 32,
@@ -122,8 +122,8 @@
       "passed": 15
     },
     "standing_bent_over": {
-      "records": 25,
-      "passed": 25
+      "records": 23,
+      "passed": 23
     },
     "standing_carry": {
       "records": 17,
@@ -142,8 +142,8 @@
       "passed": 12
     },
     "supported_inversion": {
-      "records": 67,
-      "passed": 67
+      "records": 69,
+      "passed": 69
     },
     "wheelbarrow": {
       "records": 32,

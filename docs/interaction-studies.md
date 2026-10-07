@@ -72,7 +72,7 @@ the app notes this.
 
 | Template | Records | Pass all checks |
 |---|---:|---:|
-| `cowgirl` | 56 | 56 |
+| `cowgirl` | 60 | 60 |
 | `doggy` | 30 | 30 |
 | `doggy_low` | 45 | 45 |
 | `edge_head_oral` | 10 | 10 |
@@ -83,29 +83,29 @@ the app notes this.
 | `group_three` | 10 | 10 |
 | `kneeling_missionary` | 111 | 111 |
 | `kneeling_rear_upright` | 15 | 15 |
-| `lap_facing` | 95 | 95 |
-| `lap_reverse` | 78 | 78 |
+| `lap_facing` | 96 | 96 |
+| `lap_reverse` | 77 | 77 |
 | `missionary` | 62 | 62 |
 | `oral_on_a` | 40 | 40 |
 | `oral_on_b_kneeling` | 31 | 31 |
 | `oral_on_b_lying` | 9 | 9 |
-| `prone_on_top` | 13 | 13 |
-| `prone_rear` | 62 | 62 |
+| `prone_on_top` | 14 | 14 |
+| `prone_rear` | 61 | 61 |
 | `rear_oral` | 17 | 17 |
 | `reclined_facing` | 29 | 29 |
-| `reverse_cowgirl` | 61 | 61 |
+| `reverse_cowgirl` | 57 | 57 |
 | `scissors` | 32 | 32 |
 | `side_facing` | 4 | 4 |
 | `sixty_nine` | 41 | 41 |
 | `solo` | 32 | 32 |
 | `spooning` | 33 | 33 |
 | `squat_cowgirl` | 15 | 15 |
-| `standing_bent_over` | 25 | 25 |
+| `standing_bent_over` | 23 | 23 |
 | `standing_carry` | 17 | 17 |
 | `standing_facing` | 29 | 29 |
 | `standing_rear` | 14 | 14 |
 | `supine_stack` | 12 | 12 |
-| `supported_inversion` | 67 | 67 |
+| `supported_inversion` | 69 | 69 |
 | `wheelbarrow` | 32 | 32 |
 
 Passing the checks means the declared contacts close, the figures are clear of

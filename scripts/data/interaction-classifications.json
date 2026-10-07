@@ -122,9 +122,10 @@
 "b_body": "male",
 "lean": "upright",
 "confidence": 0.75,
+"notes": "facing toward his feet",
 "a_pose": [
 "head_back",
-"arms_braced_behind"
+"arms_planted"
 ],
 "b_pose": [
 "foot_planted_l",
@@ -1345,16 +1346,15 @@
 },
 {
 "id": "merger",
-"template": "lap_reverse",
+"template": "lap_facing",
 "surface": "bed",
 "a_body": "female",
 "b_body": "male",
-"lean": "upright",
+"lean": "back",
 "b_hands": "hips",
-"confidence": 0.8,
+"confidence": 0.85,
 "a_pose": [
-"head_back",
-"twist_r"
+"head_back"
 ]
 },
 {
@@ -2069,7 +2069,7 @@
 },
 {
 "id": "extended-cowgirl",
-"template": "reverse_cowgirl",
+"template": "cowgirl",
 "surface": "floor",
 "a_body": "male",
 "b_body": "female",
@@ -2077,8 +2077,12 @@
 "lean": "back",
 "b_hands": "behind",
 "confidence": 0.88,
+"notes": "seated, knees up",
+"a_pose": [
+"arms_overhead"
+],
 "b_pose": [
-"knee_up_r"
+"head_back"
 ]
 },
 {
@@ -2870,18 +2874,14 @@
 },
 {
 "id": "aquarius-legs-straight",
-"template": "standing_bent_over",
+"template": "supported_inversion",
 "surface": "floor",
 "a_body": "female",
 "b_body": "male",
 "a_legs": "straight",
-"lean": "forward",
 "b_hands": "hips",
 "confidence": 0.86,
-"a_pose": [
-"curl",
-"arms_overhead"
-],
+"notes": "backbend, partner standing",
 "b_pose": [
 "curl"
 ]
@@ -6031,16 +6031,14 @@
 },
 {
 "id": "aquarius",
-"template": "standing_bent_over",
+"template": "supported_inversion",
 "surface": "floor",
 "a_body": "female",
 "b_body": "male",
+"a_legs": "wrapped",
 "b_hands": "hips",
-"confidence": 0.94,
-"a_pose": [
-"curl",
-"arms_forward"
-],
+"confidence": 0.9,
+"notes": "backbend, partner standing",
 "b_pose": [
 "curl"
 ]
@@ -6978,18 +6976,16 @@
 },
 {
 "id": "bow-arrow",
-"template": "prone_rear",
+"template": "prone_on_top",
 "surface": "floor",
-"a_body": "female",
-"b_body": "male",
+"a_body": "male",
+"b_body": "female",
 "a_legs": "straight",
 "lean": "forward",
 "b_hands": "surface",
 "confidence": 0.78,
-"notes": "on forearms",
-"b_pose": [
-"arms_around",
-"legs_apart"
+"a_pose": [
+"head_forward"
 ]
 },
 {
@@ -12957,7 +12953,7 @@
 "b_body": "female",
 "lean": "upright",
 "confidence": 0.8,
-"notes": "seated",
+"notes": "seated, facing toward her body",
 "a_pose": [
 "arms_on_thighs"
 ]
@@ -13276,7 +13272,7 @@
 },
 {
 "id": "amazon-iii",
-"template": "reverse_cowgirl",
+"template": "cowgirl",
 "surface": "floor",
 "a_body": "male",
 "b_body": "female",
@@ -14042,16 +14038,20 @@
 },
 {
 "id": "backdoor-knees-open",
-"template": "reverse_cowgirl",
+"template": "cowgirl",
 "surface": "floor",
 "a_body": "male",
 "b_body": "female",
-"a_legs": "open_bent",
+"a_legs": "straight",
 "lean": "back",
-"b_hands": "surface",
+"b_hands": "behind",
 "confidence": 0.82,
+"notes": "seated, knees up",
+"a_pose": [
+"head_forward"
+],
 "b_pose": [
-"knee_up_r"
+"head_back"
 ]
 },
 {
@@ -14775,15 +14775,19 @@
 },
 {
 "id": "swing-knees-open",
-"template": "reverse_cowgirl",
+"template": "cowgirl",
 "surface": "floor",
 "a_body": "male",
 "b_body": "female",
-"a_legs": "open_bent",
+"a_legs": "straight",
 "lean": "back",
 "confidence": 0.85,
+"notes": "seated, knees up",
+"a_pose": [
+"arms_forward"
+],
 "b_pose": [
-"knees_up"
+"head_back"
 ]
 },
 {

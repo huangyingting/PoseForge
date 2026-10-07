@@ -235,7 +235,7 @@ test("every interaction is a named, playable library position that can be listed
     const listed = index.filter((p) => p.status === "interaction-3d");
     assert.equal(listed.length, 1283);
     assert.equal(searchCatalog(index, { scope: "named" }).filter((p) => isBuiltInPosition(p)).length, 1283);
-    assert.ok(searchCatalog(index, { query: "reverse cowgirl" }).length >= 61);
+    assert.ok(searchCatalog(index, { query: "reverse cowgirl" }).length >= 57);
     assert.equal(searchCatalog(index, { query: "kneeling-missionary" }).filter(isBuiltInPosition).length, 1);
     assert.deepEqual(
       searchCatalog(index, { query: names["over-the-top"].aliases[0] }).filter(isBuiltInPosition).map((p) => p.source.recordId),
