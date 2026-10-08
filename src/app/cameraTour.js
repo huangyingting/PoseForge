@@ -1,72 +1,63 @@
 /**
- * A camera tour: one slow circuit of the figures, rising over them, dipping
- * low behind and coming in closer, that begins and ends on the view the
- * scene was framed in, so a tour that runs to the end leaves nothing moved.
+ * A camera tour: one circuit of the figures, the way a camera on a dolly track
+ * goes round a subject, that begins and ends on the view the scene was framed
+ * in, so a tour that runs to the end leaves nothing moved.
  *
- * The path is keyed in the orbit's own terms - the turn about the focus, the
- * height above the horizon and the distance - relative to where the camera
+ * It turns at one steady rate, the whole way round, and only gathers that pace
+ * at the start and gives it up at the end, so that the speed - which is what
+ * the eye reads in a turning picture - never changes in the middle of it. As
+ * it goes round behind the figures it rises once, a little, and comes in a
+ * little, and comes back down to the framing's height as it comes back round
+ * to the front: one gentle crane, not a climb and a dive and a push.
+ *
+ * The path is in the orbit's own terms - the turn about the point looked at,
+ * the height above the horizon and the distance - relative to where the camera
  * starts, so it fits whatever the framing gave: a pair standing and a pair
  * lying down get the same circuit, each at its own scale.
  */
 const DEG = Math.PI / 180;
 
-/**
- * [turn from the start in degrees, elevation in degrees, distance as a
- * fraction of the start's]. `null` is the start's own elevation, so the
- * circuit closes on it.
- */
-const KEYS = [
-  [0, null, 1],
-  [90, 38, 0.86],
-  [180, 10, 1],
-  [270, 58, 0.92],
-  [360, null, 1],
-];
-/** Never lower than this: under the horizon a lying pair is seen through the floor. */
-const LOWEST = 6 * DEG;
-export const TOUR_SECONDS = 16;
+export const TOUR_SECONDS = 24;
+/** The fraction of the tour at either end spent gathering pace or losing it. */
+const RAMP = 0.15;
+/** How far the camera comes in, as a fraction of its distance, when it is behind the figures. */
+const PUSH = 0.06;
 
 const clamp01 = (t) => Math.min(1, Math.max(0, t));
-/** Gathers pace from rest and comes back to rest, so neither end jerks. */
-const easeInOut = (t) => (1 - Math.cos(Math.PI * t)) / 2;
-const catmullRom = (p0, p1, p2, p3, f) =>
-  0.5 *
-  (2 * p1 +
-    (p2 - p0) * f +
-    (2 * p0 - 5 * p1 + 4 * p2 - p3) * f * f +
-    (3 * p1 - p0 - 3 * p2 + p3) * f * f * f);
+
+/**
+ * How far round the tour is at `t`, both 0 to 1: the distance gone at a speed
+ * that rises from nothing to full over the first `RAMP`, smoothly, holds, and
+ * falls back to nothing over the last.
+ */
+export function tourProgress(t) {
+  t = clamp01(t);
+  const ramp = (x) => RAMP * (x ** 3 - x ** 4 / 2);
+  const gone =
+    t < RAMP ? ramp(t / RAMP) : t > 1 - RAMP ? 1 - RAMP - ramp((1 - t) / RAMP) : RAMP / 2 + (t - RAMP);
+  return gone / (1 - RAMP);
+}
 
 /**
  * The camera's orbit at `t` (0 to 1) of a tour from `start`.
  *
- * @param {{theta: number, elevation: number, radius: number}} start radians and metres
+ * Its highest, behind the figures, is twelve degrees over the start but no
+ * higher than forty-five; from higher than forty it is lower, since a camera
+ * looking down from overhead has nowhere higher to go.
+ *
+ * @param {{theta: number, elevation: number, radius: number, focus?: number[]}} start radians and metres
  * @param {number} t
  */
 export function tourOrbit(start, t) {
-  const segments = KEYS.length - 1;
-  const u = easeInOut(clamp01(t)) * segments;
-  const i = Math.min(segments - 1, Math.floor(u));
-  const f = u - i;
-  // The circuit is closed, so the keys before the first and after the last
-  // are the ones either side of the start, a turn round.
-  const key = (k) => {
-    const lap = Math.floor(k / segments);
-    const [turn, elevation, distance] = KEYS[k - lap * segments];
-    return [
-      turn + lap * 360,
-      elevation === null ? start.elevation / DEG : elevation,
-      distance,
-    ];
-  };
-  const [a, b, c, d] = [i - 1, i, i + 1, i + 2].map(key);
-  const at = (n) => catmullRom(a[n], b[n], c[n], d[n], f);
+  const s = tourProgress(t);
+  const rise = Math.sin(Math.PI * s) ** 2;
+  const peak =
+    start.elevation <= 40 * DEG ? Math.min(start.elevation + 12 * DEG, 45 * DEG) : start.elevation - 15 * DEG;
   return {
-    theta: start.theta + at(0) * DEG,
-    elevation:
-      t >= 1
-        ? start.elevation
-        : Math.max(Math.min(LOWEST, start.elevation), at(1) * DEG),
-    radius: start.radius * at(2),
+    ...start,
+    theta: start.theta + 2 * Math.PI * s,
+    elevation: start.elevation + (peak - start.elevation) * rise,
+    radius: start.radius * (1 - PUSH * rise),
   };
 }
 

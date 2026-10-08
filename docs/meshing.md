@@ -374,7 +374,7 @@ parts.
 - **The shadow map is drawn when it changes.** The key light's map is 2048px
   square and holds every triangle of both figures, and it is the same from any
   camera. An orbit or a tour redraws the figures but not the map. It is drawn
-  again after a new scene or framing, a texture arriving (hair cards and lace
+  again after a new scene, a texture arriving (hair cards and lace
   cast through their cut-outs), or a wall coming or going with what stands
   against it. Exports that hide the room redraw it before and after.
 

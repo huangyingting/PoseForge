@@ -61,7 +61,7 @@ import {
 } from "three";
 import { buildProps, disposeProps } from "./props.js";
 import { buildRoom, disposeRoom, roomLayout, roomReady, roomTextures, paintWall, SETTINGS, updateRoom } from "./room.js";
-import { HAZE, SKY_GAIN } from "./places.js";
+import { HAZE, SKY_GAIN, SUN } from "./places.js";
 import { modelFiles } from "../core/bodyModels.js";
 import { IRIS_UV } from "../core/humanMesh.js";
 import { LACE_REPEAT, LACE_SIZE, lacePattern } from "../core/lace.js";
@@ -1062,16 +1062,19 @@ function toGeometry(mesh) {
 }
 
 /**
- * Three-point lighting, sized to the scene.
+ * Three lights, a key, a fill and a rim, and the sky's.
  *
  * The key casts; the fill and rim do not. One shadow-casting light is what
  * keeps the contact shadow between two bodies readable - a second caster puts a
  * competing shadow across the same crease and the eye stops being able to tell
- * which surface is in front.
+ * which surface is in front. All three look at the same point, the middle of
+ * the figures (see `aim`), and a setting that has no use for one turns it down
+ * to nothing rather than taking it away: how many lights there are is in every
+ * shader, and changing it compiles them all again.
  */
 function buildLights(scene) {
   const key = new DirectionalLight(0xfff5e9, 2.1);
-  key.position.set(2.4, 3.4, 2.2);
+  key.position.set(2.4, 3.2, 2.0);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
   key.shadow.bias = -0.0006;
@@ -1083,17 +1086,19 @@ function buildLights(scene) {
   cam.top = 2.5;
   cam.bottom = -2.5;
   cam.near = 0.4;
-  cam.far = 12;
+  cam.far = 16;
   cam.updateProjectionMatrix();
   scene.add(key);
   scene.add(key.target);
 
   const fill = new DirectionalLight(0xe5eeff, 1.25);
   fill.position.set(-3, 1.6, 1.4);
+  fill.target = key.target;
   scene.add(fill);
 
   const rim = new DirectionalLight(0xffffff, 1.1);
   rim.position.set(-1.2, 2.2, -3.2);
+  rim.target = key.target;
   scene.add(rim);
 
   // What is left of the old flat ambient. The environment below does that job
@@ -1107,21 +1112,42 @@ function buildLights(scene) {
 }
 
 /**
- * How each setting is lit: the key's colour and strength and where it comes
- * from, off the figures; the fill's, the rim's, and the sky's and ground's;
- * which environment (see `ENVIRONMENTS`) the scene gives back and how much of
- * it; the exposure; the background; and the haze, out of doors.
+ * How each setting is lit, and by what.
  *
- * The studio and the day rooms are the light the figures were made under. The
- * beach and the pool are a sun lower than noon and warm, with the blue of the
- * sky in the shadows. The fashion studio is a big soft key and a hard rim in
- * the dark. The hotel at night is lamplight, warm and low, and little else.
+ * Each light is something that is there: in the picture, or just out of it
+ * where a photographer would have put it. Its colour and strength are that
+ * thing's, and it comes either `from` a direction off the figures - a softbox
+ * on a stand, the sun - or from a `source` the setting has put somewhere (see
+ * `sources` in `room.js` and `places.js`), a window or a lamp, so that the
+ * light on the figures comes from where the picture shows its window or lamp
+ * to be. A light from a source is never lower than `lift` degrees above the
+ * figures: the sky through a window comes down into a room, and a key from
+ * the level of the figures' own middle would light them from below their eyes.
+ * A setting without the source leaves its light out.
+ *
+ * Then the sky's and the ground's colours and how much of them; which
+ * environment (see `ENVIRONMENTS`) the scene gives back and how much of it; the
+ * exposure; the background; and the haze, out of doors.
+ *
+ * - The studio is three softboxes: the key high to the camera's right, a fill
+ *   to its left, and a rim behind to the left, all over a pale cyc.
+ * - A room by day is its windows. The key is the one in the east wall, to the
+ *   camera's right and out of its picture; the one in the picture, behind the
+ *   figures, edges them; what fills is the room itself, the walls and floor
+ *   the windows light, and the lamps are off.
+ * - The hotel at night is its lamps: one on the east wall where the day's
+ *   window was, the bedside lamp low on the figures' other side, and the lamp
+ *   in the far corner behind them. The city through the window is too faint
+ *   to light anything, and is only there in what the skin gives back.
+ * - The beach and the pool are the sun - south-east, well up - and what the sun
+ *   lights: the sand round the figures, or the white of the villa's wall
+ *   behind the camera, and the blue of the sky in the shadows. The sun has no
+ *   second sun behind it, so there is no rim.
+ * - The fashion set is a big octabox high to the camera's right, a strip light
+ *   behind the figures on the other side, and the white V-flat that bounces
+ *   the octabox back into their shadow side, all in the dark.
  */
 const DAYLIGHT = {
-  key: [0xfff5e9, 2.1],
-  from: [2.4, 3.2, 2.0],
-  fill: [0xe5eeff, 1.25],
-  rim: [0xffffff, 1.1],
   sky: [0xf0f4ff, 0x9b9583, 0.3],
   environment: "room",
   intensity: 0.7,
@@ -1129,11 +1155,9 @@ const DAYLIGHT = {
   background: 0xf1f3ef,
 };
 const OUTDOORS = {
-  key: [0xffefd9, 2.9],
-  from: [3.2, 2.6, 1.7],
-  fill: [0xcfe0ff, 0.55],
-  rim: [0xfff4e6, 1.2],
-  sky: [0xbcd6f5, 0xd9c6a3, 0.45],
+  key: { colour: 0xffefd9, intensity: 2.9, from: SUN },
+  rim: { intensity: 0 },
+  sky: [0xbcd6f5, 0xd9c6a3, 0.5],
   environment: "beach",
   intensity: 0.8,
   exposure: 0.8,
@@ -1141,26 +1165,43 @@ const OUTDOORS = {
   fog: [16, 52],
 };
 const LIGHTING = {
-  studio: { ...DAYLIGHT, environment: "studio" },
-  room: DAYLIGHT,
+  studio: {
+    ...DAYLIGHT,
+    key: { colour: 0xfff5e9, intensity: 2.1, from: [2.4, 3.2, 2.0] },
+    fill: { colour: 0xe5eeff, intensity: 1.25, from: [-3, 1.6, 1.4] },
+    rim: { colour: 0xffffff, intensity: 1.1, from: [-1.2, 2.2, -3.2] },
+    environment: "studio",
+  },
+  room: {
+    ...DAYLIGHT,
+    key: { colour: 0xfff6ea, intensity: 2.3, source: "key", lift: 30 },
+    fill: { colour: 0xf6efe6, intensity: 0.75, from: [-1.6, 1.2, 2.6] },
+    rim: { colour: 0xdfe8ff, intensity: 1.1, source: "back", lift: 20 },
+  },
   hotel: {
-    key: [0xffc98f, 1.5],
-    from: [2.4, 1.9, 1.3],
-    fill: [0x8ea2d6, 0.35],
-    rim: [0xffb871, 0.9],
+    key: { colour: 0xffc690, intensity: 1.9, source: "key", lift: 18 },
+    fill: { colour: 0xffb978, intensity: 0.55, source: "bedside" },
+    rim: { colour: 0xffc287, intensity: 0.8, source: "corner", lift: 18 },
     sky: [0x36405a, 0x2a2018, 0.15],
     environment: "night",
     intensity: 0.9,
     exposure: 0.95,
     background: 0x1c1e23,
   },
-  beach: OUTDOORS,
-  pool: { ...OUTDOORS, environment: "pool" },
+  beach: {
+    ...OUTDOORS,
+    // The sunlit sand in front of the figures, low and warm.
+    fill: { colour: 0xf3dfc0, intensity: 0.5, from: [-0.8, 0.35, 2.4] },
+  },
+  pool: {
+    ...OUTDOORS,
+    fill: { colour: 0xfff0de, intensity: 0.55, source: "villa" },
+    environment: "pool",
+  },
   fashion: {
-    key: [0xffffff, 2.4],
-    from: [2.6, 2.4, 1.6],
-    fill: [0xf2f4ff, 0.6],
-    rim: [0xffffff, 1.8],
+    key: { colour: 0xffffff, intensity: 2.6, source: "octabox" },
+    fill: { colour: 0xf6f6f8, intensity: 0.5, source: "flat" },
+    rim: { colour: 0xffffff, intensity: 1.9, source: "strip" },
     sky: [0xffffff, 0x3a3a3a, 0.12],
     environment: "fashion",
     intensity: 0.75,
@@ -1182,29 +1223,42 @@ const lightingFor = (setting) => LIGHTING[setting] ?? LIGHTING.room;
  * up by the surface it is seen in. So the scene is given something to reflect.
  * It is a room of its own, drawn once into a small cube and blurred by three's
  * PMREM for each roughness: a box with the setting's walls, floor and ceiling,
- * a window where the room's window is, the warm spot of a lamp, and the pale
- * spill behind the camera that any room returns. The studio's is the same box
- * with softboxes in it instead, set where the punctual lights already are, so
- * the reflections and the shading agree about where the light comes from.
+ * and in it, in the direction they are from the figures, the same things that
+ * are the lights in `LIGHTING` - the windows, the lamps, the softboxes, the sun
+ * - and the pale spill behind the camera that any room returns. So the
+ * reflections and the shading agree about where the light comes from.
+ *
+ * A room's windows and lamps are where they are only for the room as it is
+ * usually laid out; against a wall to lean on, the window in the picture is
+ * on the west wall, and the room has its `wall` panels instead.
  *
  * Built here rather than taken from three's examples - a few boxes are all it
  * is, and the room is the one this file knows about. Colours are linear and
  * go well past one: these are the things that shine.
  */
+const SUN_PANEL = new Vector3(...SUN).setLength(5.5).add(new Vector3(0, 1, 0)).toArray();
 const ENVIRONMENTS = {
   room: {
     walls: [0.36, 0.33, 0.3],
     floor: [0.17, 0.11, 0.07],
     ceiling: [0.55, 0.54, 0.52],
     panels: [
-      // The window: cool daylight, bright, a little left of middle.
-      { at: [-0.8, 1.9, -5.9], size: [3, 2.4], colour: [7.5, 8, 8.8] },
+      // The window behind the figures: cool daylight, a little left of middle.
+      { at: [-1.2, 2.4, -5.9], size: [3, 2.4], colour: [6.8, 7.4, 8.6] },
       // The light it throws on the floor in front of it.
-      { at: [-0.8, 0.02, -4.2], size: [2.6, 2.4], colour: [0.9, 0.9, 0.92], floor: true },
-      // A lamp's shade, warm and small.
-      { at: [5.9, 1.5, -3], size: [0.7, 0.6], colour: [3.2, 2.2, 1.2] },
+      { at: [-1, 0.02, -4.2], size: [2.6, 2.4], colour: [0.9, 0.9, 0.92], floor: true },
+      // The key's window, on the east wall, and its light on the floor.
+      { at: [5.9, 2.5, 0.9], size: [3, 2.4], colour: [8.6, 8.5, 8.2] },
+      { at: [4.2, 0.02, 0.8], size: [2.4, 2.6], colour: [1, 0.98, 0.95], floor: true },
       // The room behind the camera, lit by all of that.
-      { at: [2.5, 1.8, 5.9], size: [6, 2.6], colour: [1.1, 1.05, 1] },
+      { at: [1.5, 1.8, 5.9], size: [6, 2.6], colour: [1.1, 1.05, 1] },
+    ],
+    wall: [
+      { at: [-5.9, 2.4, 2.4], size: [3, 2.4], colour: [6.8, 7.4, 8.6] },
+      { at: [-4.2, 0.02, 2.2], size: [2.4, 2.6], colour: [0.9, 0.9, 0.92], floor: true },
+      { at: [5.9, 2.4, 2.9], size: [3, 2.4], colour: [8.6, 8.5, 8.2] },
+      { at: [4.2, 0.02, 2.6], size: [2.4, 2.6], colour: [1, 0.98, 0.95], floor: true },
+      { at: [1.5, 1.8, 5.9], size: [6, 2.6], colour: [1.1, 1.05, 1] },
     ],
   },
   studio: {
@@ -1226,17 +1280,18 @@ const ENVIRONMENTS = {
     floor: [0.62, 0.52, 0.38],
     ceiling: [0.42, 0.62, 1.05],
     panels: [
-      { at: [4.6, 3.8, 2.4], size: [1.6, 1.6], colour: [40, 36, 30], face: true },
+      { at: SUN_PANEL, size: [1.6, 1.6], colour: [40, 36, 30], face: true },
       { at: [0, 0.02, -3], size: [12, 6], colour: [0.1, 0.24, 0.32], floor: true },
     ],
   },
-  // The same sky over pale stone, the pool and the sea beyond it.
+  // The same sky over pale stone, the pool and the sea beyond it, and the
+  // villa's sunlit wall behind the camera.
   pool: {
     walls: [1.15, 1.25, 1.35],
     floor: [0.72, 0.66, 0.57],
     ceiling: [0.42, 0.62, 1.05],
     panels: [
-      { at: [4.6, 3.8, 2.4], size: [1.6, 1.6], colour: [40, 36, 30], face: true },
+      { at: SUN_PANEL, size: [1.6, 1.6], colour: [40, 36, 30], face: true },
       { at: [0, 0.02, -3.5], size: [12, 5], colour: [0.12, 0.32, 0.4], floor: true },
       { at: [0, 2.2, 5.9], size: [10, 3.4], colour: [1.3, 1.25, 1.18] },
     ],
@@ -1248,29 +1303,42 @@ const ENVIRONMENTS = {
     floor: [0.05, 0.05, 0.05],
     ceiling: [0.02, 0.02, 0.02],
     panels: [
-      { at: [4.4, 3.4, 3.2], size: [2.6, 2.6], colour: [9, 9, 9], face: true },
-      { at: [-5.9, 2, -2.4], size: [0.8, 3], colour: [6.5, 6.5, 6.8] },
-      { at: [-4.2, 1.3, 4.2], size: [2.4, 2.6], colour: [0.6, 0.6, 0.6], face: true },
+      { at: [5.6, 3.6, 1.6], size: [2.6, 2.6], colour: [9, 9, 9], face: true },
+      { at: [-5.9, 2.6, -2.4], size: [0.8, 3], colour: [6.5, 6.5, 6.8] },
+      { at: [-5.9, 2, 0.5], size: [2.4, 2.6], colour: [0.6, 0.6, 0.6] },
       { at: [0, 1.6, -5.9], size: [6, 3.2], colour: [0.22, 0.21, 0.2] },
     ],
   },
-  // The room after dark: the city faint through the window, the lamps, and
-  // the walls only what the lamps put on them.
+  // The room after dark: the city faint through the window, the lamps and
+  // the warm light each throws on the wall behind it, and the walls only what
+  // the lamps put on them.
   night: {
     walls: [0.06, 0.045, 0.035],
     floor: [0.03, 0.02, 0.014],
     ceiling: [0.045, 0.038, 0.03],
     panels: [
-      { at: [-0.8, 1.9, -5.9], size: [3, 2.4], colour: [0.3, 0.36, 0.55] },
-      { at: [5.9, 1.5, -3], size: [0.7, 0.6], colour: [4.2, 2.8, 1.3] },
-      { at: [-5.9, 1.1, 1], size: [0.5, 0.45], colour: [3.6, 2.4, 1.1] },
-      { at: [2.5, 1.8, 5.9], size: [6, 2.6], colour: [0.22, 0.17, 0.12] },
+      { at: [-1.2, 2.4, -5.9], size: [3, 2.4], colour: [0.3, 0.36, 0.55] },
+      // The key's lamp on the east wall.
+      { at: [5.9, 2.7, 0], size: [2.6, 2.4], colour: [0.45, 0.32, 0.18] },
+      { at: [5.8, 2.9, 0], size: [0.8, 0.7], colour: [5.2, 3.5, 1.7] },
+      // The lamp in the far corner, and the bedside lamp.
+      { at: [5.2, 2.9, -5.9], size: [0.7, 0.6], colour: [4.2, 2.8, 1.3] },
+      { at: [-5.9, 1.7, -2.2], size: [0.5, 0.45], colour: [3.6, 2.4, 1.1] },
+      { at: [1.5, 1.8, 5.9], size: [6, 2.6], colour: [0.22, 0.17, 0.12] },
+    ],
+    wall: [
+      { at: [-5.9, 2.4, 2.4], size: [3, 2.4], colour: [0.3, 0.36, 0.55] },
+      { at: [5.9, 2.7, 1.9], size: [2.6, 2.4], colour: [0.45, 0.32, 0.18] },
+      { at: [5.8, 2.9, 1.9], size: [0.8, 0.7], colour: [5.2, 3.5, 1.7] },
+      { at: [5.9, 2.9, -1.4], size: [0.7, 0.6], colour: [4.2, 2.8, 1.3] },
+      { at: [-5.9, 1.8, -1.7], size: [0.5, 0.45], colour: [3.6, 2.4, 1.1] },
+      { at: [1.5, 1.8, 5.9], size: [6, 2.6], colour: [0.22, 0.17, 0.12] },
     ],
   },
 };
 
-/** The environment's own little room, lit by `look`, its window on `window`'s wall. */
-function environmentScene(look, turn = 0) {
+/** The environment's own little room, lit by `panels`. */
+function environmentScene(look, panels) {
   const scene = new Scene();
   const flat = (rgb) => new MeshBasicMaterial({ color: new Color().setRGB(...rgb), side: BackSide });
   // Box faces in three's order: +x, -x, +y, -y, +z, -z.
@@ -1279,8 +1347,7 @@ function environmentScene(look, turn = 0) {
   ]);
   shell.position.y = 3;
   scene.add(shell);
-  const group = new Group();
-  for (const panel of look.panels) {
+  for (const panel of panels) {
     const plane = new Mesh(
       new PlaneGeometry(...panel.size),
       new MeshBasicMaterial({ color: new Color().setRGB(...panel.colour), side: DoubleSide })
@@ -1289,30 +1356,28 @@ function environmentScene(look, turn = 0) {
     if (panel.floor) plane.rotation.x = -Math.PI / 2;
     else if (panel.ceiling) plane.rotation.x = Math.PI / 2;
     else if (panel.face) plane.lookAt(0, 1, 0);
-    else if (Math.abs(panel.at[0]) > 5) plane.rotation.y = Math.PI / 2;
-    group.add(plane);
+    // Flat on whichever wall it is nearer.
+    else if (Math.abs(panel.at[0]) > Math.abs(panel.at[2])) plane.rotation.y = Math.PI / 2;
+    scene.add(plane);
   }
-  // The room's window is on its north wall unless a wall to lean on took
-  // that, and then it is on the west.
-  group.rotation.y = turn;
-  scene.add(group);
   return scene;
 }
 
 const environments = new Map();
 
 /**
- * One of `ENVIRONMENTS`, made once per renderer and kept. A room's window -
- * and so its own - is on the west when a wall to lean on took the north.
+ * One of `ENVIRONMENTS`, made once per renderer and kept: a room's own when a
+ * wall to lean on has moved its window, when it has one for that.
  */
-function environmentFor(renderer, name, windowWest) {
-  const turned = windowWest && (name === "room" || name === "night");
-  const key = `${name}${turned ? "-west" : ""}`;
+function environmentFor(renderer, name, wall) {
+  const look = ENVIRONMENTS[name];
+  const turned = wall && !!look.wall;
+  const key = `${name}${turned ? "-wall" : ""}`;
   if (!environments.has(renderer)) environments.set(renderer, new Map());
   const made = environments.get(renderer);
   if (!made.has(key)) {
     const pmrem = new PMREMGenerator(renderer);
-    const scene = environmentScene(ENVIRONMENTS[name], turned ? Math.PI / 2 : 0);
+    const scene = environmentScene(look, turned ? look.wall : look.panels);
     made.set(key, pmrem.fromScene(scene, 0.03, 0.1, 30, { position: new Vector3(0, 1, 0) }).texture);
     pmrem.dispose();
     scene.traverse((node) => {
@@ -1323,6 +1388,9 @@ function environmentFor(renderer, name, windowWest) {
   }
   return made.get(key);
 }
+
+/** The lens's angle across the picture's shorter side, in degrees: see `resize`. */
+const LENS = 28;
 
 /**
  * Create a viewport bound to a canvas.
@@ -1364,7 +1432,7 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
   scene.environmentIntensity = DAYLIGHT.intensity;
   const lights = buildLights(scene);
 
-  const camera = new PerspectiveCamera(38, 1, 0.05, 60);
+  const camera = new PerspectiveCamera(LENS, 1, 0.05, 60);
   camera.position.set(2.6, 1.7, 3.2);
 
   const bodies = new Group();
@@ -1379,27 +1447,25 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
   let roomKey = null;
 
   const focus = new Vector3(0, 0.9, 0);
-  let keyFrom = new Vector3(...DAYLIGHT.from);
+  let lit = "studio";
 
   /**
    * Light the scene as `name` is lit (see `LIGHTING`): "studio" for the plain
-   * backdrop and for a car, whatever the setting.
+   * backdrop and for a car, whatever the setting. `wall` says a wall to lean
+   * on has taken the room's north wall, and its window with it.
    */
-  function light(name, windowWest = false) {
+  function light(name, wall = false) {
+    lit = name;
     const look = lightingFor(name);
-    const { key, fill, rim, sky } = lights;
-    key.color.set(look.key[0]);
-    key.intensity = look.key[1];
-    keyFrom = new Vector3(...look.from);
-    key.position.copy(focus).add(keyFrom);
-    fill.color.set(look.fill[0]);
-    fill.intensity = look.fill[1];
-    rim.color.set(look.rim[0]);
-    rim.intensity = look.rim[1];
+    for (const part of ["key", "fill", "rim"]) {
+      lights[part].color.set(look[part].colour ?? 0xffffff);
+      lights[part].intensity = look[part].intensity;
+    }
+    const { sky } = lights;
     sky.color.set(look.sky[0]);
     sky.groundColor.set(look.sky[1]);
     sky.intensity = look.sky[2];
-    scene.environment = environmentFor(renderer, look.environment, windowWest);
+    scene.environment = environmentFor(renderer, look.environment, wall);
     scene.environmentIntensity = look.intensity;
     renderer.toneMappingExposure = look.exposure;
     if (!alpha) scene.background = new Color(look.background);
@@ -1411,6 +1477,63 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
       scene.fog ??= new Fog(new Color(HAZE).multiplyScalar(SKY_GAIN));
       [scene.fog.near, scene.fog.far] = look.fog;
     }
+  }
+
+  /**
+   * Turn each light on the middle of the figures from where what makes it is
+   * (see `LIGHTING`), six metres out: past the walls, so that everything the
+   * key's shadow should fall from is between it and the figures. A light whose
+   * source the setting does not have is turned down to nothing.
+   */
+  function aim() {
+    const look = lightingFor(lit);
+    const middle = bodyBox().getCenter(new Vector3());
+    lights.key.target.position.copy(middle);
+    lights.key.target.updateMatrixWorld();
+    for (const part of ["key", "fill", "rim"]) {
+      const { from, source, lift = 0, intensity } = look[part];
+      const node = lights[part];
+      const at = source && room?.userData.sources?.[source];
+      if (!from && !at) {
+        node.intensity = 0;
+        continue;
+      }
+      node.intensity = intensity;
+      const direction = from ? new Vector3(...from) : new Vector3(...at).sub(middle);
+      const level = Math.hypot(direction.x, direction.z);
+      direction.y = Math.max(direction.y, level * Math.tan((lift * Math.PI) / 180));
+      node.position.copy(middle).addScaledVector(direction.normalize(), 6);
+    }
+    shadowsStale = true;
+  }
+
+  /** The figures' bounds, kept until the next scene; around head height in the middle when there are none. */
+  let bodyBounds = null;
+  function bodyBox() {
+    if (bodyBounds) return bodyBounds;
+    const box = new Box3();
+    bodies.traverse((node) => {
+      if (!node.isMesh) return;
+      // Made with the geometry, which does not move after.
+      if (!node.geometry.boundingBox) node.geometry.computeBoundingBox();
+      box.union(node.geometry.boundingBox);
+    });
+    if (box.isEmpty()) return new Box3(new Vector3(-0.3, 0, -0.3), new Vector3(0.3, 1.8, 0.3));
+    return (bodyBounds = box);
+  }
+
+  /** A sample of the figures' vertices, at most so many from each part, kept until the next scene. */
+  let bodyPoints = null;
+  function bodySample() {
+    if (bodyPoints) return bodyPoints;
+    const found = [];
+    bodies.traverse((node) => {
+      if (!node.isMesh) return;
+      const position = node.geometry.attributes.position;
+      const stride = Math.max(1, Math.ceil(position.count / 1500));
+      for (let i = 0; i < position.count; i += stride) found.push(position.getX(i), position.getY(i), position.getZ(i));
+    });
+    return (bodyPoints = found);
   }
 
   // The materials the last scene was drawn with, let go of only once the next
@@ -1503,6 +1626,7 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
 
   /** Clear the figures without touching the lights or the camera. */
   function clearBodies() {
+    bodyBounds = bodyPoints = null;
     for (const child of [...bodies.children]) {
       child.geometry.dispose();
       retire(child.material);
@@ -1652,101 +1776,13 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
         bodies.add(body);
       }
     });
-
+    bodyBounds = bodyPoints = null;
+    aim();
   }
 
   /**
-   * Point the camera at whatever is there, at a distance that fits it.
-   *
-   * Framing from the figures' own bounds rather than from a fixed camera is
-   * what makes a standing pair and a pair lying down both fill the picture. A
-   * fixed camera has to be set for the largest case and then everything else
-   * sits small in the middle of the frame.
-   */
-  function frame() {
-    const box = { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] };
-    bodies.traverse((node) => {
-      if (!node.isMesh) return;
-      // Made with the geometry, which does not move after.
-      if (!node.geometry.boundingBox) node.geometry.computeBoundingBox();
-      const b = node.geometry.boundingBox;
-      for (const axis of [0, 1, 2]) {
-        box.min[axis] = Math.min(box.min[axis], b.min.getComponent(axis));
-        box.max[axis] = Math.max(box.max[axis], b.max.getComponent(axis));
-      }
-    });
-    if (!Number.isFinite(box.min[0])) return;
-
-    const size = [0, 1, 2].map((axis) => box.max[axis] - box.min[axis]);
-    focus.set(
-      (box.min[0] + box.max[0]) / 2,
-      (box.min[1] + box.max[1]) / 2,
-      (box.min[2] + box.max[2]) / 2
-    );
-    const extent = Math.max(size[0], size[1], size[2], 0.4);
-    const halfFov = (camera.fov * Math.PI) / 360;
-    const limitingFov = Math.min(halfFov, Math.atan(Math.tan(halfFov) * camera.aspect));
-    const distance = (extent * 0.60) / Math.tan(limitingFov) + extent * 0.5;
-    const direction = camera.position.clone().sub(focus);
-    if (direction.lengthSq() < 1e-6) direction.set(1, 0.6, 1.2);
-    camera.position.copy(focus).add(direction.normalize().multiplyScalar(distance));
-    camera.lookAt(focus);
-
-    lights.key.target.position.copy(focus);
-    lights.key.position.copy(focus).add(keyFrom);
-    lights.key.target.updateMatrixWorld();
-    shadowsStale = true;
-  }
-
-  /** Orbit the camera around the current focus. */
-  function orbit(deltaYaw, deltaPitch) {
-    const offset = camera.position.clone().sub(focus);
-    const radius = offset.length();
-    let theta = Math.atan2(offset.x, offset.z) + deltaYaw;
-    let phi = Math.acos(Math.min(1, Math.max(-1, offset.y / radius))) + deltaPitch;
-    // Stop short of straight up and straight down, where the orbit gimbals and
-    // the view flips over.
-    phi = Math.min(Math.PI - 0.08, Math.max(0.08, phi));
-    camera.position.set(
-      focus.x + radius * Math.sin(phi) * Math.sin(theta),
-      focus.y + radius * Math.cos(phi),
-      focus.z + radius * Math.sin(phi) * Math.cos(theta)
-    );
-    camera.lookAt(focus);
-  }
-
-  /** Where the camera is about the focus: its turn, height above the horizon and distance. */
-  function getOrbit() {
-    const offset = camera.position.clone().sub(focus);
-    const radius = offset.length();
-    return {
-      theta: Math.atan2(offset.x, offset.z),
-      elevation: Math.asin(Math.min(1, Math.max(-1, offset.y / radius))),
-      radius,
-    };
-  }
-
-  /** Put the camera at a turn, elevation and distance about the focus. */
-  function setOrbit({ theta, elevation, radius }) {
-    const flat = radius * Math.cos(elevation);
-    camera.position.set(
-      focus.x + flat * Math.sin(theta),
-      focus.y + radius * Math.sin(elevation),
-      focus.z + flat * Math.cos(theta)
-    );
-    camera.lookAt(focus);
-  }
-
-  /** Move the camera towards or away from the focus. */
-  function dolly(factor) {
-    const offset = camera.position.clone().sub(focus);
-    const radius = Math.min(14, Math.max(0.5, offset.length() * factor));
-    camera.position.copy(focus).add(offset.normalize().multiplyScalar(radius));
-    camera.lookAt(focus);
-  }
-
-  /**
-   * Named viewpoints.
+   * Named viewpoints, as directions from the figures; the three-quarter view's
+   * is `threeQuarter`.
    *
    * Three-quarter is the default because it is the only one of these that shows
    * depth; the orthogonal views are for checking, not for looking at. "Top"
@@ -1757,22 +1793,152 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
     front: [0, 0.18, 1],
     side: [1, 0.18, 0],
     top: [0.001, 1, 0.001],
-    three_quarter: [0.75, 0.42, 1],
   };
 
-  function setView(name) {
-    const direction = VIEWS[name] ?? VIEWS.three_quarter;
-    const radius = camera.position.distanceTo(focus);
-    camera.position
-      .copy(focus)
-      .add(new Vector3(...direction).normalize().multiplyScalar(radius));
+  /**
+   * The three-quarter view: nearly level with a pair standing, which is where a
+   * photographer stands to them, and higher over a pair lying down, which from
+   * level is a row of profiles, until it looks down on them at thirty degrees.
+   */
+  function threeQuarter() {
+    const size = bodyBox().getSize(new Vector3());
+    const t = Math.min(1, Math.max(0, (size.y / Math.max(size.x, size.z, 0.1) - 0.35) / 0.95));
+    const standing = t * t * (3 - 2 * t);
+    return { theta: Math.atan2(0.75, 1), elevation: ((12 + 18 * (1 - standing)) * Math.PI) / 180 };
+  }
+
+  /** How much of the picture's half-width, and of the clear band's half-height, the figures fill. */
+  const FILL = 0.86;
+  let fitted = 4;
+
+  /**
+   * Where the camera goes to frame the figures from `name`'s direction - one of
+   * `VIEWS`, or the three-quarter view, or for nothing the direction it looks
+   * from now.
+   *
+   * Fitted to the figures themselves rather than to their box, whose corners
+   * stand out past any body seen from an angle and leave it small in the middle
+   * of the picture: the camera comes in until the outermost of a sample of
+   * their vertices is at the edge of the picture, less a margin. Then what it
+   * looks at moves across the picture until the figures are in the middle of
+   * it - not the box's middle, which in perspective is not theirs - and in the
+   * middle of what the page leaves clear: `insets` are the CSS pixels the page
+   * covers at the picture's top and bottom, the title over it and the toolbar
+   * under it. This rather than a view offset, so that the picture exported is
+   * the picture on the screen.
+   *
+   * @param {string|null} name
+   * @param {{top?: number, bottom?: number}} [insets]
+   * @returns {{theta: number, elevation: number, radius: number, focus: number[]}}
+   */
+  function framing(name, { top = 0, bottom = 0 } = {}) {
+    let direction = name ? threeQuarter() : getOrbit();
+    if (VIEWS[name]) {
+      const [x, y, z] = VIEWS[name];
+      direction = { theta: Math.atan2(x, z), elevation: Math.atan2(y, Math.hypot(x, z)) };
+    }
+    const { theta, elevation } = direction;
+    const back = new Vector3(Math.cos(elevation) * Math.sin(theta), Math.sin(elevation), Math.cos(elevation) * Math.cos(theta));
+    // The camera's own axes, as `lookAt` makes them.
+    const right = new Vector3(back.z, 0, -back.x).normalize();
+    const up = new Vector3().crossVectors(back, right);
+    // The clear band, in normalised device coordinates: its middle, and how
+    // far the figures may reach from it up and down. A page that covers more
+    // than three tenths of the picture at either edge is let cover the figures.
+    const tall = canvas.clientHeight || canvas.height || 1;
+    const [over, under] = [top, bottom].map((inset) => Math.min(Math.max(inset, 0), 0.3 * tall) / tall);
+    const middle = under - over;
+    const reachY = (1 - over - under) * FILL;
+    const t = Math.tan((camera.fov * Math.PI) / 360);
+    const tx = t * camera.aspect;
+    const points = bodySample();
+    const at = bodyBox().getCenter(new Vector3());
+    const q = new Vector3();
+    const fit = () => {
+      let distance = 0.5;
+      for (let i = 0; i < points.length; i += 3) {
+        q.set(points[i] - at.x, points[i + 1] - at.y, points[i + 2] - at.z);
+        const along = q.dot(back);
+        const y = q.dot(up);
+        const across = along + Math.abs(q.dot(right)) / (tx * FILL);
+        const upright = along + y / ((y > 0 ? middle + reachY : middle - reachY) * t);
+        distance = Math.max(distance, across, upright);
+      }
+      return distance;
+    };
+    let distance = fit();
+    for (let pass = 0; pass < 3; pass += 1) {
+      // Where the figures come in the picture from there, edge to edge.
+      let [left, rightmost, low, high] = [Infinity, -Infinity, Infinity, -Infinity];
+      for (let i = 0; i < points.length; i += 3) {
+        q.set(points[i] - at.x, points[i + 1] - at.y, points[i + 2] - at.z);
+        const depth = distance - q.dot(back);
+        const x = q.dot(right) / (depth * tx);
+        const y = q.dot(up) / (depth * t);
+        [left, rightmost] = [Math.min(left, x), Math.max(rightmost, x)];
+        [low, high] = [Math.min(low, y), Math.max(high, y)];
+      }
+      at.addScaledVector(right, ((left + rightmost) / 2) * distance * tx);
+      at.addScaledVector(up, ((low + high) / 2 - middle) * distance * t);
+      distance = fit();
+    }
+    fitted = distance;
+    return { theta, elevation, radius: distance, focus: at.toArray() };
+  }
+
+  /**
+   * A camera position made sensible: above the floor, short of straight
+   * overhead, where the orbit would turn over, and between half a metre off
+   * and far enough to see the figures small.
+   */
+  function limit({ theta, elevation, radius, focus: at = focus.toArray() }) {
+    const distance = Math.min(Math.max(radius, 0.5), Math.max(14, 2 * fitted));
+    const floor = Math.asin(Math.min(1, Math.max(-1, (0.12 - at[1]) / distance)));
+    return { theta, elevation: Math.min(Math.max(elevation, floor), (89.9 * Math.PI) / 180), radius: distance, focus: at };
+  }
+
+  /** Where the camera is about what it looks at: its turn, its height above the horizon, its distance, and that point. */
+  function getOrbit() {
+    const offset = camera.position.clone().sub(focus);
+    const radius = offset.length();
+    return {
+      theta: Math.atan2(offset.x, offset.z),
+      elevation: Math.asin(Math.min(1, Math.max(-1, offset.y / radius))),
+      radius,
+      focus: focus.toArray(),
+    };
+  }
+
+  /** Put the camera at a turn, elevation and distance about a point, within `limit`. */
+  function setOrbit(orbit) {
+    const { theta, elevation, radius, focus: at } = limit(orbit);
+    focus.set(...at);
+    const flat = radius * Math.cos(elevation);
+    camera.position.set(
+      focus.x + flat * Math.sin(theta),
+      focus.y + radius * Math.sin(elevation),
+      focus.z + flat * Math.cos(theta)
+    );
     camera.lookAt(focus);
   }
 
+  /** Frame the figures from `name`'s direction at once (see `framing`). */
+  function frame(name = null, insets) {
+    setOrbit(framing(name, insets));
+  }
+
+  /**
+   * The lens: 28 degrees across the picture's shorter side, a short
+   * telephoto's - what a photographer takes a portrait or a pair with. A wider
+   * one has to come in closer to fill the picture, and close to, the near
+   * shoulder grows and the far one shrinks.
+   */
   function resize(width, height, pixelRatio = window.devicePixelRatio || 1) {
     renderer.setPixelRatio(Math.min(pixelRatio, 2));
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
+    const half = Math.tan((LENS * Math.PI) / 360);
+    camera.fov = (Math.atan(camera.aspect >= 1 ? half : half / camera.aspect) * 360) / Math.PI;
     camera.updateProjectionMatrix();
   }
 
@@ -1781,8 +1947,8 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
    * holds every triangle of both figures, and it is the same map from any
    * camera: only what casts and the key light decide it. So an orbit or a tour
    * redraws the figures and not their shadows, and the map is drawn again only
-   * after a new scene, a new framing, a texture, or a wall - with what stands
-   * against it - coming or going.
+   * after a new scene, a texture, or a wall - with what stands against it -
+   * coming or going.
    */
   function render() {
     if (updateRoom(room, camera)) shadowsStale = true;
@@ -1833,6 +1999,8 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
       });
     },
     frame,
+    framing,
+    limit,
     /**
      * Start fetching the skin of a scene that is still being solved, and hand
      * each atlas to the GPU as it arrives. Each is a few megabytes; asked for
@@ -1848,11 +2016,10 @@ export function createRenderer(canvas, { alpha = false, shadows = true, onChange
         );
       }
     },
-    setView,
-    orbit,
+    /** Frame the figures from a named view; the three-quarter view for none. */
+    setView: (name) => frame(name ?? "three_quarter"),
     getOrbit,
     setOrbit,
-    dolly,
     resize,
     render,
     /** Say the shadows need drawing again, for a caller that has hidden or shown something. */

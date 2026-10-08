@@ -72,6 +72,14 @@ import {
 export const HAZE = 0xe2eaee;
 export const SKY_GAIN = 1.25;
 
+/**
+ * Where the sun is, out of doors: south-east of the figures and well up but
+ * short of noon, behind the three-quarter camera's right shoulder. The
+ * renderer's key comes from here (see `LIGHTING`), and so does the light on
+ * the headlands' sunny sides, or the two would disagree across the sea.
+ */
+export const SUN = [3.2, 2.6, 1.7];
+
 /** How much of each surface one tile covers, in metres. */
 const SAND_TILE = 1;
 const WATER_TILE = 3;
@@ -269,7 +277,7 @@ function headland(at, scale, seed) {
   geometry.scale(...scale);
   geometry.computeVertexNormals();
   const [land, haze] = [new Color(0x5a6a55), new Color(HAZE).multiplyScalar(SKY_GAIN)];
-  const sun = new Vector3(3.2, 2.6, 1.7).normalize();
+  const sun = new Vector3(...SUN).normalize();
   const normal = geometry.attributes.normal;
   const colour = new Float32Array(position.count * 3);
   const c = new Color();
@@ -561,7 +569,9 @@ function lightStand(height, colour = 0x1c1c1e) {
     const angle = (k / 3) * Math.PI * 2 + 0.3;
     parts.push(rod([0, 0.45, 0], [Math.cos(angle) * 0.45, 0.01, Math.sin(angle) * 0.45], 0.011, colour));
   }
-  return assembled(parts, { roughness: 0.45, metalness: 0.5 });
+  // A stand casts nothing: what it holds up is a light, and the light comes
+  // past its own stand, not through it.
+  return assembled(parts, { roughness: 0.45, metalness: 0.5 }, { cast: false });
 }
 
 /**
@@ -615,6 +625,9 @@ function beach(layout) {
   const room = new Group();
   room.name = "room";
   room.userData.walls = [];
+  // What lights a scene here (see `LIGHTING` in `renderer.js`): the sun, from
+  // `SUN`, and the sky, all round. Neither is anywhere in particular.
+  room.userData.sources = {};
   room.add(skyDome());
 
   // The sea is to the north. Where the beach starts to fall towards it, and
@@ -815,6 +828,10 @@ function poolside(layout) {
   const room = new Group();
   room.name = "room";
   room.userData.walls = [];
+  // The sun and the sky, as on the beach, and the villa's white wall across
+  // the deck from the sea, which gives the sun back onto the figures' shaded
+  // side: the middle of it, at a head's height.
+  room.userData.sources = { villa: [0, 1.7, half[1] + 1.4] };
   room.add(skyDome());
 
   // The pool lies across the north of the deck, wider than the clear ground,
@@ -1082,10 +1099,18 @@ function fashion(layout) {
 
   const side = sides(room, half);
   const middle = [0, 1.1, 0];
-  side.east.add(lamp(softbox(1.5, 1.5, 0.55, 8), [half[0] + 0.7, 0, 0.9], 2.3, middle));
-  side.west.add(lamp(softbox(0.35, 1.5, 0.3), [-half[0] - 0.4, 0, -1.2], 1.75, [0, 1.2, -0.3]));
+  // The shoot's three lights, and what lights the figures is these and only
+  // these (see `LIGHTING` in `renderer.js`): the octabox in front and to the
+  // east is the key, the strip behind on the west edges them, and the V-flat
+  // on the west gives the octabox back into the side it leaves dark.
+  const octabox = [half[0] + 0.7, 2.3, 0.9];
+  const strip = [-half[0] - 0.4, 1.75, -1.2];
+  const bounce = [-half[0] - 1.1, 0, 0.3];
+  room.userData.sources = { octabox, strip, flat: [bounce[0], 1.2, bounce[2]] };
+  side.east.add(lamp(softbox(1.5, 1.5, 0.55, 8), [octabox[0], 0, octabox[2]], octabox[1], middle));
+  side.west.add(lamp(softbox(0.35, 1.5, 0.3), [strip[0], 0, strip[2]], strip[1], [0, 1.2, -0.3]));
   const flat = vFlat();
-  side.west.add(at(flat, [-half[0] - 1.1, 0, 0.3]));
+  side.west.add(at(flat, bounce));
   flat.lookAt(0, 0, 0);
   side.west.add(at(clothesRail(), [-half[0] - 2.4, 0, -1.4], Math.PI / 2));
   const rig = cameraRig();

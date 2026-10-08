@@ -35,7 +35,7 @@ test("a tour starts and ends on the framed view, at rest", () => {
   assert.ok(step(0.99) < step(0.5) / 20);
 });
 
-test("a tour goes the whole way round, high over the figures and low behind them", () => {
+test("a tour goes the whole way round at one steady pace, rising once a little behind the figures", () => {
   const samples = Array.from({ length: 1001 }, (_, i) =>
     tourOrbit(START, i / 1000),
   );
@@ -45,16 +45,34 @@ test("a tour goes the whole way round, high over the figures and low behind them
     assert.ok(turn >= 0 && turn < 3 * DEG, `turn ${turn / DEG}° at ${i}`);
   }
   assert.ok(Math.abs(samples.at(-1).theta - START.theta - 2 * Math.PI) < 1e-9);
+  // Between the ramps it turns at one rate.
+  const turns = samples.slice(160, 841).map((s, i) => samples[160 + i + 1].theta - s.theta);
+  assert.ok(Math.max(...turns) - Math.min(...turns) < 1e-9, "a steady turn");
+  // It rises once, no more than fifteen degrees, never below where it began,
+  // highest behind the figures.
   const elevations = samples.map((s) => s.elevation / DEG);
-  assert.ok(Math.max(...elevations) > 50, "rises over the figures");
-  assert.ok(Math.min(...elevations) < 14, "dips low");
-  assert.ok(Math.min(...elevations) >= 6, "never below the horizon");
+  const top = Math.max(...elevations);
+  assert.ok(top > START.elevation / DEG + 5 && top <= START.elevation / DEG + 15, `rises to ${top}°`);
+  assert.ok(Math.min(...elevations) >= START.elevation / DEG - 1e-9);
+  const highest = samples[elevations.indexOf(top)];
+  assert.ok(Math.abs(highest.theta - START.theta - Math.PI) < 5 * DEG, "highest behind");
+  let turnsBack = 0;
+  for (let i = 2; i < elevations.length; i += 1)
+    if (Math.sign(elevations[i] - elevations[i - 1]) * Math.sign(elevations[i - 1] - elevations[i - 2]) < 0) turnsBack += 1;
+  assert.equal(turnsBack, 1, "up once and down once");
   const radii = samples.map((s) => s.radius / START.radius);
-  assert.ok(Math.min(...radii) < 0.9, "comes in closer");
-  assert.ok(
-    Math.max(...radii) <= 1.02,
-    "never backs off much past the framing",
-  );
+  assert.ok(Math.min(...radii) >= 0.93 && Math.min(...radii) < 0.97, "comes in a little");
+  assert.ok(Math.max(...radii) <= 1, "never backs off past the framing");
+  // What it looks at stays put.
+  const focused = tourOrbit({ ...START, focus: [0.1, 0.8, -0.2] }, 0.4);
+  assert.deepEqual(focused.focus, [0.1, 0.8, -0.2]);
+});
+
+test("a tour from overhead comes down, a little, rather than going higher", () => {
+  const top = { theta: 0.8, elevation: 89.9 * DEG, radius: 3 };
+  const elevations = Array.from({ length: 101 }, (_, i) => tourOrbit(top, i / 100).elevation / DEG);
+  assert.ok(Math.max(...elevations) <= 89.9 + 1e-9);
+  assert.ok(Math.min(...elevations) > 70);
 });
 
 test("a tour from a low front view does not start by dropping under it", () => {

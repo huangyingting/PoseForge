@@ -52,13 +52,23 @@ either; a pose description may be written in either language.
 Figure/contact editing, favorites, saved presets, undo/redo and JSON import/export
 let you build a personal library. The viewport supports drag/keyboard orbit,
 pinch/wheel/button zoom, natural and clay materials, and PNG/SVG export.
-A position that loads is toured once round: over 16 seconds the camera circles
-the figures, rising over them, dipping low behind and coming in closer, and
-ends on the view it was framed in. Dragging, scrolling or a key stops it where
-it is. **Tour** in the camera toolbar turns this off (remembered) or back on,
-which tours the current position; with reduced motion requested it starts off.
+The camera has a 28° lens across the picture's shorter side, a short
+telephoto's, and frames the figures on their own outline, in the part of the
+picture the title and the toolbar leave clear. The three-quarter view is
+nearly level with a pair standing and looks down on a pair lying. Nothing
+jumps: a drag, a key or the wheel glides to where it sends the camera, and a
+view button, the fit or the next position moves it there in one eased move,
+the short way round; with reduced motion requested, all of it is immediate.
+The camera stays above the floor.
+A position that loads is toured once round: over 24 seconds the camera circles
+the figures at one steady pace, easing in and out at the ends, rising a little
+and coming in a little as it passes behind them, and ends on the view it was
+framed in. Dragging, scrolling or a key stops it where it is. **Tour** in the
+camera toolbar turns this off (remembered) or back on, which tours the current
+position; with reduced motion requested it starts off.
 **Setting**, beside the material, puts the scene in a **bedroom** (the
-default) or a **living room**, or back on the plain **studio** backdrop. A
+default), a **living room**, a **hotel suite** at night, on a **beach**, by a
+**pool** or at a **fashion shoot**, or back on the plain **studio** backdrop. A
 room has a board floor and a rug under the figures, and a window with
 curtains, lamps, pictures, plants, a nightstand or a bookcase along its walls.
 The boards and the furniture have a wood grain, the walls are painted plaster
@@ -69,6 +79,20 @@ and a chair or a table has legs and rails under its top.
 It is sized to the scene, so nothing in it stands where the figures or their
 props do. The walls between the camera and the figures are left out as it
 orbits. PNG export keeps the room, and transparent PNG leaves only the figures.
+Each setting is lit by what is in it, three lights at most and the sky's, each
+from where its window, lamp or softbox is:
+
+| Setting | Key (casts the shadows) | Fill | Rim | Besides |
+| --- | --- | --- | --- | --- |
+| Studio | softbox high to the camera's right | softbox to its left | softbox behind, left | the pale cyc |
+| Bedroom, living room | the window in the east wall, right of the camera | the room's own walls and floor | the window behind the figures | the sky; lamps off |
+| Hotel suite | the floor lamp on the east wall | the bedside lamp, low | the lamp in the far corner | the city, faint |
+| Beach | the sun, south-east and well up | the sunlit sand | — | the sky |
+| Poolside | the sun | the villa's white wall behind the camera | — | the sky |
+| Fashion shoot | the octabox, high right | the white V-flat, left | the strip light behind, left | dark |
+
+What the skin and cloth reflect is the same windows, lamps and softboxes, where
+the lights come from.
 Each figure's **Body model** (first under Appearance) picks one of five
 scanned bodies for its body type: East Asian about 22 (the default), European
 about 22, African about 22, East Asian about 50, or the default drawn finer,

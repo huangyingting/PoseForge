@@ -552,6 +552,17 @@ export function buildRoom(layout) {
     return piece;
   };
 
+  /**
+   * What lights the figures, by the part each plays (see `LIGHTING` in
+   * `renderer.js`), each where it is in the room: a window's middle, or a
+   * lamp's shade.
+   */
+  const sources = (room.userData.sources = {});
+  const source = (part, name, u, y, off) => {
+    walls[name].updateMatrix();
+    sources[part] = new Vector3(u, y, off).applyMatrix4(walls[name].matrix).toArray();
+  };
+
   /** A window, with curtains either side hung in front of its sill, and their rod. */
   const hangWindow = (name, u) => {
     place(name, windowUnit(look), u, 1.55, 0);
@@ -561,22 +572,52 @@ export function buildRoom(layout) {
     place(name, rod, u, 2.38, 0.2);
   };
   const lamp = (name, u) => {
-    place(name, floorLamp(look), u, 0, 0.35);
+    // The light comes from the shade, past the lamp's own pole, not through it.
+    place(name, floorLamp(look), u, 0, 0.35).traverse((node) => (node.castShadow = false));
     place(name, glow(1.4, 1.6, look), u, 1.5, 0.01);
+  };
+  const bedside = (name, u, off) => {
+    place(name, nightstand(look), u, 0, off);
+    // After dark the bedside lamp lights the wall over it too.
+    if (look.night) {
+      place(name, glow(0.9, 1, look), u - 0.08, 0.95, 0.01);
+      source("bedside", name, u - 0.08, 0.88, off - 0.02);
+    }
   };
 
   // What the three-quarter view looks at is the north and the west walls, so
   // the room's best things are there. A wall prop is 3 m of the north wall's
   // middle, and what would have stood in front of it goes round the corner.
+  //
+  // The light comes from where the room has it. By day the key is a window on
+  // the east wall, to the right of the camera and out of its picture, as a
+  // photographer would have it; the window in the picture is behind the
+  // figures, and edges them. After dark the key is a floor lamp on the east
+  // wall, the lamp in the north-east corner edges the figures, and the bedside
+  // lamp is all there is on their other side.
+  const back = layout.wall ? "west" : "north";
+  const backU = layout.wall ? 0 : -width * 0.1;
+  hangWindow(back, backU);
+  source("back", back, backU, 1.55, 0);
+  // Against a wall prop the room is too shallow for the east window's curtains
+  // and the corner lamp both, and by day the lamp is not lighting anything.
+  if (layout.wall ? look.night : plan === "bedroom") {
+    lamp("north", width / 2 - 0.35);
+    source("corner", "north", width / 2 - 0.35, 1.52, 0.35);
+  }
+  if (look.night) {
+    lamp("east", 0);
+    source("key", "east", 0, 1.52, 0.35);
+    place("east", framedArt(look, 0.6, 0.75), -depth * 0.28, 1.45, 0.002);
+  } else {
+    hangWindow("east", depth * 0.08);
+    source("key", "east", depth * 0.08, 1.55, 0);
+  }
   if (!layout.wall) {
-    hangWindow("north", -width * 0.1);
     if (plan === "bedroom") {
-      lamp("north", width / 2 - 0.35);
       place("west", framedArt(look), depth * 0.12, 1.55, 0.002);
-      place("west", nightstand(look), depth * 0.12 + 0.35, 0, 0.22);
-      // After dark the bedside lamp lights the wall over it too.
-      if (look.night) place("west", glow(0.9, 1, look), depth * 0.12 + 0.27, 0.95, 0.01);
-      place("east", framedArt(look, 0.6, 0.75), 0, 1.45, 0.002);
+      bedside("west", depth * 0.12 + 0.35, 0.22);
+      if (!look.night) place("south", framedArt(look, 0.6, 0.75), 0, 1.45, 0.002);
       place("east", plant(look, 1.05), depth / 2 - 0.4, 0, 0.35);
     } else {
       place("north", plant(look, 1.25), width / 2 - 0.4, 0, 0.4);
@@ -586,13 +627,13 @@ export function buildRoom(layout) {
       place("south", plant(look, 0.9), width / 2 - 0.45, 0, 0.4);
     }
   } else {
-    hangWindow("west", 0);
-    lamp("north", width / 2 - 0.35);
-    place("north", plant(look, plan === "bedroom" ? 1.05 : 1.25), -width / 2 + 0.55, 0, 0.4);
+    // After dark the bedside lamp takes the plant's corner.
+    if (look.night) bedside("north", -width / 2 + 0.55, 0.22);
+    else place("north", plant(look, plan === "bedroom" ? 1.05 : 1.25), -width / 2 + 0.55, 0, 0.4);
     if (plan === "bedroom") {
-      place("east", framedArt(look, 0.6, 0.75), 0, 1.45, 0.002);
+      if (!look.night) place("south", framedArt(look, 0.6, 0.75), 0, 1.45, 0.002);
     } else {
-      place("east", bookcase(look), 0, 0, 0.18);
+      place("south", bookcase(look), 0, 0, 0.18);
     }
   }
   return room;

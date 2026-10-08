@@ -15,6 +15,7 @@ import { createPersistentLibrary } from "./persistentLibrary.js";
 import { buildStudio, toast, showRegion, openExport } from "./studioUI.js";
 import { bindCameraInput } from "./cameraInput.js";
 import { createCameraTour } from "./cameraTour.js";
+import { createCameraMotion } from "./cameraMotion.js";
 import { bindWorkspaceLayout } from "./workspaceLayout.js";
 import { createPositionClient } from "./positionClient.js";
 import {
@@ -103,6 +104,8 @@ let ready = false;
 let completedActors = null;
 let current = null;
 let shouldFrame = true;
+// Whether a position has been framed yet (see the worker's `onmessage`).
+let framedOnce = false;
 let past = [];
 let future = [];
 let storageWarned = false;
@@ -147,8 +150,35 @@ const tour = createCameraTour({
   draw: () => view?.render(),
   done: () => delete canvas.dataset.touring,
 });
+// Every other move of the camera: see `cameraMotion.js`.
+const lessMotion = matchMedia("(prefers-reduced-motion: reduce)");
+const motion = createCameraMotion({
+  read: () => view.getOrbit(),
+  write: (orbit) => view.setOrbit(orbit),
+  render: () => view?.render(),
+  draw,
+  limit: (orbit) => view.limit(orbit),
+  instant: () => lessMotion.matches,
+});
+/**
+ * How much of the picture the page covers at its top and bottom, in CSS
+ * pixels: the title over it and the toolbar under it, which the figures are
+ * framed clear of (see `framing` in `renderer.js`).
+ */
+function overlays() {
+  const area = canvas.getBoundingClientRect();
+  const cover = (selector, edge) => {
+    const box = document.querySelector(selector)?.getBoundingClientRect();
+    return box?.height ? Math.max(0, edge(box)) : 0;
+  };
+  return {
+    top: cover(".stage-top", (box) => box.bottom - area.top),
+    bottom: cover(".stage-bottom", (box) => area.bottom - box.top),
+  };
+}
 function playTour() {
   if (!view) return;
+  motion.stop();
   tour.play();
   canvas.dataset.touring = "true";
 }
@@ -600,11 +630,21 @@ worker.onmessage = ({ data }) => {
   });
   view?.setScene({ meshes: data.meshes, props: data.props, shell: data.shell });
   if (shouldFrame) {
-    view?.frame();
-    setView(current.scene.camera?.view ?? "three_quarter");
-    shouldFrame = false;
-    if (shouldTour && tourOnLoad) playTour();
-    shouldTour = false;
+    const name = current.scene.camera?.view ?? "three_quarter";
+    const then = shouldTour && tourOnLoad ? playTour : undefined;
+    shouldFrame = shouldTour = false;
+    showView(name);
+    if (view) {
+      // The first position is framed where it is; from one to the next, the
+      // camera moves.
+      const framed = view.framing(name, overlays());
+      if (framedOnce) motion.moveTo(framed, { then });
+      else {
+        view.setOrbit(framed);
+        then?.();
+      }
+      framedOnce = true;
+    }
   }
   draw();
   panel.setScene(
@@ -637,9 +677,8 @@ worker.onmessage = ({ data }) => {
   persist();
 };
 
-function setView(name) {
-  view?.setView(name);
-  draw();
+/** Mark `name`'s view button pressed, and the others not. */
+function showView(name) {
   document.querySelectorAll("[data-view]").forEach((node) => {
     const active = node.dataset.view === name;
     node.classList.toggle("active", active);
@@ -649,8 +688,7 @@ function setView(name) {
 document.querySelectorAll("[data-view]").forEach(
   (node) =>
     (node.onclick = () => {
-      stopTour();
-      setView(node.dataset.view);
+      frameView(node.dataset.view);
       if (current) {
         cancelPositionLoad();
         remember();
@@ -664,11 +702,13 @@ document.querySelectorAll("[data-view]").forEach(
       }
     }),
 );
-$("fit-view").onclick = () => {
+/** Take the camera to `name`'s view of the figures; for none, frame them from where it looks now. */
+function frameView(name) {
   stopTour();
-  view?.frame();
-  draw();
-};
+  if (name) showView(name);
+  if (view) motion.moveTo(view.framing(name, overlays()));
+}
+$("fit-view").onclick = () => frameView(null);
 const cameraChanged = (kind) => {
   if (kind === "orbit")
     document.querySelectorAll("[data-view]").forEach((button) => {
@@ -682,8 +722,7 @@ for (const [id, factor] of [
 ])
   $(id).onclick = () => {
     stopTour();
-    view?.dolly(factor);
-    draw();
+    if (view) motion.zoom(factor);
   };
 $("show-notes").onclick = () => {
   showRegion("edit");
@@ -784,6 +823,7 @@ $("position-save").onclick = async () => {
 $("open-export").onclick = () => {
   if (ready) {
     stopTour();
+    motion.stop();
     cancelPositionLoad();
     openExport(exportImage);
   }
@@ -825,17 +865,21 @@ document.addEventListener("keydown", (event) => {
     }
   }
 });
-// Taking hold of the camera takes it over from a tour.
+// Taking hold of the camera takes it over from a tour, and a press holds it
+// where it is, mid-move or mid-glide; a turn or a zoom takes it from there.
 for (const type of ["pointerdown", "wheel", "keydown"])
   canvas.addEventListener(type, stopTour, { passive: true });
+canvas.addEventListener("pointerdown", () => motion.stop(), { passive: true });
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) stopTour();
 });
 const removeCameraInput = bindCameraInput(canvas, {
-  orbit: (x, y) => view?.orbit(x, y),
-  zoom: (factor) => view?.dolly(factor),
-  frame: () => view?.frame(),
-  draw,
+  // A drag's second number turns the camera down the sphere: up the picture.
+  orbit: (x, y) => view && motion.nudge(x, -y),
+  zoom: (factor) => view && motion.zoom(factor),
+  frame: () => frameView(null),
+  // The moves draw their own frames.
+  draw: () => {},
   changed: cameraChanged,
 });
 document.querySelector(".skip-link").onclick = (event) => {
@@ -846,6 +890,7 @@ document.querySelector(".skip-link").onclick = (event) => {
 window.addEventListener("pagehide", (event) => {
   if (!event.persisted) {
     stopTour();
+    motion.stop();
     removeCameraInput();
     workspace.dispose();
     studio.dispose();
@@ -862,7 +907,8 @@ new ResizeObserver(() => {
   const aspect = rect.width / rect.height;
   if (Math.abs(lastAspect - aspect) > 0.15) {
     stopTour();
-    view?.frame();
+    motion.stop();
+    view?.frame(null, overlays());
   }
   lastAspect = aspect;
   draw();

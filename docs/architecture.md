@@ -110,6 +110,7 @@ src/app/
   diagram.js       schematic joint previews
   previewService.js queued preview work, bounded cache and stale-result protection
   cameraInput.js   pointer/pinch, wheel and keyboard camera input
+  cameraMotion.js  the camera's glides and eased moves between views
   cameraTour.js    the camera's circuit of a position as it loads
 
 scripts/           no dependencies
