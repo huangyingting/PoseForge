@@ -15,9 +15,9 @@ function solo(surface, spec, place) {
 test("a figure let down onto an exercise ball comes to rest on it, off the floor", () => {
   const { m, actor } = solo("ball", figure("female", "supine", { soloSurface: "floor" }), { pitch: -10, pelvisTo: [0, 1.5, 0.1], settle: {} });
   assert.ok(m.pen.prop < 0.035, `into the ball by ${m.pen.prop}`);
-  // Resting on the crest: well below where it started, with nothing on the floor.
+  // Draped over the crest: well below where it started, with nothing on the floor.
   assert.ok(landmarkPoint(actor, "pelvis")[1] < 1, "still in the air");
-  assert.ok(m.frames[0].lowest > 0.3, `lowest ${m.frames[0].lowest}`);
+  assert.ok(m.frames[0].lowest > 0.15, `lowest ${m.frames[0].lowest}`);
 });
 
 test("a figure resting a hair into the floor settles sideways against a prop without backing out of the floor", () => {

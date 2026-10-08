@@ -29,7 +29,8 @@ They cannot be deleted and are never written to local storage.
 These are **approximations composed from templates**, not measured
 reconstructions: the source images give no 3D coordinates, so each is read by eye
 and rebuilt from a small vocabulary of interaction templates. Checks are geometric
-(distance, overlap, floor), not physical certification.
+(distance, overlap, floor) plus a static weight balance, not physical
+certification.
 
 ## How a study is made
 
@@ -45,13 +46,28 @@ and rebuilt from a small vocabulary of interaction templates. Checks are geometr
    moves, a fitting objective (e.g. B's groin to A's groin), hand/leg contacts to close
    by IK, declared contacts and semantic checks. `scripts/interaction-composer.mjs`
    solves each figure, places it, searches candidate postures and placements against
-   penetration, floor and furniture costs, then closes limb contacts.
+   penetration, floor and furniture costs, then closes limb contacts. A figure
+   the fit leaves in the air (fitted to a partner by its contacts, with nothing
+   under it) is let down onto what is under it, or tipped onto it, whole
+   (`settleWeight`): alone, or with its partners where they all hang together,
+   and only so far as that takes no one further into a partner, the furniture
+   or the floor and keeps the plan's distance and level checks.
 3. **Evaluation** — each scene is measured: required landmark distances, facing
-   and orientation checks, body/prop overlap and floor clearance. Failures are kept
-   with the record and shown in the app as a warning; nothing is hidden.
+   and orientation checks, body/prop overlap and floor clearance, and whether
+   every figure is held up (`src/core/stability.js`). The weights are followed
+   down to the ground: a body that lies or bears on the floor, furniture or a
+   partner can be pushed up there (and the partner pushed down), and a hand that
+   holds on, or is held, can push or pull, but by no more than half a body's
+   weight. A figure fails if more than a tenth of its weight is carried by
+   nothing, or its centre of mass is more than 8 cm from where what carries it
+   would balance it: a woman lifted by a single hand at the hip, or lying back on
+   nothing in front of a chair, hangs in the air. Only up and down is followed,
+   so a figure leaning on a wall or into a standing partner is judged a little
+   harshly. Failures are kept with the record and shown in the app as a warning;
+   nothing is hidden.
 4. **Baking** — `node scripts/build-interaction-studies.mjs` composes all records
    (1,283 distinct scenes: no two records share a classification,
-   in 4 worker threads, about 8 minutes) into
+   in 4 worker threads, about half an hour) into
    `public/catalog/interaction-studies-v1.json` with a SHA-256/size manifest in
    `src/data/interaction-manifest.json`. `--check` verifies the committed files
    reproduce exactly.
@@ -110,7 +126,8 @@ the app notes this.
 
 Passing the checks means the declared contacts close, the figures are clear of
 each other and the furniture, and every figure rests on the floor, a surface or
-a partner. It does not mean the scene matches its reference in every detail.
+a partner, held up and held level by what it rests on, holds or is held by. It
+does not mean the scene matches its reference in every detail.
 Each record was also compared with its source image by eye. The remaining
 simplifications are mostly a lean or arch shallower than drawn and a raised or
 held leg shown lower, where the joint ranges stop them (a spine bends back 36°
@@ -178,8 +195,10 @@ shows beyond them, and the build rejects none of it silently:
   partner the template leaves free. Sitting on the edge of a table, bed or
   sofa facing the partner (`edge_seated_facing`), it is A's: `back` tips A back
   onto the hands, `forward` leans A in. Slouched on a chair, it is the partner's
-  in front. From behind, over furniture or low on the floor (`furniture_rear`,
-  `doggy_low`), and at hips raised high (`supported_inversion`), it is B's. A
+  in front. On top face to face (`missionary`, `prone_on_top`), `upright`
+  raises B's chest off A on the hands, the back a little arched. From behind,
+  over furniture or low on the floor (`furniture_rear`, `doggy_low`), and at
+  hips raised high (`supported_inversion`), it is B's. A
   partner leaning forward is tried leant in, then only bowed at the shoulders,
   then upright, and keeps the first the bodies and furniture allow (`leanIn`).
   Spooning already leans the pair together, so only `back` shows there; tied
@@ -210,12 +229,42 @@ another shape for a figure lying, kneeling, sitting or bent forward
 (`IN_POSTURE`), that shape is used. Arms raised by someone on their back lie on
 the floor above the head. A knee brought up from kneeling sets that foot flat in
 front. A leg raised while bent forward goes out behind and to the side, as far
-as the hip allows. The composer lays details on limb by limb, each only as far
-as the floor and furniture allow (`applyDetails` in
-`scripts/interaction-composer.mjs`). A limb that reaches its partner is still
-placed by that reach, so an arm detail on a hand that holds on does nothing.
+as the hip allows. Legs straight on the hands and knees are on the hands and
+toes, sloping down to the floor. Arms overhead, down on the forearms, stretch
+out forward along the floor in a V: the chest is too low to raise them. On the
+feet or the knees (`STANCE`), legs apart is a stance and wide a little wider,
+not the splits: spread as far as lying down, one foot or both knees would come
+up off the floor. A figure already crouched or spread by its own joints is taken
+a visible step further (`FURTHER`), and one kneeling astride a partner's legs
+has its knees apart already. The composer lays details on limb by limb, each
+only as far as the floor and furniture allow (`applyDetails` in
+`scripts/interaction-composer.mjs`). A detail or shape laid over a figure on
+its feet or knees can lift some of them off the floor: it is set back down on
+them (`restOnSupports`), lowered if all came up, however far, or tipped about
+those still down, the shins folding up behind knees that come down. One lifted
+further than a hand's breadth while the others stay down was raised on purpose
+and stays up. Knees set apart for a partner to kneel between keep the shins
+straight back behind them, not turned in under the partner. A limb that reaches
+its partner is still placed by that reach, so an arm detail on a hand that
+holds on does nothing.
 Every detail a record lists was checked to change its scene, by composing the
 record without it.
+
+From behind, the partner in front is down on its knees and hands, forearms or
+chest, and the one behind kneels or stands with its knees or feet on the floor,
+not held up at the hips. Both kneeling, the hips are level and meet a little
+further apart than from above. Low on the forearms facing away
+(`reverse-doggy`), A's knees go wide and B kneels between them; behind a
+partner folded down on the knees (`child-s-pose`), B bows less, over the hips
+rather than into them; kneeling up behind arms raised behind the head
+(`hot-seat-floor`), B may lean back a little to clear them. Behind a partner
+lying face down over the ball with the knees bent (`jockey`), B is up on the
+toes astride A's legs. Squatting astride over a partner on all fours, B has
+the feet down outside A's knees, and a squat deepened by a detail (`leo`)
+starts shallower and wider so they stay there. Head to toe on the hands and
+knees (`sixty_nine`), B's knees are down either side of A's head, not borne on
+A alone; where they come down beside A's shoulders, too close for A's hands to
+reach B's thighs, A's arms lie along its sides instead.
 
 The hands that hold nothing are placed last, after every contact is closed.
 First each hand that holds something has its contact checked as the viewer

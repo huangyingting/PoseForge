@@ -28,6 +28,8 @@ import { LIMB_CHAINS, solveTwoBoneIK } from "../src/core/ik.js";
 import { region } from "../src/core/surfaceContacts.js";
 import { quatFromAxisAngle, quatMultiply, quatNormalize, quatRotate } from "../src/core/math.js";
 import { checkScene } from "../src/core/catalog.js";
+import { bearings, hanging, stability } from "../src/core/stability.js";
+import { supportProps } from "../src/core/supports.js";
 
 const DEG = Math.PI / 180;
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -125,6 +127,72 @@ function applyDetails(fixed, details, props) {
   return out;
 }
 
+/** How high each of a figure's declared supports is: a knee brought up off the floor is, though the foot below it is down. */
+const supportHeights = (actor) => actor.posture.supports.map(({ landmark, side }) => landmarkPoint(actor, landmark, side ?? null)[1]);
+
+const LEG = /^(hip|knee|ankle|toe|foot)_[lr]$/;
+const LIMB = /^(hip|knee|ankle|toe|foot|shoulder|elbow|wrist|hand)_[lr]$/;
+const supportBones = (actor) => actor.posture.supports.map(({ landmark, side }) => resolveLandmark(landmark, side ?? null)?.bone ?? "");
+
+/**
+ * A figure on its feet or knees set back down on them after the joints laid
+ * over its solved pose lifted them: lowered where they all came up together, as
+ * the hips sink between knees spread from kneeling, and tipped about the
+ * supports that stayed down where only some did, as the hips come down between
+ * knees spread on the hands and knees. A foot or knee lifted further than a
+ * hand's breadth while the rest stay down was raised on purpose and stays up,
+ * and nothing goes lower than the figure went before.
+ */
+function restOnSupports(spec, before) {
+  const bones = supportBones(before);
+  if (!bones.length || !bones.every((bone) => LIMB.test(bone)) || !bones.some((bone) => LEG.test(bone))) return spec;
+  const was = supportHeights(before);
+  const floor = lowest(before);
+  let out = spec;
+  let closest = null;
+  for (let pass = 0; pass <= 4; pass += 1) {
+    const actor = liveActor(out, 0);
+    const lift = supportHeights(actor).map((y, i) => y - was[i]);
+    const hovering = lift.every((up) => up >= 0.005);
+    const raised = lift.map((up, i) => LEG.test(bones[i]) && up >= 0.005 && (up <= 0.15 || hovering));
+    if (!raised.some(Boolean)) break;
+    // Each pass brings them nearer the floor, or the last is undone and that is as near as they come.
+    const worst = Math.max(...lift.filter((_, i) => raised[i]));
+    if (pass > 0 && worst >= closest.worst - 0.001) return closest.out;
+    closest = { out, worst };
+    if (pass === 4) break;
+    const down = lift.map((up) => up < 0.005);
+    if (!down.some(Boolean)) {
+      const least = Math.min(...lift.filter((_, i) => raised[i]));
+      out = moveSpec(out, { translate: [0, Math.max(-least, floor - lowest(actor)), 0] });
+      continue;
+    }
+    // About the line through the supports still down, square to the way to the rest.
+    const centre = (which) => {
+      const points = actor.posture.supports.filter((_, i) => which[i]).map(({ landmark, side }) => landmarkPoint(actor, landmark, side ?? null));
+      return points.reduce((sum, p) => add(sum, p), [0, 0, 0]).map((v) => v / points.length);
+    };
+    const pivot = centre(down);
+    const away = sub(centre(raised), pivot);
+    const reach = Math.hypot(away[0], away[2]);
+    if (reach < 0.1) break;
+    const drop = lift.filter((_, i) => raised[i]).reduce((sum, up, _, all) => sum + up / all.length, 0);
+    let tipped = moveSpec(out, { pitch: Math.atan2(drop, reach) / DEG, pitchAxis: [away[2] / reach, 0, -away[0] / reach], pivot });
+    // The shins behind the knees come down further than the knees: folded up off the floor.
+    for (const s of ["l", "r"]) {
+      const shin = new RegExp(`^(ankle|toe|foot)_${s}$`);
+      for (let bend = 0; bend < 12; bend += 1) {
+        if (lowest({ volumes: liveActor(tipped, 0).volumes.filter((v) => shin.test(v.bone)) }) >= floor) break;
+        const knee = tipped.joints[`knee_${s}`] ?? {};
+        tipped = { ...tipped, joints: { ...tipped.joints, [`knee_${s}`]: { ...knee, flexion: (knee.flexion ?? 0) + 5 } } };
+      }
+    }
+    const deeper = floor - lowest(liveActor(tipped, 0));
+    out = deeper > 0 ? moveSpec(tipped, { translate: [0, deeper, 0] }) : tipped;
+  }
+  return out;
+}
+
 /** Solve one figure on its own and return a fixed spec. */
 function soloFixed(input, surface, props = propsFor(surface).props) {
   const { override, tilt, details, ...spec } = input;
@@ -135,8 +203,9 @@ function soloFixed(input, surface, props = propsFor(surface).props) {
     contacts: [],
   });
   const solved = solveScene(scene, { palms: false });
-  const fixed = applyDetails(applyOverride({ ...scene.actors[0], ...captureSolvedPose(solved.actors[0]) }, solved.actors[0], override), details, props);
-  if (!tilt) return fixed;
+  const solo = { ...scene.actors[0], ...captureSolvedPose(solved.actors[0]) };
+  const fixed = applyDetails(applyOverride(structuredClone(solo), solved.actors[0], override), details, props);
+  if (!tilt) return override || details ? restOnSupports(fixed, liveActor(solo, 0)) : fixed;
   // Tip the body forward about its pelvis (the override re-aims the thighs), then rest it back down.
   const before = lowest(solved.actors[0]);
   const h = bodyHeading(liveActor(fixed, 0));
@@ -581,6 +650,7 @@ export function compose(input, walk = {}) {
     }
     input.limbContacts = kept;
   }
+  specs = settleWeight(specs, input, props);
   const checked = (candidate) =>
     evaluate(input, measure(sceneFor(input, candidate.map(({ prefer, soloSurface, override, tilt, details, ...spec }) => spec)).scene)).pass;
   for (const key of ["contacts", "limbContacts"]) if (input[key]) input[key] = nameContacts(specs, input[key]);
@@ -594,6 +664,153 @@ export function compose(input, walk = {}) {
     const { prefer, soloSurface, hands, ...clean } = spec;
     return clean;
   });
+}
+
+/**
+ * How far short of held up and held level a figure may fall and still look
+ * held: a tenth of its weight carried by nothing, or its centre of mass eight
+ * centimetres past where what carries it would balance it (see `stability`).
+ */
+export const UNHELD = { lift: 0.1, tip: 0.08 };
+
+/** A figure's shortfall against what may go unheld: over one, it hangs in the air. */
+const shortfall = ({ lift, tip }) => Math.max(lift / UNHELD.lift, tip / UNHELD.tip);
+
+/** Each figure's shortfall, and how far it hangs above what is under it, with the cushions and wedges the viewer will put under it. */
+function shortfalls(actors, surface, props) {
+  const solved = { actors, surface, props };
+  const all = [...props, ...supportProps(solved)];
+  const forces = bearings(solved, all);
+  return { short: stability(solved, all, forces).map(shortfall), gap: hanging(solved, all, forces) };
+}
+
+/**
+ * Let figures left hanging in the air down onto what is under them.
+ *
+ * Placing a figure by its contacts with a partner says nothing of what holds
+ * it up: kneeling up behind a partner it can be fitted to their back with its
+ * knees a hand's breadth off the bed, and a pair fitted to each other can come
+ * out standing a foot above the floor. Each figure that falls short of being
+ * held is moved as a whole - down, up a little, or tipped forward, back or to a
+ * side - to where everyone is held best, so long as that takes no one further
+ * into a partner, the furniture or the floor. It is moved alone or with
+ * everyone, whichever holds them better: a pair all in the air comes down
+ * together.
+ */
+function settleWeight(specs, plan, props) {
+  const { surface } = solveScene(sceneFor(plan, specs.map(({ prefer, soloSurface, override, tilt, details, ...spec }) => spec)).scene);
+  const first = specs.map((s, i) => liveActor(s, i));
+  const declared = declaredKeys(first, [...(plan.contacts ?? []), ...(plan.limbContacts ?? [])]);
+  // How far past what the plan checks each figure is (see `evaluate`): landmarks
+  // too far apart, hips on the wrong level, or a body tipped off the way it faces.
+  const roles = plan.roles ?? { a: 0, b: 1 };
+  const at = (actors, role, name) => landmarkPoint(actors[roles[role]], name);
+  const pelvis = (actors, role) => at(actors, role, "pelvis")[1];
+  const front = (actors, role) => unit(sub(at(actors, role, "chest"), at(actors, role, "upperBack")))[1];
+  const up = (actors, role) => unit(sub(at(actors, role, "neck"), at(actors, role, "pelvis")))[1];
+  const posed = {
+    aAboveOrLevel: (actors) => pelvis(actors, "b") - 0.05 - pelvis(actors, "a"),
+    bAbove: (actors) => pelvis(actors, "a") + 0.02 - pelvis(actors, "b"),
+    aFaceUp: (actors) => 0.45 - front(actors, "a"),
+    bFaceUp: (actors) => 0.45 - front(actors, "b"),
+    aFaceDown: (actors) => front(actors, "a") + 0.45,
+    bFaceDown: (actors) => front(actors, "b") + 0.45,
+    aUpright: (actors) => 0.55 - up(actors, "a"),
+    bUpright: (actors) => 0.55 - up(actors, "b"),
+  };
+  const checks = roles.b == null || specs.length < 2 ? [] : (plan.checks ?? []).flatMap((check) =>
+    Array.isArray(check)
+      ? [(actors) => len(sub(at(actors, check[1], check[2]), at(actors, check[3], check[4]))) - check[5]]
+      : posed[check] ? [posed[check]] : []
+  );
+  const state = (list, actors) => {
+    const { short, gap } = shortfalls(actors, surface, props);
+    // A figure wholly in the air is as short of held at any height: how far it has to come down counts too.
+    const cost = short.reduce((sum, s, i) => sum + s * s + (s > 1 ? (gap[i] / 0.1) ** 2 : 0), 0);
+    return { list, actors, short, gap, cost, pen: penetration(actors, props, declared), low: Math.min(...actors.map(lowest)), past: checks.map((past) => past(actors)) };
+  };
+  const start = state(specs, first);
+  if (!start.short.some((s) => s > 1)) return specs;
+  // No further into a partner, the furniture or the floor than at the start, or than a scene that passes may be,
+  // and no further past what the plan checks.
+  const allowed = (trial) =>
+    trial.pen.body <= Math.max(start.pen.body, 0.035) + 1e-6 &&
+    trial.pen.prop <= Math.max(start.pen.prop, 0.025) + 1e-6 &&
+    trial.low >= Math.min(start.low, -0.015) - 1e-6 &&
+    trial.past.every((past, k) => past <= Math.max(start.past[k], -0.005) + 1e-6);
+  let here = start;
+  for (let round = 0; round < 3 && here.short.some((s) => s > 1); round += 1) {
+    const groups = [...here.short.flatMap((s, i) => (s > 1 ? [[i]] : [])), here.list.map((_, i) => i)];
+    let best = here;
+    for (const group of groups) {
+      const found = settleGroup(here, group, state, allowed);
+      if (found.cost < best.cost - 1e-6) best = found;
+    }
+    if (best === here) break;
+    here = best;
+  }
+  return here.list;
+}
+
+/** Move the actors in `group` together, a step at a time, to where the scene falls least short of held. */
+function settleGroup(from, group, state, allowed) {
+  const lead = from.actors[group[0]];
+  const pivot = landmarkPoint(lead, "pelvis");
+  const ahead = bodyHeading(lead);
+  const across = [ahead[2], 0, -ahead[0]];
+  const params = { y: 0, pitch: 0, roll: 0 };
+  const at = (p) => {
+    const list = from.list.map((spec, i) => {
+      if (!group.includes(i)) return spec;
+      const tipped = moveSpec(moveSpec(spec, { pitch: p.pitch, pitchAxis: across, pivot }), { pitch: p.roll, pitchAxis: ahead, pivot });
+      return moveSpec(tipped, { translate: [0, p.y, 0] });
+    });
+    return state(list, list.map((spec, i) => (group.includes(i) ? liveActor(spec, i) : from.actors[i])));
+  };
+  let best = from;
+  const inRange = (p) => p.y >= -0.4 && p.y <= 0.05 && Math.abs(p.pitch) <= 15 && Math.abs(p.roll) <= 15;
+  // In the air, it first drops straight down onto what is under it: tipped
+  // first, its lowest point comes down sooner, but it lands on that alone.
+  const drop = Math.min(...group.map((i) => from.gap[i]));
+  if (drop > 0) {
+    const trial = { y: -Math.min(drop, 0.4), pitch: 0, roll: 0 };
+    const result = at(trial);
+    if (allowed(result) && result.cost < best.cost - 1e-6) {
+      best = result;
+      Object.assign(params, trial);
+    }
+  }
+  // Straight moves first, all the way down to the finest step; only then down
+  // and tipped at once, for a figure whose knees come down only as its feet come
+  // up out of the floor. Taken any sooner, a coarse diagonal step can lead off
+  // to somewhere worse than straight moves would have reached.
+  for (const diagonal of [false, true]) {
+    for (const step of [0.04, 0.02, 0.01, 0.005]) {
+      // A step of four centimetres down goes with one of six degrees round.
+      const delta = { y: step, pitch: step * 150, roll: step * 150 };
+      const single = ["y", "pitch", "roll"].flatMap((key) => [-1, 1].map((sign) => ({ [key]: sign * delta[key] })));
+      const paired = ["pitch", "roll"].flatMap((key) => [-1, 1].flatMap((sign) => [-1, 1].map((down) => ({ y: down * delta.y, [key]: sign * delta[key] }))));
+      for (let round = 0; round < 10; round += 1) {
+        let move = null;
+        for (const moves of diagonal ? [single, paired] : [single]) {
+          for (const change of moves) {
+            const trial = { ...params };
+            for (const [key, value] of Object.entries(change)) trial[key] += value;
+            if (!inRange(trial)) continue;
+            const result = at(trial);
+            if (!allowed(result) || result.cost >= (move ?? { result: best }).result.cost - 1e-6) continue;
+            move = { result, trial };
+          }
+          if (move) break;
+        }
+        if (!move) break;
+        best = move.result;
+        Object.assign(params, move.trial);
+      }
+    }
+    if (!best.short.some((s) => s > 1)) break;
+  }
+  return best;
 }
 
 /**
@@ -1391,7 +1608,8 @@ export function measure(scene) {
     const front = unit(sub(p("chest"), p("upperBack")));
     return { pelvis, up, front, head: p("head"), chest: p("chest"), lowest: lowest(actor) };
   });
-  return { solved, pen, distances, frames };
+  const held = stability(solved, [...solved.props, ...supportProps(solved)]);
+  return { solved, pen, distances, frames, held };
 }
 
 /** The portable scene for a plan: fixed actors, the surface and every declared contact. */
@@ -1475,6 +1693,9 @@ export function evaluate(plan, m, { maxBody = 0.045, maxProp = 0.035 } = {}) {
   if (m.pen.prop > maxProp) failures.push(`prop overlap ${Math.round(m.pen.prop * 1000)}mm`);
   m.frames.forEach((f, i) => {
     if (f.lowest < -0.03) failures.push(`actor ${i} below floor`);
+  });
+  m.held.forEach(({ lift, tip }, i) => {
+    if (shortfall({ lift, tip }) > 1) failures.push(`actor ${i} unheld (${Math.round(lift * 100)}% of its weight, ${Math.round(tip * 1000)}mm off balance)`);
   });
   const reach = m.distances.map((d) => (d == null ? null : d));
   const unmet = reach.filter((d) => d != null && d > UNMET).length;

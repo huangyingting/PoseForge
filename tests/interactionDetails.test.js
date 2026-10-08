@@ -34,7 +34,8 @@ test("a detail read off the source image shows in the figure it is laid on", () 
   const raised = compose("glass");
   const plain = compose("glass", { a_pose: null });
   assert.ok(poseDifference(poseSignature(raised.scene), poseSignature(plain.scene)).difference >= 1);
-  assert.ok(raised.at(0, "ankle.l")[1] > plain.at(0, "ankle.l")[1] + 0.2);
+  // Settled onto the floor, the body rolls back a little under the raised leg.
+  assert.ok(raised.at(0, "ankle.l")[1] > plain.at(0, "ankle.l")[1] + 0.15);
 });
 
 test("kneeling astride, a knee brought up sets that foot flat in front, out beside the partner", () => {

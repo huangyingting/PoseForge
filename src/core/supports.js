@@ -41,9 +41,9 @@ const BACK = new Set(["pelvis", "spine01", "spine02", "spine03"]);
 const ARMS = /^(shoulder|elbow|wrist|hand)_/;
 
 /** Each volume as a row of spheres, close enough to stand for its capsule. */
-function spheres(actor, index) {
+export function spheres(actor, index) {
   const out = [];
-  for (const volume of actor.volumes) {
+  for (const [v, volume] of actor.volumes.entries()) {
     const { a, b } = volume;
     const length = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
     const steps = Math.max(1, Math.ceil(length / 0.025));
@@ -51,6 +51,7 @@ function spheres(actor, index) {
       const t = k / steps;
       out.push({
         actor: index,
+        volume: v,
         bone: volume.bone,
         c: [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t],
         r: volume.ra + (volume.rb - volume.ra) * t,
@@ -61,7 +62,7 @@ function spheres(actor, index) {
 }
 
 /** Where a body at height `y` over (x, z) would come to rest: the floor, or the highest top below it. */
-function restingOn(surface, props, x, z, y = Infinity) {
+export function restingOn(surface, props, x, z, y = Infinity) {
   let top = surface.ground ?? 0;
   for (const prop of props) {
     const h = propTopAt(prop, x, z);
