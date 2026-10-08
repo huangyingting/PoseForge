@@ -13,7 +13,9 @@
  * to the body as solved, touching it and clear of everything else.
  *
  * Nothing here moves a figure, and nothing is added where the body is already
- * held - by the surface, by a partner underneath, or in a partner's arms.
+ * held - by the surface, by a partner underneath, or in a partner's arms. Its
+ * own hands put down behind it hold its back up, and spare it the wedge, but
+ * do not seat it: the buttocks still get their cushion.
  */
 import { closestPointsBetweenSegments } from "./math.js";
 import { BULK_SUPPORTS } from "./poseLibrary.js";
@@ -35,6 +37,8 @@ const REACH = 0.3;
 const NARROWEST = 0.3;
 // The trunk a backrest is built against: the neck and head lie on it or not as they please.
 const BACK = new Set(["pelvis", "spine01", "spine02", "spine03"]);
+// The arms, which brace a figure sitting back but do not seat it.
+const ARMS = /^(shoulder|elbow|wrist|hand)_/;
 
 /** Each volume as a row of spheres, close enough to stand for its capsule. */
 function spheres(actor, index) {
@@ -66,16 +70,20 @@ function restingOn(surface, props, x, z, y = Infinity) {
   return top;
 }
 
-/** Plan positions where the actor bears on the surface, or on a partner underneath. */
-function bearing(index, actors, surface, props) {
+/**
+ * Plan positions where the actor bears on the surface, or on a partner
+ * underneath - leaving out its own arms when `arms` is false.
+ */
+function bearing(index, actors, surface, props, arms = true) {
   const actor = actors[index];
+  const volumes = arms ? actor.volumes : actor.volumes.filter((volume) => !ARMS.test(volume.bone));
   const points = [];
-  for (const volume of actor.volumes)
+  for (const volume of volumes)
     for (const [p, r] of [[volume.a, volume.ra], [volume.b, volume.rb]])
       if (Math.abs(p[1] - r - restingOn(surface, props, p[0], p[2], p[1] - r)) < CONTACT) points.push([p[0], p[2]]);
   actors.forEach((partner, j) => {
     if (j === index) return;
-    for (const v of actor.volumes)
+    for (const v of volumes)
       for (const w of partner.volumes) {
         const c = closestPointsBetweenSegments(v.a, v.b, w.a, w.b);
         const d = Math.sqrt(c.distanceSq);
@@ -278,7 +286,11 @@ export function supportProps(solved) {
     if (actor.carried || actor.mountedOn != null) return;
     if (!actor.posture?.supports?.some((support) => BULK_SUPPORTS.has(support.landmark))) return;
     const com = centreOfMass(actor);
-    if (overhang(bearing(index, actors, surface, props), com).by <= SLACK) return;
+    // Hands put down behind a figure sitting back hold it off the floor, but
+    // it is seated by what its body and legs rest on: buttocks hanging over
+    // the boards are given a cushion all the same, and a back the hands
+    // already hold up is not given a wedge.
+    if (overhang(bearing(index, actors, surface, props, false), com).by <= SLACK) return;
     const seat = seatFor(index, all, surface, props);
     if (seat) props.push(seat), added.push(seat);
     const still = overhang(bearing(index, actors, surface, props), com);

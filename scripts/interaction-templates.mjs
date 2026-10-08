@@ -3829,6 +3829,23 @@ function withReaches(plan, cls) {
 }
 
 /**
+ * The hands a record holds up: over the head, behind it, on the straps. Every
+ * other free hand the pose leaves in the air is laid on whatever it reaches
+ * (`restFreeHands`); these stay up - those behind the head (`head`) on the
+ * back of it.
+ */
+const RAISED_DETAILS = {
+  arms_overhead: {}, arms_behind_head: { head: true }, arms_straps: {},
+  arm_up_l: { side: "l" }, arm_up_r: { side: "r" }, arm_head_l: { side: "l", head: true }, arm_head_r: { side: "r", head: true },
+};
+function withRaised(plan, cls) {
+  const raised = [];
+  for (const [role, index] of Object.entries(rolesOf(plan)))
+    for (const name of cls[`${role}_pose`] ?? []) if (name in RAISED_DETAILS) raised.push({ index, ...RAISED_DETAILS[name] });
+  return raised.length ? { ...plan, raised } : plan;
+}
+
+/**
  * The figures whose hands are tied - in cuffs, or as the template ties them
  * (`bound`) - which stay where the arms were put: nothing puts them down or
  * lays them on anything.
@@ -3846,7 +3863,7 @@ function withBound(plan, cls) {
  */
 export function planFor(cls) {
   const plan = basePlan(cls);
-  const laid = (p) => withBound(withReaches(withPlants(withDetails(p, cls), cls), cls), cls);
+  const laid = (p) => withBound(withRaised(withReaches(withPlants(withDetails(p, cls), cls), cls), cls), cls);
   return plan.retry ? { ...laid(plan), retry: laid(plan.retry) } : laid(plan);
 }
 

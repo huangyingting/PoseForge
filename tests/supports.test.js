@@ -30,11 +30,13 @@ function gaps(solved, prop) {
 }
 
 test("a partner sitting back on the floor with a lover on the lap is given a cushion and a wedge", () => {
-  for (const id of ["caboose", "seated-ball", "face-off"]) {
+  // Leaning back on the hands, as the caboose does, the hands hold the back up:
+  // the buttocks still get their cushion, and the back no wedge.
+  for (const [id, kinds] of [["caboose", ["cushion"]], ["seated-ball", ["cushion", "backrest"]], ["face-off", ["cushion", "backrest"]]]) {
     const solved = solve(id);
     const before = JSON.stringify(solved.actors.map((actor) => actor.evaluated.positions));
     const added = supportProps(solved);
-    assert.deepEqual(added.map((prop) => prop.kind), ["cushion", "backrest"], id);
+    assert.deepEqual(added.map((prop) => prop.kind), kinds, id);
     // Built to the figure as it is: nobody is moved to fit them.
     assert.equal(JSON.stringify(solved.actors.map((actor) => actor.evaluated.positions)), before, id);
     const seated = solved.actors.findIndex((actor) => actor.posture.id === "seated_reclined");

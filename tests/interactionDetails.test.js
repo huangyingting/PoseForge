@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { composeStudy } from "../scripts/build-interaction-studies.mjs";
-import { DETAILS, SEATS, TURNS, detailFor } from "../scripts/interaction-templates.mjs";
+import { DETAILS, SEATS, TURNS, detailFor, planFor } from "../scripts/interaction-templates.mjs";
 import { poseDifference, poseSignature } from "../scripts/scene-distance.mjs";
 import { solveScene } from "../src/core/solver.js";
 import { landmarkPoint } from "../src/core/landmarks.js";
@@ -155,10 +155,21 @@ test("side saddle on a sofa, B sits across the hips of A lying along it, facing 
 
 test("standing with a foot up on a bench, B's hands go where the record puts them", () => {
   // B's (the second figure's): A's free hand may be laid on B where it fell.
-  const targets = (patch) => compose("raised-dancer", patch).scene.contacts.filter((c) => c.from.startsWith("hand.") && c.fromActor === 1).map((c) => c.to);
-  assert.deepEqual(targets({}), ["hip.r", "hip.l"]);
-  assert.deepEqual(targets({ b_hands: "shoulders" }), ["shoulder.r", "shoulder.l"]);
-  assert.deepEqual(targets({ b_hands: "embrace" }), ["back", "back"]);
+  const hands = (contacts) => contacts.filter((c) => c.from.startsWith("hand.") && c.fromActor === 1).map((c) => c.to);
+  const sent = (patch) => {
+    const plan = planFor({ ...byId.get("raised-dancer"), ...patch });
+    return hands([...(plan.contacts ?? []), ...(plan.limbContacts ?? [])]);
+  };
+  const targets = (patch) => hands(compose("raised-dancer", patch).scene.contacts);
+  assert.deepEqual(sent({}), ["hip.r", "hip.l"]);
+  assert.deepEqual(sent({ b_hands: "shoulders" }), ["shoulder.r", "shoulder.l"]);
+  assert.deepEqual(sent({ b_hands: "embrace" }), ["back", "back"]);
+  // Each named for what it is on (`nameContacts`): the tops of the thighs
+  // under the hips, A's forearms by the shoulders, and the raised thigh one
+  // hand round the back comes to.
+  assert.deepEqual(targets({}), ["thigh.r", "thigh.l"]);
+  assert.deepEqual(targets({ b_hands: "shoulders" }), ["forearm.r", "forearm.l"]);
+  assert.deepEqual(targets({ b_hands: "embrace" }), ["back", "thigh.l"]);
 });
 
 test("what a record says a role wears goes on that role's figure, and only a known garment", () => {

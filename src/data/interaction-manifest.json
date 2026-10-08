@@ -2,16 +2,16 @@
   "format": "poseforge.interaction-manifest",
   "version": 1,
   "file": "catalog/interaction-studies-v1.json",
-  "bytes": 4419389,
-  "sha256": "f7f88b06961ee3bb64224da17e2b0c0e76a7a506f5d70c04b3ffde82d6908011",
+  "bytes": 4428827,
+  "sha256": "60ee39d4a7817cb4dc8fdb3add21142ca431b7a69cc2a6daa11a7050d5934d1a",
   "records": 1283,
   "distinctScenes": 1283,
   "participants": 2544,
   "passedChecks": 1283,
   "templates": {
     "cowgirl": {
-      "records": 60,
-      "passed": 60
+      "records": 61,
+      "passed": 61
     },
     "doggy": {
       "records": 30,
@@ -118,8 +118,8 @@
       "passed": 33
     },
     "squat_cowgirl": {
-      "records": 15,
-      "passed": 15
+      "records": 14,
+      "passed": 14
     },
     "standing_bent_over": {
       "records": 23,

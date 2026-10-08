@@ -88,7 +88,13 @@
 "b_body": "male",
 "lean": "upright",
 "b_hands": "behind",
-"confidence": 0.9
+"confidence": 0.9,
+"a_pose": [
+"head_back"
+],
+"b_pose": [
+"head_back"
+]
 },
 {
 "id": "flying-missionary",
@@ -4000,7 +4006,8 @@
 "confidence": 0.9,
 "notes": "standing over",
 "b_pose": [
-"arms_around"
+"arms_around",
+"legs_bent"
 ]
 },
 {
@@ -6599,7 +6606,7 @@
 },
 {
 "id": "open-rodeo",
-"template": "squat_cowgirl",
+"template": "cowgirl",
 "surface": "floor",
 "a_body": "male",
 "b_body": "female",

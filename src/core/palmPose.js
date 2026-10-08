@@ -483,6 +483,9 @@ export function turnPalms(solved, { free = () => true, aims = palmAims(solved), 
   return turned;
 }
 
+/** How far over what is under it the middle of a palm-down relaxed hand lies flat on it. */
+const RESTING = 0.09;
+
 /**
  * The one shape read off the geometry rather than the declarations: a free
  * hand that has come to lie palm down on the bed, the floor or a seat. Hung
@@ -490,8 +493,12 @@ export function turnPalms(solved, { free = () => true, aims = palmAims(solved), 
  * the fingertips into it, so it lies flat instead. Flat is `brace`, the one
  * shape fitted to the palm's plane rather than added to the scan's own curl:
  * `lay` is a few degrees on top of that curl and still puts the fingertips
- * four centimetres under a palm resting on the sheet. A shape the actor asked
- * for is theirs and stays.
+ * four centimetres under a palm resting on the sheet. A hand held a little
+ * over it lies flat too (`RESTING`): the scan's thumb hangs under the palm,
+ * and a relaxed hand five centimetres up had its thumb as far into the floor;
+ * one put down tilted, held as high as its tilt needs, eight centimetres up,
+ * had its fingertips in it.
+ * A shape the actor asked for is theirs and stays.
  *
  * @param {object} actor a solved actor
  * @param {{l:string, r:string}} hands the declared shapes, from `handShapes`
@@ -505,7 +512,7 @@ export function restingHands(actor, hands, surface, props = []) {
     if (hands[side] !== "relaxed" || (typeof asked === "string" ? asked : asked?.[side])) continue;
     if (palmNormal(actor, side)[1] > -0.6) continue;
     const point = landmarkPoint(actor, "hand", side);
-    if (point[1] - surfaceUnder(surface, props, point) < 0.05) out[side] = "brace";
+    if (point[1] - surfaceUnder(surface, props, point) < RESTING) out[side] = "brace";
   }
   return out;
 }
