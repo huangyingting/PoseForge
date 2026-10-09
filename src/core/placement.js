@@ -92,6 +92,17 @@ export function placementFromRoot(root) {
   });
 }
 
+/** The shape each hand is in, not how far its fingers were closed round what
+ * it holds: that is fitted again every time the scene is solved. */
+const handShapes = (hands) =>
+  typeof hands === "string"
+    ? hands
+    : Object.fromEntries(
+        ["l", "r"]
+          .filter((side) => typeof hands[side] === "string")
+          .map((side) => [side, hands[side]]),
+      );
+
 /** Capture only public adjustable channels, never internal tip/root joints. */
 export function captureSolvedPose(actor) {
   const pose = actor.pose ?? actor;
@@ -112,6 +123,6 @@ export function captureSolvedPose(actor) {
     placement: placementFromRoot(pose.root),
     jointMode: "fixed",
     joints,
-    ...(actor.hands ? { hands: structuredClone(actor.hands) } : {}),
+    ...(actor.hands ? { hands: handShapes(actor.hands) } : {}),
   };
 }

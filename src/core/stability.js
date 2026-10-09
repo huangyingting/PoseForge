@@ -20,6 +20,13 @@
  * the figure's shortfall: the part of its weight nothing carries, and how far
  * its centre of mass would have to move for what does carry it to balance it.
  *
+ * The floor is under every scene, at nought. A bed's or a sofa's ground is the
+ * top of it, where a figure on it kneels or lies; beside it, below that top, is
+ * only the air down to the floor, and a foot, a hand or a head held there is
+ * held by nothing. Taken for the floor, that ground stood a man at the
+ * bedside on air half a metre up and rested a woman's head on nothing in
+ * front of a sofa, and both were counted held.
+ *
  * Only the up and down of the forces is followed. Leaning on a wall, or two
  * figures leaning into each other standing, is held by sideways forces this
  * leaves out, and comes out a little worse than it is.
@@ -38,6 +45,8 @@ const HAND = /^(wrist|hand)_/;
 const GRIP = 0.5;
 // Each body's weight against a woman's: what a hand that carries one has to bear.
 const WEIGHT = { female: 1, male: 1.25, neutral: 1.1 };
+// Under every scene, whatever its surface: furniture stands on it (see above).
+const FLOOR = { ground: 0 };
 // The length that turns a moment into the same units as a weight, so that ten
 // centimetres of tipping counts as much as half the weight unheld.
 const LEVER = 0.2;
@@ -57,6 +66,9 @@ function extremes(points) {
   }
   return [...pick];
 }
+
+/** The one grip a hand makes, wrist and all. */
+const grip = (bone) => bone.replace(/^wrist_/, "hand_");
 
 const mean = (points) => [0, 1].map((k) => points.reduce((sum, p) => sum + p[k], 0) / points.length);
 
@@ -78,7 +90,7 @@ function within(p, q, gap) {
  * `bear` pushes `on` up and `from` down; a `grip` either way.
  */
 export function bearings(solved, props = solved.props) {
-  const { actors, surface } = solved;
+  const { actors } = solved;
   const all = actors.map((actor, index) => spheres(actor, index));
   const byVolume = all.map((list, i) => {
     const out = actors[i].volumes.map(() => []);
@@ -93,7 +105,7 @@ export function bearings(solved, props = solved.props) {
   all.forEach((list, i) => {
     for (const s of list) {
       const y = s.c[1] - s.r;
-      if (y - restingOn(surface, props, s.c[0], s.c[2], y + SINK) < CONTACT)
+      if (y - restingOn(FLOOR, props, s.c[0], s.c[2], y + SINK) < CONTACT)
         add(`${i}|ground|${s.bone}`, { on: i, from: -1, kind: "bear" }, [s.c[0], s.c[2]]);
     }
   });
@@ -113,9 +125,10 @@ export function bearings(solved, props = solved.props) {
               const w = s.r / (s.r + t.r);
               const point = [s.c[0] + (t.c[0] - s.c[0]) * w, s.c[2] + (t.c[2] - s.c[2]) * w];
               const up = (s.c[1] - t.c[1]) / d;
-              // A hand holds whatever it is on, and is held by the hand it is in.
-              if (HAND.test(s.bone)) add(`${i}|${j}|${s.bone}`, { on: i, from: j, kind: "grip" }, point);
-              else if (HAND.test(t.bone)) add(`${j}|${i}|${t.bone}`, { on: j, from: i, kind: "grip" }, point);
+              // A hand holds whatever it is on, and is held by the hand it is in;
+              // the wrist is the same hand, not a second grip as strong.
+              if (HAND.test(s.bone)) add(`${i}|${j}|${grip(s.bone)}`, { on: i, from: j, kind: "grip" }, point);
+              else if (HAND.test(t.bone)) add(`${j}|${i}|${grip(t.bone)}`, { on: j, from: i, kind: "grip" }, point);
               else if (up > ON_TOP) add(`${i}|${j}|${s.bone}`, { on: i, from: j, kind: "bear" }, point);
               else if (up < -ON_TOP) add(`${j}|${i}|${t.bone}`, { on: j, from: i, kind: "bear" }, point);
             }
@@ -137,12 +150,12 @@ export function bearings(solved, props = solved.props) {
  * this is how far they have to come down.
  */
 export function hanging(solved, props = solved.props, forces = bearings(solved, props)) {
-  const { actors, surface } = solved;
+  const { actors } = solved;
   const gaps = actors.map((actor, index) => {
     let gap = Infinity;
     for (const s of spheres(actor, index)) {
       const y = s.c[1] - s.r;
-      gap = Math.min(gap, y - restingOn(surface, props, s.c[0], s.c[2], y + SINK));
+      gap = Math.min(gap, y - restingOn(FLOOR, props, s.c[0], s.c[2], y + SINK));
     }
     return Math.max(0, gap);
   });

@@ -2687,27 +2687,27 @@ export const TEMPLATES = {
           contacts: [grip("mouth", "groin", 1, 0, "surface"), grip("groin", "mouth", 1, 0, "surface")],
           checks: ["reversed", "faceToFaceHorizontal", near("b", "mouth", "a", "groin", 0.25), near("a", "mouth", "b", "groin", 0.3)],
         };
-      // Held upside down against a seated partner's front, face to face: A's
-      // head down in B's lap, the hips up at B's face and the legs over B's shoulders.
+      // Held upside down against a seated partner's front, face to face: B holds
+      // A by the waist, A's hips up at B's face, the thighs over B's shoulders and
+      // the shins up behind B's head, A's hands on B's shins and the head hanging
+      // free between B's knees. A headstand on the seat's edge or in B's lap,
+      // nobody holding anybody, would leave A's whole weight on the head.
       if (has(cls, /inverted/) && has(cls, /seated/)) {
         const seatName = cls.surface && cls.surface !== "floor" && SEATS[cls.surface] ? cls.surface : null;
-        // B leans back on the hands, the arms clear of A's legs; on a chair,
-        // with no lap deep enough to take A's head and shoulders, B holds A up
-        // by the hips instead, the feet planted forward under the two of them.
-        const chair = seatName === "chair";
-        const armsDown = { ...both("shoulder", { flexion: -35, abduction: 20, rotation: 0 }), ...both("elbow", { flexion: 5 }) };
+        const wide = (cls.a_pose ?? []).includes("legs_wide");
         const holding = { ...both("hip", { flexion: 80, abduction: 35, rotation: 0 }), ...both("knee", { flexion: 50 }) };
         const b = seatName
-          ? seatedAt(seatName, cls.b_body, { override: chair ? holding : { ...structuredClone(SEATED_OPEN), ...both("knee", { flexion: 55 }), ...armsDown } }, 1)
-          : { spec: figure(cls.b_body, "seated_floor", { soloSurface: "floor", trunk: "forward_leaning", override: { ...legPair(88, 30, 5), ...both("shoulder", { flexion: 15, abduction: 30, rotation: 0 }), ...both("elbow", { flexion: 10 }) } }), place: { index: 1, rest: 0 } };
+          ? seatedAt(seatName, cls.b_body, { override: holding }, 1)
+          : { spec: figure(cls.b_body, "seated_floor", { soloSurface: "floor", override: { ...legPair(97, 30, 6), ...both("shoulder", { flexion: 15, abduction: 30, rotation: 0 }), ...both("elbow", { flexion: 10 }) } }), place: { index: 1, rest: 0 } };
         return {
           surface: seatName ?? "floor",
           mode: "fit",
           roles: { a: 0, b: 1 },
-          actors: [figure(cls.a_body, "inverted", { soloSurface: "floor", override: legPair(100, 25, 95) }), b.spec],
-          place: [b.place, { index: 0, yaw: 180, pitch: 60, pelvisTo: [0, 1, (seatName ? SEATS[seatName].z : 0) + 0.3] }],
+          apart: wide ? ["a"] : [],
+          actors: [figure(cls.a_body, "standing", { soloSurface: "floor", override: legPair(95, wide ? 42 : 30, 95) }), b.spec],
+          place: [b.place, { index: 0, yaw: 0, pitch: 180, pelvisTo: [0, 1, (seatName ? SEATS[seatName].z : 0) + 0.3] }],
           fit: [{ ...refine(0, "groin", 0, "mouth", 1, { free: ["x", "y", "z"], keep: false, floor: 0, extra: [{ from: "mouth", fromActor: 0, to: "groin", toActor: 1, weight: 1 }] }), pitchRange: 35, pivot: "groin" }],
-          limbContacts: chair ? handsTo(1, 0, "hip", true) : [],
+          limbContacts: [...handsTo(1, 0, "hip", false), ...handsTo(0, 1, "knee", false)],
           contacts: [grip("mouth", "groin", 1, 0, "surface"), grip("groin", "mouth", 1, 0, "surface")],
           checks: ["aInverted", near("b", "mouth", "a", "groin", 0.25), near("a", "mouth", "b", "groin", 0.35)],
         };
@@ -3101,7 +3101,8 @@ export const TEMPLATES = {
         mode: "fit",
         roles: { a: 1, b: 0 },
         actors: [
-          seat ? seat.spec : figure(cls.b_body, /kneel/.test(cls.notes ?? "") ? "kneeling" : "standing"),
+          // On the floor at the ledge, not up on it: the ledge's top is not where B stands.
+          seat ? seat.spec : figure(cls.b_body, /kneel/.test(cls.notes ?? "") ? "kneeling" : "standing", { soloSurface: "floor" }),
           figure(cls.a_body, "prone", {
             arms: "arms_planted",
             // Straight arms reach down and forward to the floor from the tipped trunk;

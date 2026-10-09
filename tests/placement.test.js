@@ -146,6 +146,18 @@ test("every catalog rig can be captured as valid portable authoring data", () =>
   }
 });
 
+test("a captured pose keeps each hand's shape but not the closure its fingers were fitted to", () => {
+  const scene = base(),
+    solved = solveScene(checkScene(scene)),
+    actor = solved.actors[0];
+  // As the studio leaves a hand whose fingers it closed round a partner's arm.
+  actor.hands = { ...actor.hands, closure: { l: { index: 0.6, thumb: 0.8 } } };
+  const captured = captureSolvedPose(actor);
+  assert.deepEqual(Object.keys(captured.hands).sort(), ["l", "r"]);
+  Object.assign(scene.actors[0], captured);
+  assert.doesNotThrow(() => checkScene(scene));
+});
+
 test("fixed roots leave unedited joints free and report unsatisfied contacts and support planes", () => {
   const scene = base(),
     initial = solveScene(checkScene(scene));

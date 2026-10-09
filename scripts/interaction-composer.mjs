@@ -1009,7 +1009,7 @@ function leansOn(actors, index, side, props, floor) {
   if (supports.some((s) => s.landmark === "forearm")) return true;
   const hand = landmarkPoint(actor, "hand", side);
   const gaps = [
-    floor == null ? Infinity : hand[1] - floor,
+    hand[1] - floor,
     ...props.map((prop) => propDistance(prop, hand).distance),
     ...actors.filter((_, k) => k !== index).map((other) => bodyDistance(hand, other.volumes)),
   ];
@@ -1170,7 +1170,7 @@ function restFor(actors, index, side, props, floor, reach, { fall = false, busy 
     const { distance, normal } = propDistance(prop, hand);
     if (normal[1] > 0.5) options.push({ target: add(hand, normal.map((v) => v * (PALM_OVER - distance))), aim: normal.map((v) => -v) });
   }
-  if (floor != null) options.push({ target: [hand[0], floor + PALM_OVER, hand[2]], aim: [0, -1, 0], fall });
+  options.push({ target: [hand[0], floor + PALM_OVER, hand[2]], aim: [0, -1, 0], fall });
   // Or swung down about the shoulder, as far out as it is, on to the floor or
   // the furniture under it - an arm held up over the shoulder out to its side
   // and towards its feet, as a lying figure's arm falls.
@@ -1261,9 +1261,9 @@ const REST_TRIES = 4;
  * takes their hand with it (`armHeld`).
  */
 function restFreeHands(input, specs, chosen, surfaceName, checked, { sought = new Set(), planted = new Set() } = {}) {
-  const { surface, props } = propsFor(surfaceName);
-  // Off the furniture a raised surface's ground is not a floor anything can lie on.
-  const floor = surface.ground <= 1e-3 ? surface.ground : null;
+  const { props } = propsFor(surfaceName);
+  // The floor, beside a bed or a sofa as under a chair: their ground is their top.
+  const floor = 0;
   const held = [...(input.contacts ?? []), ...(input.limbContacts ?? [])];
   const specOf = (index) => {
     const entry = input.actors[index];
@@ -1364,7 +1364,7 @@ function restFreeHands(input, specs, chosen, surfaceName, checked, { sought = ne
         if (letGo(holding, armHeld(after, index, side, on))) continue;
         // A hand laid on its own body presses on it as on a partner's.
         if (now.partner > Math.max(was.partner, rest.contact ? TOUCH_SLACK : 0.015) || now.own > Math.max(was.own, rest.own ? TOUCH_SLACK : 0.015) || now.prop > Math.max(was.prop, 0.01)) continue;
-        if (floor != null && now.low < Math.min(was.low, floor - 0.005)) {
+        if (now.low < Math.min(was.low, floor - 0.005)) {
           // A hand put down on the floor whose knuckles or thumb go into it is put down again that much higher.
           if (!rest.lifted && rest.target[1] - floor < PALM_OVER + 0.01) queue.splice(q + 1, 0, { ...rest, target: add(rest.target, [0, floor + 0.005 - now.low, 0]), lifted: true });
           continue;
@@ -1425,7 +1425,7 @@ const PLANT_RINGS = [0, 0.06, 0.12, 0.18, 0.26, 0.34];
  */
 function plantHands(input, specs, chosen, surfaceName, checked) {
   const { surface, props } = propsFor(surfaceName);
-  const floor = surface.ground <= 1e-3 ? surface.ground : null;
+  const floor = 0;
   // What can be leant on: the furniture, not a car's shell.
   const tops = (surface.props ?? []).map(withBounds);
   const held = [...(input.contacts ?? []), ...(input.limbContacts ?? [])];
@@ -1445,8 +1445,8 @@ function plantHands(input, specs, chosen, surfaceName, checked) {
   // What a hand stood on the floor or a seat is on, where it is lower over it than a palm laid there.
   const sunk = (actor, side) => {
     const hand = landmarkPoint(actor, "hand", side);
-    const top = Math.max(floor ?? -Infinity, ...tops.map((prop) => propTopAt(prop, hand[0], hand[2]) ?? -Infinity).filter((t) => t <= hand[1]));
-    return top > -Infinity && hand[1] - top < palmOver(actor, side, [0, -1, 0]) - 0.01 ? top : null;
+    const top = Math.max(floor, ...tops.map((prop) => propTopAt(prop, hand[0], hand[2]) ?? -Infinity).filter((t) => t <= hand[1]));
+    return hand[1] - top < palmOver(actor, side, [0, -1, 0]) - 0.01 ? top : null;
   };
   specs.forEach((_, index) => {
     const where = PLANTED_ARMS[specOf(index)?.arms];
@@ -1491,7 +1491,7 @@ function plantHands(input, specs, chosen, surfaceName, checked) {
     const base = add(add(shoulder, front.map((v) => v * (where === "behind" ? -0.22 : 0.12))), outward.map((v) => v * 0.1));
     const limit = where === "behind" ? pelvis[1] + 0.15 : shoulder[1] - 0.1;
     const under = (x, z) => {
-      let top = floor != null && floor <= limit ? floor : null;
+      let top = floor <= limit ? floor : null;
       for (const prop of tops) {
         const t = propTopAt(prop, x, z);
         if (t != null && t <= limit && (top == null || t > top)) top = t;
@@ -1563,7 +1563,7 @@ function plantHands(input, specs, chosen, surfaceName, checked) {
       const after = moved.map((spec, k) => (k === index ? liveActor(spec, k) : actors[k]));
       const now = armClash(after, index, side, props);
       if (now.partner > Math.max(was.partner, TOUCH_SLACK) || now.own > Math.max(was.own, 0.015) || now.prop > Math.max(was.prop, 0.01)) continue;
-      if (floor != null && now.low < Math.min(was.low, floor - 0.005)) continue;
+      if (now.low < Math.min(was.low, floor - 0.005)) continue;
       if (letGo(holding, armHeld(after, index, side, holders))) continue;
       out = moved;
       plants.push({ actor: index, side, arm, contact });

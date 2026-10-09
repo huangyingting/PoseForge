@@ -45,6 +45,22 @@ test("a figure kneeling to a standing partner is held by the floor, and lifted o
   for (const [i, gap] of hanging(up, props).entries()) assert.ok(Math.abs(gap - 0.1) < 0.01, `actor ${i} hangs ${gap.toFixed(3)} m`);
 });
 
+test("beside a bed what holds a standing figure up is the floor, not the bed's top", () => {
+  const solved = solve("wheelbarrow-bed");
+  const props = propsOf(solved);
+  for (const [i, short] of stability(solved, props).entries()) assert.ok(held(short), `actor ${i} short by ${JSON.stringify(short)}`);
+  assert.ok(grounded(hanging(solved, props)), "both down");
+
+  // Stood level with the mattress beside it, the partner behind stands on air.
+  const top = (actor) => Math.max(...actor.volumes.flatMap((v) => [v.a[1], v.b[1]]));
+  const standing = top(solved.actors[0]) > top(solved.actors[1]) ? 0 : 1;
+  const ground = solved.surface.ground;
+  assert.ok(ground > 0.5, `the bed is ${ground} m high`);
+  const up = lifted(solved, [standing], ground);
+  assert.ok(stability(up, props)[standing].lift > 0.9, "held up beside the bed");
+  assert.ok(Math.abs(hanging(up, props)[standing] - ground) < 0.01, "stood on the bed's height");
+});
+
 test("a carried figure is held by the partner who carries it, and both by the floor", () => {
   const solved = solve("ascent-to-desire");
   const props = propsOf(solved);

@@ -61,7 +61,11 @@ certification.
    weight. A figure fails if more than a tenth of its weight is carried by
    nothing, or its centre of mass is more than 8 cm from where what carries it
    would balance it: a woman lifted by a single hand at the hip, or lying back on
-   nothing in front of a chair, hangs in the air. Only up and down is followed,
+   nothing in front of a chair, hangs in the air. The ground is the floor, under
+   every scene: a bed's or a sofa's ground is its top, which holds only what is
+   over the furniture itself, so a foot beside the bed half a metre up, or a head
+   in front of the sofa at the height of its seat, is held by nothing. A hand and
+   its wrist are one grip, not two. Only up and down is followed,
    so a figure leaning on a wall or into a standing partner is judged a little
    harshly. Failures are kept with the record and shown in the app as a warning;
    nothing is hidden.
@@ -264,7 +268,13 @@ the feet down outside A's knees, and a squat deepened by a detail (`leo`)
 starts shallower and wider so they stay there. Head to toe on the hands and
 knees (`sixty_nine`), B's knees are down either side of A's head, not borne on
 A alone; where they come down beside A's shoulders, too close for A's hands to
-reach B's thighs, A's arms lie along its sides instead.
+reach B's thighs, A's arms lie along its sides instead. Upside down in front of
+a seated partner (`bermuda-triangle`, `shocker`, `new-69-on-the-chair`,
+`sitting-69`), A is held by B's hands at the waist, the thighs over B's
+shoulders and the shins up behind B's head, A's hands on B's shins and the head
+free between B's knees, or on the floor in front of B sitting there, the
+headstand braced on B's knees. B sits flat, the seat down and the legs out, not
+perched on the heels with A's head under the hips.
 
 The hands that hold nothing are placed last, after every contact is closed.
 First each hand that holds something has its contact checked as the viewer
