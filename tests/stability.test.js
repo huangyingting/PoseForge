@@ -81,3 +81,64 @@ test("a carried figure is held by the partner who carries it, and both by the fl
   for (const [i, short] of shortfall.entries()) assert.ok(!held(short), `actor ${i} held in the air`);
   for (const [i, gap] of hanging(up, props, upForces).entries()) assert.ok(Math.abs(gap - 0.1) < 0.01, `actor ${i} hangs ${gap.toFixed(3)} m`);
 });
+
+/**
+ * A body of balls, `[bone, centre, radius]`, and any `more` volumes, for what a
+ * whole pose would take too much else to show: all its weight is at the first
+ * ball's centre.
+ */
+function balls(list, more = []) {
+  return {
+    bodyType: "female",
+    skeleton: { bones: [{ name: "pelvis" }], boneIndex: () => 0 },
+    evaluated: { positions: [list[0][1]] },
+    volumes: [...more, ...list.map(([bone, c, r]) => ({ bone, a: c, b: c, ra: r, rb: r }))],
+  };
+}
+// A partner lying along the floor, a metre long and propped at the corners,
+// wide enough to hold up whatever is laid on it, and anything else of theirs.
+const log = (...hands) =>
+  balls(
+    [["spine01", [0, 0.2, 0], 0.2], ...[-0.5, 0.5].flatMap((x) => [-0.3, 0.3].map((z) => ["toe_l", [x, 0.05, z], 0.05])), ...hands],
+    [{ bone: "spine01", a: [-0.5, 0.2, 0], b: [0.5, 0.2, 0], ra: 0.2, rb: 0.2 }],
+  );
+const scene = (...actors) => ({ actors, surface: { ground: 0 }, props: [] });
+
+test("a body lies on a partner only on top of them, not against the slope of their side", () => {
+  // A ball laid on the log at an angle off its top: at 30 degrees it lies on it, at 60 it slides off.
+  const on = (degrees) => {
+    const t = (degrees * Math.PI) / 180;
+    return scene(balls([["pelvis", [0, 0.2 + 0.3 * Math.cos(t), 0.3 * Math.sin(t)], 0.1]]), log());
+  };
+  const [top, partner] = stability(on(30));
+  assert.ok(held(top), `on top, short by ${JSON.stringify(top)}`);
+  assert.ok(held(partner), `under it, short by ${JSON.stringify(partner)}`);
+  assert.ok(stability(on(60))[0].lift > 0.9, "held against the side");
+});
+
+test("a partner's hands hold up a trunk from beneath it, or a limb either way, but not pressed on top of a trunk", () => {
+  // Two hands of the partner lying under, either side of the middle of what they hold, over it or under it.
+  const holding = (bone, over) => {
+    const y = 1 + over * 0.16;
+    return scene(balls([[bone, [0, 1, 0], 0.12]]), log(["hand_l", [-0.05, y, 0], 0.04], ["hand_r", [0.05, y, 0], 0.04]));
+  };
+  assert.ok(held(stability(holding("pelvis", -1))[0]), "lifted from beneath");
+  assert.ok(stability(holding("pelvis", 1))[0].lift > 0.9, "a trunk lifted by hands laid on top of it");
+  assert.ok(held(stability(holding("hip_l", 1))[0]), "a thigh held by hands closed round it from above");
+});
+
+test("a head pressed to a partner leans on them with little more than its own weight", () => {
+  const resting = (bone) => stability(scene(balls([[bone, [0, 0.5, 0], 0.1]]), log()))[0];
+  assert.ok(held(resting("spine03")), "the chest laid on them");
+  const head = resting("head");
+  assert.ok(head.lift > 0.8, `held up by its head, short by only ${head.lift.toFixed(2)}`);
+});
+
+test("a body is held up by a partner it lies on with no more than its weight, not squeezed level between two of theirs", () => {
+  // Out in the air, lying on one of the partner's arms and under the other: held over the one, not out past them both.
+  const caught = (x) =>
+    stability(scene(balls([["pelvis", [x, 1, 0], 0.05], ["hip_l", [0, 1, 0], 0.1], ["knee_l", [0.2, 1, 0], 0.1]]), log(["spine02", [0.2, 0.8, 0], 0.1], ["spine03", [0, 1.2, 0], 0.1])))[0];
+  assert.ok(held(caught(0.2)), "over the arm it lies on");
+  const out = caught(0.6);
+  assert.ok(!held(out), `held out past the arms, short by only ${JSON.stringify(out)}`);
+});

@@ -655,8 +655,11 @@ export function compose(input, walk = {}) {
     evaluate(input, measure(sceneFor(input, candidate.map(({ prefer, soloSurface, override, tilt, details, ...spec }) => spec)).scene)).pass;
   for (const key of ["contacts", "limbContacts"]) if (input[key]) input[key] = nameContacts(specs, input[key]);
   dropUnmet(input, specs, checked);
+  const failing = (candidate) =>
+    evaluate(input, measure(sceneFor(input, candidate.map(({ prefer, soloSurface, override, tilt, details, ...spec }) => spec)).scene)).failures;
   const planted = plantHands(input, specs, chosen, plan.surface, checked);
-  specs = restFreeHands(input, planted.specs, chosen, plan.surface, checked, planted);
+  const holding = holdUp(input, planted.specs, plan.surface, failing, planted.planted);
+  specs = restFreeHands(input, holding.specs, chosen, plan.surface, checked, { ...planted, planted: holding.planted });
   specs = facePalms(specs, plan.surface, [...(input.contacts ?? []), ...(input.limbContacts ?? [])], checked);
   // Hands are left to the viewer to read from the final contacts and postures;
   // a shape captured mid-composition belongs to contacts that may since have been dropped.
@@ -695,19 +698,24 @@ function shortfalls(actors, surface, props) {
  * side - to where everyone is held best, so long as that takes no one further
  * into a partner, the furniture or the floor. It is moved alone or with
  * everyone, whichever holds them better: a pair all in the air comes down
- * together.
+ * together. Where the nearest moves leave it in the air, it is tried again
+ * from tipped as far as it may go each way: bent over a partner's back with
+ * its hands on nothing, the nearest moves led it the wrong way round.
  */
 function settleWeight(specs, plan, props) {
   const { surface } = solveScene(sceneFor(plan, specs.map(({ prefer, soloSurface, override, tilt, details, ...spec }) => spec)).scene);
   const first = specs.map((s, i) => liveActor(s, i));
   const declared = declaredKeys(first, [...(plan.contacts ?? []), ...(plan.limbContacts ?? [])]);
   // How far past what the plan checks each figure is (see `evaluate`): landmarks
-  // too far apart, hips on the wrong level, or a body tipped off the way it faces.
+  // too far apart, hips on the wrong level, a body tipped off the way it faces or
+  // turned from the way its partner does, or a carried one let down onto the floor.
   const roles = plan.roles ?? { a: 0, b: 1 };
   const at = (actors, role, name) => landmarkPoint(actors[roles[role]], name);
   const pelvis = (actors, role) => at(actors, role, "pelvis")[1];
   const front = (actors, role) => unit(sub(at(actors, role, "chest"), at(actors, role, "upperBack")))[1];
   const up = (actors, role) => unit(sub(at(actors, role, "neck"), at(actors, role, "pelvis")))[1];
+  const hd = (actors, role) => heading(actors[roles[role]], { pelvis: at(actors, role, "pelvis"), front: unit(sub(at(actors, role, "chest"), at(actors, role, "upperBack"))) });
+  const faces = (actors, role) => (Math.abs(front(actors, role)) > 0.7 ? hd(actors, role) : horizontal(sub(at(actors, role, "chest"), at(actors, role, "upperBack"))));
   const posed = {
     aAboveOrLevel: (actors) => pelvis(actors, "b") - 0.05 - pelvis(actors, "a"),
     bAbove: (actors) => pelvis(actors, "a") + 0.02 - pelvis(actors, "b"),
@@ -717,6 +725,12 @@ function settleWeight(specs, plan, props) {
     bFaceDown: (actors) => front(actors, "b") + 0.45,
     aUpright: (actors) => 0.55 - up(actors, "a"),
     bUpright: (actors) => 0.55 - up(actors, "b"),
+    aOffGround: (actors) => 0.12 - lowest(actors[roles.a]),
+    sameFacing: (actors) => 0.5 - dot(faces(actors, "a"), faces(actors, "b")),
+    sameHeading: (actors) => 0.5 - dot(hd(actors, "a"), hd(actors, "b")),
+    straddleFacing: (actors) => 0.5 - dot(hd(actors, "a"), hd(actors, "b")),
+    reversed: (actors) => dot(hd(actors, "a"), hd(actors, "b")) + 0.5,
+    bBehind: (actors) => dot(hd(actors, "a"), sub(at(actors, "b", "pelvis"), at(actors, "a", "pelvis"))) - 0.02,
   };
   const checks = roles.b == null || specs.length < 2 ? [] : (plan.checks ?? []).flatMap((check) =>
     Array.isArray(check)
@@ -780,36 +794,50 @@ function settleGroup(from, group, state, allowed) {
       Object.assign(params, trial);
     }
   }
-  // Straight moves first, all the way down to the finest step; only then down
-  // and tipped at once, for a figure whose knees come down only as its feet come
-  // up out of the floor. Taken any sooner, a coarse diagonal step can lead off
-  // to somewhere worse than straight moves would have reached.
-  for (const diagonal of [false, true]) {
-    for (const step of [0.04, 0.02, 0.01, 0.005]) {
-      // A step of four centimetres down goes with one of six degrees round.
-      const delta = { y: step, pitch: step * 150, roll: step * 150 };
-      const single = ["y", "pitch", "roll"].flatMap((key) => [-1, 1].map((sign) => ({ [key]: sign * delta[key] })));
-      const paired = ["pitch", "roll"].flatMap((key) => [-1, 1].flatMap((sign) => [-1, 1].map((down) => ({ y: down * delta.y, [key]: sign * delta[key] }))));
-      for (let round = 0; round < 10; round += 1) {
-        let move = null;
-        for (const moves of diagonal ? [single, paired] : [single]) {
-          for (const change of moves) {
-            const trial = { ...params };
-            for (const [key, value] of Object.entries(change)) trial[key] += value;
-            if (!inRange(trial)) continue;
-            const result = at(trial);
-            if (!allowed(result) || result.cost >= (move ?? { result: best }).result.cost - 1e-6) continue;
-            move = { result, trial };
+  const dropped = { ...params };
+  const descend = (params, best) => {
+    // Straight moves first, all the way down to the finest step; only then down
+    // and tipped at once, for a figure whose knees come down only as its feet come
+    // up out of the floor. Taken any sooner, a coarse diagonal step can lead off
+    // to somewhere worse than straight moves would have reached.
+    for (const diagonal of [false, true]) {
+      for (const step of [0.04, 0.02, 0.01, 0.005]) {
+        // A step of four centimetres down goes with one of six degrees round.
+        const delta = { y: step, pitch: step * 150, roll: step * 150 };
+        const single = ["y", "pitch", "roll"].flatMap((key) => [-1, 1].map((sign) => ({ [key]: sign * delta[key] })));
+        const paired = ["pitch", "roll"].flatMap((key) => [-1, 1].flatMap((sign) => [-1, 1].map((down) => ({ y: down * delta.y, [key]: sign * delta[key] }))));
+        for (let round = 0; round < 10; round += 1) {
+          let move = null;
+          for (const moves of diagonal ? [single, paired] : [single]) {
+            for (const change of moves) {
+              const trial = { ...params };
+              for (const [key, value] of Object.entries(change)) trial[key] += value;
+              if (!inRange(trial)) continue;
+              const result = at(trial);
+              if (!allowed(result) || result.cost >= (move ?? { result: best }).result.cost - 1e-6) continue;
+              move = { result, trial };
+            }
+            if (move) break;
           }
-          if (move) break;
+          if (!move) break;
+          best = move.result;
+          Object.assign(params, move.trial);
         }
-        if (!move) break;
-        best = move.result;
-        Object.assign(params, move.trial);
       }
+      if (!best.short.some((s) => s > 1)) break;
     }
-    if (!best.short.some((s) => s > 1)) break;
-  }
+    return best;
+  };
+  best = descend(params, best);
+  // Still in the air, it may be held better tipped the other way than the nearest moves lead it.
+  if (best.short.some((s) => s > 1))
+    for (const start of [{ pitch: 15 }, { pitch: -15 }, { roll: 15 }, { roll: -15 }]) {
+      const trial = { ...dropped, ...start };
+      const result = at(trial);
+      if (!allowed(result)) continue;
+      const found = descend(trial, result);
+      if (found.cost < best.cost - 1e-6) best = found;
+    }
   return best;
 }
 
@@ -1014,6 +1042,14 @@ function leansOn(actors, index, side, props, floor) {
     ...actors.filter((_, k) => k !== index).map((other) => bodyDistance(hand, other.volumes)),
   ];
   return Math.min(...gaps) < ON_IT;
+}
+
+/** Whether the hand on `side` of actor `index`, or its forearm, is down on the floor or the furniture. */
+function armDown(actor, side, props, floor) {
+  return ["hand", "forearm"].some((name) => {
+    const point = landmarkPoint(actor, name, side);
+    return Math.min(point[1] - floor, ...props.map((prop) => propDistance(prop, point).distance)) < ON_IT;
+  });
 }
 
 /** How far one arm is into the partners, its own body, the furniture, and how low it goes. */
@@ -1579,6 +1615,181 @@ function plantHands(input, specs, chosen, surfaceName, checked) {
   }
   input.limbContacts = [...(input.limbContacts ?? []), ...kept.filter((plant) => plant.contact).map((plant) => plant.contact)];
   return { specs: wearing(specs, kept), sought, planted: new Set(kept.map((plant) => `${plant.actor}.${plant.side}`)) };
+}
+
+/** How many hands, at most, are put to holding up figures nothing else holds up. */
+const HOLD_HANDS = 4;
+/** Held only just, a figure is held by another hand where one helps: falling half as short as it may, it holds the pose with some to spare. */
+const SPARE = 0.5;
+/** How far from under its shoulder a hand put down to hold its own figure up may go. */
+const HOLD_RINGS = [0, 0.08, 0.16, 0.24];
+/** What of a body a hand closes round, rather than lies on: a limb. */
+const ROUND_PART = /^(thigh|knee|shin|upperArm|forearm)\./;
+
+/**
+ * Hold up with the hands a figure nothing else holds up. Fitted by its
+ * contacts with a partner, a figure can come out bent over at the partner's
+ * hips with its face buried in them and nothing under its chest, or held out
+ * level by a partner's hips against its own, while the hands that would hold
+ * it - its own, put down on the floor or on the partner, or the partner's,
+ * round its thighs or under its hips - hang at the sides or lie on its own
+ * thighs. Nobody holds a pose like that: they would fall.
+ *
+ * So, for each figure that falls short of held (`stability`), the free hands
+ * are tried where they would hold it: its own on the top of a partner, round a
+ * partner's limb, or on the floor or the furniture under and in front of the
+ * shoulder; a partner's on it, round a limb of it or under it. Each is put
+ * there by IK as a hand laid on anything is, the palm turned onto it, and the
+ * hand whose hold leaves everyone least short of held is kept; then the next,
+ * up to `HOLD_HANDS`, while any figure is short or held only just (`SPARE`). A
+ * hand on a partner holds them as a `grip` contact, round a limb, or a `rest`,
+ * on the trunk.
+ *
+ * A hand that holds something already, that a posture leans on and is down on
+ * the floor or furniture (the record may draw the arm up off it), that
+ * `plantHands` put down, or a tied figure's, is not moved - but for a
+ * partner's the template puts on the figure, at its thighs, say, which may
+ * hold it elsewhere on it, under its belly, and lets go where it was; nor is an
+ * arm moved further into a partner, its own body or the furniture than it was,
+ * under the floor, or from under a partner's hand on it (`armHeld`). The holds
+ * are kept only so long as they cost the scene no check but how well it is
+ * held, which `failing(specs)` lists - or, failing that, those that cost it
+ * none one at a time. Returns the specs and the hands put down or holding.
+ */
+function holdUp(input, specs, surfaceName, failing, planted = new Set()) {
+  const { surface: shape, props } = propsFor(surfaceName);
+  const floor = 0;
+  const tops = (shape.props ?? []).map(withBounds);
+  const clean = (list) => list.map(({ prefer, soloSurface, override, tilt, details, ...spec }) => spec);
+  const { surface } = solveScene(sceneFor(input, clean(specs)).scene);
+  const assess = (actors) => {
+    const { short } = shortfalls(actors, surface, props);
+    return { short, cost: short.reduce((sum, s) => sum + s * s, 0) };
+  };
+  let actors = specs.map((spec, k) => liveActor(spec, k));
+  let state = assess(actors);
+  if (!state.short.some((s) => s > 1)) return { specs, planted };
+  const bound = new Set(input.bound ?? []);
+  const held = [...(input.contacts ?? []), ...(input.limbContacts ?? [])];
+  const limbs = new Set(input.limbContacts ?? []);
+  const wearing = (base, holds) => {
+    const out = base.slice();
+    for (const { actor, arm } of holds) out[actor] = { ...out[actor], joints: { ...out[actor].joints, ...arm } };
+    return out;
+  };
+  let out = specs;
+  const holds = [];
+  for (let round = 0; round < HOLD_HANDS && state.short.some((s) => s > SPARE); round += 1) {
+    const weak = state.short.flatMap((s, i) => (s > SPARE ? [i] : []));
+    let best = null;
+    for (let index = 0; index < out.length; index += 1)
+      for (const side of ["l", "r"]) {
+        const key = `${index}.${side}`;
+        if (bound.has(index) || planted.has(key) || holds.some((hold) => hold.key === key)) continue;
+        const on = [...held.filter((contact) => !holds.some((hold) => hold.replaces === contact)), ...holds.map((hold) => hold.contact).filter(Boolean)];
+        const mine = on.filter((contact) => handIn(contact, index, side));
+        // A hand the template puts on a figure nothing holds up may hold it elsewhere, where it holds it up.
+        const moving = mine.length === 1 && limbs.has(mine[0]) && mine[0].fromActor === index && mine[0].toActor !== index && /^hands?\b/.test(mine[0].from) && weak.includes(mine[0].toActor) ? mine[0] : null;
+        // A posture's hand it leans on stays, unless the record has drawn the arm up off the floor.
+        if ((mine.length && !moving) || (leansOn(actors, index, side, props, floor) && armDown(actors[index], side, props, floor))) continue;
+        const actor = actors[index];
+        const own = weak.includes(index) && !moving;
+        if (!own && !weak.some((k) => k !== index)) continue;
+        const holding = armHeld(actors, index, side, on.filter((contact) => contact !== moving));
+        const chain = side === "l" ? LIMB_CHAINS.armL : LIMB_CHAINS.armR;
+        const { skeleton } = actor;
+        const at = (bone, evaluated = actor.evaluated) => evaluated.positions[skeleton.boneIndex(bone)];
+        const { shoulder, length } = armSpan(actor, side);
+        const reaches = (target) => {
+          const reach = len(sub(target, shoulder));
+          return reach <= STRAIGHT * length && reach >= 0.45 * length;
+        };
+        const hand = landmarkPoint(actor, "hand", side);
+        const offset = skeleton.stature * 0.018;
+        const targets = [];
+        const fresh = (target) => !targets.some((other) => len(sub(other.target, target)) < 0.03);
+        // On a partner: its own hand on the top of them or round a limb, a partner's on it anywhere it reaches.
+        actors.forEach((other, k) => {
+          if (k === index || (!own && !weak.includes(k)) || (moving && k !== moving.toActor)) return;
+          for (const name of REST_ON)
+            for (const probe of [hand, shoulder]) {
+              const surf = landmarkSurface(other, name, probe, { offset });
+              if (!surf || !onRegion(other, name, surf.point) || !reaches(surf.point) || !fresh(surf.point)) continue;
+              if (own && surf.normal[1] < 0.5 && !ROUND_PART.test(name)) continue;
+              targets.push({ target: surf.point, aim: surf.normal.map((v) => -v), contact: { from: `hand.${side}`, to: name, fromActor: index, toActor: k, type: ROUND_PART.test(name) ? "grip" : "rest", strength: 0.8 } });
+            }
+        });
+        // Its own, put down on what is under the shoulder, a little in front of it and out to its side.
+        if (own) {
+          const front = level(sub(landmarkPoint(actor, "chest"), landmarkPoint(actor, "upperBack")));
+          const outward = level(sub(shoulder, at(`shoulder_${side === "l" ? "r" : "l"}`)));
+          const base = add(add(shoulder, front.map((v) => v * 0.12)), outward.map((v) => v * 0.1));
+          const trunk = actor.volumes.filter((v) => !/^(clavicle|shoulder|elbow|wrist|hand)_/.test(v.bone));
+          for (const r of HOLD_RINGS)
+            for (let k = 0; k < (r ? 8 : 1); k += 1) {
+              const x = base[0] + r * Math.cos((k * Math.PI) / 4);
+              const z = base[2] + r * Math.sin((k * Math.PI) / 4);
+              let top = floor;
+              for (const prop of tops) {
+                const t = propTopAt(prop, x, z);
+                if (t != null && t <= shoulder[1] - 0.1 && t > top) top = t;
+              }
+              const target = [x, top + PALM_OVER, z];
+              if (reaches(target) && fresh(target) && bodyDistance(target, trunk) >= 0.04 && actors.every((other, j) => j === index || bodyDistance(target, other.volumes) >= 0.04))
+                targets.push({ target, aim: [0, -1, 0] });
+            }
+        }
+        const was = armClash(actors, index, side, props);
+        const outward = unit(sub(shoulder, at(`shoulder_${side === "l" ? "r" : "l"}`)));
+        for (const { target, aim, contact } of targets)
+          for (const elbow of [null, outward]) {
+            const pose = { root: actor.pose.root, joints: structuredClone(actor.pose.joints) };
+            const body = { skeleton, pose, evaluated: actor.evaluated, localVolumes: actor.localVolumes };
+            const fingers = level(sub(target, landmarkPoint(actor, "pelvis")));
+            // On the floor or a seat, as high as the palm's tilt takes its edge.
+            const goal = () => (contact ? target : add(target, [0, palmOver(body, side, aim) - PALM_OVER, 0]));
+            for (let pass = 0; pass < 4; pass += 1) {
+              const tip = landmarkPoint(body, "hand", side);
+              const pole = elbow ?? sub(at(chain.mid, body.evaluated), add(at(chain.root, body.evaluated), at(chain.end, body.evaluated)).map((v) => v / 2));
+              body.evaluated = solveTwoBoneIK(skeleton, pose, chain, add(goal(), sub(at(chain.end, body.evaluated), tip)), { pole, evaluated: body.evaluated }).evaluated;
+              if (pass < 3) turnPalm(body, side, aim, { fingers, sweep: pass === 0 });
+            }
+            if (len(sub(landmarkPoint(body, "hand", side), goal())) > 0.03 || dot(palmNormal(body, side), aim) < 0.7) continue;
+            const arm = Object.fromEntries([chain.root, chain.mid, chain.end].map((bone) => [bone, pose.joints[bone]]));
+            const moved = wearing(out, [{ actor: index, arm }]);
+            const after = moved.map((spec, k) => (k === index ? liveActor(spec, k) : actors[k]));
+            const now = armClash(after, index, side, props);
+            if (now.partner > Math.max(was.partner, TOUCH_SLACK) || now.own > Math.max(was.own, 0.015) || now.prop > Math.max(was.prop, 0.01)) continue;
+            if (now.low < Math.min(was.low, floor - 0.005)) continue;
+            if (letGo(holding, armHeld(after, index, side, on.filter((other) => other !== moving)))) continue;
+            const result = assess(after);
+            if (result.cost < (best?.state.cost ?? state.cost - 0.05)) best = { state: result, specs: moved, actors: after, hold: { key, actor: index, arm, contact, replaces: moving } };
+          }
+      }
+    if (!best) break;
+    out = best.specs;
+    actors = best.actors;
+    state = best.state;
+    holds.push(best.hold);
+  }
+  if (!holds.length) return { specs, planted };
+  // The holds cost the scene no check but how well it is held, or they are kept one at a time.
+  const others = (list) => list.filter((failure) => !/unheld/.test(failure)).map((failure) => failure.replace(/\d+/g, "#"));
+  const contacts = input.limbContacts ?? [];
+  const wear = (kept) => [...contacts.filter((contact) => !kept.some((hold) => hold.replaces === contact)), ...kept.filter((hold) => hold.contact).map((hold) => hold.contact)];
+  const failures = (kept) => {
+    input.limbContacts = wear(kept);
+    return failing(wearing(specs, kept));
+  };
+  const before = others(failures([]));
+  const fine = (kept) => others(failures(kept)).every((failure) => before.includes(failure));
+  let kept = holds;
+  if (!fine(holds)) {
+    kept = [];
+    for (const hold of holds) if (fine([...kept, hold])) kept.push(hold);
+  }
+  input.limbContacts = wear(kept);
+  return { specs: wearing(specs, kept), planted: new Set([...planted, ...kept.filter((hold) => !hold.contact).map((hold) => hold.key)]) };
 }
 
 /** Whether `contact` is held by the hand on `side` of the actor at `actor`, at either end. */

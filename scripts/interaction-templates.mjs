@@ -1248,11 +1248,12 @@ function backSeatRearPlan(cls) {
     mode: "fit",
     roles: { a: 0, b: 1 },
     actors: [
-      figure(cls.a_body, "kneeling", { soloSurface: "floor", trunk: "forward_lowered", ...KNEES_PARTED }),
-      figure(cls.b_body, "kneeling", { soloSurface: "floor", override: HUNCH }),
+      figure(cls.a_body, "kneeling", { soloSurface: "floor", trunk: "forward_lowered", override: both("hip", { abduction: 19 }) }),
+      figure(cls.b_body, "kneeling", { soloSurface: "floor", override: { ...HUNCH, ...spineBy("flexion", -18), ...both("hip", { abduction: 2 }) } }),
     ],
-    // Facing +x, a little forward of the middle so the parted knees clear the backrest.
-    place: [{ index: 0, yaw: 90, rest: top, pelvisTo: [0.2, null, 0.06] }, { index: 1, yaw: 90, rest: top }],
+    // Facing +x, the knees parted only so far as both stay on the seat, between
+    // the backrest and the front edge: further apart, one hung off the edge.
+    place: [{ index: 0, yaw: 90, rest: top, pelvisTo: [0.2, null, 0] }, { index: 1, yaw: 90, rest: top }],
     fit: [refine(1, "groin", 1, "pelvis", 0, { start: [-0.3, 0, 0] })],
     limbContacts: cls.b_hands === "surface" ? [] : bHands(cls, 1, 0, { face: false }),
     contacts: [grip("groin", "buttocks", 1, 0, "surface")],

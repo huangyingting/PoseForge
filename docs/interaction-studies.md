@@ -51,7 +51,9 @@ certification.
    under it) is let down onto what is under it, or tipped onto it, whole
    (`settleWeight`): alone, or with its partners where they all hang together,
    and only so far as that takes no one further into a partner, the furniture
-   or the floor and keeps the plan's distance and level checks.
+   or the floor and keeps the plan's distance, level and facing checks. Still
+   in the air after the nearest moves, it is tried again from tipped 15 degrees
+   each way, forward, back and to either side.
 3. **Evaluation** — each scene is measured: required landmark distances, facing
    and orientation checks, body/prop overlap and floor clearance, and whether
    every figure is held up (`src/core/stability.js`). The weights are followed
@@ -64,10 +66,19 @@ certification.
    nothing in front of a chair, hangs in the air. The ground is the floor, under
    every scene: a bed's or a sofa's ground is its top, which holds only what is
    over the furniture itself, so a foot beside the bed half a metre up, or a head
-   in front of the sofa at the height of its seat, is held by nothing. A hand and
-   its wrist are one grip, not two. Only up and down is followed,
-   so a figure leaning on a wall or into a standing partner is judged a little
-   harshly. Failures are kept with the record and shown in the app as a warning;
+   in front of the sofa at the height of its seat, is held by nothing. A body
+   lies on a partner only on top of them, the contact within 45 degrees of
+   level: hips against the front of a standing partner's thighs hold nothing up.
+   A hand and its wrist are one grip, not two. A hand closes round a limb or the
+   neck and holds it either way; a trunk or a head it only lifts from beneath,
+   presses on from above, or squeezes at the side, by half as much. A head and
+   neck pressed to a partner lean on them with no more than 0.15 of the body's
+   weight, so a face buried in a partner's hips does not hold a figure up. And a
+   figure lying on a partner is held up by them, all its places together, by no
+   more than its weight and that of anyone else on it, so a body is not squeezed
+   level in the air between a partner's forearm over a thigh and hip under it.
+   Only up and down is followed, so a figure leaning on a wall or into a
+   standing partner is judged a little harshly. Failures are kept with the record and shown in the app as a warning;
    nothing is hidden.
 4. **Baking** — `node scripts/build-interaction-studies.mjs` composes all records
    (1,283 distinct scenes: no two records share a classification,
@@ -303,6 +314,23 @@ into the floor. A hand the posture already stands on, on the floor or a seat
 but lower over it than that, is put down again where it is, that high. Where
 the figure is over its partner and the floor is out of reach, the palm goes on
 the partner under the shoulder instead, as a `rest` contact.
+
+A figure the fit leaves held up by nothing - bent over at a partner's hips with
+its face in them and nothing under its chest, or held out level in front of a
+standing partner by its legs round their waist - is then held up with the hands
+(`holdUp`). For each figure that falls short of held, the free hands are tried
+where they would hold it: its own on the top of a partner, round a partner's
+limb, or on the floor or the furniture under and in front of the shoulder
+(`HOLD_RINGS`); a partner's round a limb of it or under it. A partner's hand
+the template already puts on the figure, at its thighs, say, may be moved to
+hold it elsewhere on it, under its belly. Each is put there by IK with the palm
+turned onto it, and the hand that leaves everyone least short of held is kept,
+then the next, up to `HOLD_HANDS`, while any figure is short of held or held
+only just (`SPARE`). A hand on a partner becomes a `grip` contact round a limb,
+or a `rest` on the trunk. The arm goes no further into anyone or the furniture
+than it was, nor under the floor, nor from under a partner's hand on it, and
+the holds are kept only where the scene meets every other check it met without
+them, else one at a time.
 
 Any other free hand, and a posture's hand that could not be planted, is laid
 by `restFreeHands` on the nearest thing it can lie on. That may be the partner

@@ -13,8 +13,8 @@
  * So the weights are followed down to the ground. Every place a body bears on
  * the floor or furniture can push it up; every place it lies on a partner can
  * push it up and the partner down by as much; a hand that holds a partner, or is
- * held, can push or pull either way, but only so hard - about half a body's
- * weight. Each figure must then be held up by what touches it, and held level:
+ * held, can push or pull, but only so hard - about half a body's weight. Each
+ * figure must then be held up by what touches it, and held level:
  * the forces must add up to its weight and turn it neither way about its centre
  * of mass. The forces that do this best are found, and what they cannot do is
  * the figure's shortfall: the part of its weight nothing carries, and how far
@@ -27,6 +27,30 @@
  * bedside on air half a metre up and rested a woman's head on nothing in
  * front of a sofa, and both were counted held.
  *
+ * Lying on a partner is lying on top of them, the contact facing up within
+ * 45 degrees of level: skin on skin holds no steeper slope. Taken up to 63
+ * degrees, a woman upside down on her shoulders was held up by her hips leaning
+ * on the front of a standing partner's thighs, and a woman on her hands in a
+ * wheelbarrow by hers against his, while his arms hung at his sides.
+ *
+ * A hand holds a limb, or the neck, whichever way it is pulled: it closes round
+ * it. A trunk or a head it cannot close round, and only presses on from above,
+ * lifts from beneath, or holds at the side by how hard it squeezes - half what
+ * it holds a limb by. Laid on a partner's back, a hand does not hold them up.
+ *
+ * And a head pressed to a partner - a face at their hips, a cheek on a thigh -
+ * leans on them with no more than about its own weight. Kneeling bent over at a
+ * partner's hips with the face buried in them and the hands at the sides, a
+ * figure was held up by its face.
+ *
+ * Nor is a figure held up by a partner it lies on by more than it weighs, with
+ * whoever else may be on it: no more than its weight presses it down on them.
+ * Held without that, a body caught between two of a partner's - a thigh under
+ * his forearm and over his hip - could be squeezed level in the air, pressed
+ * down at one by three times its weight and up at the other a hand's breadth
+ * away: a woman held out straight in front of a standing partner, her legs
+ * round his waist and her hands on nothing, was counted held.
+ *
  * Only the up and down of the forces is followed. Leaning on a wall, or two
  * figures leaning into each other standing, is held by sideways forces this
  * leaves out, and comes out a little worse than it is.
@@ -38,11 +62,17 @@ import { restingOn, spheres } from "./supports.js";
 const CONTACT = 0.03;
 // How far into a mattress or cushion a body may sink and still be lying on it, not under it.
 const SINK = 0.1;
-// Lying on something rather than against it: the contact faces this far up.
-const ON_TOP = 0.45;
+// Lying on something rather than against it: the contact faces this far up (see above).
+const ON_TOP = 0.7;
 const HAND = /^(wrist|hand)_/;
 // What one hand can carry, push or pull, as a share of a body's weight.
 const GRIP = 0.5;
+// What a hand closes round: a limb or the neck. Not the trunk or the head.
+const ROUND = /^(shoulder|elbow|wrist|hand|hip|knee|ankle|toe)_|^neck$/;
+// What a hand at the side of a trunk or a head holds it by, squeezing.
+const SIDE_GRIP = 0.25;
+// What a head, with its neck, leans on partners with, as a share of its body's weight.
+const HEAD = 0.15;
 // Each body's weight against a woman's: what a hand that carries one has to bear.
 const WEIGHT = { female: 1, male: 1.25, neutral: 1.1 };
 // Under every scene, whatever its surface: furniture stands on it (see above).
@@ -67,6 +97,9 @@ function extremes(points) {
   return [...pick];
 }
 
+/** The head, and the neck it is held on. */
+const HEADS = /^(head|neck)$/;
+
 /** The one grip a hand makes, wrist and all. */
 const grip = (bone) => bone.replace(/^wrist_/, "hand_");
 
@@ -87,7 +120,10 @@ function within(p, q, gap) {
 /**
  * Every place a weight can pass, as `{ on, from, at, kind }`: on actor `on`
  * from actor `from` (or the ground, -1), at a point on the ground plane. A
- * `bear` pushes `on` up and `from` down; a `grip` either way.
+ * `bear` pushes `on` up and `from` down; a `grip` either way, the hand being
+ * `on`'s. A grip says too whether the hand closes `round` what it holds, and how
+ * far `over` it the hand is, from -1 under it to 1 on top; a bear on a partner,
+ * whether it is `on`'s `head` or neck that bears.
  */
 export function bearings(solved, props = solved.props) {
   const { actors } = solved;
@@ -98,9 +134,12 @@ export function bearings(solved, props = solved.props) {
     return out;
   });
   const groups = new Map();
-  const add = (key, entry, point) => {
-    if (!groups.has(key)) groups.set(key, { ...entry, points: [] });
-    groups.get(key).points.push(point);
+  const add = (key, entry, point, over = 0, held = "") => {
+    if (!groups.has(key)) groups.set(key, { ...entry, points: [], over: [], round: false });
+    const group = groups.get(key);
+    group.points.push(point);
+    group.over.push(over);
+    if (ROUND.test(held)) group.round = true;
   };
   all.forEach((list, i) => {
     for (const s of list) {
@@ -127,17 +166,17 @@ export function bearings(solved, props = solved.props) {
               const up = (s.c[1] - t.c[1]) / d;
               // A hand holds whatever it is on, and is held by the hand it is in;
               // the wrist is the same hand, not a second grip as strong.
-              if (HAND.test(s.bone)) add(`${i}|${j}|${grip(s.bone)}`, { on: i, from: j, kind: "grip" }, point);
-              else if (HAND.test(t.bone)) add(`${j}|${i}|${grip(t.bone)}`, { on: j, from: i, kind: "grip" }, point);
-              else if (up > ON_TOP) add(`${i}|${j}|${s.bone}`, { on: i, from: j, kind: "bear" }, point);
-              else if (up < -ON_TOP) add(`${j}|${i}|${t.bone}`, { on: j, from: i, kind: "bear" }, point);
+              if (HAND.test(s.bone)) add(`${i}|${j}|${grip(s.bone)}`, { on: i, from: j, kind: "grip" }, point, up, t.bone);
+              else if (HAND.test(t.bone)) add(`${j}|${i}|${grip(t.bone)}`, { on: j, from: i, kind: "grip" }, point, -up, s.bone);
+              else if (up > ON_TOP) add(`${i}|${j}|${s.bone}`, { on: i, from: j, kind: "bear", head: HEADS.test(s.bone) }, point);
+              else if (up < -ON_TOP) add(`${j}|${i}|${t.bone}`, { on: j, from: i, kind: "bear", head: HEADS.test(t.bone) }, point);
             }
         }
   const out = [];
-  for (const { points, ...entry } of groups.values()) {
+  for (const { points, over, round, ...entry } of groups.values()) {
     // A hand is one grip, however much of it touches; a body lying on
     // something bears along the whole of what touches.
-    if (entry.kind === "grip") out.push({ ...entry, at: mean(points) });
+    if (entry.kind === "grip") out.push({ ...entry, round, over: over.reduce((sum, v) => sum + v, 0) / over.length, at: mean(points) });
     else for (const at of extremes(points)) out.push({ ...entry, at });
   }
   return out;
@@ -166,6 +205,17 @@ export function hanging(solved, props = solved.props, forces = bearings(solved, 
   return gaps.map((_, i) => Math.min(...gaps.filter((__, j) => root(j) === root(i))));
 }
 
+/** How hard a force may push `on` up (positive) or down, `on` weighing `weight` and its head on a partner in `heads` places. */
+function range(force, weight, heads) {
+  if (force.kind === "bear") return [0, force.head ? (HEAD * weight) / heads : Infinity];
+  if (force.round) return [-GRIP, GRIP];
+  // Pressed on a trunk from above the hand pushes it down and is held up by it;
+  // from beneath it lifts it.
+  if (force.over > ON_TOP) return [0, GRIP];
+  if (force.over < -ON_TOP) return [-GRIP, 0];
+  return [-SIDE_GRIP, SIDE_GRIP];
+}
+
 /**
  * How far short each figure falls of being held up and held level, as
  * `{ lift, tip }`: the share of its weight nothing carries, and how far in
@@ -190,8 +240,13 @@ export function stability(solved, props = solved.props, forces = bearings(solved
   });
   const target = new Float64Array(rows);
   actors.forEach((_, i) => (target[i * 3] = 1));
-  const lo = forces.map(({ kind }) => (kind === "grip" ? -GRIP : 0));
-  const hi = forces.map(({ kind }) => (kind === "grip" ? GRIP : Infinity));
+  // A head shares what it may lean on partners with between every place it touches them.
+  const heads = actors.map((_, i) => forces.filter((force) => force.head && force.on === i).length);
+  const [lo, hi] = [0, 1].map((end) => forces.map((force) => range(force, weight[force.on], heads[force.on])[end]));
+  // And a figure lying on a partner shares, between every place it lies on them, its weight and that of whoever else may be on it.
+  const pair = forces.map(({ kind, on, from }) => (kind === "bear" && from >= 0 ? on * actors.length + from : -1));
+  const most = forces.map(({ from }) => weight.reduce((sum, w, k) => (k === from ? sum : sum + w), 0));
+  const borne = new Float64Array(actors.length * actors.length);
   // Least squares within the bounds, one force at a time.
   const f = new Float64Array(forces.length);
   const residual = Float64Array.from(target, (v) => -v);
@@ -203,10 +258,12 @@ export function stability(solved, props = solved.props, forces = bearings(solved
       const column = columns[k];
       let g = 0;
       for (let r = 0; r < rows; r += 1) g += column[r] * residual[r];
-      const next = Math.min(hi[k], Math.max(lo[k], f[k] - g / norms[k]));
+      const top = pair[k] < 0 ? hi[k] : Math.min(hi[k], most[k] - borne[pair[k]] + f[k]);
+      const next = Math.min(top, Math.max(lo[k], f[k] - g / norms[k]));
       const step = next - f[k];
       if (!step) continue;
       f[k] = next;
+      if (pair[k] >= 0) borne[pair[k]] += step;
       for (let r = 0; r < rows; r += 1) residual[r] += column[r] * step;
       moved = Math.max(moved, Math.abs(step));
     }
